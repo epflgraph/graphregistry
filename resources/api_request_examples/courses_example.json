@@ -1,0 +1,103 @@
+{
+    "type": "nodes",
+    "data": [
+        {
+            "institution_id": "EPFL",
+            "object_type": "Course",
+            "object_id": "ChE-613",
+            "object_title": "Organic semiconductors (Next time Fall 24)",
+            "raw_text": null,
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "course_code",
+                    "field_value": "ChE-613"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "exam_type",
+                    "field_value": "Oral"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "section_code",
+                    "field_value": "EDCH"
+                }
+            ],
+            "page_profile": {
+                "short_code": "ChE-613",
+                "name_en_value": "Organic semiconductors (Next time Fall 24)",
+                "is_visible": "1"
+            }
+        },
+        {
+            "institution_id": "EPFL",
+            "object_type": "Course",
+            "object_id": "COM-502",
+            "object_title": "Dynamical system theory for engineers",
+            "raw_text": "Linear and nonlinear dynamical systems are found in all fields of science and engineering. After a short review of linear system theory, the class will explain and develop the main tools for the qualitative analysis of nonlinear systems, both in discrete-time and continuous-time.",
+            "custom_fields": [
+                {
+                    "field_language": "en",
+                    "field_name": "bibliography",
+                    "field_value": "Course notes; textbooks given as reference on the moodle page of the course."
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "concepts_to_master",
+                    "field_value": "Linear Algebra (vector spaces, matrix operations, including inversion and eigendecomposition).\nCalculus (linear ordinary differential equations; Fourier, Laplace and z-Transforms).\nBasic notions of topology.\nBasic notions of probability."
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "content",
+                    "field_value": "Introduction:\nDynamics of linear and non linear systems. Definitions; Unicity of a solution; Limit Sets, Attractors.\nLinear Systems:\nSolutions; Stability of autonomous systems, Geometrical analysis, connection with frequency domain analysis.\nNonlinear Systems:\nSolutions; Examples. Large-scale notions of stability (Lyapunov functions). Hamiltonian systems, gradient systems. Small-scale notions of stability (Linearization; stability and basin of attraction of an equilibrium point, stability of periodic solutions, Floquet Multipliers). Graphical methods for the analysis of low-dimensional systems. Introduction to structural stability, Bifurcation theory. Introduction to chaotic systems (Lyapunov exponents); time permitting: a review of tools of measure theory to compute Lyapunov exponents.\nThe class is methodology-driven. It may present some limited examples of applications, but it is not application-driven."
+                }
+            ],
+            "page_profile": {
+                "short_code": "COM-502",
+                "name_en_value": "Dynamical system theory for engineers",
+                "description_long_en_value": "Linear and nonlinear dynamical systems are found in all fields of science and engineering. After a short review of linear system theory, the class will explain and develop the main tools for the qualitative analysis of nonlinear systems, both in discrete-time and continuous-time.",
+                "external_key_en": "dynamical-system-theory-for-engineers-COM-502",
+                "external_key_fr": "dynamical-system-theory-for-engineers-COM-502",
+                "external_url_en": "https://edu.epfl.ch/coursebook/en/dynamical-system-theory-for-engineers-COM-502",
+                "external_url_fr": "https://edu.epfl.ch/coursebook/fr/dynamical-system-theory-for-engineers-COM-502",
+                "is_visible": "1"
+            }
+        },
+        {
+            "institution_id": "EPFL",
+            "object_type": "Course",
+            "object_id": "CS-726",
+            "object_title": "Machine Learning for Database Systems",
+            "raw_text": "This course covers the emerging interdisciplinary field targeting the intersection of Machine Learning and Database Systems. The students will read, review and present papers from recent venues across Database Systems and Machine Learning fields.",
+            "custom_fields": [
+                {
+                    "field_language": "en",
+                    "field_name": "evaluation_method",
+                    "field_value": "Mid-term 20% (conditionally on the Covid situation allowing for it to be taken at EPFL).\nFinal exam 80%"
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "expected_work",
+                    "field_value": "Exercises in class and at home (paper and pencil, and Matlab)"
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "keywords",
+                    "field_value": "Dynamical Systems, Attractors, Equilibrium point, Limit Cycles, Stability, Lyapunov Functions, Bifurcations, Lyapunov exponents."
+                }
+            ],
+            "page_profile": {
+                "short_code": "CS-726",
+                "name_en_value": "Machine Learning for Database Systems",
+                "description_long_en_value": "This course covers the emerging interdisciplinary field targeting the intersection of Machine Learning and Database Systems. The students will read, review and present papers from recent venues across Database Systems and Machine Learning fields.",
+                "external_key_en": "machine-learning-for-database-systems-CS-726",
+                "external_key_fr": "machine-learning-for-database-systems-CS-726",
+                "external_url_en": "https://edu.epfl.ch/coursebook/en/machine-learning-for-database-systems-CS-726",
+                "external_url_fr": "https://edu.epfl.ch/coursebook/fr/machine-learning-for-database-systems-CS-726",
+                "is_visible": "1"
+            }
+        }
+    ],
+    "update_existing": true
+}

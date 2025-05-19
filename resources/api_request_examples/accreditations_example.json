@@ -1,0 +1,111 @@
+{
+    "type": "edges",
+    "data": [
+        {
+            "from_institution_id": "EPFL",
+            "from_object_type": "Person",
+            "from_object_id": "107461",
+            "to_institution_id": "EPFL",
+            "to_object_type": "Unit",
+            "to_object_id": "AVP-E-CEDE",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2017-05-02 00:40:24"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2013-06-04 00:40:15"
+                }
+            ]
+        },
+        {
+            "from_institution_id": "EPFL",
+            "from_object_type": "Person",
+            "from_object_id": "118272",
+            "to_institution_id": "EPFL",
+            "to_object_type": "Unit",
+            "to_object_id": "AVP-E-CEDE",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2017-05-05 00:40:20"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2014-08-25 00:40:26"
+                }
+            ]
+        },
+        {
+            "from_institution_id": "EPFL",
+            "from_object_type": "Person",
+            "from_object_id": "155704",
+            "to_institution_id": "EPFL",
+            "to_object_type": "Unit",
+            "to_object_id": "AVP-E-CEDE",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2017-07-25 11:03:59"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2013-04-04 12:03:17"
+                }
+            ]
+        },
+        {
+            "from_institution_id": "EPFL",
+            "from_object_type": "Person",
+            "from_object_id": "157873",
+            "to_institution_id": "EPFL",
+            "to_object_type": "Unit",
+            "to_object_id": "AVP-E-CEDE",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "9999-12-31 00:00:00"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2013-04-04 12:04:07"
+                }
+            ]
+        },
+        {
+            "from_institution_id": "EPFL",
+            "from_object_type": "Person",
+            "from_object_id": "170864",
+            "to_institution_id": "EPFL",
+            "to_object_type": "Unit",
+            "to_object_id": "AVP-E-CEDE",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2025-04-02 00:00:00"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2019-12-19 15:25:30"
+                }
+            ]
+        }
+    ],
+    "update_existing": true
+}

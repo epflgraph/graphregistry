@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__
+*.pkl
+*.gexf
+*data
+*data_exports/*
+*/api/modules/_trash/
+*/api/modules/concepts/
+.idea/
+venv/
+data/
+resources/certificates/*.crt
+resources/credentials/*
+config.yaml
+geckodriver.log

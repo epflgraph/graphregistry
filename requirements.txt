@@ -1,0 +1,15 @@
+uvicorn
+fastapi
+sqlalchemy
+tqdm
+loguru
+rich
+elasticsearch
+Levenshtein
+requests
+termcolor
+numpy
+pandas
+tabulate
+pyyaml
+pymysql
