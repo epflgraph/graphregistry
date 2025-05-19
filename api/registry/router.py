@@ -31,7 +31,7 @@ def method_insert(request: schemas.InsertItemRequest):
         return JSONResponse(content={"message": "Invalid item type"})
     try:
         obj_list.set_from_json(request.data)
-        obj_list.info()
+        # obj_list.info()  # too verbose
     except Exception as e:
         exception_args = ", ".join(["'" + a + "'" for a in e.args])
         raise HTTPException(
@@ -40,6 +40,9 @@ def method_insert(request: schemas.InsertItemRequest):
         )
     try:
         r = obj_list.commit(actions=request.actions)
+        print(
+            f"Inserted {len(request.data)} items of type {request.type}."
+        )
     except Exception as e:
         exception_args = ", ".join(["'" + a + "'" for a in e.args])
         raise HTTPException(

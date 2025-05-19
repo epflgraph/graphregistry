@@ -3719,7 +3719,7 @@ class GraphRegistry():
             return eval_results
 
         # Commit all to database
-        def commit(self, actions=('eval',)):
+        def commit(self, actions=('eval',), verbose=True):
 
             # Print actions info
             if actions == ('eval',):
@@ -3733,7 +3733,7 @@ class GraphRegistry():
             }
 
             # Print actions info
-            if 'commit' in actions:
+            if verbose and 'commit' in actions:
                 print(f'\n✅ All data committed to the database.')
 
             # Return evaluation results
@@ -3810,7 +3810,7 @@ class GraphRegistry():
         def commit(self, actions=('eval',)):
             eval_results = []
             for node in self.object_list:
-                eval_result = node.commit(actions)
+                eval_result = node.commit(actions, verbose=False)
                 eval_results.append(eval_result)
             return eval_results
 
@@ -4009,7 +4009,7 @@ class GraphRegistry():
             return eval_results
 
         # Commit all to database
-        def commit(self, actions=('eval',)):
+        def commit(self, actions=('eval',), verbose=True):
 
             # Print actions info
             if actions == ('eval',):
@@ -4022,7 +4022,7 @@ class GraphRegistry():
             }
 
             # Print actions info
-            if 'commit' in actions:
+            if verbose and 'commit' in actions:
                 print(f'\n✅ All data committed to the database.')
 
             # Return evaluation results
@@ -4123,7 +4123,7 @@ class GraphRegistry():
         def commit(self, actions=('eval',)):
             eval_results = []
             for edge in self.object_list:
-                eval_result = edge.commit(actions)
+                eval_result = edge.commit(actions, verbose=False)
                 eval_results.append(eval_result)
             return eval_results
 
