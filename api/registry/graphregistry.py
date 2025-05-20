@@ -2406,7 +2406,7 @@ class GraphDB():
                                     custom_column_mismatch_detected = True
 
                                     # Append the mismatch changes stack
-                                    mismatch_changes_stack += [(f'{k}: {target_row_set_dict[t][k]} --> {source_row_set_dict[t][k]}')]
+                                    mismatch_changes_stack += [(f'{k}: [S] {source_row_set_dict[t][k]} ... [T] {target_row_set_dict[t][k]}')]
                                     
                                 # Check if the value is set to NULL from source to target
                                 if source_row_set_dict[t][k] is None:
@@ -2504,6 +2504,8 @@ class GraphDB():
             percent_set_to_null_colour = '\033[37m'
         
         # Print the stats
+        print('')
+        print('=======================================================================')
         print('')
         print(f"Results for \033[36m{target_table_name}:\033[0m")
         print('')
@@ -6581,6 +6583,24 @@ if __name__ == '__main__':
     node.commit_concepts(actions=('eval'))
     node.commit_concepts(actions=('commit'))
     node.commit_concepts(actions=('eval'))
+
+
+    list_of_table = gr.db.get_tables_in_schema(
+        engine_name = 'prod',
+        schema_name = 'graphsearch_prod_2025_02_10',
+        include_views = False
+    )
+
+    for table_name in list_of_table:
+        gr.db.compare_tables_by_random_sampling(
+            source_engine_name = 'prod',
+            source_schema_name = 'graphsearch_prod_2025_02_10',
+            source_table_name  = table_name,
+            target_engine_name = 'prod',
+            target_schema_name = 'graphsearch_prod',
+            target_table_name  = table_name,
+            sample_size        = 8
+        )
 
     exit()
     
