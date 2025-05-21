@@ -2618,7 +2618,7 @@ class GraphDB():
         
         # Print the stats
         print('')
-        print('=======================================================================')
+        print('==============================================================================================')
         print('')
         print(f"Results for \033[36m{target_table_name}:\033[0m")
         print('')
@@ -2737,9 +2737,10 @@ class GraphRegistry():
         gr.orchestrator.propagate()
 
         gr.datamanager.eval()
-        gr.datamanager.commit()
 
+        gr.datamanager.apply_views()
         gr.datamanager.apply_formulas()
+
         gr.datamanager.calculate_scores_matrix(  from_object_type='Widget', to_object_type='Widget')
         gr.datamanager.consolidate_scores_matrix(from_object_type='Widget', to_object_type='Widget')
 
@@ -3490,27 +3491,53 @@ class GraphRegistry():
 
             # Sync new objects to operations table -> TODO: optimise queries and include graph_lectures
             def sync(self, to_process=1):
-                sql_query = f"""
-                          SELECT object_type, COUNT(*) AS n
-                            FROM graph_registry.Nodes_N_Object
-                           WHERE (institution_id, object_type, object_id)
-                          NOT IN (SELECT institution_id, object_type, object_id
-                                  FROM graph_airflow.Operations_N_Object_T_ScoresExpired)
-                        GROUP BY object_type;
-                """
-                out = self.db.execute_query(engine_name='test', query=sql_query)
-                sql_query = f"""
-                     INSERT INTO graph_airflow.Operations_N_Object_T_ScoresExpired
-                                (institution_id, object_type, object_id, last_date_cached, has_expired, to_process)
-                          SELECT institution_id, object_type, object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
-                            FROM graph_registry.Nodes_N_Object
-                           WHERE (institution_id, object_type, object_id)
-                          NOT IN (SELECT institution_id, object_type, object_id
-                                  FROM graph_airflow.Operations_N_Object_T_ScoresExpired)
-                """
-                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
-                print('New objects synced:', out)
-            
+
+                for schema_name in ['graph_lectures', 'graph_registry']:
+                    
+                    print(schema_name)
+
+                    # sql_query = f"""
+                    #           SELECT object_type, COUNT(*) AS n
+                    #             FROM {schema_name}.Nodes_N_Object
+                    #            WHERE (institution_id, object_type, object_id)
+                    #           NOT IN (SELECT institution_id, object_type, object_id
+                    #                     FROM graph_airflow.Operations_N_Object_T_ScoresExpired)
+                    #         GROUP BY object_type;
+                    # """
+                    sql_query = f"""
+                              SELECT n.object_type, COUNT(*) AS n
+                                FROM {schema_name}.Nodes_N_Object n
+                           LEFT JOIN graph_airflow.Operations_N_Object_T_ScoresExpired o
+                               USING (institution_id, object_type, object_id)
+                               WHERE o.institution_id IS NULL
+                                 AND n.object_type != 'Transcript'
+                                 AND n.object_type != 'Slide'
+                            GROUP BY n.object_type
+                    """
+                    out = self.db.execute_query(engine_name='test', query=sql_query)
+                    # sql_query = f"""
+                    #      INSERT INTO graph_airflow.Operations_N_Object_T_ScoresExpired
+                    #                 (institution_id, object_type, object_id, last_date_cached, has_expired, to_process)
+                    #           SELECT institution_id, object_type, object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                    #             FROM {schema_name}.Nodes_N_Object
+                    #            WHERE (institution_id, object_type, object_id)
+                    #           NOT IN (SELECT institution_id, object_type, object_id
+                    #                     FROM graph_airflow.Operations_N_Object_T_ScoresExpired)
+                    # """
+                    sql_query = f"""
+                         INSERT INTO graph_airflow.Operations_N_Object_T_ScoresExpired
+                                    (institution_id, object_type, object_id, last_date_cached, has_expired, to_process)
+                              SELECT n.institution_id, n.object_type, n.object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                FROM {schema_name}.Nodes_N_Object n
+                           LEFT JOIN graph_airflow.Operations_N_Object_T_ScoresExpired o
+                               USING (institution_id, object_type, object_id)
+                               WHERE o.institution_id IS NULL
+                                 AND n.object_type != 'Transcript'
+                                 AND n.object_type != 'Slide'
+                    """
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                    print('New objects synced:', out)
+                
             # Pre-defined method to setup the process for a single object
             def setup_to_process_single_object(self, object_key, what_to_process=[], reset=False, verbose=False):
 
@@ -4277,7 +4304,7 @@ class GraphRegistry():
             self.batch_actions(actions=('eval',))
 
         # Commit for all views
-        def commit(self):
+        def apply_views(self):
             self.batch_actions(actions=('commit',))
 
         # Compute and cache scores
@@ -5073,7 +5100,7 @@ class GraphRegistry():
                     if 'print' in actions:
                         print(sql_query_eval, '\n')
 
-
+                    # Execute evaluation query
                     out = self.db.execute_query(engine_name='test', query=sql_query_eval)
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
@@ -6690,63 +6717,4 @@ class GraphRegistry():
 
 
 if __name__ == '__main__':
-    from graphregistry import GraphRegistry
-    gr = GraphRegistry()
-    node = gr.Node()
-    node.set(('EPFL','Publication','148964'))
-    node.set_from_existing()
-    node.detect_concepts()
-    node.set_text_source('abstract')
-    node.commit_concepts(actions=('eval'))
-    node.commit_concepts(actions=('commit'))
-    node.commit_concepts(actions=('eval'))
-
-
-    list_of_table = gr.db.get_tables_in_schema(
-        engine_name = 'prod',
-        schema_name = 'graphsearch_prod_2025_02_10',
-        include_views = False
-    )
-
-    for table_name in list_of_table:
-        gr.db.compare_tables_by_random_sampling(
-            source_engine_name = 'prod',
-            source_schema_name = 'graphsearch_prod_2025_02_10',
-            source_table_name  = table_name,
-            target_engine_name = 'prod',
-            target_schema_name = 'graphsearch_prod',
-            target_table_name  = table_name,
-            sample_size        = 8
-        )
-
     exit()
-    
-    # gr.db.copy_table_across_engines(
-    #     source_engine_name = 'test',
-    #     source_schema_name = 'graph_cache',
-    #     source_table_name  = 'IndexBuildup_Fields_Docs_Widget',
-    #     target_engine_name = 'prod',
-    #     target_schema_name = 'graph_cache',
-    #     keys_json  = table_keys_json['doc_profile'],
-    #     filter_by  = 'to_process > 0.5',
-    #     chunk_size = 100000,
-    #     drop_table = False
-    # )
-
-    # gr.db.copy_table_across_engines(
-    #     source_engine_name = 'test',
-    #     source_schema_name = 'graph_cache',
-    #     source_table_name  = 'Edges_N_Object_N_Object_T_ScoresMatrix_AS',
-    #     target_engine_name = 'prod',
-    #     target_schema_name = 'graph_cache',
-    #     keys_json  = table_keys_json['object_to_object'],
-    #     filter_by  = 'to_process > 0.5',
-    #     chunk_size = 100000,
-    #     drop_table = False
-    # )
-
-
-
-    # # get_table_type_from_name    
-
-    # pass
