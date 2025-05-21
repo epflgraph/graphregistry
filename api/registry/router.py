@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 import api.registry.schemas as schemas
-from api.registry.graphregistry import GraphRegistry
+from api.registry.graphregistry import (
+    GraphRegistry, delete_nodes_by_ids, delete_edges_by_ids, get_existing_nodes_id, get_existing_edges_id
+)
 
 # Initialize the GraphRegistry instance
 gr = GraphRegistry()
@@ -52,12 +54,92 @@ def method_insert(request: schemas.InsertItemRequest):
     return JSONResponse(content={"message": f"{request.type} inserted successfully", "eval_results": r})
 
 
-@router.post("/delete")
-def method_delete(data: schemas.DeleteItemRequest):
+@router.post("/delete_nodes")
+def method_delete_nodes(request: schemas.DeleteNodesRequest):
     """
-    Deletes an item from the registry by ID.
+    Deletes multiple nodes from the registry by ID.
     """
-    return "gr.delete_item(data.item_id)"
+    print(
+        f"Deleting {len(request.items_id)} nodes - Type: {request.type}, Actions: {', '.join(request.actions)}"
+    )
+    try:
+        r = delete_nodes_by_ids(
+            gr.db, institution_id=request.institution_id, object_type=request.object_type, nodes_id=request.nodes_id,
+            engine_name=request.engine_name, actions=request.actions,
+        )
+    except Exception as e:
+        exception_args = ", ".join(["'" + a + "'" for a in e.args])
+        raise HTTPException(
+            status_code=500,
+            detail=f'Failed to delete the nodes, the error was: {type(e).__name__}({exception_args})'
+        )
+    return JSONResponse(content={"message": f"Nodes deleted successfully", "eval_results": r})
+
+
+@router.post("/delete_edges")
+def method_delete_edges(request: schemas.DeleteEdgesRequest):
+    """
+    Deletes multiple edges from the registry by ID.
+    """
+    print(
+        f"Deleting {len(request.items_id)} edges - Type: {request.type}, Actions: {', '.join(request.actions)}"
+    )
+    try:
+        r = delete_edges_by_ids(
+            gr.db, from_institution_id=request.from_institution_id, from_object_type=request.from_object_type,
+            to_institution_id=request.to_institution_id, to_object_type=request.to_object_type,
+            edges_id=request.edges_id, engine_name=request.engine_name, actions=request.actions,
+        )
+    except Exception as e:
+        exception_args = ", ".join(["'" + a + "'" for a in e.args])
+        raise HTTPException(
+            status_code=500,
+            detail=f'Failed to delete the edges, the error was: {type(e).__name__}({exception_args})'
+        )
+    return JSONResponse(content={"message": f"Edges deleted successfully", "eval_results": r})
+
+
+@router.post("/list_nodes")
+def method_list_nodes(request: schemas.ListNodesRequest):
+    """
+    List nodes existing in the registry.
+    """
+    try:
+        objects_id = get_existing_nodes_id(
+            gr.db, institution_id=request.institution_id, object_type=request.object_type,
+            engine_name=request.engine_name
+        )
+    except Exception as e:
+        exception_args = ", ".join(["'" + a + "'" for a in e.args])
+        raise HTTPException(
+            status_code=500,
+            detail=f'Failed to list the nodes {request.institution_id} {request.object_type}, '
+                   f'the error was: {type(e).__name__}({exception_args})'
+        )
+    return JSONResponse(content={"message": f"Nodes listed successfully", "nodes_id": objects_id})
+
+
+@router.post("/list_edges")
+def method_list_nodes(request: schemas.ListEdgesRequest):
+    """
+    List edges existing in the registry.
+    """
+    try:
+        objects_id = get_existing_edges_id(
+            gr.db, from_institution_id=request.from_institution_id, from_object_type=request.from_object_type,
+            to_institution_id=request.to_institution_id, to_object_type=request.to_object_type,
+            engine_name=request.engine_name
+        )
+    except Exception as e:
+        exception_args = ", ".join(["'" + a + "'" for a in e.args])
+        raise HTTPException(
+            status_code=500,
+            detail=f'Failed to list the edges {request.from_institution_id} {request.from_object_type} -> '
+                   f'{request.to_institution_id} {request.to_object_type}, the error was: '
+                   f'{type(e).__name__}({exception_args})'
+        )
+    return JSONResponse(content={"message": f"Edges listed successfully", "edges_id": objects_id})
+
 
 @router.post("/exists")
 def method_exists(request: schemas.InsertItemRequest):

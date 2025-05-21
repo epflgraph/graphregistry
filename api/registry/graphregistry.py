@@ -28,6 +28,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from itertools import groupby
+from typing import List, Tuple
 from tabulate import tabulate
 from yaml import safe_load
 from graphai_client.client import login as graphai_login
@@ -1144,6 +1145,118 @@ def registry_insert(
 
     # Return the test results
     return eval_results
+
+
+def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
+    schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
+    query_where_per_table = {}
+    for table in (
+            'Nodes_N_Object', 'Data_N_Object_T_PageProfile', 'Data_N_Object_T_CustomFields',
+            'Edges_N_Object_N_Concept_T_ConceptDetection'
+    ):
+        query_where_per_table[f'{schema_objects}.{table}'] = \
+            f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
+
+    for schema in ('graph_registry', 'graph_lectures'):
+        for table in (
+                'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields',
+        ):
+            query_where_per_table[f'{schema}.{table}'] = f'''
+                (
+                    from_institution_id='{institution_id}' 
+                    AND from_object_type='{object_type}' 
+                    AND from_object_id IN :object_id
+                ) OR (
+                    to_institution_id='{institution_id}' 
+                    AND to_object_type='{object_type}' 
+                    AND to_object_id IN :object_id
+                )'''
+    eval_results = {} if 'eval' in actions else None
+    query_remove = ''
+    for table, query_where in query_where_per_table.items():
+        if 'eval' in actions:
+            query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
+            if 'print' in actions:
+                print(query_eval)
+            out = db_connector.execute_query(query=query_eval, params={'object_id': nodes_id}, engine_name=engine_name)
+            eval_results[table] = out[0][0]
+            if eval_results[table] > 0:
+                print(table, eval_results[table])
+        query_remove += f'DELETE FROM {table} WHERE {query_where};\n'
+    if 'print' in actions:
+        print(query_remove)
+    if 'commit' in actions:
+        db_connector.execute_query(
+            query=query_remove, params={'object_id': nodes_id}, engine_name=engine_name, commit=True
+        )
+    return eval_results
+
+
+def delete_edges_by_ids(
+        db_connector, from_institution_id, from_object_type, to_institution_id, to_object_type,
+        edges_id: List[Tuple[str, str]], engine_name='test', actions=()
+):
+    schema_edges = GraphRegistry.Edge.get_schema(from_object_type, to_object_type)
+    query_where_per_table = {}
+    for table in (
+            'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields'
+    ):
+        query_where_per_table[f'{schema_edges}.{table}'] = f'''
+            from_institution_id="{from_institution_id}" 
+            AND from_object_type="{from_object_type}" 
+            AND to_institution_id="{to_institution_id}" 
+            AND to_object_type="{to_object_type}" 
+            AND (from_object_id, to_object_id) IN :edges_id'''
+    eval_results = {} if 'eval' in actions else None
+    query_remove = ''
+    for table, query_where in query_where_per_table.items():
+        if 'eval' in actions:
+            query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
+            if 'print' in actions:
+                print(query_eval)
+            out = db_connector.execute_query(query=query_eval, params={'edges_id': edges_id}, engine_name=engine_name)
+            eval_results[table] = out[0][0]
+            if eval_results[table] > 0:
+                print(table, eval_results[table])
+        query_remove += f'DELETE FROM {table} WHERE {query_where};\n'
+    if 'print' in actions:
+        print(query_remove)
+    if 'commit' in actions:
+        db_connector.execute_query(
+            query=query_remove, params={'edges_id': edges_id}, engine_name=engine_name, commit=True
+        )
+    return eval_results
+
+
+# Get the list of object_id from the existing nodes in the database
+def get_existing_nodes_id(db_connector, institution_id: str, object_type: str, engine_name='test'):
+    schema_name = object_type_to_schema.get(object_type, 'graph_registry')
+    existing_nodes_id = db_connector.execute_query(
+        engine_name=engine_name,
+        query=f"""
+            SELECT object_id 
+            FROM {schema_name}.Nodes_N_Object
+            WHERE institution_id='{institution_id}' AND object_type='{object_type}';"""
+    )
+    return [object_id for object_id, in existing_nodes_id]
+
+
+def get_existing_edges_id(
+        db_connector, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str,
+        engine_name='test'
+):
+    schema_name = GraphRegistry.Edge.get_schema(from_object_type, to_object_type)
+    existing_edges_id = db_connector.execute_query(
+        engine_name=engine_name,
+        query=f"""
+            SELECT from_object_id, to_object_id
+            FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent
+            WHERE 
+                from_institution_id='{from_institution_id}' AND from_object_type='{from_object_type}'
+                AND to_institution_id='{to_institution_id}' AND to_object_type='{to_object_type}';"""
+    )
+    return existing_edges_id
+
 
 #-----------------------------------------#
 # Class definition for Graph MySQL engine #
@@ -2660,6 +2773,8 @@ class GraphRegistry():
         print(instructions)
         pass
 
+
+
     #---------------------------------------------------#
     # Subclass definition: Graph Registry Orchestration #
     #---------------------------------------------------#
@@ -3776,7 +3891,7 @@ class GraphRegistry():
 
         # Commit detected concepts to database
         def commit_concepts(self, actions=('eval',), delete_existing=False):
-            schema_name = object_type_to_schema[self.object_type]
+            schema_name = object_type_to_schema.get(self.object_type, 'graph_registry')
             eval_results = []
             for doc in self.concepts_detection:
                 eval_results += [registry_insert(
@@ -3856,15 +3971,19 @@ class GraphRegistry():
             self.set_from_existing()
 
         # get the schema based on the type of nodes at the ends of the edge
-        def _get_schema(self):
-            schema_from = object_type_to_schema.get(self.from_object_type, 'graph_registry')
-            schema_to = object_type_to_schema.get(self.to_object_type, 'graph_registry')
+        @staticmethod
+        def get_schema(from_object_type, to_object_type):
+            schema_from = object_type_to_schema.get(from_object_type, 'graph_registry')
+            schema_to = object_type_to_schema.get(to_object_type, 'graph_registry')
             if schema_from == 'graph_lectures' or schema_to == 'graph_lectures':
                 return 'graph_lectures'
             elif schema_from == schema_to:
                 return schema_from
             else:
                 return 'graph_registry'
+
+        def _get_schema(self):
+            return self.get_schema(self.from_object_type, self.to_object_type)
 
         # Check if object exists
         def exists(self):
@@ -6598,102 +6717,4 @@ class GraphRegistry():
 
 
 if __name__ == '__main__':
-
     exit()
-
-    from graphregistry import GraphRegistry
-    gr = GraphRegistry()
-    node = gr.Node()
-    node.set(('EPFL','Publication','148964'))
-    node.set_from_existing()
-    node.detect_concepts()
-    node.set_text_source('abstract')
-    node.commit_concepts(actions=('eval'))
-    node.commit_concepts(actions=('commit'))
-    node.commit_concepts(actions=('eval'))
-
-
-    list_of_tables = gr.db.get_tables_in_schema(
-        engine_name = 'prod',
-        schema_name = 'graphsearch_prod_2025_02_10',
-        include_views = False
-    )
-
-    for table_name in list_of_tables:
-        gr.db.compare_tables_by_random_sampling(
-            source_engine_name = 'prod',
-            source_schema_name = 'graphsearch_prod_2025_02_10',
-            source_table_name  = table_name,
-            target_engine_name = 'prod',
-            target_schema_name = 'graphsearch_prod',
-            target_table_name  = table_name,
-            sample_size        = 8
-        )
-
-
-    list_of_tables = gr.db.get_tables_in_schema(
-        engine_name = 'prod',
-        schema_name = 'graphsearch_prod',
-        include_views = False,
-        use_regex = [r'.*Widget.*']
-    )
-
-    for table_name in list_of_tables:
-        print('Copying table:', table_name)
-        gr.db.copy_table(
-            engine_name           = 'prod',
-            source_schema_name    = 'graphsearch_prod',
-            source_table_name     = table_name,
-            target_schema_name    = 'graphsearch_prod_2025_02_10',
-            target_table_name     = table_name,
-            list_of_columns       = False,
-            where_condition       = 'TRUE',
-            row_id_name           = 'row_id',
-            chunk_size            = 100000,
-            create_table          = True,
-            drop_keys             = False,
-            use_replace_or_ignore = 'IGNORE'
-        )
-
-
-    exit()
-    
-    # gr.db.copy_table_across_engines(
-    #     source_engine_name = 'test',
-    #     source_schema_name = 'graph_cache',
-    #     source_table_name  = 'IndexBuildup_Fields_Docs_Widget',
-    #     target_engine_name = 'prod',
-    #     target_schema_name = 'graph_cache',
-    #     keys_json  = table_keys_json['doc_profile'],
-    #     filter_by  = 'to_process > 0.5',
-    #     chunk_size = 100000,
-    #     drop_table = False
-    # )
-
-    # gr.db.copy_table_across_engines(
-    #     source_engine_name = 'test',
-    #     source_schema_name = 'graph_cache',
-    #     source_table_name  = 'Edges_N_Object_N_Object_T_ScoresMatrix_AS',
-    #     target_engine_name = 'prod',
-    #     target_schema_name = 'graph_cache',
-    #     keys_json  = table_keys_json['object_to_object'],
-    #     filter_by  = 'to_process > 0.5',
-    #     chunk_size = 100000,
-    #     drop_table = False
-    # )
-
-
-
-    # # get_table_type_from_name    
-
-    # pass
-
-
-    # Config object types to process
-    gr.orchestrator.config(
-        node_types = [('EPFL', 'Lecture')],
-        edge_types = [],
-        sync  = False,
-        reset = False,
-        print = True
-    )
