@@ -6717,4 +6717,102 @@ class GraphRegistry():
 
 
 if __name__ == '__main__':
+
     exit()
+
+    from graphregistry import GraphRegistry
+    gr = GraphRegistry()
+    node = gr.Node()
+    node.set(('EPFL','Publication','148964'))
+    node.set_from_existing()
+    node.detect_concepts()
+    node.set_text_source('abstract')
+    node.commit_concepts(actions=('eval'))
+    node.commit_concepts(actions=('commit'))
+    node.commit_concepts(actions=('eval'))
+
+
+    list_of_tables = gr.db.get_tables_in_schema(
+        engine_name = 'prod',
+        schema_name = 'graphsearch_prod_2025_02_10',
+        include_views = False
+    )
+
+    for table_name in list_of_tables:
+        gr.db.compare_tables_by_random_sampling(
+            source_engine_name = 'prod',
+            source_schema_name = 'graphsearch_prod_2025_02_10',
+            source_table_name  = table_name,
+            target_engine_name = 'prod',
+            target_schema_name = 'graphsearch_prod',
+            target_table_name  = table_name,
+            sample_size        = 8
+        )
+
+
+    list_of_tables = gr.db.get_tables_in_schema(
+        engine_name = 'prod',
+        schema_name = 'graphsearch_prod',
+        include_views = False,
+        use_regex = [r'.*Widget.*']
+    )
+
+    for table_name in list_of_tables:
+        print('Copying table:', table_name)
+        gr.db.copy_table(
+            engine_name           = 'prod',
+            source_schema_name    = 'graphsearch_prod',
+            source_table_name     = table_name,
+            target_schema_name    = 'graphsearch_prod_2025_02_10',
+            target_table_name     = table_name,
+            list_of_columns       = False,
+            where_condition       = 'TRUE',
+            row_id_name           = 'row_id',
+            chunk_size            = 100000,
+            create_table          = True,
+            drop_keys             = False,
+            use_replace_or_ignore = 'IGNORE'
+        )
+
+
+    exit()
+    
+    # gr.db.copy_table_across_engines(
+    #     source_engine_name = 'test',
+    #     source_schema_name = 'graph_cache',
+    #     source_table_name  = 'IndexBuildup_Fields_Docs_Widget',
+    #     target_engine_name = 'prod',
+    #     target_schema_name = 'graph_cache',
+    #     keys_json  = table_keys_json['doc_profile'],
+    #     filter_by  = 'to_process > 0.5',
+    #     chunk_size = 100000,
+    #     drop_table = False
+    # )
+
+    # gr.db.copy_table_across_engines(
+    #     source_engine_name = 'test',
+    #     source_schema_name = 'graph_cache',
+    #     source_table_name  = 'Edges_N_Object_N_Object_T_ScoresMatrix_AS',
+    #     target_engine_name = 'prod',
+    #     target_schema_name = 'graph_cache',
+    #     keys_json  = table_keys_json['object_to_object'],
+    #     filter_by  = 'to_process > 0.5',
+    #     chunk_size = 100000,
+    #     drop_table = False
+    # )
+
+
+
+    # # get_table_type_from_name    
+
+    # pass
+
+
+    # Config object types to process
+    gr.orchestrator.config(
+        node_types = [('EPFL', 'Lecture')],
+        edge_types = [],
+        sync  = False,
+        reset = False,
+        print = True
+    )
