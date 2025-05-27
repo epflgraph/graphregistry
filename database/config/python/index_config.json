@@ -70,6 +70,10 @@
             },
             "parent-child" : {
                 "Course" : {
+                    "Lecture" : {
+                        "obj2obj" : ["academic_year", "sort_number", "video_stream_url", "video_duration", "is_restricted"],
+                        "order" : [["is_restricted", "DESC"]]
+                    },
                     "Person" : {
                         "obj2obj" : ["latest_teaching_assignment_year"],
                         "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
