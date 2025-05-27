@@ -20,7 +20,7 @@
 from sqlalchemy import create_engine as SQLEngine, text
 from tqdm import tqdm
 from loguru import logger as sysmsg
-import base64, re, time, subprocess, warnings, os, glob, rich, hashlib, random, termios, tty
+import base64, re, time, subprocess, warnings, os, glob, rich, hashlib, random, termios, tty, inspect
 from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers, ElasticsearchWarning
 import json, logging, sys, datetime, Levenshtein, requests
 from urllib.parse import quote
@@ -33,7 +33,13 @@ from tabulate import tabulate
 from yaml import safe_load
 from graphai_client.client import login as graphai_login
 from graphai_client.client_api.text import extract_concepts_from_text
+import tkinter as tk
+from tkinter import ttk
 
+# Enable faulthandler to dump Python tracebacks explicitly on a fault
+# faulthandler.enable()
+
+# Get the current working directory
 package_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..'))
 global_config_file = os.path.join(package_dir, 'config.yaml')
 with open(global_config_file) as fp:
@@ -413,20 +419,20 @@ object_type_to_schema = {
 
 # Object type to institution id mapping
 object_type_to_institution_id = {
-    'Category': 'Ont',
-    'Concept': 'Ont',
-    'Course': 'EPFL',
-    'Lecture': 'EPFL',
-    'MOOC': 'EPFL',
-    'Person': 'EPFL',
-    'Publication': 'EPFL',
-    'Slide': 'EPFL',
-    'Specialisation': 'EPFL',
-    'Startup': 'EPFL',
-    'Transcript': 'EPFL',
-    'StudyPlan': 'EPFL',
-    'Unit': 'EPFL',
-    'Widget': 'EPFL',
+    'Category'       : 'Ont',
+    'Concept'        : 'Ont',
+    'Course'         : 'EPFL',
+    'Lecture'        : 'EPFL',
+    'MOOC'           : 'EPFL',
+    'Person'         : 'EPFL',
+    'Publication'    : 'EPFL',
+    'Slide'          : 'EPFL',
+    'Specialisation' : 'EPFL',
+    'Startup'        : 'EPFL',
+    'Transcript'     : 'EPFL',
+    'StudyPlan'      : 'EPFL',
+    'Unit'           : 'EPFL',
+    'Widget'         : 'EPFL',
 }
 
 # List of possible values for institution_id and object_type
@@ -847,7 +853,7 @@ local_cache = {
 #---------------------#
 
 # Print in colour
-def print_colour(msg, colour='white', background='black', style='normal'):
+def print_colour(msg, colour='white', background='black', style='normal', display_method=False):
     colour_codes = {
         'black'  : 30,
         'red'    : 31,
@@ -855,6 +861,7 @@ def print_colour(msg, colour='white', background='black', style='normal'):
         'yellow' : 33,
         'blue'   : 34,
         'purple' : 35,
+        'magenta': 35,
         'cyan'   : 36,
         'white'  : 37
     }
@@ -865,6 +872,7 @@ def print_colour(msg, colour='white', background='black', style='normal'):
         'yellow' : 43,
         'blue'   : 44,
         'purple' : 45,
+        'magenta': 45,
         'cyan'   : 46,
         'white'  : 47
     }
@@ -876,6 +884,23 @@ def print_colour(msg, colour='white', background='black', style='normal'):
         'reverse' : 7,
         'hidden'  : 8
     }
+    
+    if display_method:
+        frame = inspect.currentframe().f_back
+        method = frame.f_code.co_name
+
+        # Attempt to get class name from 'self' or 'cls'
+        class_name = None
+        if 'self' in frame.f_locals:
+            class_name = type(frame.f_locals['self']).__name__
+        elif 'cls' in frame.f_locals:
+            class_name = frame.f_locals['cls'].__name__
+
+        if class_name:
+            msg = f"{class_name}.{method}(): {msg}"
+        else:
+            msg = f"{method}(): {msg}"
+
     print(f"\033[{style_codes[style]};{colour_codes[colour]};{background_codes[background]}m{msg}\033[0m")
 
 # Pretty-print dataframe
@@ -1121,12 +1146,12 @@ def registry_insert(
             ) AS d
             ON DUPLICATE KEY UPDATE 
                 record_updated_date = IF(
-                    {' OR '.join([f"COALESCE({t}.{c},'0') != COALESCE(d.{c},'0')" for c in upd_column_names])},
+                    {' OR '.join([f"COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__')" for c in upd_column_names])},
                     CURRENT_TIMESTAMP, 
                     {t}.record_updated_date
                 ),
                 {', '.join(
-                    [f"{c} = IF(COALESCE({t}.{c},'0') != COALESCE(d.{c},'0'), d.{c}, {t}.{c})" for c in upd_column_names]
+                    [f"{c} = IF(COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__'), d.{c}, {t}.{c})" for c in upd_column_names]
                 )};"""
     else:
         sql_query_commit = f"""
@@ -1145,7 +1170,6 @@ def registry_insert(
 
     # Return the test results
     return eval_results
-
 
 def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
     schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
@@ -1191,7 +1215,6 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
         )
     return eval_results
 
-
 def delete_edges_by_ids(
         db_connector, from_institution_id, from_object_type, to_institution_id, to_object_type,
         edges_id: List[Tuple[str, str]], engine_name='test', actions=()
@@ -1227,7 +1250,6 @@ def delete_edges_by_ids(
         )
     return eval_results
 
-
 # Get the list of object_id from the existing nodes in the database
 def get_existing_nodes_id(db_connector, institution_id: str, object_type: str, engine_name='test'):
     schema_name = object_type_to_schema.get(object_type, 'graph_registry')
@@ -1239,7 +1261,6 @@ def get_existing_nodes_id(db_connector, institution_id: str, object_type: str, e
             WHERE institution_id='{institution_id}' AND object_type='{object_type}';"""
     )
     return [object_id for object_id, in existing_nodes_id]
-
 
 def get_existing_edges_id(
         db_connector, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str,
@@ -1256,7 +1277,6 @@ def get_existing_edges_id(
                 AND to_institution_id='{to_institution_id}' AND to_object_type='{to_object_type}';"""
     )
     return existing_edges_id
-
 
 #-----------------------------------------#
 # Class definition for Graph MySQL engine #
@@ -1529,7 +1549,7 @@ class GraphDB():
                               {query}
                              ) AS d
             ON DUPLICATE KEY
-                      UPDATE {', '.join([f"{c} = IF(COALESCE({t}.{c},0) != COALESCE(d.{c},0), d.{c}, {t}.{c})" for c in upd_column_names])};
+                      UPDATE {', '.join([f"{c} = IF(COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__'), d.{c}, {t}.{c})" for c in upd_column_names])};
         """
 
         # Print the commit query
@@ -1539,6 +1559,41 @@ class GraphDB():
         # Execute the commit query
         if 'commit' in actions:
             self.execute_query_in_shell(engine_name=engine_name, query=query_commit)
+
+    #-------------------------------------------------#
+    # Method: Executes a query sequentially by chunks #
+    #-------------------------------------------------#
+    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, chunk_size=10000, row_id_name='row_id'):
+
+        # Remove trailing semicolon from the query
+        if query.strip()[-1] == ';':
+            query = query.strip()[:-1]
+
+        # Which filter command to use?
+        if 'WHERE' in query:
+            filter_command = 'AND'
+        else:
+            filter_command = 'WHERE'
+
+        # Row_id name contains alias?
+        if '.' in row_id_name:
+            row_id_name_no_alias = row_id_name.split('.')[1]
+        else:
+            row_id_name_no_alias = row_id_name
+
+        # Get min and max row_id
+        row_num_min = self.execute_query(engine_name=engine_name, query=f"SELECT MIN({row_id_name_no_alias}) FROM {schema_name}.{table_name}")[0][0]
+        row_num_max = self.execute_query(engine_name=engine_name, query=f"SELECT MAX({row_id_name_no_alias}) FROM {schema_name}.{table_name}")[0][0]
+        n_rows = row_num_max - row_num_min + 1
+
+        # Process table in chunks
+        for offset in tqdm(range(row_num_min, row_num_max, chunk_size), desc=f'Executing query', unit='rows', total=round(n_rows/chunk_size)):
+
+            # Generate SQL query
+            sql_query = f"{query} {filter_command} {row_id_name} BETWEEN {offset} AND {offset + chunk_size - 1};"
+
+            # Execute the query
+            self.execute_query_in_shell(engine_name=engine_name, query=sql_query)
 
     #---------------------------------------------#
     # Method: Executes a query in the MySQL shell #
@@ -2712,7 +2767,7 @@ class GraphRegistry():
     def __init__(self):
         self.db = GraphDB()
         self.orchestrator = self.Orchestration()
-        self.datamanager = self.DataManagement()
+        self.cachemanager = self.CacheManagement()
         self.indexdb = self.IndexDB()
         self.indexes = self.IndexES()
 
@@ -2736,13 +2791,13 @@ class GraphRegistry():
 
         gr.orchestrator.propagate()
 
-        gr.datamanager.eval()
+        gr.cachemanager.eval()
 
-        gr.datamanager.apply_views()
-        gr.datamanager.apply_formulas()
+        gr.cachemanager.apply_views()
+        gr.cachemanager.apply_formulas()
 
-        gr.datamanager.calculate_scores_matrix(  from_object_type='Widget', to_object_type='Widget')
-        gr.datamanager.consolidate_scores_matrix(from_object_type='Widget', to_object_type='Widget')
+        gr.cachemanager.calculate_scores_matrix(  from_object_type='Widget', to_object_type='Widget')
+        gr.cachemanager.consolidate_scores_matrix(from_object_type='Widget', to_object_type='Widget')
 
         gr.indexdb.cachebuilder.build_all(actions=('eval', 'commit'))
 
@@ -2773,11 +2828,9 @@ class GraphRegistry():
         print(instructions)
         pass
 
-
-
-    #---------------------------------------------------#
-    # Subclass definition: Graph Registry Orchestration #
-    #---------------------------------------------------#
+    #--------------------------------------------------#
+    # Subclass definition: GraphRegistry Orchestration #
+    #--------------------------------------------------#
     class Orchestration():
 
         # Class constructor
@@ -2788,19 +2841,13 @@ class GraphRegistry():
             self.scoresexpired = self.ScoresExpired()
 
         # Print current settings (fields and scores)
-        def print(self):
-            self.typeflags.print()
-            self.fieldschanged.print()
-            self.scoresexpired.print()
-
-        # Reset current settings (fields and scores)
-        def reset_airflow_flags(self):
-            self.typeflags.reset()
-            self.fieldschanged.reset()
-            self.scoresexpired.reset()
+        def status(self):
+            self.typeflags.status()
+            self.fieldschanged.status()
+            self.scoresexpired.status()
 
         # Reset all flags on cache
-        def reset_cache_flags(self):
+        def reset_all_cache_flags(self):
 
             # Build tables list for updates of type:
             # UPDATE schema.table SET to_process = 0 WHERE to_process = 1
@@ -2830,13 +2877,8 @@ class GraphRegistry():
             # Truncate table: Operations/ Object / ToProcess
             self.db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE graph_cache.Operations_N_Object_T_ToProcess;")
 
-        # Reset all
-        def reset(self):
-            self.reset_airflow_flags()
-            self.reset_cache_flags()
-
         # Propagate flags to cache tables
-        def propagate(self):
+        def propagate_object_flags_to_cache(self):
 
             # Build list for updates in nodes and data tables
             list_of_tables = [
@@ -2941,7 +2983,7 @@ class GraphRegistry():
             # self.db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE graph_cache.Operations_N_Object_T_ToProcess;")
 
         # Sync new objects to operations table (fields and scores)
-        def sync(self):
+        def sync_new_data(self):
             self.fieldschanged.sync()
             self.scoresexpired.sync()
 
@@ -2952,25 +2994,14 @@ class GraphRegistry():
             self.scoresexpired.get(object_key, print_output=True)
 
         # Set fields for input object type or id (fields and scores)
-        def set(self, object_key, to_process=None):
-            self.typeflags.set(object_key, to_process=to_process)
-            self.fieldschanged.set(object_key, to_process=to_process)
-            self.scoresexpired.set(object_key, to_process=to_process)
-
-        # Quick configuration for input list of node and edge types
-        def config(self, node_types, edge_types, sync=False, reset=False, print=False):
-            if sync:
-                self.sync()
-            if reset:
-                self.reset()
-            for node_type in node_types:
-                self.set(node_type, to_process=1)
-                self.get(node_type)
-            for edge_type in edge_types:
-                self.set(edge_type, to_process=1)
-                self.get(edge_type)
-            if print:
-                self.print()
+        def set(self, object_key, flag_type=None, to_process=None):
+            if flag_type == 'fields':
+                self.fieldschanged.set(object_key, to_process=to_process)
+            elif flag_type == 'scores':
+                self.scoresexpired.set(object_key, to_process=to_process)
+            else:
+                self.fieldschanged.set(object_key, to_process=to_process)
+                self.scoresexpired.set(object_key, to_process=to_process)
 
         # === Object Type Flags ===
         class TypeFlags():
@@ -3006,7 +3037,8 @@ class GraphRegistry():
                   ORDER BY institution_id, object_type, flag_type;
                 """)
                 df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'flag_type', 'to_process'])
-                print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
+                if not df.empty:
+                    print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
 
             # Print object to object type flags
             def print_for_object_to_object(self):
@@ -3016,20 +3048,31 @@ class GraphRegistry():
                      WHERE to_process = 1
                   ORDER BY from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type;
                 """)
-                df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'flag_type', 'to_process'])        
-                print_dataframe(df, title='⛳️ TYPE FLAGS: Object-to-Object')
+                df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'flag_type', 'to_process'])
+                if not df.empty:
+                    print_dataframe(df, title='⛳️ TYPE FLAGS: Object-to-Object')
 
             # Print type flags (graph unit as input)
-            def print(self, unit=None):
-                if unit == 'obj':
-                    self.print_for_object()
-                elif unit == 'obj2obj':
-                    self.print_for_object_to_object()
-                elif unit == 'all' or unit is None:
-                    self.print_for_object()
-                    self.print_for_object_to_object()
-                else:
-                    print('Please specify a valid graph unit: obj, obj2obj, all')
+            def status(self, unit=None, types_only=False):
+                
+                if not types_only:
+                    if unit == 'obj':
+                        self.print_for_object()
+                    elif unit == 'obj2obj':
+                        self.print_for_object_to_object()
+                        
+                    elif unit == 'all' or unit is None:
+                        self.print_for_object()
+                        self.print_for_object_to_object()
+                    else:
+                        print('Please specify a valid graph unit: obj, obj2obj, all')
+
+                output_json = {'nodes':[], 'edges':[]}
+                if unit in ['obj', 'all', None]:
+                    output_json['nodes'] = self.db.execute_query(engine_name='test', query=f"SELECT institution_id, object_type, flag_type FROM graph_airflow.Operations_N_Object_T_TypeFlags WHERE to_process > 0.5")
+                if unit in ['obj2obj', 'all', None]:
+                    output_json['edges'] = self.db.execute_query(engine_name='test', query=f"SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type FROM graph_airflow.Operations_N_Object_N_Object_T_TypeFlags WHERE to_process > 0.5")
+                return output_json
 
             # Reset object type flags
             def reset_for_object(self):
@@ -3083,19 +3126,21 @@ class GraphRegistry():
                 if to_process is None:
                     return
                 if flag_type in ['fields', 'scores']:
-                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                    sql_query=f"""
                         UPDATE graph_airflow.Operations_N_Object_N_Object_T_TypeFlags
                         SET to_process = {to_process}
                         WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type)
                             = ('{object_type_key[0]}', '{object_type_key[1]}', '{object_type_key[2]}', '{object_type_key[3]}', '{flag_type}');
-                    """)
+                    """
                 else:
-                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                    sql_query=f"""
                         UPDATE graph_airflow.Operations_N_Object_N_Object_T_TypeFlags
                         SET to_process = {to_process}
                         WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
                             = ('{object_type_key[0]}', '{object_type_key[1]}', '{object_type_key[2]}', '{object_type_key[3]}');
-                    """)                       
+                    """ 
+                print(sql_query)
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
             # Set type flags (1 key only)
             def set(self, object_type_key, flag_type=None, to_process=None):
@@ -3106,7 +3151,8 @@ class GraphRegistry():
                 elif len(object_type_key) == 4:
                     self.set_for_object_to_object(object_type_key, flag_type, to_process)
                 else:
-                    print('Invalid key length.')
+                    msg = 'Invalid key length.'
+                    print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
 
             # Get object type flag (1 key only)
             def get_for_object(self, object_type_key, flag_type=False, print_output=False):
@@ -3155,7 +3201,39 @@ class GraphRegistry():
                 elif len(object_type_key) == 4:
                     return self.get_for_object_to_object(object_type_key, flag_type, print_output)
                 else:
-                    print('Invalid key length.')
+                    msg = 'Invalid key length.'
+                    print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
+
+            # Quick configuration for input list of node and edge types
+            def config(self, config_json, reset=False, verbose=False):
+                
+                # Reset airflow flags
+                if reset:
+                    self.reset()
+
+                # Node types
+                for d in config_json['nodes']:
+                    node_type, process_fields, process_scores = d
+                    institution_id = object_type_to_institution_id[node_type]
+                    if process_fields:
+                        self.set(object_type_key=(institution_id, node_type), flag_type='fields', to_process=1)
+                    if process_scores:
+                        self.set(object_type_key=(institution_id, node_type), flag_type='scores', to_process=1)
+
+                # Edge types
+                for d in config_json['edges']:
+                    source_node_type, target_node_type, process_fields, process_scores = d
+                    source_institution_id = object_type_to_institution_id[source_node_type]
+                    target_institution_id = object_type_to_institution_id[target_node_type]
+                    if process_fields:
+                        self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='fields', to_process=1)
+                    if process_scores:
+                        self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='scores', to_process=1)
+
+                # Print status
+                if verbose:
+                    self.status()
+                print('Done.')
 
         # === Fields Changed Flags ===
         class FieldsChanged():
@@ -3165,7 +3243,7 @@ class GraphRegistry():
                 self.db = GraphDB()
 
             # Print current settings
-            def print(self, object_key=None):
+            def status(self, object_key=None):
                 if object_key is not None:
 
                     if len(object_key) == 2:
@@ -3201,11 +3279,14 @@ class GraphRegistry():
                         """
 
                     else:
-                        print('Invalid key length.')
+                        msg = 'Invalid key length.'
+                        print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
+                    
                     out = self.db.execute_query(engine_name='test', query=sql_query)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
-                    print_dataframe(df, title='⛳️ FIELDS CHANGED: Object [by type or key]')
+                    if not df.empty:
+                        print_dataframe(df, title='🪪  FIELDS CHANGED: Object [by type or key]')
 
                 else:
 
@@ -3216,7 +3297,8 @@ class GraphRegistry():
                       GROUP BY institution_id, object_type
                     """)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
-                    print_dataframe(df, title='⛳️ FIELDS CHANGED: Object [stats]')
+                    if not df.empty:
+                        print_dataframe(df, title='🪪  FIELDS CHANGED: Object [stats]')
 
                     out = self.db.execute_query(engine_name='test', query=f"""
                         SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, COUNT(*) AS n_to_process
@@ -3225,7 +3307,8 @@ class GraphRegistry():
                       GROUP BY from_institution_id, from_object_type, to_institution_id, to_object_type
                     """)
                     df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'n_to_process'])
-                    print_dataframe(df, title='⛳️ FIELDS CHANGED: Object-to-Object [stats]')
+                    if not df.empty:
+                        print_dataframe(df, title='🪪  FIELDS CHANGED: Object-to-Object [stats]')
 
             # Reset current settings
             def reset(self):
@@ -3274,7 +3357,8 @@ class GraphRegistry():
                             WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id) = ('{object_key[0]}', '{object_key[1]}', '{object_key[2]}', '{object_key[3]}', '{object_key[4]}', '{object_key[5]}');
                         """
                     else:
-                        print('Invalid key length.')
+                        msg = 'Invalid key length.'
+                        print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return                        
 
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query)
@@ -3315,7 +3399,8 @@ class GraphRegistry():
                             = ('{object_key[0]}', '{object_key[1]}', '{object_key[2]}', '{object_key[3]}', '{object_key[4]}', '{object_key[5]}')
                     """)
                 else:
-                    print('Invalid key length.')
+                    msg = 'Invalid key length.'
+                    print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                     return    
                 if print_output:
                     print(out[0] if len(out) > 0 else [])
@@ -3378,6 +3463,33 @@ class GraphRegistry():
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query)
                     print(f"New objects synced ({schema_name} / obj2obj):", out)
             
+            # Quick configuration for input list of node and edge types
+            def config(self, config_json, reset=False, verbose=False):
+                
+                # Reset airflow flags
+                if reset:
+                    self.reset()
+
+                # Node types
+                for d in config_json['nodes']:
+                    node_type, process_fields, process_scores = d
+                    institution_id = object_type_to_institution_id[node_type]
+                    if process_fields:
+                        self.set(object_key=(institution_id, node_type), to_process=1)
+
+                # Edge types
+                for d in config_json['edges']:
+                    source_node_type, target_node_type, process_fields, process_scores = d
+                    source_institution_id = object_type_to_institution_id[source_node_type]
+                    target_institution_id = object_type_to_institution_id[target_node_type]
+                    if process_fields:
+                        self.set(object_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), to_process=1)
+
+                # Print status
+                if verbose:
+                    self.status()
+                print('Done.')
+
         # === Scores Expired Flags ===
         class ScoresExpired():
 
@@ -3386,7 +3498,7 @@ class GraphRegistry():
                 self.db = GraphDB()
 
             # Print current settings
-            def print(self, object_key=None):
+            def status(self, object_key=None):
                 if object_key is not None:
                     sql_query = f"""
                         SELECT institution_id, object_type, object_id, last_date_cached, has_expired, to_process
@@ -3397,11 +3509,13 @@ class GraphRegistry():
                     elif len(object_key) == 3:
                         sql_query += f"WHERE (institution_id, object_type, object_id) = ('{object_key[0]}', '{object_key[1]}', '{object_key[2]}')"
                     else:
-                        print('Invalid key length.')
+                        msg = 'Invalid key length.'
+                        print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
                     out = self.db.execute_query(engine_name='test', query=sql_query)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
-                    print_dataframe(df, title='⛳️ SCORES EXPIRED: Object [by key or id]')
+                    if not df.empty:
+                        print_dataframe(df, title='🧮 SCORES EXPIRED: Object [by key or id]')
                 else:
                     out = self.db.execute_query(engine_name='test', query=f"""
                         SELECT institution_id, object_type, COUNT(*) AS n_to_process
@@ -3410,7 +3524,8 @@ class GraphRegistry():
                     GROUP BY institution_id, object_type
                     """)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
-                    print_dataframe(df, title='⛳️ SCORES EXPIRED: Object [stats]')
+                    if not df.empty:
+                        print_dataframe(df, title='🧮 SCORES EXPIRED: Object [stats]')
 
             # Reset current settings
             def reset(self):
@@ -3442,7 +3557,8 @@ class GraphRegistry():
                             WHERE (institution_id, object_type, object_id) = ('{object_key[0]}', '{object_key[1]}', '{object_key[2]}');
                         """
                     else:
-                        print('Invalid key length.')
+                        msg = 'Invalid key length.'
+                        print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return                        
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query)
                 else:
@@ -3483,7 +3599,8 @@ class GraphRegistry():
                             = ('{object_key[0]}', '{object_key[1]}', '{object_key[2]}', '{object_key[3]}', '{object_key[4]}', '{object_key[5]}')
                     """)
                 else:
-                    print('Invalid key length.')
+                    msg = 'Invalid key length.'
+                    print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                     return
                 if print_output:
                     print(out[0] if len(out) > 0 else [])
@@ -3574,6 +3691,25 @@ class GraphRegistry():
                     self.print_object_to_object_type_flags()
                     self.print_object_scores_expired(object_key)
                     self.print_object_to_object_scores_to_process()
+            
+            # Quick configuration for input list of node and edge types
+            def config(self, config_json, reset=False, verbose=False):
+                
+                # Reset airflow flags
+                if reset:
+                    self.reset()
+
+                # Node types
+                for d in config_json['nodes']:
+                    node_type, process_fields, process_scores = d
+                    institution_id = object_type_to_institution_id[node_type]
+                    if process_scores:
+                        self.set(object_key=(institution_id, node_type), to_process=1)
+
+                # Print status
+                if verbose:
+                    self.status()
+                print('Done.')
 
     #---------------------------------#
     # Subclass definition: Graph Node #
@@ -4276,9 +4412,9 @@ class GraphRegistry():
             return eval_results
 
     #-----------------------------------------------------#
-    # Subclass definition: Graph Registry Data Management #
+    # Subclass definition: GraphRegistry Cache Management #
     #-----------------------------------------------------#
-    class DataManagement():
+    class CacheManagement():
 
         # Class constructor
         def __init__(self):
@@ -4304,8 +4440,8 @@ class GraphRegistry():
             self.batch_actions(actions=('eval',))
 
         # Commit for all views
-        def apply_views(self):
-            self.batch_actions(actions=('commit',))
+        def apply_views(self, actions=()):
+            self.batch_actions(actions=actions)
 
         # Compute and cache scores
         def apply_formulas(self, verbose=False):
@@ -4830,6 +4966,8 @@ class GraphRegistry():
                         """]
                     sql_query = ';\n'.join(sql_query_stack)+';'
 
+                test_mode = True
+
                 if test_mode:
                     print(sql_query)
                 else:
@@ -4890,9 +5028,9 @@ class GraphRegistry():
 
             pass
             
-    #------------------------------------------------------------#
-    # Subclass definition: Graph Index Management (SQL Database) #
-    #------------------------------------------------------------#
+    #-----------------------------------------------------------#
+    # Subclass definition: GraphIndex Management (SQL Database) #
+    #-----------------------------------------------------------#
     class IndexDB():
 
         # Class constructor
@@ -5365,8 +5503,8 @@ class GraphRegistry():
             def info(self):
                 print('\nSelected table:', self.index_table_name)
                 out = self.db.get_column_names(
-                    engine_name = 'test',
-                    schema_name = self.test_schema_name,
+                    engine_name = self.engine_name,
+                    schema_name = mysql_schema_names[self.engine_name]['ui'],
                     table_name  = self.index_table_name
                 )
                 print('\nList of columns:')
@@ -5578,7 +5716,13 @@ class GraphRegistry():
                 self.buildup_doc_table_name  = f'IndexBuildup_Fields_Docs_{doc_type}'
                 self.buildup_link_table_name = f'IndexBuildup_Fields_Docs_{link_type}'
                 self.index_table_name        = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}'
+                self.index_table_exists      = self.db.table_exists(engine_name=engine_name, schema_name=f'graphsearch_{engine_name}', table_name=self.index_table_name, exclude_views=True)
                 self.key_column_names        = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
+
+                # Return if table does not exist
+                if not self.index_table_exists:
+                    print(f"Table '{self.index_table_name}' does not exist in schema '{mysql_schema_names[self.engine_name]['ui']}'.")
+                    return
 
                 # Load index configuration
                 with open(INDEX_CONFIG_FILE, 'r') as f:
@@ -5601,6 +5745,7 @@ class GraphRegistry():
                 self.obj2obj_fields, self.obj2obj_fields_with_lang = [], []
                 if link_subtype.upper() == 'ORG':
 
+                    # rich.print_json(data=self.index_config['fields']['links']['parent-child'])
                     if self.doc_type in self.index_config['fields']['links']['parent-child']:
                         self.obj2obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in self.index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]['obj2obj']]
                         self.obj2obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in self.obj2obj_fields]
@@ -5767,7 +5912,9 @@ class GraphRegistry():
 
                 # Full table paths
                 buildup_link_table_path = f"{mysql_schema_names[self.engine_name]['cache']}.{self.buildup_link_table_name}"
-                target_table_path       = f"{mysql_schema_names[self.engine_name]['ui'   ]}.{self.index_table_name}"
+                target_schema_name      = mysql_schema_names[self.engine_name]['ui']
+                target_table_name       = self.index_table_name
+                target_table_path       = f"{target_schema_name}.{target_table_name}"
 
                 # Check if target table exists
                 if not self.db.table_exists(
@@ -5783,7 +5930,7 @@ class GraphRegistry():
 
                     # Generate evaluation query
                     sql_query_eval = f"""
-                        SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c},0) != COALESCE(b.{c},0)' for c in self.obj_fields_with_lang])}), 0) AS n_patch
+                        SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj_fields_with_lang])}), 0) AS n_patch
                           FROM {target_table_path} i
                     INNER JOIN {buildup_link_table_path} b
                             ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
@@ -5806,7 +5953,7 @@ class GraphRegistry():
                             ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                            SET {   ', '.join([f'i.{c}  = b.{c}' for c in self.obj_fields_with_lang])}
                          WHERE b.to_process > 0.5
-                           AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.obj_fields_with_lang])});
+                           AND ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj_fields_with_lang])});
                 """
 
                 # Print the commit query
@@ -5815,7 +5962,8 @@ class GraphRegistry():
 
                 # Execute the commit query
                 if 'commit' in actions:
-                    self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit)
+                    # self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit)
+                    self.db.execute_query_in_chunks(engine_name=self.engine_name, schema_name=target_schema_name, table_name=target_table_name, query=sql_query_commit, chunk_size=10000, row_id_name='i.row_id')
 
             # Index > Doc-Links > Vertical patching > Update ORG-table specific custom fields
             def vertical_patch_parentchild(self, actions=()):
@@ -5961,7 +6109,7 @@ class GraphRegistry():
             # ------- Patching ------- #
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (graphsearch_test)
-            def horizontal_patch(self, row_rank_thr=1000, actions=()):
+            def horizontal_patch(self, row_rank_thr=32, actions=()):
 
                 #---------------------------#
                 # Convert order list to SQL #
@@ -6003,6 +6151,9 @@ class GraphRegistry():
                 
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
+
+                    # Modify row rank threshold to infinite
+                    row_rank_thr = 9999999
 
                     # Buildup table exists?
                     if buildup_table_exists:
@@ -6298,7 +6449,7 @@ class GraphRegistry():
                           WHERE dl.row_rank <= {row_rank_thr}
                                 {'AND' if len(self.es_filters)>0 else ''} {' AND '.join([f'l.{f}' for f in self.es_filters])}
                ON DUPLICATE KEY
-                         UPDATE {t}.link_rank = IF(COALESCE({t}.link_rank,0) != COALESCE(dl.{score_column_name},0), dl.{score_column_name}, {t}.link_rank);
+                         UPDATE {t}.link_rank = IF(COALESCE({t}.link_rank, "__null__") != COALESCE(dl.{score_column_name}, "__null__"), dl.{score_column_name}, {t}.link_rank);
                 """
 
                 # Print SQL query
@@ -6343,9 +6494,9 @@ class GraphRegistry():
                 else:
                     self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
 
-    #--------------------------------------------------#
-    # Class definition for Graph Index (ElasticSearch) #
-    #--------------------------------------------------#
+    #------------------------------------------------------------#
+    # Subclass definition: GraphIndex Management (ElasticSearch) #
+    #------------------------------------------------------------#
     class IndexES():
 
         # Class constructor
@@ -6715,7 +6866,428 @@ class GraphRegistry():
 
         # es.set_alias(engine_name='prod', alias_name='graphsearch_prod', index_name='graphsearch_prod_2025_03_27')
 
+#=======================================================#
+# Function definition: Tkinter Graphical User Interface #
+#=======================================================#
+def LaunchGUI(gr):
 
+    # Initialize the main window
+    root = tk.Tk()
+    root.title("GraphRegistry GUI")
+    root.geometry("1000x800")
+
+    # Configure grid weights for resizing behavior
+    root.grid_rowconfigure(0, weight=1)     # Allow row 0 to expand vertically
+    root.grid_columnconfigure(0, weight=0)  # Column 0 doesn't need to stretch horizontally
+    root.grid_columnconfigure(1, weight=0)
+
+    # Node types
+    list_of_node_types = ['Category', 'Concept', 'Course', 'Lecture', 'MOOC', 'Person', 'Publication', 'Startup', 'Unit', 'Widget']
+
+    # Initialise GUI elements dict
+    gui = {
+        'orchestration' : {
+            'subframe' : None,
+            'description' : None,
+            'node_types' : {
+                'subframe' : None,
+                'description' : None,
+                'list' : [],
+                'button_add_new' : None,
+            },
+            'edge_types' : {
+                'subframe' : None,
+                'description' : None,
+                'list' : [],
+                'button_add_new' : None,
+            },            
+        },
+        'processing' : {
+            'subframe' : None,
+            'description' : None,
+            'cachemanage' : {
+                'subframe' : None,
+                'description' : None,
+                'actions' : {'print':False, 'eval':False, 'commit':False},
+            },
+            'indexdb' : {
+                'subframe' : None,
+                'description' : None,
+                'actions' : {'print':False, 'eval':False, 'commit':False},
+            },
+            'elasticsearch' : {
+                'subframe' : None,
+                'description' : None,
+                'actions' : {'print':False, 'eval':False, 'commit':False},
+            },
+        }
+    }
+
+    #======================================#
+    # Function handling all button actions #
+    #======================================#
+    def on_button_click(button_input_action):
+
+        # Print action
+        print(f"\n\nButton clicked: {button_input_action}")
+
+        #---------------------#
+        # Orchestration panel #
+        #---------------------#
+        if 'orchestration' in button_input_action:
+
+            # Assemble configuration JSON from GUI inputs
+            config_json = {'nodes':[], 'edges':[]} 
+            for d in gui['orchestration']['node_types']['list']:
+                config_json['nodes'] += [(d['dropdowns'][0].get(), d['process_fields'].get(), d['process_scores'].get())]
+            for d in gui['orchestration']['edge_types']['list']:
+                config_json['edges'] += [(d['dropdowns'][0].get(), d['dropdowns'][1].get(), d['process_fields'].get(), d['process_scores'].get())]
+
+            # Orchestration status
+            if button_input_action == 'orchestration status':
+
+                # Print and execute method
+                print("""gr.orchestrator.status()""")
+                gr.orchestrator.status()
+
+            # Orchestration config
+            elif button_input_action == 'orchestration apply':
+
+                # Print configuration JSON extracted from GUI
+                print('config_json =')
+                rich.print_json(data=config_json)
+
+                # Print and execute method
+                print("""gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)""")
+                gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)
+
+            # Orchestration reset
+            elif button_input_action == 'orchestration reset type flags':
+
+                # Print and execute method
+                print("""gr.orchestrator.typeflags.reset()""")
+                gr.orchestrator.typeflags.reset()
+
+            # Orchestration config
+            elif button_input_action == 'orchestration set type flags':
+
+                # Print configuration JSON extracted from GUI
+                print('config_json =')
+                rich.print_json(data=config_json)
+
+                # Print and execute method
+                print("""gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)""")
+                gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)
+
+            # Orchestration reset
+            elif button_input_action == 'orchestration reset object flags':
+
+                # Print and execute method
+                print("""gr.orchestrator.fieldschanged.reset()""")
+                gr.orchestrator.fieldschanged.reset()
+                print("""gr.orchestrator.scoresexpired.reset()""")
+                gr.orchestrator.scoresexpired.reset()
+
+            # Orchestration config
+            elif button_input_action == 'orchestration set object flags':
+
+                # Print configuration JSON extracted from GUI
+                print('config_json =')
+                rich.print_json(data=config_json)
+
+                # Print and execute method
+                print("""gr.orchestrator.fieldschanged.config(config_json, reset=True, verbose=True)""")
+                gr.orchestrator.fieldschanged.config(config_json, reset=True, verbose=True)
+                print("""gr.orchestrator.scoresexpired.config(config_json, reset=True, verbose=True)""")
+                gr.orchestrator.scoresexpired.config(config_json, reset=True, verbose=True)
+
+            # Orchestration propagate
+            elif button_input_action == 'orchestration propagate flags':
+
+                # Print and execute method
+                print("""gr.orchestrator.propagate()""")
+                gr.orchestrator.propagate()
+
+            # Orchestration reset
+            elif button_input_action == 'orchestration sync new data':
+
+                # Print and execute method
+                print("""gr.orchestrator.sync()""")
+                gr.orchestrator.sync()
+
+        #------------------------#
+        # Cache Management panel #
+        #------------------------#
+        elif 'cachemanage' in button_input_action:
+
+            # Fetch action flags
+            method_actions = ()
+            for method_action_name in ['print', 'eval', 'commit']:
+                if gui['processing']['cachemanage']['actions'][method_action_name].get():
+                    method_actions += (method_action_name,)
+            print(f"method_actions =", method_actions)
+
+            # Cache management apply views
+            if button_input_action == 'cachemanage apply views':
+                print(f"""gr.cachemanager.apply_views(actions={method_actions})""")
+                gr.cachemanager.apply_views(actions=method_actions)
+
+            # Cache management apply formulas
+            elif button_input_action == 'cachemanage apply formulas':
+                verbose = False
+                if 'print' in method_actions:
+                    verbose = True
+                print(f"""gr.cachemanager.apply_formulas(verbose={verbose})""")
+                gr.cachemanager.apply_formulas(verbose=verbose)
+
+            # Cache management calculate scores matrix
+            elif button_input_action == 'cachemanage calculate scores matrix':
+                types_to_process = gr.orchestrator.typeflags.status(types_only=True)
+                for from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type in types_to_process['edges']:
+                    if flag_type == 'scores':
+                        print(f"""gr.cachemanager.calculate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}')""")
+                        gr.cachemanager.calculate_scores_matrix(from_object_type=from_object_type, to_object_type=to_object_type)
+
+            # Cache management consolidate scores matrix
+            elif button_input_action == 'cachemanage consolidate scores matrix':
+                types_to_process = gr.orchestrator.typeflags.status(types_only=True)
+                for from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type in types_to_process['edges']:
+                    if flag_type == 'scores':
+                        print(f"""gr.cachemanager.consolidate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}')""")
+                        gr.cachemanager.consolidate_scores_matrix(from_object_type=from_object_type, to_object_type=to_object_type)
+
+    #--------------------------------#
+    # Subframe (left): Orchestration #
+    #--------------------------------#
+    if True:
+
+        # Labeled subframe
+        gui['orchestration']['subframe'] = tk.LabelFrame(root, text="Orchestration", width=500, padx=10, pady=10)
+        gui['orchestration']['subframe'].grid_propagate(False)
+        gui['orchestration']['subframe'].grid(row=0, column=0, sticky='ns', padx=(16,8), pady=(16,16))
+
+        # # Description inside subframe
+        gui['orchestration']['description'] = tk.Label(gui['orchestration']['subframe'],
+            text = "Select which type of objects to process, whether to process fields and/or scores, to sync new inserted or deleted data, and to reset or propagate \"to_process\" flags over all cache dependencies.",
+            justify='left', anchor='w', fg='gray', wraplength=400
+        ).pack(pady=(0,0), anchor='w', fill='x')
+
+        def add_type_to_process(unit):
+
+            # Create a new row frame
+            row_frame = tk.Frame(gui['orchestration'][f'{unit}_types']['subframe'])
+            row_frame.pack(fill='x', pady=0)
+
+            # Dropdown: Source node types
+            source_node_type_var = tk.StringVar()
+            source_node_dropdown = ttk.Combobox(row_frame, values=list_of_node_types, textvariable=source_node_type_var, width=8)
+            source_node_dropdown.current(0)
+            source_node_dropdown.grid(row=0, column=0, padx=(0, 0))
+
+            # Dropdown: Target node types (if edge)
+            target_node_dropdown = None
+            if unit == 'edge':
+                target_node_type_var = tk.StringVar()
+                target_node_dropdown = ttk.Combobox(row_frame, values=list_of_node_types, textvariable=target_node_type_var, width=8)
+                target_node_dropdown.current(0)
+                target_node_dropdown.grid(row=0, column=1, padx=(0, 0))
+
+            # Checkbox: Process fields 
+            pf_var = tk.BooleanVar()
+            pf_label = tk.Label(row_frame, text="Fields")
+            pf_label.grid(row=0, column=2, padx=(0, 0))
+            pf_checkbox = tk.Checkbutton(row_frame, variable=pf_var)
+            pf_checkbox.grid(row=0, column=3, padx=(0, 0))
+
+            # Checkbox: Process scores
+            ps_var = tk.BooleanVar()
+            ps_label = tk.Label(row_frame, text="Scores")
+            ps_label.grid(row=0, column=4, padx=(0, 0))
+            ps_checkbox = tk.Checkbutton(row_frame, variable=ps_var)
+            ps_checkbox.grid(row=0, column=5, padx=(0, 0))
+
+            # Remove button
+            def remove_this_row():
+                row_frame.destroy()
+                gui['orchestration'][f'{unit}_types']['list'].remove(row_data)
+
+            remove_button = tk.Button(row_frame, text="Remove", command=remove_this_row)
+            remove_button.grid(row=0, column=6, padx=(0, 0))
+
+            # Optionally store widget references if needed later
+            # Store row data
+            row_data = {
+                'frame': row_frame,
+                'dropdowns': [source_node_dropdown, target_node_dropdown],
+                'process_fields': pf_var,
+                'process_scores': ps_var,
+            }
+            gui['orchestration'][f'{unit}_types']['list'].append(row_data)
+
+        # Sub-subframe: Node types to process
+        if True:
+
+            # Labeled subframe
+            gui['orchestration']['node_types']['subframe'] = tk.LabelFrame(gui['orchestration']['subframe'], text="Node types to process", width=460, padx=10, pady=10)
+            gui['orchestration']['node_types']['subframe'].pack_propagate(False)
+            gui['orchestration']['node_types']['subframe'].pack(padx=10, pady=10, fill='y', expand=True)
+            
+            # Description inside subframe
+            gui['orchestration']['node_types']['description'] = tk.Label(gui['orchestration']['node_types']['subframe'],
+                text = f"Add and remove node types to process.",
+                justify='left', anchor='w', fg='gray', wraplength=380
+            ).pack(pady=(0,0), anchor='w', fill='x')
+
+            # Buttons to add/remove dropdowns
+            gui['orchestration']['node_types']['button_add_new'] = tk.Button(gui['orchestration']['node_types']['subframe'],
+                text = "Add node type",
+                command = (lambda: add_type_to_process('node'))
+            ).pack(pady=(10, 5), anchor='w')
+
+        # Sub-subframe: Edge types to process
+        if True:
+
+            # Labeled subframe
+            gui['orchestration']['edge_types']['subframe'] = tk.LabelFrame(gui['orchestration']['subframe'], text=f"Edge types to process", width=460, padx=10, pady=10)
+            gui['orchestration']['edge_types']['subframe'].pack_propagate(False)
+            gui['orchestration']['edge_types']['subframe'].pack(padx=10, pady=10, fill='y', expand=True)
+
+            # Description inside subframe
+            gui['orchestration']['edge_types']['description'] = tk.Label(gui['orchestration']['edge_types']['subframe'],
+                text = f"Add and remove edge types to process.",
+                justify='left', anchor='w', fg='gray', wraplength=380
+            ).pack(pady=(0,0), anchor='w', fill='x')
+
+            # Buttons to add/remove dropdowns
+            gui['orchestration']['edge_types']['button_add_new'] = tk.Button(gui['orchestration']['edge_types']['subframe'],
+                text = "Add edge type",
+                command = (lambda: add_type_to_process('edge'))
+            ).pack(pady=(10, 5), anchor='w')
+
+        # Container frame to hold buttons inline
+        orchestration_button_row = tk.Frame(gui['orchestration']['subframe'])
+        orchestration_button_row.pack(padx=(8,0), pady=(0,0), anchor='w')
+
+        # Button actions
+        button_actions = [
+            (0, 0, 7, 'status'), (0, 1, 11, 'reset type flags'), (0, 2, 11, 'reset object flags'), (0, 3, 11, 'propagate flags'),
+            (1, 0, 7, 'apply' ), (1, 1, 11, 'set type flags'  ), (1, 2, 11, 'set object flags'  ), (1, 3, 11, 'sync new data'  )
+        ]
+
+        # Buttons packed horizontally
+        for row, col, wid, action in button_actions:
+            tk.Button(orchestration_button_row, width=wid, text=action, command=lambda a=action: on_button_click(f'orchestration {a}')).grid(row=row, column=col, padx=(0,0), pady=(0,0), sticky='w')
+
+    #------------------------------#
+    # Subframe (right): Processing #
+    #------------------------------#
+    if True:
+
+        # Labeled subframe
+        gui['processing']['subframe'] = tk.LabelFrame(root, text="Processing", width=440, padx=10, pady=10)
+        gui['processing']['subframe'].grid_propagate(False)
+        gui['processing']['subframe'].grid(row=0, column=1, sticky='ns', padx=(8,16), pady=(16,16))
+
+        #----------------------------#
+        # Subframe: Cache Management #
+        #----------------------------#
+        if True:
+
+            # ...
+            gui['processing']['cachemanage']['subframe'] = tk.LabelFrame(gui['processing']['subframe'], text="Cache management", width=400, padx=10, pady=10)
+            gui['processing']['cachemanage']['subframe'].pack_propagate(False)
+            gui['processing']['cachemanage']['subframe'].pack(padx=10, pady=10, fill='y', expand=True)
+
+            # ...
+            cachemanage_actions_row = tk.Frame(gui['processing']['cachemanage']['subframe'])
+            cachemanage_actions_row.pack(anchor='w', expand=False)
+
+            # ...
+            for action in ['print', 'eval', 'commit']:
+                gui['processing']['cachemanage']['actions'][action] = tk.BooleanVar()
+                tk.Checkbutton(cachemanage_actions_row, variable=gui['processing']['cachemanage']['actions'][action]).pack(side='left')
+                tk.Label(cachemanage_actions_row, text=action).pack(side="left", padx=(0,4))
+                        
+            # Container frame to hold buttons in a grid
+            cachemanage_buttons_row = tk.Frame(gui['processing']['cachemanage']['subframe'])
+            cachemanage_buttons_row.pack(pady=(0,0), anchor='w')
+
+            # Button actions
+            button_actions = [
+                (0, 0, 9, 'apply views'   ), (0, 1, 16, 'calculate scores matrix'  ),
+                (1, 0, 9, 'apply formulas'), (1, 1, 16, 'consolidate scores matrix')
+            ]
+
+            # Buttons packed horizontally
+            for row, col, wid, action in button_actions:
+                tk.Button(cachemanage_buttons_row, width=wid, text=action, command=lambda a=action: on_button_click(f'cachemanage {a}')).grid(row=row, column=col, padx=(0,0), pady=(0,0), sticky='w')
+
+
+        #------------------------------------------------#
+        # Subframe: GraphIndex Management (SQL Database) #
+        #------------------------------------------------#
+        if True:
+
+            # Labeled subframe
+            gui['processing']['indexdb']['subframe'] = tk.LabelFrame(gui['processing']['subframe'], text="GraphIndex management (MySQL)", width=400, padx=10, pady=10)
+            gui['processing']['indexdb']['subframe'].pack_propagate(False)
+            gui['processing']['indexdb']['subframe'].pack(padx=10, pady=10, fill='y', expand=True)
+
+        #--------------------------------------------------#
+        # Subframe: Graph Index Management (ElasticSearch) #
+        #--------------------------------------------------#
+        if True:
+
+            # Labeled subframe
+            gui['processing']['elasticsearch']['subframe'] = tk.LabelFrame(gui['processing']['subframe'], text="GraphIndex management (ElasticSearch)", width=400, padx=10, pady=10)
+            gui['processing']['elasticsearch']['subframe'].pack_propagate(False)
+            gui['processing']['elasticsearch']['subframe'].pack(padx=10, pady=10, fill='y', expand=True)
+
+        # # Right top frame
+        # right_top = tk.LabelFrame(root, text="Top Right", padx=10, pady=10, bg="white")
+        # right_top.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+
+        # # Right middle frame
+        # right_middle = tk.LabelFrame(root, text="Middle Right", padx=10, pady=10, bg="white")
+        # right_middle.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
+
+        # # Right bottom frame
+        # right_bottom = tk.LabelFrame(root, text="Bottom Right", padx=10, pady=10, bg="white")
+        # right_bottom.grid(row=2, column=1, sticky="nsew", padx=5, pady=5)
+
+        # # Dropdown
+        # dropdown_label = tk.Label(gui['orchestration']['subframe'], text="Select an option:")
+        # dropdown_label.pack(anchor="w")
+
+        # options = ["Option 1", "Option 2", "Option 3"]
+        # dropdown = ttk.Combobox(gui['orchestration']['subframe'], values=options)
+        # dropdown.current(0)
+        # dropdown.pack(pady=5, fill='x')
+
+        # # Checkbox
+        # checkbox_var = tk.BooleanVar()
+        # checkbox = tk.Checkbutton(gui['orchestration']['subframe'], text="Enable feature", variable=checkbox_var)
+        # checkbox.pack(pady=5, anchor="w")
+
+        # # Button with action
+        # def on_button_click(button_id=0):
+        #     selected_option = dropdown.get()
+        #     checkbox_state = checkbox_var.get()
+        #     print(f"Button {button_id} clicked, Dropdown: {selected_option}, Checkbox: {checkbox_state}")
+
+        # tk.Button(gui['orchestration']['subframe'], text="Button 1", command=lambda: on_button_click(1)).pack(pady=(5, 0), fill='x')
+        # tk.Button(gui['orchestration']['subframe'], text="Button 2", command=lambda: on_button_click(2)).pack(fill='x')
+        # tk.Button(gui['orchestration']['subframe'], text="Submit", command=on_button_click).pack(pady=10, fill='x')
+
+        pass
+    
+    # Launch GUI
+    root.mainloop()
+
+
+#==================================#
+# Main: >> python graphregistry.py #
+#==================================#
 if __name__ == '__main__':
 
     exit()
