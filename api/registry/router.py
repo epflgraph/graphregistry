@@ -60,7 +60,8 @@ def method_delete_nodes(request: schemas.DeleteNodesRequest):
     Deletes multiple nodes from the registry by ID.
     """
     print(
-        f"Deleting {len(request.items_id)} nodes - Type: {request.type}, Actions: {', '.join(request.actions)}"
+        f"Deleting {len(request.nodes_id)} nodes ({request.institution_id}, {request.object_type}), "
+        f"Actions: {', '.join(request.actions)}"
     )
     try:
         r = delete_nodes_by_ids(
