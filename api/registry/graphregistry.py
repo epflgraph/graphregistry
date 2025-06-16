@@ -1172,7 +1172,7 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
                     AND to_object_id IN :object_id
                 )'''
     eval_results = {} if 'eval' in actions else None
-    query_remove = ''
+    queries_remove = []
     for table, query_where in query_where_per_table.items():
         if 'eval' in actions:
             query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
@@ -1182,13 +1182,16 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
             eval_results[table] = out[0][0]
             if eval_results[table] > 0:
                 print(table, eval_results[table])
-        query_remove += f'DELETE FROM {table} WHERE {query_where};\n'
+        queries_remove.append(f'DELETE FROM {table} WHERE {query_where};\n')
+    if len(queries_remove) > 1:
+        queries_remove.insert(0, 'BEGIN;')
+        queries_remove.append('COMMIT;')
     if 'print' in actions:
-        print(query_remove)
+        for q in queries_remove:
+            print(q)
     if 'commit' in actions:
-        db_connector.execute_query(
-            query=query_remove, params={'object_id': nodes_id}, engine_name=engine_name, commit=True
-        )
+        for q in queries_remove:
+            db_connector.execute_query(query=q, params={'object_id': nodes_id}, engine_name=engine_name, commit=True)
     return eval_results
 
 
