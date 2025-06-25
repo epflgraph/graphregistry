@@ -6354,8 +6354,8 @@ class GraphRegistry():
         # Class constructor
         def __init__(self):
             self.db = GraphDB()
-            self.params_test, self.engine_test = self.initiate_engine(global_config['mysql']['server_test'])
-            self.params_prod, self.engine_prod = self.initiate_engine(global_config['mysql']['server_prod'])
+            self.params_test, self.engine_test = self.initiate_engine(global_config['elasticsearch']['server_test'])
+            self.params_prod, self.engine_prod = self.initiate_engine(global_config['elasticsearch']['server_prod'])
             self.params = {'test': self.params_test, 'prod': self.params_prod}
             self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
 
