@@ -66,7 +66,8 @@
                 },
                 "Unit"        : {
                     "order" : [["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
-                }
+                },
+                "Widget"      : {}
             },
             "parent-child" : {
                 "Course" : {
@@ -79,26 +80,77 @@
                         "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
                     }
                 },
+                "MOOC" : {
+                    "Lecture" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
+                    "Person" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    }
+                },
+                "Lecture" : {
+                    "Course" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
+                    "MOOC" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
+                    "Person" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
+                    "Widget" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    }
+                },
                 "Person" : {
                     "Course" : {
                         "obj2obj" : ["latest_teaching_assignment_year"],
                         "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
                     },
-                    "Publication" : {},
+                    "Lecture" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
+                    "MOOC" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
+                    "Publication" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    },
                     "Unit" : {
                         "obj2obj" : ["is_active_affiliation", "current_position_rank"],
                         "order"   : [["is_active_affiliation", "DESC"], ["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
                     }
                 },
                 "Publication" : {
-                    "Person" : {}
+                    "Person" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    }
                 },
                 "Unit"        : {
                     "Person" : {
                         "obj2obj" : ["is_active_affiliation", "current_position_rank"],
                         "order"   : [["is_at_epfl", "DESC"], ["is_active_affiliation", "DESC"], ["current_position_rank", "ASC"]]
                     },
-                    "Unit" : {}
+                    "Unit" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    }
+                },
+                "Widget" : {
+                    "Lecture" : {
+                        "obj2obj" : [],
+                        "order"   : []
+                    }
                 }
             }
         }
