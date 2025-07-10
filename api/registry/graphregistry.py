@@ -30,6 +30,7 @@ import pandas as pd
 from itertools import groupby
 from typing import List, Tuple
 from tabulate import tabulate
+from collections import defaultdict
 from yaml import safe_load
 from graphai_client.client import login as graphai_login
 from graphai_client.client_api.text import extract_concepts_from_text
@@ -2889,63 +2890,83 @@ class GraphRegistry():
             self.fieldschanged.status()
             self.scoresexpired.status()
         
-        # Reset all flags on cache
-        def reset_all_cache_flags(self):
+        # Reset airflow and chache flags
+        # Options: ('typeflags', 'airflow', 'cache')
+        def reset(self, options=()):
 
             # Print status
-            sysmsg.info("🧹 📝 Clean all cache 'to_process' flags.")
+            sysmsg.info("🧹 📝 Reset 'to_process' flags to 0.")
 
-            # Build tables list for updates of type:
-            # UPDATE schema.table SET to_process = 0 WHERE to_process = 1
-            list_of_tables = [
-                ('graph_cache', 'Data_N_Object_T_PageProfile'),
-                ('graph_cache', 'Edges_N_Object_N_Object_T_ParentChildSymmetric'),
-                ('graph_cache', 'Edges_N_Object_N_Object_T_ScoresMatrix_AS'),
-                ('graph_cache', 'Edges_N_Object_N_Object_T_ScoresMatrix_GBC'),
-                ('graph_cache', 'Nodes_N_Object_T_DegreeScores')
-            ]
+            # Print input parameters
+            if len(options) > 0:
+                sysmsg.trace(f"Selected options: {options}.")
+            else:
+                sysmsg.warning("Nothing to do: 'options' parameter missing.")
+                sysmsg.warning("options : 'typeflags', 'airflow', 'cache'")
+
+            # Reset types
+            if 'typeflags' in options:
+                self.typeflags.reset()
+
+            # Reset flags on graph_airflow
+            if 'airflow' in options:
+                self.fieldschanged.reset()
+                self.scoresexpired.reset()
+
+            # Reset flags on graph_cache
+            if 'cache' in options:
+
+                # Build tables list for updates of type:
+                # UPDATE schema.table SET to_process = 0 WHERE to_process = 1
+                list_of_tables = [
+                    ('graph_cache', 'Data_N_Object_T_PageProfile'),
+                    ('graph_cache', 'Edges_N_Object_N_Object_T_ParentChildSymmetric'),
+                    ('graph_cache', 'Edges_N_Object_N_Object_T_ScoresMatrix_AS'),
+                    ('graph_cache', 'Edges_N_Object_N_Object_T_ScoresMatrix_GBC'),
+                    ('graph_cache', 'Nodes_N_Object_T_DegreeScores')
+                ]
+
+                # Print status
+                sysmsg.trace("Processing 'graph_cache' fields and scores tables ...")
+
+                # Loop over 'graph_cache' tables
+                with tqdm(list_of_tables, unit='table') as pb:
+                    for schema_name, table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                        self.db.execute_query_in_shell(engine_name = 'test', 
+                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;")
+
+                # Print status
+                sysmsg.trace("Processing 'graph_cache' IndexBuildup Doc tables ...")
+
+                # Reset flags on index buildup tables
+                with tqdm(index_doc_types_list, unit='doc type') as pb:
+                    for dummy, doc_type in pb:
+                        pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        self.db.execute_query_in_shell(engine_name='test',
+                            query = f"UPDATE graph_cache.IndexBuildup_Fields_Docs_{doc_type} SET to_process = 0 WHERE to_process = 1;")
+
+                # Print status
+                sysmsg.trace("Processing 'graph_cache' IndexBuildup Doc-Link tables ...")
+
+                # Reset to_process flags - TODO: get list from config file / also turn config file into object
+                with tqdm([('Course', 'Person'), ('Person', 'Unit')], unit='doc-link type') as pb:
+                    for source_doc_type, target_doc_type in pb:
+                        pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        self.db.execute_query_in_shell(engine_name='test',
+                            query = f"UPDATE graph_cache.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} SET to_process = 0 WHERE to_process = 1;")
+
+                # # Print status
+                # sysmsg.trace("Processing 'Operations_N_Object_T_ToProcess' table ...")
+
+                # # Truncate table: objects to process
+                # self.db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE graph_cache.Operations_N_Object_T_ToProcess;")
 
             # Print status
-            sysmsg.trace("Processing 'graph_cache' fields and scores tables ...")
-
-            # Loop over 'graph_cache' tables
-            with tqdm(list_of_tables, unit='table') as pb:
-                for schema_name, table_name in pb:
-                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name = 'test', 
-                        query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;")
-
-            # Print status
-            sysmsg.trace("Processing 'graph_cache' IndexBuildup Doc tables ...")
-
-            # Reset flags on index buildup tables
-            with tqdm(index_doc_types_list, unit='doc type') as pb:
-                for dummy, doc_type in pb:
-                    pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name='test',
-                        query = f"UPDATE graph_cache.IndexBuildup_Fields_Docs_{doc_type} SET to_process = 0 WHERE to_process = 1;")
-
-            # Print status
-            sysmsg.trace("Processing 'graph_cache' IndexBuildup Doc-Link tables ...")
-
-            # Reset to_process flags - TODO: get list from config file / also turn config file into object
-            with tqdm([('Course', 'Person'), ('Person', 'Unit')], unit='doc-link type') as pb:
-                for source_doc_type, target_doc_type in pb:
-                    pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name='test',
-                        query = f"UPDATE graph_cache.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} SET to_process = 0 WHERE to_process = 1;")
-
-            # # Print status
-            # sysmsg.trace("Processing 'Operations_N_Object_T_ToProcess' table ...")
-
-            # # Truncate table: objects to process
-            # self.db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE graph_cache.Operations_N_Object_T_ToProcess;")
-
-            # Print status
-            sysmsg.success("🧹 ✅ All cache 'to_process' flags have been reset to 0.\n")
+            sysmsg.success("🧹 ✅ Done resetting flags.\n")
 
         # Propagate flags to cache tables
-        def propagate_object_flags_to_cache(self):
+        def propagate(self):
 
             # Print status
             sysmsg.info("⛳️ 📝 Propagate 'to_process' flags throughout the cache.")
@@ -3167,19 +3188,16 @@ class GraphRegistry():
 
             # Print type flags (graph unit as input)
             def status(self, unit=None, types_only=False):
-                
                 if not types_only:
                     if unit == 'obj':
                         self.print_for_object()
                     elif unit == 'obj2obj':
                         self.print_for_object_to_object()
-                        
                     elif unit == 'all' or unit is None:
                         self.print_for_object()
                         self.print_for_object_to_object()
                     else:
                         print('Please specify a valid graph unit: obj, obj2obj, all')
-
                 output_json = {'nodes':[], 'edges':[]}
                 if unit in ['obj', 'all', None]:
                     output_json['nodes'] = self.db.execute_query(engine_name='test', query=f"SELECT institution_id, object_type, flag_type FROM graph_airflow.Operations_N_Object_T_TypeFlags WHERE to_process > 0.5")
@@ -3187,33 +3205,24 @@ class GraphRegistry():
                     output_json['edges'] = self.db.execute_query(engine_name='test', query=f"SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type FROM graph_airflow.Operations_N_Object_N_Object_T_TypeFlags WHERE to_process > 0.5")
                 return output_json
 
-            # Reset object type flags
-            def reset_for_object(self):
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
-                    UPDATE graph_airflow.Operations_N_Object_T_TypeFlags
-                    SET to_process = 0
-                    WHERE to_process = 1;
-                """)
+            # Reset type flags
+            def reset(self):
 
-            # Reset object to object type flags
-            def reset_for_object_to_object(self):
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
-                    UPDATE graph_airflow.Operations_N_Object_N_Object_T_TypeFlags
-                    SET to_process = 0
-                    WHERE to_process = 1;
-                """)
+                # Loop over airflow tables and reset to_process flags
+                for table_name in ['Operations_N_Object_T_TypeFlags', 'Operations_N_Object_N_Object_T_TypeFlags']:
+                    
+                    # Print status
+                    sysmsg.trace(f"⚙️  Applying config to table '{table_name}' ...")
 
-            # Reset type flags (graph unit as input)
-            def reset(self, unit=None):
-                if unit == 'obj':
-                    self.reset_for_object()
-                elif unit == 'obj2obj':
-                    self.reset_for_object_to_object()
-                elif unit == 'all' or unit is None:
-                    self.reset_for_object()
-                    self.reset_for_object_to_object()
-                else:
-                    print('Please specify a valid graph unit: obj, obj2obj, all')
+                    # Execute query to reset to_process flags
+                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                        UPDATE graph_airflow.{table_name}
+                           SET to_process = 0
+                         WHERE to_process > 0.5
+                    """)
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  ... done.")
 
             # Set object type flag (1 key only)
             def set_for_object(self, object_type_key, flag_type=None, to_process=None):
@@ -3252,7 +3261,6 @@ class GraphRegistry():
                         WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
                             = ("{object_type_key[0]}", "{object_type_key[1]}", "{object_type_key[2]}", "{object_type_key[3]}");
                     """ 
-                print(sql_query)
                 self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
             # Set type flags (1 key only)
@@ -3318,11 +3326,10 @@ class GraphRegistry():
                     print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
 
             # Quick configuration for input list of node and edge types
-            def config(self, config_json, reset=False, verbose=False):
+            def config(self, config_json):
                 
                 # Reset airflow flags
-                if reset:
-                    self.reset()
+                self.reset()
 
                 # Node types
                 for d in config_json['nodes']:
@@ -3342,11 +3349,6 @@ class GraphRegistry():
                         self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='fields', to_process=1)
                     if process_scores:
                         self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='scores', to_process=1)
-
-                # Print status
-                if verbose:
-                    self.status()
-                print('Done.')
 
         # === Fields Changed Flags ===
         class FieldsChanged():
@@ -3425,16 +3427,22 @@ class GraphRegistry():
 
             # Reset current settings
             def reset(self):
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
-                    UPDATE graph_airflow.Operations_N_Object_T_FieldsChanged
-                    SET to_process = 0
-                    WHERE to_process = 1;
-                """)
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
-                    UPDATE graph_airflow.Operations_N_Object_N_Object_T_FieldsChanged
-                    SET to_process = 0
-                    WHERE to_process = 1;
-                """)
+
+                # Loop over airflow tables and reset to_process flags
+                for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
+                    
+                    # Print status
+                    sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
+
+                    # Execute query to reset to_process flags
+                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                        UPDATE graph_airflow.{table_name}
+                           SET to_process = 0
+                         WHERE to_process > 0.5
+                    """)
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  ... done.")
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json, reset=False, verbose=False):
@@ -3936,11 +3944,19 @@ class GraphRegistry():
 
             # Reset current settings
             def reset(self):
+
+                # Print status
+                sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' ...")
+
+                # Execute query to reset to_process flags
                 self.db.execute_query_in_shell(engine_name='test', query=f"""
                     UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
-                    SET to_process = 0
-                    WHERE to_process = 1;
+                       SET to_process = 0
+                     WHERE to_process > 0.5
                 """)
+
+                # Print status
+                sysmsg.trace(f"⚙️  ... done.")
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json, reset=False, verbose=False):
@@ -4940,6 +4956,12 @@ class GraphRegistry():
             # Print status
             sysmsg.info(f"🚀 📝 Execute views and commit updated data to 'graph_cache' [actions: {actions}].")
 
+            # Print action specific status
+            if len(actions) == 0:
+                sysmsg.warning(f"No actions specified. Nothing to do.")
+            elif 'eval' in actions and 'commit' not in actions:
+                sysmsg.warning(f"Executing in evaluation mode only.")
+
             # List of views to execute
             list_of_views = [
                 'obj2obj: all fields symmetric',
@@ -5377,6 +5399,15 @@ class GraphRegistry():
         # TODO: Widget-Concept/Catagory tables
         def calculate_scores_matrix(self, from_object_type, to_object_type, actions=()):
 
+            # Print status
+            sysmsg.info(f"🚀 📝 Calculate scores matrix on 'graph_cache' [actions: {actions}].")
+
+            # Print action specific status
+            if len(actions) == 0:
+                sysmsg.warning(f"No actions specified. Nothing to do.")
+            elif 'eval' in actions and 'commit' not in actions:
+                sysmsg.warning(f"Executing in evaluation mode only.")
+
             # Check if from-to order should be reversed
             if (from_object_type, to_object_type) not in object_to_object_types_scoring_list:
                 from_object_type, to_object_type = to_object_type, from_object_type
@@ -5468,7 +5499,8 @@ class GraphRegistry():
                         ON (s1.institution_id, s1.object_type, s2.institution_id, s2.object_type)
                          = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
 
-                     WHERE s1.to_process = 1
+                     WHERE (s1.object_type, s2.object_type) = ('{from_object_type}', '{to_object_type}')
+                       AND s1.to_process = 1
                        AND tf.flag_type = 'scores'
                        AND tf.to_process = 1
                 
@@ -5539,6 +5571,7 @@ class GraphRegistry():
 
                 # Print evaluation query
                 if 'print' in actions:
+                    print('Executing query:')
                     print(sql_eval_query)
 
                 # Execute evaluation query
@@ -5550,18 +5583,33 @@ class GraphRegistry():
             # Commit query
             if 'commit' in actions and sql_commit_query is not None:
 
+                # Print status
+                sysmsg.trace(f"⚙️  Processing edges of type: {from_object_type} --> {to_object_type} ...")
+
                 # Print commit query
                 if 'print' in actions:
+                    print('Executing query:')
                     print(sql_commit_query)
 
                 # Execute commit query
                 self.db.execute_query_in_shell(engine_name='test', query=sql_commit_query)
-                print(f'✅ Successfully updated scores matrix for ({from_object_type}, {to_object_type})')
+
+            # Print status
+            sysmsg.success(f"🚀 ✅ Done calculating scores matrix.")
 
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
-        def consolidate_scores_matrix(self, from_object_type=None, to_object_type=None, test_mode=False, verbose=False):
+        def consolidate_scores_matrix(self, from_object_type, to_object_type, actions=()):
 
+            print('Under construction...')
+            return
+            # Print status
+            sysmsg.info(f"🚀 📝 Consolidate scores matrix on 'graph_cache' [actions: {actions}].")
 
+            # Print action specific status
+            if len(actions) == 0:
+                sysmsg.warning(f"No actions specified. Nothing to do.")
+            elif 'eval' in actions and 'commit' not in actions:
+                sysmsg.warning(f"Executing in evaluation mode only.")
 
             if to_object_type in ['Concept', 'Category']:
                 sql_query = f"""
@@ -5602,12 +5650,12 @@ class GraphRegistry():
                                = ('EPFL', '{from_object_type}', 'EPFL', '{to_object_type}')
                              AND (2/(1 + EXP(-score/(4 * avg_score))) - 1) >= 0.1;
                 """
-            if test_mode:
-                print(sql_query)
-            else:
-                if verbose:
-                    print(sql_query)
-                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+            # if test_mode:
+            print(sql_query)
+            # else:
+                # if verbose:
+                    # print(sql_query)
+            self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
             pass
             
@@ -5921,6 +5969,7 @@ class GraphRegistry():
 
                     # Print query
                     if 'print' in actions:
+                        print("\nExecuting query:\n")
                         print(sql_query_eval, '\n')
 
                     # Execute evaluation query
@@ -6019,14 +6068,43 @@ class GraphRegistry():
             # Update index buildup tables (all)
             def build_all(self, actions=()):
 
-                # Loop over the doc types
-                for inst_id, doc_type in tqdm(index_doc_types_list):
-                    self.build_docs_fields(doc_type, actions)
+                # Print status
+                sysmsg.info(f"🚜 📝 Build up and/or update index field tables on 'graph_cache' [actions: {actions}].")
 
-                # Loop over the parent-child link types
-                # TODO: get the "[('Course', 'Person'), ('Person', 'Unit')]" from config file
-                for doc_type, link_type in tqdm([('Course', 'Person'), ('Person', 'Unit')]):
-                    self.build_links_parentchild(doc_type, link_type, actions)
+                # Print action specific status
+                if len(actions) == 0:
+                    sysmsg.warning(f"No actions specified. Nothing to do.")
+                elif 'eval' in actions and 'commit' not in actions:
+                    sysmsg.warning(f"Executing in evaluation mode only.")
+
+                # Print status
+                sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
+
+                # Loop over doc types
+                with tqdm(index_doc_types_list, unit='doc type') as pb:
+                    for inst_id, doc_type in pb:
+
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Build docs fields
+                        self.build_docs_fields(doc_type, actions)
+
+                # Print status
+                sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
+
+                # Loop over doc-link types
+                with tqdm([('Course', 'Person'), ('Person', 'Unit')], unit='doc-link type') as pb:
+                    for doc_type, link_type in pb:
+                        
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Build doc-link fields
+                        self.build_links_parentchild(doc_type, link_type, actions)
+
+                # Print status
+                sysmsg.success(f"🚜 ✅ Done calculating scores matrix.")
 
         #----------------------------------------------#
         # Sub-subclass definition: Page Profiles Table #
@@ -7667,11 +7745,13 @@ def LaunchGUI(gr):
             # Add button row to stack
             button_rows_stack.append(button_row)
 
-        #--------------------------------------------#
+        #----------------------------#
+        # 🛎️ 🖥️ Button click handlers #
+        #----------------------------#
         def on_button_click(button_input_action):
 
             # Print action
-            print(f"\n\nButton clicked: {button_input_action}")
+            print(f"\n🛎️  Button clicked: {button_input_action}")
 
             #---------------------#
             # Orchestration panel #
@@ -7685,99 +7765,40 @@ def LaunchGUI(gr):
                 for d in gui['orchestration']['edge_types']['list']:
                     config_json['edges'] += [(d['dropdowns'][0].get(), d['dropdowns'][1].get(), d['process_fields'].get(), d['process_scores'].get())]
 
-                # Orchestration status
-                if button_input_action == 'orchestration status':
+                # Orchestration reset
+                if button_input_action == 'orchestration reset config':
 
                     # Print and execute method
-                    print("""gr.orchestrator.status()""")
+                    print("\n🖥️  ~ gr.orchestrator.reset()")
+                    gr.orchestrator.reset()
+
+                # Orchestration config
+                elif button_input_action == 'orchestration apply config':
+
+                    # Print configuration JSON extracted from GUI
+                    print('\nconfig_json =')
+                    rich.print_json(data=config_json)
+
+                    # Print and execute method
+                    print("\n🖥️  ~ gr.orchestrator.typeflags.config(config_json)")
+                    gr.orchestrator.typeflags.config(config_json)
+
+                    # Print and execute method
+                    print("\n🖥️  ~ gr.orchestrator.status()")
                     gr.orchestrator.status()
 
-                # Orchestration config
-                elif button_input_action == 'orchestration apply':
-
-                    # Print configuration JSON extracted from GUI
-                    print('config_json =')
-                    rich.print_json(data=config_json)
-
-                    # Print and execute method
-                    print("""gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)""")
-                    gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)
-
                 # Orchestration reset
-                elif button_input_action == 'orchestration reset type flags':
+                elif button_input_action == 'orchestration sync data':
 
                     # Print and execute method
-                    print("""gr.orchestrator.typeflags.reset()""")
-                    gr.orchestrator.typeflags.reset()
-
-                # Orchestration config
-                elif button_input_action == 'orchestration set type flags':
-
-                    # Print configuration JSON extracted from GUI
-                    print('config_json =')
-                    rich.print_json(data=config_json)
-
-                    # Print and execute method
-                    print("""gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)""")
-                    gr.orchestrator.typeflags.config(config_json, reset=True, verbose=True)
-
-                # Orchestration reset
-                elif button_input_action == 'orchestration reset object flags':
-
-                    # Print and execute method
-                    print("""gr.orchestrator.fieldschanged.reset()""")
-                    gr.orchestrator.fieldschanged.reset()
-                    print("""gr.orchestrator.scoresexpired.reset()""")
-                    gr.orchestrator.scoresexpired.reset()
-
-                # Orchestration config
-                elif button_input_action == 'orchestration set object flags':
-
-                    # Print configuration JSON extracted from GUI
-                    print('config_json =')
-                    rich.print_json(data=config_json)
-
-                    # Print and execute method
-                    print("""gr.orchestrator.fieldschanged.config(config_json, reset=True, verbose=True)""")
-                    gr.orchestrator.fieldschanged.config(config_json, reset=True, verbose=True)
-                    print("""gr.orchestrator.scoresexpired.config(config_json, reset=True, verbose=True)""")
-                    gr.orchestrator.scoresexpired.config(config_json, reset=True, verbose=True)
-
-                # Orchestration propagate
-                elif button_input_action == 'orchestration propagate flags':
-
-                    # Print and execute method
-                    print("""gr.orchestrator.propagate()""")
-                    gr.orchestrator.propagate()
-
-                # Orchestration reset
-                elif button_input_action == 'orchestration sync new data':
-
-                    # Print and execute method
-                    print("""gr.orchestrator.sync()""")
+                    print("\n🖥️  ~ gr.orchestrator.sync()")
                     gr.orchestrator.sync()
 
-
-
-                # Orchestration: randomize
-                elif button_input_action == 'orchestration randomize':
-
-                    # Print and execute method
-                    print("""gr.orchestrator.randomize()""")
-                    gr.orchestrator.randomize()
-
-                # Orchestration: apply expire
-                elif button_input_action == 'orchestration apply expire':
-
-                    # Print and execute method
-                    print("""gr.orchestrator.expire()""")
-                    gr.orchestrator.expire()
-
                 # Orchestration: refresh tp=1 flags
-                elif button_input_action == 'orchestration refresh tp=1 flags':
+                elif button_input_action == 'orchestration refresh flags':
 
                     # Print and execute method
-                    print("""gr.orchestrator.refresh()""")
+                    print("\n🖥️  ~ gr.orchestrator.refresh()")
                     gr.orchestrator.refresh()
 
             #------------------------#
@@ -7790,27 +7811,50 @@ def LaunchGUI(gr):
                 for method_action_name in ['print', 'eval', 'commit']:
                     if gui['processing']['cachemanage']['actions'][method_action_name].get():
                         method_actions += (method_action_name,)
-                print(f"method_actions =", method_actions)
 
                 # Cache management apply views
                 if button_input_action == 'cachemanage apply views':
-                    print(f"""gr.cachemanager.apply_views(actions={method_actions})""")
+
+                    # Print and execute method
+                    print(f"\n🖥️  ~ gr.cachemanager.apply_views(actions={method_actions})")
                     gr.cachemanager.apply_views(actions=method_actions)
 
                 # Cache management apply formulas
                 elif button_input_action == 'cachemanage apply formulas':
+
+                    # Use verbose mode if 'print' action is selected
                     verbose = False
                     if 'print' in method_actions:
                         verbose = True
-                    print(f"""gr.cachemanager.apply_formulas(verbose={verbose})""")
+
+                    # Reject eval action
+                    if 'eval' in method_actions:
+                        sysmsg.warning("The method 'apply_formulas' does not support an 'eval' action. Nothing to do.")
+                        return
+                    
+                    # Require commit action
+                    if 'commit' not in method_actions:
+                        sysmsg.warning("The method 'apply_formulas' requires a 'commit' action. Nothing to do.")
+                        return
+
+                    # Print and execute method
+                    print(f"\n🖥️  ~ gr.cachemanager.apply_formulas(verbose={verbose})")
                     gr.cachemanager.apply_formulas(verbose=verbose)
 
                 # Cache management calculate scores matrix
                 elif button_input_action == 'cachemanage calculate scores matrix':
+                    
+                    # Fetch types to process
                     types_to_process = gr.orchestrator.typeflags.status(types_only=True)
+
+                    # Loop over all edges and calculate scores matrix
                     for from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type in types_to_process['edges']:
+
+                        # Skip if not scores type
                         if flag_type == 'scores':
-                            print(f"""gr.cachemanager.calculate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}, actions={method_actions})""")
+
+                            # Print and execute method
+                            print(f"\n🖥️  ~ gr.cachemanager.calculate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}, actions={method_actions})")
                             gr.cachemanager.calculate_scores_matrix(from_object_type=from_object_type, to_object_type=to_object_type, actions=method_actions)
 
                 # Cache management consolidate scores matrix
@@ -7868,7 +7912,6 @@ def LaunchGUI(gr):
                 for method_action_name in ['print', 'eval', 'commit']:
                     if gui['processing']['indexdb']['actions'][method_action_name].get():
                         method_actions += (method_action_name,)
-                print(f"method_actions =", method_actions)
 
                 # Fetch doc types and dic-link types to process
                 if 'indexdb index_docs' in button_input_action or 'indexdb index_doc_links' in button_input_action:
@@ -7878,12 +7921,16 @@ def LaunchGUI(gr):
 
                 # IndexDB cache buildup info
                 if button_input_action == 'indexdb cache_buildup info':
-                    print(f"""gr.indexdb.cachebuilder.info()""")
+
+                    # Print and execute method
+                    print(f"\n🖥️  ~ gr.indexdb.cachebuilder.info()")
                     gr.indexdb.cachebuilder.info()
 
                 # IndexDB cache buildup build all docs and link fields
                 elif button_input_action == 'indexdb cache_buildup build all':
-                    print(f"""gr.indexdb.cachebuilder.build_all(actions={method_actions})""")
+
+                    # Print and execute method
+                    print(f"\n🖥️  ~ gr.indexdb.cachebuilder.build_all(actions={method_actions})")
                     gr.indexdb.cachebuilder.build_all(actions=method_actions)
 
                 # IndexDB page profile info
@@ -8021,7 +8068,7 @@ def LaunchGUI(gr):
 
             # Extract pre-selection if provided
             if pre_selection is not None:
-                source_node_type, target_node_type, process_fields, process_scores = pre_selection
+                source_node_type, target_node_type, process_fields, process_scores = pre_selection[0], pre_selection[1], 'fields' in pre_selection[2], 'scores' in pre_selection[2]
             else:
                 source_node_type, target_node_type, process_fields, process_scores = False, False, False, False
 
@@ -8125,19 +8172,32 @@ def LaunchGUI(gr):
         create_buttons_row(
             frame_pointer  = gui['orchestration']['subframe'],
             actions_matrix = [
-                (0, 0, 7, 'status'    ), (0, 1, 11, 'reset type flags'), (0, 2, 11, 'reset object flags'), (0, 3, 11, 'propagate flags'),
-                (1, 0, 7, 'apply'     ), (1, 1, 11, 'set type flags'  ), (1, 2, 11, 'set object flags'  ), (1, 3, 11, 'sync new data'  ),
-                (2, 0, 7, 'randomize' ), (2, 1, 11, 'apply expire'    ), (2, 2, 11, 'refresh tp=1 flags')
+                (0, 0, 7, 'reset config'), (0, 1, 7, 'apply config'), (0, 2, 6, 'sync data'), (0, 3, 7, 'refresh flags'),
             ],
             function_subspace = 'orchestration'
         )
 
+        # Function for group concat
+        def group_concat(tuples):
+            grouped = defaultdict(list)
+            for t in tuples:
+                prefix, last = t[:-1], t[-1]
+                grouped[prefix].append(last)
+            return [(*k, tuple(v)) for k, v in grouped.items()]
+        
         # Initialise typeflags from current saved settings
-        typeflags_settings = gr.orchestrator.typeflags.status(types_only=True)
+        typeflags_settings = {
+            k: group_concat(v) for k, v in gr.orchestrator.typeflags.status(types_only=True).items()
+        }
+
+        # Print the typeflags settings
+        # rich.print_json(data=typeflags_settings)
+
+        # Add node and edge types to process based on typeflags settings
         for tfs in typeflags_settings['nodes']:
-            add_type_to_process('node', pre_selection=(tfs[1], None  , tfs[2]=='fields', tfs[2]=='scores'))
+            add_type_to_process('node', pre_selection=(tfs[1], None  , tfs[2]))
         for tfs in typeflags_settings['edges']:
-            add_type_to_process('edge', pre_selection=(tfs[1], tfs[3], tfs[4]=='fields', tfs[4]=='scores'))
+            add_type_to_process('edge', pre_selection=(tfs[1], tfs[3], tfs[4]))
 
     #------------------------------#
     # Subframe (right): Processing #
