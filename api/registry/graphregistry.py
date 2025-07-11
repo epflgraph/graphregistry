@@ -3875,12 +3875,12 @@ class GraphRegistry():
                 doc_json['custom_fields'][k].pop('record_updated_date', None)
             doc_json['page_profile'].pop('record_created_date', None)
             doc_json['page_profile'].pop('record_updated_date', None)
-            for k in range(len(doc_json['concepts_detection'])):
-                doc_json['concepts_detection'][k].pop('record_created_date', None)
-                doc_json['concepts_detection'][k].pop('record_updated_date', None)
             for k in range(len(doc_json['manual_mapping'])):
                 doc_json['manual_mapping'][k].pop('record_created_date', None)
                 doc_json['manual_mapping'][k].pop('record_updated_date', None)
+            # the concepts detected by concept detections are invalidated by expiration, so we ignore them all here.
+            doc_json.pop('concepts_detection')
+
             # Convert to a sorted JSON string
             serialized = json.dumps(doc_json, sort_keys=True, separators=(',', ':'))
 
@@ -3959,7 +3959,7 @@ class GraphRegistry():
                 'page_profile': self.commit_page_profile(actions=actions, engine_name=engine_name)
             }
             if self.raw_text and not self.concepts_detection:
-                self.detect_concepts(verbose=False)
+                self.detect_concepts(verbose=verbose)
             if self.concepts_detection:
                 eval_results.update(
                     {'concepts_detection': self.commit_concepts(
