@@ -1,0 +1,96 @@
+{
+    "type": "nodes",
+    "data": [
+        {
+            "institution_id": "EPFL",
+            "object_type": "Exercise",
+            "object_id": "10",
+            "object_title": "Spring Oscillator",
+            "raw_text": "A block of mass m is connected to the floor and the ceiling of a room of\nheight h by two springs. The springs have elastic constants k₁ and k₂\nand null rest lengths, as indicated on the diagram. Gravity acts on the\nblock. We only consider the block’s vertical motion, along an x-axis\npointing downwards with its origin on the ceiling. We neglect the\nblock’s shape, as well as any friction.\n\n1.  Draw, on a diagram, all the forces acting on the block and give\n    their expressions.\n\n2.  Find the differential equation of motion of the block. Observe that\n    it is a harmonic oscillator. What is its pulsation?\n\n3.  What does the result found in b) become in the limiting case k₂u2004→u20040\n    ? Is that what we expected? (Justify in one sentence). Answer the\n    same question for k₁u2004→u20040.\n\n4.  We drop the block from the ceiling, with a null initial speed.\n    Knowing that the parameters of the problem are such that the block\n    will never hit the ground, how long will it take for the block to\n    reach the lowest point of its trajectory? What is the x position of\n    that point?\n    Numerical application: k₁=100 N/m, k₂=20 N/m, m=10 kg, h=4 m and\n    g=10 m/s²\nThe forces acting on the block are\n\n-   its weight mg⃗,\n\n-   the force exerted by the first spring\n    F⃗₁u2004=u2004u2005−u2005k₁xê_(x),\n    where ê_(x) is a unitary vector along the x-axis,\n\n-   and the force exerted by the second spring\n    F⃗₂u2004=u2004k₂(h−x)ê_(x).\n\nThe equation of motion is Newton’s second law. Projected on the x-axis,\nit becomes\n$$\\begin{aligned}\nm\\ddot{x} &=& -k_1 x +k_2 (h-x) +mg\\nonumber\\\\ &=& -(k_1+k_2)x + k_2 h + mg\\nonumber\\\\\nm\\ddot{x} &+&(k_1+k_2)x - (k_2h+mg)=0\\label{eq_mvt}\\end{aligned}$$\n\nIn order to show that equation ([eq_mvt]) corresponds to the equation os\na harmonic oscillator, we must change variables. To do so, we define a\nz-axis parallel to the x-axis but whose origin is at the equilibrium\nposition. The equilibrium position $x_{\\rm eq}$ is found by setting\n$x=x_{\\rm eq}$ and $\\ddot x=0$ in equation ([eq_mvt]). That way, we get\n$x_{\\rm eq} =  \\frac{k_2h+mg}{k_1+k_2}$. The variable change yields:\n$$z=x-x_{\\rm eq} = x - \\frac{k_2h+mg}{k_1+k_2} \\quad\\Rightarrow\\quad x=z+\\frac{k_2h+mg}{k_1+k_2} \\quad\\Rightarrow\\quad \\ddot{x}=\\ddot{z}.$$\nReplacing that in equation ([eq_mvt]):\n$$m\\ddot z + (k_1+k_2)\\left(z+\\frac{k_2h+mg}{k_1+k_2}\\right) - (k_2h+mg)=0.$$\nSimplifying the terms independent of z:\n$$m\\ddot z + (k_1+k_2)z = 0 \\quad\\Rightarrow\\quad \\ddot z +\\frac{k_1+k_2}{m}z=0.$$\nWe finally recognize the harmonic oscillator’s equation. Its pulsation\nis:\n$$\\omega_0^2 = \\frac{k_1+k_2}{m}\\quad\\Rightarrow\\quad \\omega_0= \\sqrt{\\frac{k_1+k_2}{m}}.$$\n\nIn the limiting case k₂u2004=u20040, the equation ([eq_mvt]) of motion becomes:\n$$m\\ddot{x} +k_1x - mg=0$$\nThis is the same as removing the bottom spring: we find the equation of\nmotion for a block that’s held from above by one vertical spring.\n\nIn the limiting case k₁u2004=u20040, the equation ([eq_mvt]) becomes:\n$$m\\ddot{x} +k_2(x-h)-mg=0$$\nThis is the same as removing the top spring. The bottom spring exerts no\nforce when the block is at floor level.\n\nFor the block, going from the ceiling to its lowermost point is the same\nas carrying out half of the oscillation period of harmonic motion. The\nduration of this movement is\n$$\\Delta t_{x=x_{\\rm max}}=\\frac{T}{2} = \\frac{\\pi}{\\omega_0} =\\pi \\sqrt{\\frac{m}{k_1+k_2}},$$\nwhere T is the period and ω₀ is the pulsation.\n\nUsing the result found in b), we know that the equilibrium point of the\nblock is in\n$$x_{\\rm eq}=\\frac{mg+k_2h}{k_1+k_2},$$\nand that the motion is described by\n$$x(t) = A \\cos(\\omega_0 t+\\phi)+ x_{\\rm eq}.$$\n\nAt tu2004=u20040, the block is dropped from the ceiling with no initial speed,\nat x₀u2004=u20040, which is the position that’s furthermost from the equilibrium\npoint. The amplitude A is\n$$A=x_{\\rm eq}-x_0=\\frac{mg+k_2h}{k_1+k_2},$$\nand the motion is described by\n$$x(t) = \\left(\\frac{mg+k_2h}{k_1+k_2}\\right) \\cos\\left(\\sqrt{\\frac{k_1+k_2}{m}} t+\\phi\\right)+ \\frac{mg+k_2h}{k_1+k_2}.$$\nThe amplitude maximum $x_{\\rm max}$ is reached for\n$\\cos\\left(\\sqrt{\\frac{k_1+k_2}{m}} t+\\phi\\right)=1$, therefore\n$$x_{\\rm max} =  2 \\frac{k_2 h + mg}{k_1+k_2}.$$\n\nNumerical application:\n$$\\begin{aligned}\n\\Delta t_{x=x_{\\rm max}} = \\frac{T}{2} = \\frac{\\pi}{\\sqrt{12}} &\\simeq& \\frac{3\\times(1+ 0.05)}{2 \\times \\sqrt{3}} = \\frac{\\sqrt{3}}{2}\\times (1 + 0.05)\\nonumber\\\\ &\\simeq& \\frac{1.73 }{ 2} \\times(1+0.05) \\nonumber\\\\&=& 0.86 \\times (1 +0.05) = 0.86 + 0.04 = 0.90\\,\\mathrm{s}\\nonumber\\end{aligned}$$\n$$x_{\\rm max} =2\\frac{20\\times 4+10\\times 10}{100+20}=2\\times\\frac{180}{120}=2\\times \\frac{3\\times \\cancel{60}}{2\\times\\cancel{60}}=3 \\;\\rm m$$\nIt is also possible to find the same result using conservation of\nenergy. All forces acting on the block are conservative: they derive\nfrom potential energies which can be used to define the block’s total\nmechanical energy as\n$$E = \\frac{1}{2} mv^2  + \\frac{1}{2} k_1 x^2 + \\frac{1}{2} k_2 (h-x)^2 - mgx,$$\nin which v is the block’s speed. The potential energy in the field of\ngravity is u2005−u2005mgx since the x-axis is pointing downwards.\nAt the start, at xu2004=u20040 with vu2004=u20040, we find\n$$E_{i} = \\frac{1}{2} k_2 h^2.$$\nAt the lowest point of the trajectory (where we also have vu2004=u20040), we\nfind\n$$E_{f} = \\frac{1}{2} k_1 x_{\\rm max}^2 + \\frac{1}{2} k_2 (h-x_{\\rm max})^2 - mgx_{\\rm max}.$$\nMechanical energy is conserved: E_(i)u2004=u2004E_(f), and so\n$$\\frac{1}{2} k_1 x_{\\rm max}^2 + \\frac{1}{2} k_2 (h-x_{\\rm max})^2 - mgx_{\\rm max} =  \\frac{1}{2} k_2 h^2.$$\nThis equation can be rewritten as\n$$x_{\\rm max} \\left[x_{\\rm max} \\frac{k_1+k_2}{2} -\\left(k_2 h + mg\\right)\\right] = 0.$$\nThe two solutions are the coordinates of the points where the speed is\nnaught, that is, the highest point of the trajectory in xu2004=u20040 and the\nlowest point of the trajectory in\n$$x_{\\rm max} = 2 \\frac{k_2 h + mg}{k_1+k_2}.\\\\\n$$\n",
+            "custom_fields": [
+                {
+                    "field_language": "en",
+                    "field_name": "pdf_document_url",
+                    "field_value": "https://exoset.epfl.ch/media/document/97732244-988f-40d2-8137-7f17870ebe3c.pdf"
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "pdf_document_url",
+                    "field_value": "https://exoset.epfl.ch/media/document/dd32020d-5c6a-4562-8124-b2890694b398.pdf"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "difficulty",
+                    "field_value": "Standard"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "question_type",
+                    "field_value": "Algebric calculation"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "breadcrumb_ontology",
+                    "field_value": "Oscillators"
+                }
+            ],
+            "page_profile": {
+                "numeric_id_en": 10,
+                "numeric_id_fr": 361,
+                "name_en_value": "Spring Oscillator",
+                "name_fr_value": "Oscillator à deux ressorts",
+                "external_key_en": "spring-oscillator4K65",
+                "external_key_fr": "oscillator-a-deux-ressortsCM8T",
+                "external_url_en": "https://exoset.epfl.ch/resources/spring-oscillator4K65",
+                "external_url_fr": "https://exoset.epfl.ch/resources/oscillator-a-deux-ressortsCM8T"
+            },
+            "text_source": "exercise",
+            "manual_mapping": [
+                {"concept_id":  1790, "concept_name": "Force", "score": 1, "text_source": "exercise"},
+                {"concept_id":  2071, "concept_name": "Harmonic motion", "score": 1, "text_source": "exercise"},
+                {"concept_id":  2183, "concept_name": "Elastic constant", "score": 1, "text_source": "exercise"}
+            ]
+        },
+        {
+            "institution_id": "EPFL",
+            "object_type": "Exercise",
+            "object_id": "16",
+            "object_title": "Mélanges de liquides",
+            "custom_fields": [
+                {
+                    "field_language": "fr",
+                    "field_name": "pdf_document_url",
+                    "field_value": "https://exoset.epfl.ch/media/document/eb3d37c0-02b8-4ee6-9b90-d0e735547939.pdf"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "difficulty",
+                    "field_value": "Standard"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "question_type",
+                    "field_value": "Algebric calculation"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "breadcrumb_ontology",
+                    "field_value": "Thermal equilibrium"
+                }
+            ],
+            "page_profile": {
+                "numeric_id_fr": 16,
+                "name_fr_value": "Mélanges de liquides",
+                "external_key_fr": "melanges-de-liquidesYV3G",
+                "external_url_fr": "https://exoset.epfl.ch/resources/melanges-de-liquidesYV3G"
+            },
+            "manual_mapping": [
+                {"concept_id":  1813, "concept_name": "Mass", "score": 1, "text_source": "exercise"},
+                {"concept_id":  1947, "concept_name": "Heat capacity", "score": 1, "text_source": "exercise"},
+                {"concept_id":  2131, "concept_name": "Temperature", "score": 1, "text_source": "exercise"}
+            ]
+        }
+    ],
+    "update_existing": true,
+    "actions": ["eval", "print"]
+}

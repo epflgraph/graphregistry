@@ -24,7 +24,6 @@ def method_insert(request: schemas.InsertItemRequest):
         f"Inserting {len(request.data)} items - Type: {request.type}, Update Existing: {request.update_existing},",
         f"Actions: {', '.join(request.actions)}"
     )
-
     if request.type == schemas.ItemType.nodes:
         obj_list = gr.NodeList()
     elif request.type == schemas.ItemType.edges:
