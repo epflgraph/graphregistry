@@ -1149,7 +1149,6 @@ def delete_concepts_for_nodes(
 ):
     schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
     query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
-    queries_remove = None
     eval_results = None
     if 'eval' in actions:
         query_eval = f'SELECT COUNT(*) FROM {schema_objects}.{table} WHERE {query_where};'
@@ -1159,7 +1158,7 @@ def delete_concepts_for_nodes(
         eval_results = {'delete concept': out[0][0]}
         if eval_results['delete concept'] > 0:
             print(eval_results)
-        queries_remove = f'DELETE FROM {schema_objects}.{table} WHERE {query_where};'
+    queries_remove = f'DELETE FROM {schema_objects}.{table} WHERE {query_where};'
     if 'print' in actions:
         print(queries_remove)
     if 'commit' in actions:
@@ -1516,7 +1515,7 @@ class GraphDB():
             if commit:
                 connection.commit()
         except Exception as e:
-            print('Error executing query.')
+            print('Error executing query:', query)
             # print specific error
             print(e)
             raise e
@@ -3876,7 +3875,7 @@ class GraphRegistry():
 
             # the concepts detected by concept detections are invalidated by expiration, so we ignore them all here.
             doc_json.pop('concepts_detection')
-            # same for manully mapped concepts
+            # same for manually mapped concepts
             doc_json.pop('manual_mapping')
 
             # Convert to a sorted JSON string
