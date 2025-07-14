@@ -3863,10 +3863,8 @@ class GraphRegistry():
 
         # Update global checksum
         def update_checksum(self):
-
             # Convert to JSON
             doc_json = self.to_json()
-
             # Drop all datetime fields
             doc_json.pop('record_created_date', None)
             doc_json.pop('record_updated_date', None)
@@ -3875,11 +3873,11 @@ class GraphRegistry():
                 doc_json['custom_fields'][k].pop('record_updated_date', None)
             doc_json['page_profile'].pop('record_created_date', None)
             doc_json['page_profile'].pop('record_updated_date', None)
-            for k in range(len(doc_json['manual_mapping'])):
-                doc_json['manual_mapping'][k].pop('record_created_date', None)
-                doc_json['manual_mapping'][k].pop('record_updated_date', None)
+
             # the concepts detected by concept detections are invalidated by expiration, so we ignore them all here.
             doc_json.pop('concepts_detection')
+            # same for manully mapped concepts
+            doc_json.pop('manual_mapping')
 
             # Convert to a sorted JSON string
             serialized = json.dumps(doc_json, sort_keys=True, separators=(',', ':'))
