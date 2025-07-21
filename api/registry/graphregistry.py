@@ -80,10 +80,11 @@ mysql_schema_names = {
     'test' : {
         'cache' : 'graph_cache',
         'ui'    : 'graphsearch_test',
+        'es'    : 'elasticsearch_cache'
     },
     'prod' : {
         'cache' : 'graph_cache',
-        'ui'    : 'graphsearch_prod',
+        'ui'    : 'graphsearch_prod'
     }
 }
 
@@ -1584,6 +1585,89 @@ class GraphDB():
             print(query_commit)
 
         # Execute the commit query
+        if 'commit' in actions:
+            self.execute_query_in_shell(engine_name=engine_name, query=query_commit)
+
+    #------------------------------------------------------------------------------#
+    # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE (in chunks) #
+    #------------------------------------------------------------------------------#
+    def execute_query_as_safe_inserts_in_chunks(self, engine_name, schema_name, table_name, query, key_column_names, upd_column_names, eval_column_names=None, actions=(), table_to_chunk=None, chunk_size=None, row_id_name=None):
+
+        # Target table path
+        t = target_table_path = f'{schema_name}.{table_name}'
+
+        # Check if chunk_size and row_id_name are provided
+        if 'commit' in actions and chunk_size is not None and row_id_name is not None:
+
+            # Strip semicolon from inner query if needed
+            base_query = query.strip().rstrip(';')
+
+            # Build base commit query (template, to be filled with chunk conditions)
+            def build_chunked_commit_query(chunk_condition):
+                return f"""
+                    INSERT INTO {target_table_path}
+                               ({', '.join(key_column_names)}{', ' if upd_column_names else ''}{', '.join(upd_column_names)})
+                         SELECT {', '.join(key_column_names)}{', ' if upd_column_names else ''}{', '.join(upd_column_names)}
+                           FROM (
+                                {base_query} {chunk_condition}
+                                ) AS d
+                ON DUPLICATE KEY UPDATE
+                    {', '.join([
+                        f"{c} = IF(COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__'), d.{c}, {t}.{c})"
+                        for c in upd_column_names
+                    ])}
+                """
+
+            # Get min/max for row_id
+            row_id_field = row_id_name.split('.')[-1]  # handle aliases
+            row_num_min = self.execute_query(engine_name, f"SELECT MIN({row_id_field}) FROM {table_to_chunk}")[0][0]
+            row_num_max = self.execute_query(engine_name, f"SELECT MAX({row_id_field}) FROM {table_to_chunk}")[0][0]
+
+            if row_num_min is None or row_num_max is None:
+                print("⚠️ No rows found to process.")
+                return
+
+            # Execute each chunk with progress bar
+            n_rows = row_num_max - row_num_min + 1
+            for offset in tqdm(range(row_num_min, row_num_max + 1, chunk_size), desc='Executing in chunks', unit='chunk', total=(n_rows // chunk_size) + 1):
+                chunk_condition = f"{'WHERE' if 'WHERE' not in base_query.upper() else 'AND'} {row_id_name} BETWEEN {offset} AND {offset + chunk_size - 1}"
+                chunked_query = build_chunked_commit_query(chunk_condition)
+                self.execute_query_in_shell(engine_name=engine_name, query=chunked_query)
+
+            return
+
+        # Evaluate the patch operation
+        if 'eval' in actions:
+            query_eval = f"""
+                       SELECT {', '.join(eval_column_names)}, COUNT(*) AS n_to_process
+                         FROM ({query}) t
+                     GROUP BY {', '.join(eval_column_names)}
+            """
+            if 'print' in actions:
+                print(query_eval)
+            out = self.execute_query(engine_name=engine_name, query=query_eval)
+            if len(out) > 0:
+                df = pd.DataFrame(out, columns=eval_column_names+['# to process'])
+                print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+
+        # Build the commit query (non-chunked)
+        query_commit = f"""
+             INSERT INTO {target_table_path}
+                         ({', '.join(key_column_names)}{', ' if len(upd_column_names)>0 else ''}{', '.join(upd_column_names)})
+                  SELECT  {', '.join(key_column_names)}{', ' if len(upd_column_names)>0 else ''}{', '.join(upd_column_names)}
+                    FROM (
+                         {query}
+                         ) AS d
+        ON DUPLICATE KEY
+                  UPDATE {', '.join([
+                         f"{c} = IF(COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__'), d.{c}, {t}.{c})"
+                         for c in upd_column_names
+                         ])};
+        """
+
+        if 'print' in actions:
+            print(query_commit)
+
         if 'commit' in actions:
             self.execute_query_in_shell(engine_name=engine_name, query=query_commit)
 
@@ -5673,12 +5757,27 @@ class GraphRegistry():
                 if link_type not in self.idoclinks[doc_type]:
                     self.idoclinks[doc_type][link_type] = {}
                 self.idoclinks[doc_type][link_type][link_subtype] = self.IndexDocLinks(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype)
-            
+
+        # Apply cache builder methods
+        def build(self, actions=()):
+            self.cachebuilder.build_all(actions=actions)
+
+        # Apply all patching methods
+        def patch(self, actions=()):
+            self.create_mixed_views(drop_existing=False)
+            self.pageprofile.patch(actions=actions)
+            self.docs_patch_all(actions=actions)
+            self.doclinks_vertical_patch_all(actions=actions)
+            self.doclinks_horizontal_patch_all(actions=actions)
+
         # Patch all index doc tables on graphsearch_test
         def docs_patch_all(self, actions=()):
 
             # Print status
-            sysmsg.info(f"🚜 📝 Patch doc index tables on 'graphsearch_test' [actions: {actions}].")
+            sysmsg.info(f"🚜 📝 Vertical patch of doc index tables [actions: {actions}].")
+
+            # Print status
+            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
 
             # Loop over doc types
             with tqdm(list(self.idocs.keys()), unit='doc type') as pb:
@@ -5691,13 +5790,73 @@ class GraphRegistry():
                     self.idocs[doc_type].patch(actions=actions)
 
             # Print status
-            sysmsg.success(f"🚜 ✅ Done patching doc index tables.")
+            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+
+            # Loop over doc types
+            with tqdm(list(self.idocs.keys()), unit='doc type') as pb:
+                for doc_type in pb:
+
+                    # Print status
+                    pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Patch index doc table
+                    self.idocs[doc_type].patch_elasticsearch(actions=actions)
+
+            # Print status
+            sysmsg.success(f"🚜 ✅ Done vertical patching of doc index tables.")
 
         # Patch all index doc-link tables on graphsearch_test
         def doclinks_vertical_patch_all(self, actions=()):
 
             # Print status
-            sysmsg.info(f"🚜 📝 Patch doc-link index tables on 'graphsearch_test' [actions: {actions}].")
+            sysmsg.info(f"🚜 📝 Vertical patch of doc-link index tables [actions: {actions}].")
+
+            # Print status
+            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
+
+            # Loop over doc-link types
+            with tqdm(list((doc_type, link_type, link_subtype)
+                    for doc_type in self.idoclinks
+                    for link_type in self.idoclinks[doc_type]
+                    for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
+                for doc_type, link_type, link_subtype in pb:
+
+                    # Print status
+                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Patch index doc-link table (mysql)
+                    if link_subtype == 'SEM':
+                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch(actions=actions)
+                    elif link_subtype == 'ORG':
+                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_parentchild(actions=actions)
+
+            # Print status
+            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+
+            # Loop over doc-link types
+            with tqdm(list((doc_type, link_type)
+                    for doc_type in self.idoclinks
+                    for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
+                for doc_type, link_type in pb:
+
+                    # Print status
+                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Patch index doc-link table (elasticsearch)
+                    link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
+                    self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
+
+            # Print status
+            sysmsg.success(f"🚜 ✅ Done vertical patching of doc-link index tables.")
+
+        # Patch all index doc-link tables on graphsearch_test
+        def doclinks_horizontal_patch_all(self, actions=()):
+
+            # Print status
+            sysmsg.info(f"🚜 📝 Horizontal patch of doc-link index tables [actions: {actions}].")
+
+            # Print status
+            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
 
             # Loop over doc-link types
             with tqdm(list((doc_type, link_type, link_subtype)
@@ -5710,13 +5869,26 @@ class GraphRegistry():
                     pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
 
                     # Patch index doc-link table
-                    if link_subtype == 'SEM':
-                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch(actions=actions)
-                    elif link_subtype == 'ORG':
-                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_parentchild(actions=actions)
+                    self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=actions)
 
             # Print status
-            sysmsg.success(f"🚜 ✅ Done patching doc-link index tables.")
+            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+
+            # Loop over doc-link types
+            with tqdm(list((doc_type, link_type)
+                    for doc_type in self.idoclinks
+                    for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
+                for doc_type, link_type in pb:
+
+                    # Print status
+                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Patch index doc-link table (elasticsearch)
+                    link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
+                    self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
+
+            # Print status
+            sysmsg.success(f"🚜 ✅ Done horizontal patching of doc-link index tables.")
 
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
@@ -5726,8 +5898,6 @@ class GraphRegistry():
 
             # Loop over all tables
             for table_name_org in tqdm(list_of_tables):
-
-                print(table_name_org)
 
                 # Generate SEM and MIX table names
                 table_name_sem = table_name_org.replace('_ORG', '_SEM')
@@ -6431,26 +6601,246 @@ class GraphRegistry():
             # Index > Docs > General patching > Insert new rows, update existing fields (graphsearch_test)
             def patch(self, actions=()):
 
-                # Generate SQL query
-                sql_query = f"""
-                    \t\tSELECT {', '.join(self.key_column_names)}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
-                    \t\tFROM {mysql_schema_names[self.engine_name]['cache']}.{self.buildup_table_name} WHERE to_process > 0.5
+                # Full table paths
+                cache_schema_name  = mysql_schema_names[self.engine_name]['cache']
+                buildup_table_name = f"IndexBuildup_Fields_Docs_{self.doc_type}"
+                target_schema_name = mysql_schema_names[self.engine_name]['ui']
+                target_table_name  = f"Index_D_{self.doc_type}"
+
+                # Check if target table exists
+                if not self.db.table_exists(
+                    engine_name = self.engine_name,
+                    schema_name = target_schema_name,
+                    table_name  = target_table_name
+                ):
+                    return
+                
+                # Get object fields with language
+                obj_fields_with_lang = self.obj_fields_with_lang
+
+                # Generate evaluation query
+                upd_column_compare = [
+                    ('t.degree_score', 'n.degree_score')
+                ] + [(f't.{c}', f'n.{c}') for c in obj_fields_with_lang]
+
+                # Build comparison conditions
+                compare_conditions = '    '+'\n\t\t\t\t\t OR '.join([
+                    f"""COALESCE({t_col}, "__null__") != COALESCE({src_expr}, "__null__")"""
+                    for t_col, src_expr in upd_column_compare
+                ])
+
+                # Generate evaluation query
+                sql_query_eval = f"""
+                      SELECT COUNT(*) AS n_total,
+                             COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
+                             ), 0) AS n_patch
+                        FROM {target_schema_name}.{target_table_name} t
+
+                  INNER JOIN {cache_schema_name}.Data_N_Object_T_PageProfile p
+                          ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+
+                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+
+                       WHERE p.object_type = '{self.doc_type}'
+                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
                 """
 
-                # Execute query
-                self.db.execute_query_as_safe_inserts(
-                    engine_name       = self.engine_name,
-                    schema_name       = mysql_schema_names[self.engine_name]['ui'],
-                    table_name        = self.index_table_name,
-                    query             = sql_query,
-                    key_column_names  = self.key_column_names,
-                    upd_column_names  = self.upd_column_names,
-                    eval_column_names = ['doc_institution', 'doc_type'],
-                    actions           = actions
-                )
+                # Execute the evaluation query.
+                # In this case, we execute the query regardless of the 'eval' action,
+                # in order to reduce the execution time of the patch operation on 'commit'.
+                if 'commit' in actions or 'eval' in actions:
+
+                    # Execute the evaluation query
+                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+
+                    # Extract evalutation parameters
+                    rows_to_process, rows_to_patch = out[0]
+
+                # Else, we assume that the evaluation query has not been executed
+                else:
+                    rows_to_process, rows_to_patch = 0, 0
+                
+                # Evaluate the patch operation
+                if 'eval' in actions:
+
+                    # Print the evaluation query
+                    if 'print' in actions:
+                        print(sql_query_eval)
+
+                    # Print the evaluation results
+                    if rows_to_process + rows_to_patch > 0:
+                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                        print_dataframe(df, title=f'🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
+                        if rows_to_patch == 0:
+                            sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
+
+               # Update column names
+                upd_column_names = [
+                    'include_code_in_name',
+                    'degree_score'
+                ] + obj_fields_with_lang
+
+                # Update column values
+                upd_column_values = [
+                    'n.include_code_in_name',
+                    'n.degree_score',
+                ] + [f'n.{c}' for c in obj_fields_with_lang]
+
+                # Generate commit query
+                sql_query_commit = f"""
+                     SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
+                       FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
+                 INNER JOIN {cache_schema_name}.{buildup_table_name} n
+                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                      WHERE p.object_type = '{self.doc_type}'
+                        AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                """
+
+                # Print the commit query
+                if 'print' in actions:
+                    print(sql_query_commit)
+
+                # Execute the commit query
+                if 'commit' in actions:
+
+                    # Return if there are no rows to patch
+                    if rows_to_patch == 0:
+                        return
+                    # Else, execute the query as safe inserts
+                    else:
+                        self.db.execute_query_as_safe_inserts_in_chunks(
+                            engine_name       = self.engine_name,
+                            schema_name       = target_schema_name,
+                            table_name        = target_table_name,
+                            query             = sql_query_commit,
+                            key_column_names  = ['doc_type', 'doc_id'],
+                            upd_column_names  = upd_column_names,
+                            eval_column_names = ['doc_type'],
+                            actions           = ('commit'),
+                            table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
+                            chunk_size        = 100000,
+                            row_id_name       = 'p.row_id'
+
+                        )
+
+
+
+
+                
+
+                # # Generate SQL query
+                # sql_query = f"""
+                #     \t\tSELECT {', '.join(self.key_column_names)}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
+                #     \t\tFROM {cache_schema_name}.{buildup_table_name} t WHERE to_process > 0.5
+                # """
+                # print(sql_query)
+
+                # # Execute query
+                # self.db.execute_query_as_safe_inserts_in_chunks(
+                #     engine_name       = self.engine_name,
+                #     schema_name       = target_schema_name,
+                #     table_name        = target_table_name,
+                #     query             = sql_query,
+                #     key_column_names  = self.key_column_names,
+                #     upd_column_names  = self.upd_column_names,
+                #     eval_column_names = ['doc_institution', 'doc_type'],
+                #     actions           = actions,
+                #     table_to_chunk    = f"{mysql_schema_names[self.engine_name]['cache']}.{self.buildup_table_name}",
+                #     chunk_size        = 10000,
+                #     row_id_name       = 't.row_id',
+                # )
 
             # Index > Docs > General patching > Insert new rows, update existing fields (elascticsearch_cache)
             def patch_elasticsearch(self, actions=()):
+
+                # Full table paths
+                cache_schema_name       = mysql_schema_names[self.engine_name]['cache']
+                buildup_link_table_name = f"IndexBuildup_Fields_Docs_{self.doc_type}"
+                target_schema_name      = mysql_schema_names[self.engine_name]['es']
+                target_table_name       = f"Index_D_{self.doc_type}"
+
+                # Check if target table exists
+                if not self.db.table_exists(
+                    engine_name = self.engine_name,
+                    schema_name = target_schema_name,
+                    table_name  = target_table_name
+                ):
+                    return
+                
+                # Get object fields with language
+                obj_fields_with_lang = self.obj_fields_with_lang
+
+                # TODO: Fix this using json config
+                # Remove 'srt_subtitles_en', 'srt_subtitles_fr' if doc_type = 'Lecture'
+                if self.doc_type == 'Lecture':
+                    obj_fields_with_lang = [c for c in obj_fields_with_lang if c not in ['srt_subtitles_en', 'srt_subtitles_fr']]
+
+                # Generate evaluation query
+                upd_column_compare = [
+                    ('t.degree_score', 'n.degree_score'),
+                    ('t.short_code', 'p.short_code'),
+                    ('t.subtype_en', 'p.subtype_en'),
+                    ('t.subtype_fr', 'p.subtype_fr'),
+                    ('t.name_en', "IF(n.include_code_in_name=1, CONCAT(n.doc_id, ': ', p.name_en_value), p.name_en_value)"),
+                    ('t.name_fr', "IF(n.include_code_in_name=1, CONCAT(n.doc_id, ': ', p.name_fr_value), p.name_fr_value)"),
+                    ('t.short_description_en', 'p.description_short_en_value'),
+                    ('t.short_description_fr', 'p.description_short_fr_value'),
+                    ('t.long_description_en', 'p.description_long_en_value'),
+                    ('t.long_description_fr', 'p.description_long_fr_value'),
+                ] + [(f't.{c}', f'n.{c}') for c in obj_fields_with_lang]
+
+                # Build comparison conditions
+                compare_conditions = '    '+'\n\t\t\t\t\t OR '.join([
+                    f"""COALESCE({t_col}, "__null__") != COALESCE({src_expr}, "__null__")"""
+                    for t_col, src_expr in upd_column_compare
+                ])
+
+                # Generate evaluation query
+                sql_query_eval = f"""
+                      SELECT COUNT(*) AS n_total,
+                             COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
+                             ), 0) AS n_patch
+                        FROM {target_schema_name}.{target_table_name} t
+
+                  INNER JOIN {cache_schema_name}.Data_N_Object_T_PageProfile p
+                          ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+
+                  INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+
+                       WHERE p.object_type = '{self.doc_type}'
+                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                """
+
+                # Execute the evaluation query.
+                # In this case, we execute the query regardless of the 'eval' action,
+                # in order to reduce the execution time of the patch operation on 'commit'.
+                if 'commit' in actions or 'eval' in actions:
+
+                    # Execute the evaluation query
+                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+
+                    # Extract evalutation parameters
+                    rows_to_process, rows_to_patch = out[0]
+
+                # Else, we assume that the evaluation query has not been executed
+                else:
+                    rows_to_process, rows_to_patch = 0, 0
+                
+                # Evaluate the patch operation
+                if 'eval' in actions:
+
+                    # Print the evaluation query
+                    if 'print' in actions:
+                        print(sql_query_eval)
+
+                    # Print the evaluation results
+                    if rows_to_process + rows_to_patch > 0:
+                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                        print_dataframe(df, title=f'🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
+                        if rows_to_patch == 0:
+                            sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
 
                 # Update column names
                 upd_column_names = [
@@ -6464,7 +6854,7 @@ class GraphRegistry():
                     'short_description_fr',
                     'long_description_en',
                     'long_description_fr'
-                ] + self.obj_fields_with_lang
+                ] + obj_fields_with_lang
 
                 # Update column values
                 upd_column_values = [
@@ -6478,28 +6868,44 @@ class GraphRegistry():
                     'p.description_short_fr_value',
                     'p.description_long_en_value',
                     'p.description_long_fr_value'
-                ] + [f'n.{c}' for c in self.obj_fields_with_lang]
+                ] + [f'n.{c}' for c in obj_fields_with_lang]
 
-                # Generate SQL query
-                sql_query = f"""
+                # Generate commit query
+                sql_query_commit = f"""
                      SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
-                       FROM graph_cache.Data_N_Object_T_PageProfile p
-                 INNER JOIN graph_cache.IndexBuildup_Fields_Docs_{self.doc_type} n
+                       FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
+                 INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
                 """
 
-                # Execute the patch operation
-                self.db.execute_query_as_safe_inserts(
-                    schema_name       = 'elasticsearch_cache',
-                    table_name        = self.index_table_name,
-                    query             = sql_query,
-                    key_column_names  = ['doc_type', 'doc_id'],
-                    upd_column_names  = upd_column_names,
-                    eval_column_names = ['doc_type'],
-                    actions           = actions
-                )
+                # Print the commit query
+                if 'print' in actions:
+                    print(sql_query_commit)
+
+                # Execute the commit query
+                if 'commit' in actions:
+
+                    # Return if there are no rows to patch
+                    if rows_to_patch == 0:
+                        return
+                    # Else, execute the query as safe inserts
+                    else:
+                        self.db.execute_query_as_safe_inserts_in_chunks(
+                            engine_name       = self.engine_name,
+                            schema_name       = target_schema_name,
+                            table_name        = target_table_name,
+                            query             = sql_query_commit,
+                            key_column_names  = ['doc_type', 'doc_id'],
+                            upd_column_names  = upd_column_names,
+                            eval_column_names = ['doc_type'],
+                            actions           = ('commit'),
+                            table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
+                            chunk_size        = 100000,
+                            row_id_name       = 'p.row_id'
+
+                        )
 
             # Index > Docs > General patching > Roll back to previous state
             def rollback(self, rollback_date, actions=()):
@@ -6557,12 +6963,12 @@ class GraphRegistry():
                         self.obj2obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]['obj2obj']]
                         self.obj2obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in self.obj2obj_fields]
 
-                    # TODO Fix this / get from config
-                    if (self.doc_type, self.link_type) in [('Person', 'Unit'), ('Unit', 'Person')]:
-                        self.obj2obj_fields_with_lang += ['is_active_affiliation', 'current_position_rank']
+                    # # TODO Fix this / get from config
+                    # if (self.doc_type, self.link_type) in [('Person', 'Unit'), ('Unit', 'Person')]:
+                    #     self.obj2obj_fields_with_lang += ['is_active_affiliation', 'current_position_rank']
                         
-                    if (self.doc_type, self.link_type) in [('Person', 'Course'), ('Course', 'Person')]:
-                        self.obj2obj_fields_with_lang += ['latest_teaching_assignment_year']
+                    # if (self.doc_type, self.link_type) in [('Person', 'Course'), ('Course', 'Person')]:
+                    #     self.obj2obj_fields_with_lang += ['latest_teaching_assignment_year']
 
                 # Fetch filters
                 if self.link_type in  index_config['es-filters']['links']:
@@ -6955,33 +7361,117 @@ class GraphRegistry():
 
             # Index > Doc-Links > Vertical patching > Update ElasticSearch specific fields
             def vertical_patch_elasticsearch(self, actions=()):
+
+                # Check if there are fields to update
+                if len(self.obj_fields_with_lang) == 0:
+                    if 'eval' in actions:
+                        sysmsg.trace(f"No fields to update for link_type '{self.link_type}'.")
+                    return
                 
-                # Generate SQL query
-                sql_query = f"""
-                    UPDATE elasticsearch_cache.Index_D_{self.doc_type}_L_{self.link_type} t
+                # Full table paths
+                buildup_link_table_path = f"{mysql_schema_names[self.engine_name]['cache']}.IndexBuildup_Fields_Docs_{self.link_type}"
+                target_schema_name      = mysql_schema_names[self.engine_name]['es']
+                target_table_name       = f"Index_D_{self.doc_type}_L_{self.link_type}"
+                target_table_path       = f"{target_schema_name}.{target_table_name}"
+
+                # Check if target table exists
+                if not self.db.table_exists(
+                    engine_name = self.engine_name,
+                    schema_name = target_schema_name,
+                    table_name  = target_table_name
+                ):
+                    return
+                
+                # Generate evaluation query
+                sql_query_eval = f"""
+                      SELECT COUNT(*) AS n_total, COALESCE(SUM(
+                                   COALESCE(t.link_name_en, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value), "__null__")
+                                OR COALESCE(t.link_name_fr, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value), "__null__")
+                                OR COALESCE(t.link_short_description_en, "__null__") != COALESCE(p.description_short_en_value, "__null__")
+                                OR COALESCE(t.link_short_description_fr, "__null__") != COALESCE(p.description_short_fr_value, "__null__")
+                                {'OR ' if len(self.obj_fields_with_lang)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.obj_fields_with_lang])}
+                             ), 0) AS n_patch
+                        FROM {target_table_path} t
+
+                  INNER JOIN graph_cache.Data_N_Object_T_PageProfile p 
+                          ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
+
+                  INNER JOIN {buildup_link_table_path} l
+                          ON (t.link_type, t.link_id) = (l.doc_type, l.doc_id)
+
+                       WHERE p.object_type = '{self.link_type}'
+                         AND (p.to_process > 0.5 OR l.to_process > 0.5)
+                """
+
+                # Execute the evaluation query.
+                # In this case, we execute the query regardless of the 'eval' action,
+                # in order to reduce the execution time of the patch operation on 'commit'.
+                if 'commit' in actions or 'eval' in actions:
+
+                    # Execute the evaluation query
+                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+
+                    # Extract evalutation parameters
+                    rows_to_process, rows_to_patch = out[0]
+
+                # Else, we assume that the evaluation query has not been executed
+                else:
+                    rows_to_process, rows_to_patch = 0, 0
+                
+                # Evaluate the patch operation
+                if 'eval' in actions:
+
+                    # Print the evaluation query
+                    if 'print' in actions:
+                        print(sql_query_eval)
+
+                    # Print the evaluation results
+                    if rows_to_process + rows_to_patch > 0:
+                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                        print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+                        if rows_to_patch == 0:
+                            sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
+                    
+                # Generate commit query
+                sql_query_commit = f"""
+                    UPDATE {target_table_path} t
 
                 INNER JOIN graph_cache.Data_N_Object_T_PageProfile p 
                         ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
 
-                INNER JOIN graph_cache.IndexBuildup_Fields_Docs_{self.link_type} l
+                INNER JOIN {buildup_link_table_path} l
                         ON (t.link_type, t.link_id) = (l.doc_type, l.doc_id)
 
-                        SET t.name_en = IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value),
-                            t.name_fr = IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value),
-                            t.short_description_en = p.description_short_en_value,
-                            t.short_description_fr = p.description_short_fr_value
-                            {', ' if len(self.obj_fields_with_lang)>0 else ''}{', '.join([f't.{c} = l.{c}' for c in self.obj_fields_with_lang])}
+                       SET t.link_name_en = IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value),
+                           t.link_name_fr = IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value),
+                           t.link_short_description_en = p.description_short_en_value,
+                           t.link_short_description_fr = p.description_short_fr_value
+                           {', ' if len(self.obj_fields_with_lang)>0 else ''}{', '.join([f't.{c} = l.{c}' for c in self.obj_fields_with_lang])}
 
-                    WHERE p.object_type = '{self.link_type}'
-                        AND (p.to_process > 0.5 OR l.to_process > 0.5)
+                     WHERE p.object_type = '{self.link_type}'
+                       AND (p.to_process > 0.5 OR l.to_process > 0.5)
 
-                        AND (   t.name_en != IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value)
-                            OR t.name_fr != IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value)
-                            OR t.short_description_en != p.description_short_en_value
-                            OR t.short_description_fr != p.description_short_fr_value
-                            {'OR ' if len(self.obj_fields_with_lang)>0 else ''}{' OR '.join([f't.{c} != l.{c}' for c in self.obj_fields_with_lang])}
-                            );
+                       AND (    COALESCE(t.link_name_en, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value), "__null__")
+                             OR COALESCE(t.link_name_fr, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value), "__null__")
+                             OR COALESCE(t.link_short_description_en, "__null__") != COALESCE(p.description_short_en_value, "__null__")
+                             OR COALESCE(t.link_short_description_fr, "__null__") != COALESCE(p.description_short_fr_value, "__null__")
+                             {'OR ' if len(self.obj_fields_with_lang)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.obj_fields_with_lang])}
+                           )
                 """
+
+                # Print the commit query
+                if 'print' in actions:
+                    print(sql_query_commit)
+
+                # Execute the commit query
+                if 'commit' in actions:
+
+                    # Return if there are no rows to patch
+                    if rows_to_patch == 0:
+                        return
+                    # Else, execute the query in chunks
+                    else:
+                        self.db.execute_query_in_chunks(engine_name=self.engine_name, schema_name=target_schema_name, table_name=target_table_name, query=sql_query_commit, chunk_size=10000, row_id_name='t.row_id')
 
             # ------- Rollbacks ------- #
 
@@ -7220,7 +7710,7 @@ class GraphRegistry():
                     """
 
                     # Generate SQL query 3
-                    # TODO: Verify new query          
+                    # TODO: Verify new query  
                     SQLQuery3 = f"""
                     REPLACE INTO {target_table_path}
                                         (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{',' if len(self.obj_fields_with_lang)>0 else ''} semantic_score, row_score, row_rank)
@@ -7275,10 +7765,15 @@ class GraphRegistry():
                     """
 
                     # Generate evaluation query (#2)
-                    sql_query_eval_2 = f"""
-                        SELECT COUNT(*) AS n_total
-                        FROM {SQLQuery2.split('FROM')[1]}
-                    """
+                    if SQLQuery2 is not None:
+                        sql_query_eval_2 = f"""
+                            SELECT COUNT(*) AS n_total
+                            FROM {SQLQuery2.split('FROM')[1]}
+                        """
+                    else:
+                        sql_query_eval_2 = f"""
+                            SELECT 0 AS n_total;
+                        """
 
                     # Generate evaluation query (#3)
                     sql_query_eval_3 = f"""
@@ -7288,6 +7783,7 @@ class GraphRegistry():
 
                     # Print the evaluation queries
                     if 'print' in actions:
+                        print(f"\n🔍 Evaluation queries for {target_table_path}:") 
                         print(sql_query_eval_1)
                         print(sql_query_eval_2)
                         print(sql_query_eval_3)
@@ -7301,8 +7797,9 @@ class GraphRegistry():
                     out = [[out_1[0][0] + out_2[0][0], out_3[0][0]]]
 
                     # Print the results
-                    df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
-                    print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+                    if np.sum(out) > 0:
+                        df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
 
                 # Print SQL query
                 if 'print' in actions:
@@ -7401,7 +7898,7 @@ class GraphRegistry():
                 t = f"elasticsearch_cache.Index_D_{self.doc_type}_L_{self.link_type}"
 
                 # Generate SQL query
-                SQLQuery = f"""
+                sql_query_commit = f"""
                     INSERT INTO {t}
                                 (doc_type, doc_id, link_type, link_subtype, link_id, link_rank, link_name_en, link_name_fr, link_short_description_en, link_short_description_fr{', ' if len(self.obj_fields_with_lang)>0 else ''}{', '.join([f'{c}' for c in self.obj_fields_with_lang])})
                          SELECT d.doc_type, d.doc_id, dl.link_type, dl.link_subtype, dl.link_id, dl.{score_column_name} AS link_rank,
@@ -7426,13 +7923,56 @@ class GraphRegistry():
                          UPDATE {t}.link_rank = IF(COALESCE({t}.link_rank, "__null__") != COALESCE(dl.{score_column_name}, "__null__"), dl.{score_column_name}, {t}.link_rank);
                 """
 
-                # Print SQL query
-                if 'print' in actions:
-                    print(SQLQuery)
+                # Generate evaluation query (#1)
+                sql_query_eval = f"""
+                    SELECT COUNT(*) AS n_total
+                    FROM {sql_query_commit.split('FROM', 1)[1].split('ON DUPLICATE KEY')[0].strip()}
+                """
 
-                # Execute SQL query
+                # Execute the evaluation query.
+                # In this case, we execute the query regardless of the 'eval' action,
+                # in order to reduce the execution time of the patch operation on 'commit'.
+                if 'commit' in actions or 'eval' in actions:
+
+                    # Execute the evaluation query
+                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+
+                    # Number of rows to patch
+                    rows_to_patch = out[0][0] if out else 0
+
+                # Else, we assume that the evaluation query has not been executed
+                else:
+                    rows_to_patch = 0
+                
+                # Evaluate the patch operation
+                if 'eval' in actions:
+                    
+                    # Print the evaluation query
+                    if 'print' in actions:
+                        print(f"\n🔍 Evaluation query for graphsearch_test.Index_D_{self.doc_type}:") 
+                        print(sql_query_eval)
+
+                    # Execute the evaluation query
+                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+
+                    # Print the results
+                    if rows_to_patch > 0:
+                        df = pd.DataFrame(out, columns=['rows to insert/replace'])
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for graphsearch_test.Index_D_{self.doc_type}:')
+
+                # Print the commit query
+                if 'print' in actions:
+                    print(sql_query_commit)
+
+                # Execute the commit query
                 if 'commit' in actions:
-                    self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
+
+                    # Return if there are no rows to patch
+                    if rows_to_patch == 0:
+                        return
+                    # Else, execute the query in chunks
+                    else:
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
 
             # ------- Rollbacks ------- #
 
