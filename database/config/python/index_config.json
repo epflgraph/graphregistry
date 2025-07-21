@@ -67,12 +67,14 @@
                 "Unit"        : {
                     "order" : [["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
                 },
-                "Widget"      : {}
+                "Widget"      : {
+                    "order" : []
+                }
             },
             "parent-child" : {
                 "Course" : {
                     "Lecture" : {
-                        "obj2obj" : ["academic_year", "sort_number", "video_stream_url", "video_duration", "is_restricted"],
+                        "obj2obj" : ["academic_year", "sort_number"],
                         "order" : [["is_restricted", "DESC"]]
                     },
                     "Person" : {
