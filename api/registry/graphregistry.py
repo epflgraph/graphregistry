@@ -9,7 +9,7 @@ from tqdm import tqdm
 from loguru import logger as sysmsg
 import base64, re, time, subprocess, warnings, os, glob, rich, hashlib, random, termios, tty, inspect
 from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers, ElasticsearchWarning
-import sys, json, logging, sys, datetime, Levenshtein, requests, itertools
+import sys, json, logging, sys, datetime, Levenshtein, requests, itertools, gzip, math
 from urllib.parse import quote
 from copy import deepcopy
 import numpy as np
@@ -23,6 +23,9 @@ from graphai_client.client import login as graphai_login
 from graphai_client.client_api.text import extract_concepts_from_text
 import tkinter as tk
 from tkinter import ttk
+from flatten_dict import flatten
+from dictdiffer import diff
+import difflib
 
 # Enable faulthandler to dump Python tracebacks explicitly on a fault
 # faulthandler.enable()
@@ -289,8 +292,8 @@ es_query_template = {
     },
 }
 
-# ElasticSearch settings and mappings
-es_settings_and_mappings = {
+# ElasticSearch settings and mappings (old version that doens't pass test)
+es_settings_and_mappings_OLD = {
     "settings": {
         "index":{
             "analysis":{
@@ -387,6 +390,124 @@ es_settings_and_mappings = {
             "type":"text",
             "analyzer":"base_fr",
             "search_analyzer":"base_fr"
+            }
+        }
+    }
+}
+
+# ElasticSearch settings and mappings (corrected version)
+es_settings_and_mappings = {
+    "aliases": {},
+    "settings": {
+        "index": {
+            "number_of_shards": 1,
+            "number_of_replicas": 1,
+            "analysis": {
+                "analyzer": {
+                    "raw": {
+                        "tokenizer": "keyword",
+                        "filter": ["lowercase"]
+                    },
+                    "base_en": {
+                        "tokenizer": "standard",
+                        "filter": ["lowercase", "asciifolding", "stemmer_en"]
+                    },
+                    "base_fr": {
+                        "tokenizer": "standard",
+                        "filter": ["lowercase", "asciifolding", "stemmer_fr"]
+                    },
+                    "synonym_en": {
+                        "tokenizer": "standard",
+                        "filter": ["lowercase", "asciifolding", "stemmer_en", "synonym_en"]
+                    },
+                    "trigram": {
+                        "tokenizer": "standard",
+                        "filter": ["lowercase", "asciifolding", "shingle"]
+                    }
+                },
+                "filter": {
+                    # "shingle": {
+                    #     "type": "shingle",
+                    #     "min_shingle_size": 2,
+                    #     "max_shingle_size": 3
+                    # },
+                    "stemmer_en": {
+                        "type": "stemmer",
+                        "language": "light_english"
+                    },
+                    "stemmer_fr": {
+                        "type": "stemmer",
+                        "language": "light_french"
+                    },
+                    "synonym_en": {
+                        "type": "synonym_graph",
+                        "synonyms": ["computational complexity , algorithmic complexity"]
+                    }
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "name": {
+                "properties": {
+                    "en": {
+                        "type": "text",
+                        "analyzer": "base_en",
+                        "search_analyzer": "synonym_en",
+                        "fields": {
+                            "raw": {
+                                "type": "text",
+                                "analyzer": "raw"
+                            },
+                            "sayt": {
+                                "type": "search_as_you_type",
+                                "analyzer": "base_en",
+                                "doc_values": False,
+                                "max_shingle_size": 3
+                            },
+                            "trigram": {
+                                "type": "text",
+                                "analyzer": "trigram"
+                            }
+                        }
+                    },
+                    "fr": {
+                        "type": "text",
+                        "analyzer": "base_fr",
+                        # "search_analyzer": "base_fr",
+                        "fields": {
+                            "raw": {
+                                "type": "text",
+                                "analyzer": "raw"
+                            },
+                            "sayt": {
+                                "type": "search_as_you_type",
+                                "analyzer": "base_fr",
+                                "doc_values": False,
+                                "max_shingle_size": 3
+                            },
+                            "trigram": {
+                                "type": "text",
+                                "analyzer": "trigram"
+                            }
+                        }
+                    }
+                }
+            },
+            "long_description": {
+                "properties": {
+                    "en": {
+                        "type": "text",
+                        "analyzer": "base_en",
+                        "search_analyzer": "synonym_en"
+                    },
+                    "fr": {
+                        "type": "text",
+                        "analyzer": "base_fr",
+                        # "search_analyzer": "base_fr"
+                    }
+                }
             }
         }
     }
@@ -1289,24 +1410,52 @@ def get_existing_edges_id(
     )
     return existing_edges_id
 
-#-----------------------------------------#
-# Class definition for Graph MySQL engine #
-#-----------------------------------------#
-class GraphDB():
+#---------------------------------------------#
+# Class definition for Graph common functions #
+#---------------------------------------------#
+class GraphCommon():
 
-    _instance = None  # Singleton instance
+    # Class variable to hold the single instance
+    _instance = None
 
+    # Create new instance of class before __init__ is called
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = object.__new__(cls)  # Use `object.__new__()` explicitly
             cls._instance._initialized = False  # Flag for initialization check
         return cls._instance
 
+    # Class constructor
+    def __init__(self, name="GraphCommon"):
+        if not self._initialized:  # Prevent reinitialization
+            self.name = name
+            self._initialized = True  # Mark as initialized
+            print(f"GraphCommon initialized with name: {self.name}")
+
+#-----------------------------------------#
+# Class definition for Graph MySQL engine #
+#-----------------------------------------#
+class GraphDB():
+
+    # Class variable to hold the single instance
+    _instance = None
+
+    # Create new instance of class before __init__ is called
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = object.__new__(cls)  # Use `object.__new__()` explicitly
+            cls._instance._initialized = False  # Flag for initialization check
+        return cls._instance
+
+    # Class constructor
     def __init__(self, name="GraphDB"):
         if not self._initialized:  # Prevent reinitialization
             self.name = name
             self._initialized = True  # Mark as initialized
             print(f"GraphDB initialized with name: {self.name}")
+
+        # Initialize common functions
+        self.gc = GraphCommon()
 
         # Initialize the MySQL engines
         self.params_test, self.engine_test = self.initiate_engine(global_config['mysql']['server_test'])
@@ -2526,30 +2675,19 @@ class GraphDB():
     def compare_tables_by_random_sampling(self, source_engine_name, source_schema_name, source_table_name, target_engine_name, target_schema_name, target_table_name, sample_size=1024):
 
         # Check if the source table exists
-        # print(source_engine_name, source_schema_name, target_table_name)
-        # print( self.table_exists(engine_name=source_engine_name, schema_name=source_schema_name, table_name=target_table_name))
         if not self.table_exists(engine_name=source_engine_name, schema_name=source_schema_name, table_name=target_table_name):
             sysmsg.error(f"🚨 Table {source_schema_name}.{target_table_name} does not exist in '{source_engine_name}'.")
             return
         
         # Check if the target table exists
-        # print(target_engine_name, target_schema_name, source_table_name)
-        # print( self.table_exists(engine_name=target_engine_name, schema_name=target_schema_name, table_name=source_table_name))
         if not self.table_exists(engine_name=target_engine_name, schema_name=target_schema_name, table_name=source_table_name):
             sysmsg.error(f"🚨 Table {target_schema_name}.{source_table_name} does not exist in '{target_engine_name}'.")
             return
 
-        # MYSQL_TABLE_COMPARE_PATH
-
         # Detect table type
         table_type = get_table_type_from_name(source_table_name)
         if table_type == 'doc_profile':
-            # return
             pass
-
-        # print(target_table_name)
-        # if target_table_name != 'Index_D_Course':
-        #     return
 
         #------------------------------------------#
         # Generate the SQL query for sample tuples #
@@ -2559,19 +2697,9 @@ class GraphDB():
         random_primary_key_set  = self.get_random_primary_key_set(engine_name=source_engine_name, schema_name=source_schema_name, table_name=source_table_name, sample_size=round(sample_size/2), partition_by='object_type', use_row_id=True)
         random_primary_key_set += self.get_random_primary_key_set(engine_name=target_engine_name, schema_name=target_schema_name, table_name=target_table_name, sample_size=round(sample_size/2), partition_by='object_type', use_row_id=True)
 
-        # print(source_table_name)
-        # for r in random_primary_key_set:
-        #     print(r)
-        # print('')
-
         # Get the rows by primary key set (for source and target)
         source_row_set_dict = self.get_rows_by_primary_key_set(engine_name=source_engine_name, schema_name=source_schema_name, table_name=source_table_name, primary_key_set=random_primary_key_set, return_as_dict=True)
         target_row_set_dict = self.get_rows_by_primary_key_set(engine_name=target_engine_name, schema_name=target_schema_name, table_name=target_table_name, primary_key_set=random_primary_key_set, return_as_dict=True)
-
-        # for t in source_row_set_dict:
-        #     print(t)
-        #     rich.print_json(data=source_row_set_dict[t])
-        # print('')
 
         # Get unique set of tuples
         unique_tuples  = list(set(source_row_set_dict.keys()).union(set(target_row_set_dict.keys())))
@@ -2597,8 +2725,6 @@ class GraphDB():
             'percent_set_to_null': 0,
             'mismatch_by_column': {}
         }
-
-        # print('\n')
 
         # Initialise stacks
         mismatch_changes_stack = []
@@ -2745,7 +2871,6 @@ class GraphDB():
         # print("\033[37mThis is white text\033[0m")
         # print("\033[1;31mThis is bold red text\033[0m")
 
-
         # Flawless match test
         if stats['percent_match'] == 100:
             test_results['flawless_match_test'] = True
@@ -2865,14 +2990,867 @@ class GraphDB():
 
         time.sleep(1)
 
-    #----------------------------------#
-    # Method:
-    #----------------------------------#
-    def compare_databases():
+#-------------------------------------------------#
+# Class definition for Graph ElasticSearch engine #
+#-------------------------------------------------#
+class GraphIndex():
+
+    # Class variable to hold the single instance
+    _instance = None
+
+    # Create new instance of class before __init__ is called
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = object.__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    # Class constructor
+    def __init__(self, name="GraphIndex"):
+
+        # Initialize common functions
+        self.gc = GraphCommon()
+
+        # Check if the instance is already initialized
+        if not self._initialized:
+            self.name = name
+            self._initialized = True
+            print(f"GraphIndex initialized with name: {self.name}")
+
+        # Initiate the ElasticSearch engines
+        self.params_test, self.engine_test = self.initiate_engine(global_config['elasticsearch']['server_test'])
+        self.params_prod, self.engine_prod = self.initiate_engine(global_config['elasticsearch']['server_prod'])
+        self.params = {'test': self.params_test, 'prod': self.params_prod}
+        self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+
+    #---------------------------------------------#
+    # Method: Initialize the ElasticSearch engine #
+    #---------------------------------------------#
+    def initiate_engine(self, server_name):
+        """
+        Initialize the ElasticSearch engine based on the server name provided.
+        """
+
+        # Check if the server name is provided
+        if server_name not in global_config['elasticsearch']:
+            raise ValueError(
+                f'could not find the configuration for elasticsearch server {server_name} in {global_config_file}.'
+            )
+        
+        # Import the ElasticSearch engine
+        params = global_config['elasticsearch'][server_name]
+
+        # Check if the required parameters are present
+        if "password" in params:
+            # If password is present, use it in the connection string
+            es_hosts = f'https://{params["username"]}:{quote(params["password"])}@{params["host"]}:{params["port"]}'
+        else:
+            # If password is not present, use the username and host
+            es_hosts = f'https://{params["username"]}@{params["host"]}:{params["port"]}'
+
+        # Check if the certificate file is provided
+        cert_file = params["cert_file"] if "cert_file" in params else None
+
+        # Create the ElasticSearch engine instance
+        print('cert_file:', cert_file)
+        engine = ElasticSearchEngine(
+            hosts=es_hosts, http_compress=True, ca_certs=cert_file, verify_certs=False, request_timeout=3600
+        )
+
+        # Return the parameters and the engine instance
+        return params, engine
+    
+    #---------------------------------------#
+    # Method: Test ElasticSearch connection #
+    #---------------------------------------#
+    def test(self, engine_name):
+        """
+        Test the connection to the ElasticSearch engine.
+        """
+
+        # Check if the engine name is valid
+        if engine_name not in self.engine:
+            raise ValueError(f"Engine '{engine_name}' not found in the GraphIndex instance.")
+        try:
+            # Perform a simple operation to test the connection
+            self.engine[engine_name].info()
+            sysmsg.success(f"Connection to ElasticSearch '{engine_name}' is successful.")
+        except Exception as e:
+            sysmsg.error(f"Failed to connect to ElasticSearch '{engine_name}': {e}")
+
+    #-------------------------------#
+    # Method: Get index information #
+    #-------------------------------#
+    def info(self, engine_name):
+        """
+        Get information about the ElasticSearch index.
+        """
+
+        # Print the index information
+        rich.print_json(data=dict(self.engine[engine_name].info()))
+
+    #---------------------------------#
+    # Method: Get cluster health info #
+    #---------------------------------#
+    def cluster_health(self, engine_name):
+        """
+        Get the health status of the ElasticSearch cluster.
+        """
+        # Equivalent to: GET /_cluster/health?pretty
+        rich.print_json(data=dict(self.engine[engine_name].cluster.health()))
+
+    #-------------------------------------#
+    # Method: Get cluster allocation info #
+    #-------------------------------------#
+    def cluster_allocation_explain(self, engine_name):
+        """
+        Get the cluster allocation explain information.
+        """
+        # Equivalent to: GET /_cluster/allocation/explain?pretty
+        rich.print_json(data=dict(self.engine[engine_name].cluster.allocation_explain()))
+
+    #-----------------------------#
+    # Method: Get list of indexes #
+    #-----------------------------#
+    def index_list(self, engine_name, display_size=False):
+        """
+        Get a list of indexes in the ElasticSearch engine.
+        """
+        # Check for level of detail requested
+        if display_size:
+            # Equivalent to: GET /_cat/indices?v&s=index
+            index_sizes = []
+            for index in self.engine[engine_name].indices.get(index="*"):
+                if not index.startswith('.'):
+                    index_sizes += [(index, self.engine[engine_name].indices.stats(index=index)['indices'][index]['total']['store']['size_in_bytes'])]
+            print(f"List of indexes on {engine_name}:")
+            for index, index_size in sorted(index_sizes, key=lambda x: x[0], reverse=False):
+                print(f' - {index} ({index_size/1024/1024/1024:.2f} GB)')
+        else:
+            # Equivalent to: GET /_cat/indices?v
+            print(f"List of indexes on {engine_name}:")
+            for index in self.engine[engine_name].indices.get(index="*"):
+                if not index.startswith('.'):
+                    print(' - ', index)
+
+    #-------------------------------#
+    # Method: Drop an index by name #
+    #-------------------------------#
+    def drop_index(self, engine_name, index_name):
+        """
+        Drop an index by name in the ElasticSearch engine.
+        """
+        try:
+            # Ask for confirmation before deleting the index
+            confirmation = input(f"Are you sure you want to delete the index '{index_name}' on '{engine_name}'? (yes/no): ")
+            if confirmation.lower() != 'yes':
+                print("Index deletion cancelled.")
+                return
+            # Equivalent to: DELETE /<index_name>
+            self.engine[engine_name].indices.delete(index=index_name)
+            print(f'Index {index_name} deleted')
+        except:
+            print(f'Index {index_name} does not exist')
+            pass
+
+    #-----------------------------#
+    # Method: Get list of aliases #
+    #-----------------------------#
+    def alias_list(self, engine_name):
+        """
+        Get a list of aliases in the ElasticSearch engine.
+        """
+        # Equivalent to: GET /_cat/aliases?v&s=alias
+        print(f"List of aliases on {engine_name}:")
+        aliases = self.engine[engine_name].indices.get_alias()
+        alias_to_index = {}
+        for index, alias_info in aliases.items():
+            if not index.startswith('.'):
+                for alias in alias_info['aliases']:
+                    if not alias.startswith('.'):
+                        alias_to_index[alias] = index
+        for alias, index in alias_to_index.items():
+            print(f" - {alias} --> {index}")
+
+    #-----------------------------------#
+    # Method: Set an alias for an index #
+    #-----------------------------------#
+    def set_alias(self, engine_name, alias_name, index_name):
+        """
+        Set an alias for an index in the ElasticSearch engine.
+        """
+        # Get the ElasticSearch engine instance
+        es = self.engine[engine_name]
+        
+        # Check if the alias exists
+        existing_aliases = es.indices.get_alias(name=alias_name, ignore=404)
+        
+        # Prepare actions for updating aliases
+        actions = []
+        
+        # If the alias already exists, remove it from existing indices
+        # This is to ensure that the alias points to the new index only
+        if existing_aliases and existing_aliases.get('status', 200) == 200:
+            
+            # Remove alias from existing indices
+            for existing_index in existing_aliases.keys():
+                actions.append({"remove": {"index": existing_index, "alias": alias_name}})
+            
+            # If there are actions to remove the alias, execute them
+            if actions:
+                es.indices.update_aliases(body={"actions": actions})
+                print(f"Removed alias '{alias_name}' from indices: {', '.join(existing_aliases.keys())}")
+
+        # Add alias to the new index
+        actions.append({"add": {"index": index_name, "alias": alias_name}})
+        es.indices.update_aliases(body={"actions": actions})
+        print(f"Alias '{alias_name}' now points to index '{index_name}'")
+
+    #-------------------------------------#
+    # Method: Drop an alias from an index #
+    #-------------------------------------#
+    def drop_alias(self, engine_name, alias_name):
+        """
+        Drop an alias from all indices in the ElasticSearch engine.
+        """
+        # Get the ElasticSearch engine instance
+        es = self.engine[engine_name]
+
+        # Check if the alias exists
+        existing_aliases = es.indices.get_alias(name=alias_name, ignore=404)
+
+        # Prepare actions for removing the alias
+        actions = []
+
+        # If the alias exists, remove it from all indices
+        # This is to ensure that the alias is removed from all indices it points to
+        if existing_aliases and existing_aliases.get('status', 200) == 200:
+            # Remove alias from existing indices
+            for existing_index in existing_aliases.keys():
+                actions.append({"remove": {"index": existing_index, "alias": alias_name}})
+
+        # If there are actions to remove the alias, execute them
+        if actions:
+            # Execute the actions to remove the alias
+            es.indices.update_aliases(body={"actions": actions})
+            print(f"Removed alias '{alias_name}' from indices: {', '.join(existing_aliases.keys())}")
+
+    #-------------------------------------#
+    # Method: Create an index from a file #
+    #-------------------------------------#
+    def import_index_from_file(self, engine_name, index_name, index_file, chunk_size=10000, delete_if_exists=False):
+        """
+        Create an index in the ElasticSearch engine from a file.
+        """
+        # Define function to sort dictionary keys alphabetically
+        def sort_dict_alphabetically(d):
+            """
+            Recursively sorts a dictionary (and any nested dictionaries) by their keys.
+            """
+            if isinstance(d, dict):
+                # Recursively sort nested dictionaries
+                return {key: sort_dict_alphabetically(value) for key, value in sorted(d.items())}
+            elif isinstance(d, list):
+                # If lists are encountered, apply the sort function to each element
+                return [sort_dict_alphabetically(item) for item in d]
+            else:
+                # Return non-dict, non-list values as-is
+                return d
+
+        # Delete index
+        if delete_if_exists:
+            try:
+                # Ask for confirmation before deleting the index
+                confirmation = input(f"Are you sure you want to delete the index '{index_name}' on '{engine_name}'? (yes/no): ")
+                if confirmation.lower() != 'yes':
+                    print("Index deletion cancelled.")
+                    return
+                # Delete the index if it exists
+                self.engine[engine_name].indices.delete(index=index_name)
+                print(f'Index {index_name} deleted')
+            except:
+                print(f'Index {index_name} does not exist')
+                pass
+                
+        # Create the new index with settings and mappings
+        print(f'Creating index {index_name} with custom settings and mappings...')
+        self.engine[engine_name].indices.create(index=index_name, body=es_settings_and_mappings)
+        print(f'Index {index_name} created.')
+
+        # Verify that the new index was created with the correct settings and mappings (fail and exit if not)
+        print(f'Verifying index {index_name} settings and mappings...')
+        index_info = self.engine[engine_name].indices.get(index=index_name)
+        condition_1 = sort_dict_alphabetically(index_info[index_name]['settings']['index']['analysis']) == sort_dict_alphabetically(es_settings_and_mappings['settings']['index']['analysis'])
+        condition_2 = sort_dict_alphabetically(index_info[index_name]['mappings']) == sort_dict_alphabetically(es_settings_and_mappings['mappings'])
+
+        # If the conditions are not met, print an error message and exit
+        if not condition_1 or not condition_2:
+            print(f"Error: Index {index_name} was not created with the expected settings and mappings.")
+            print("Expected settings and mappings:")
+            rich.print_json(data=sort_dict_alphabetically(es_settings_and_mappings))
+            print("Actual settings and mappings:")
+            rich.print_json(data=sort_dict_alphabetically(index_info[index_name]))
+            return False
+
+        # Read the index settings and mappings from the file
+        print(f'Reading index {index_file} ...')
+        if index_file.endswith('.gz'):
+            with gzip.open(index_file, 'rt', encoding='utf-8') as file:
+                es_index = json.load(file)
+        else:
+            # Open the file normally if it is not gzipped
+            with open(index_file, 'r') as file:
+                es_index = json.load(file)
+
+        # Print progress
+        print(f"Indexing ...")
+
+        # Prepare the actions for bulk indexing
+        actions = [
+            {
+                "_index": index_name,
+                "_id": doc["doc_type"]+'-'+doc["doc_id"],
+                "_source": doc
+            }
+            for doc in es_index
+        ]
+
+        # Assuming 'actions' is a list of actions prepared for the Bulk API
+        total_docs = len(actions)
+        count = 0
+
+        # Perform the bulk index operation
+        try:
+            # Iterate over the results from streaming_bulk with chunk_size of 100
+            for success, info in helpers.streaming_bulk(self.engine[engine_name], actions, chunk_size=chunk_size, request_timeout=120):
+                if not success:
+                    print('A document failed:', info)
+                count += 1
+                if count % 1000 == 0:
+                    es_write_progress(count, total_docs, status='Continuing...')
+            es_write_progress(total_docs, total_docs, status='Done')
+            print("\nBulk index operation completed")
+        except helpers.BulkIndexError as e:
+            print(f"Bulk indexing error: {e}")
+            for error in e.errors:
+                print(f"Error details: {error}")
+            exit()
+        except Exception as e:
+            print(f"Error during bulk index operation: {e}")
+            exit()
+
+    #-------------------------------------#
+    # Method: Execute a query on an index #
+    #-------------------------------------#
+    def execute_query(self, engine_name, index_name, query):
+        """
+        Execute a query on an index in the ElasticSearch engine.
+        """
+        # Return the search results for the given index and query
+        return self.engine[engine_name].search(index=index_name, body=query)
+
+    #---------------------------------------------#
+    # Method: Fetch documents by ID from an index #
+    #---------------------------------------------#
+    def fetch_docs_by_id(self, engine_name, index_name, doc_ids_list):
+        """
+        Fetch documents by ID from an index in the ElasticSearch engine.
+        """
+        # Return the documents for the given index and list of document IDs
+        return self.engine[engine_name].mget(index=index_name, body={"ids": doc_ids_list})
+
+    #-----------------------------------#
+    # Method: Copy index across engines #
+    #-----------------------------------#
+    def copy_index_across_engines(self, source_engine_name, target_engine_name, index_name, rename_to=None, chunk_size=1000):
+
+        # Define the index names
+        index_name_source = index_name
+        index_name_target = index_name
+        if rename_to is not None:
+            index_name_target = rename_to
+
+        # Define the parameters for the ElasticDump command
+        params_server_source = f"https://{self.params[source_engine_name]['username']}:{quote(self.params[source_engine_name]['password'])}@{self.params[source_engine_name]['host']}:{self.params[source_engine_name]['port']}/{index_name_source}"
+        params_server_target = f"https://{self.params[target_engine_name]['username']}:{quote(self.params[target_engine_name]['password'])}@{self.params[target_engine_name]['host']}:{self.params[target_engine_name]['port']}/{index_name_target}"
+        base_command = [global_config['elasticsearch']['dump_bin'], f"--input={params_server_source}", f"--output={params_server_target}", f"--input-ca={self.params[source_engine_name]['cert_file']}", f"--output-ca={self.params[target_engine_name]['cert_file']}", f"--limit={chunk_size}"]
+
+        # Copy the index from test to prod
+        for type in ['settings', 'mapping', 'data']:
+            subprocess.run(base_command + [f"--type={type}"], env={**os.environ, "NODE_TLS_REJECT_UNAUTHORIZED": "0"})
+
+    #--------------------------------------------------#
+    # Method: Generate a random sample of document IDs #
+    #--------------------------------------------------#
+    def get_random_doc_id_set(self, engine_name, index_name, sample_size=100, partition_by=None, filter_by=None):
+
+        # Generate ElasticSearch query for random sampling
+        es_query = {
+            "size": 0,
+            "aggs": {
+                f"by_{partition_by}": {
+                    "terms": {
+                        "field": f"{partition_by}.keyword",
+                        "size": 10
+                    },
+                    "aggs": {
+                        "sample_docs": {
+                            "top_hits": {
+                                "size": sample_size,
+                                "_source": False,
+                                "sort": [
+                                    {
+                                        "_script": {
+                                            "type": "number",
+                                            "script": {
+                                                "lang": "painless",
+                                                "source": "Math.random()"
+                                            },
+                                            "order": "asc"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        # Add filter_by if provided
+        if filter_by:
+            es_query["query"] = {
+                "bool": {
+                    "filter": [
+                        {
+                            "terms": {
+                                "doc_type.keyword": filter_by
+                            }
+                        }
+                    ]
+                }
+            }
+
+        # Execute the query on the specified index
+        out = self.execute_query(engine_name=engine_name, index_name=index_name, query=es_query)
+
+        # Extract the random document IDs from the query results
+        random_doc_id_set = set()
+        if out and 'aggregations' in out:
+            for bucket in out['aggregations'][f"by_{partition_by}"]['buckets']:
+                for doc in bucket['sample_docs']['hits']['hits']:
+                    random_doc_id_set.add(doc['_id'])
+
+        # Return the random sample
+        return sorted(list(random_doc_id_set))
+
+    #-----------------------------------------#
+    # Method: Extract documents by doc id set #
+    #-----------------------------------------#
+    def get_docs_by_id_set(self, engine_name, index_name, doc_ids, drop_fields=None, flatten_output=False):
+        """
+        Fetch documents from an index by a set of document IDs.
+        """
+
+        # Try to fetch documents by ID
+        try:
+            # Fetch documents by ID using mget
+            response = self.engine[engine_name].mget(index=index_name, body={"ids": doc_ids})
+            
+            # Extract the documents from the response
+            docs = [doc['_source'] for doc in response['docs'] if doc.get('found', False)]
+            
+            # Rearrange documents such that keys are (doc_type, doc_id) tuples
+            docs = {
+                (doc.get('doc_type'), doc.get('doc_id')): {
+                    k: v for k, v in doc.items() if k not in ('doc_type', 'doc_id')
+                }
+                for doc in docs
+                if 'doc_type' in doc and 'doc_id' in doc
+            }
+
+            # If drop_fields is specified, remove those fields from the documents
+            if drop_fields:
+                for k in docs:
+                    docs[k] = {k2: v2 for k2, v2 in docs[k].items() if k2 not in drop_fields}
+            
+            # Flatten the source and target documents
+            if flatten_output:
+                docs = {k: flatten(v, reducer='dot', enumerate_types=(list,)) for k, v in docs.items()}
+            
+            # Return the documents
+            return docs
+        
+        # If an error occurs, log the error and return an empty list
+        except Exception as e:
+            sysmsg.error(f"Failed to fetch documents from index '{index_name}' on '{engine_name}': {e}")
+            return []
+        
+        # If no documents found, return an empty list
+        return []
+
+    #-----------------------------------------#
+    #-----------------------------------------#
+    def compare_indexes_by_random_sampling(self, engine_name_old, index_name_old, engine_name_new, index_name_new, sample_size=1024, doc_types=None):
+        """
+        Compare two Elasticsearch indices by random sampling of documents.
+        Prints stats on new, deleted, matching, mismatching docs, etc.
+        """
+
+        # Check indices exist, return if not
+        if not self.engine[engine_name_old].indices.exists(index=index_name_old):
+            sysmsg.error(f"🚨 Source index '{index_name_old}' not found on '{engine_name_old}'.")
+            return
+        if not self.engine[engine_name_new].indices.exists(index=index_name_new):
+            sysmsg.error(f"🚨 Target index '{index_name_new}' not found on '{engine_name_new}'.")
+            return
+        
+        # Set maximum batch size
+        MAX_BATCH_SIZE = 64
+                
+        # Support function that returns list of batch sizes for the given sample size
+        def get_batches():
+            full_batches = sample_size // MAX_BATCH_SIZE
+            remainder = sample_size % MAX_BATCH_SIZE
+            batch_sizes = [MAX_BATCH_SIZE] * full_batches
+            if remainder > 0:
+                batch_sizes.append(remainder)
+            return batch_sizes
+        
+        # Get batch sizes
+        batch_sizes = get_batches()
+        
+        #---------------------------------------------------#
+        # Generate random sample of ElasticSearch documents #
+        #---------------------------------------------------#
+
+        # Were doc types not provided?
+        if doc_types is None:
+            doc_types = [d for _,d in index_doc_types_list]
+
+        # Get number of doc types
+        n_doc_types = len(doc_types)
+
+        # Initialize sets and dicts
+        doc_set_old = {}
+        doc_set_new = {}
+
+        # Get random samples by batches
+        for batch_size in batch_sizes:
+
+            # Get random doc id set
+            random_doc_id_set  = self.get_random_doc_id_set(engine_name=engine_name_old, index_name=index_name_old, sample_size=round(batch_size/n_doc_types/2), partition_by='doc_type', filter_by=doc_types)
+            random_doc_id_set += self.get_random_doc_id_set(engine_name=engine_name_new, index_name=index_name_new, sample_size=round(batch_size/n_doc_types/2), partition_by='doc_type', filter_by=doc_types)
+
+            # Make random set unique
+            unique_ids = sorted(list(set(random_doc_id_set)))
+
+            # Get the docs by id set (for source and target)
+            doc_set_old.update(self.get_docs_by_id_set(engine_name=engine_name_old, index_name=index_name_old, doc_ids=unique_ids, drop_fields=['links'], flatten_output=True))
+            doc_set_new.update(self.get_docs_by_id_set(engine_name=engine_name_new, index_name=index_name_new, doc_ids=unique_ids, drop_fields=['links'], flatten_output=True))
+
+        # Get unique set of tuples
+        unique_tuples = sorted(list(set(doc_set_old.keys()).union(set(doc_set_new.keys()))))
+
+        # for k, t in enumerate(unique_tuples):
+        #     print(k+1, t)
+        # return
+
+        # Update the sample size
+        sample_size = len(unique_tuples)
+
+        # Initialise stats dictionary
+        stats = {
+            'new_docs': 0,
+            'deleted_docs': 0,
+            'existing_docs': 0,
+            'mismatch': 0,
+            'custom_field_mismatch': 0,
+            'match': 0,
+            'set_to_null': 0,
+            'percent_new_docs': 0,
+            'percent_deleted_docs': 0,
+            'percent_existing_docs': 0,
+            'percent_mismatch': 0,
+            'percent_custom_field_mismatch': 0,
+            'percent_match': 0,
+            'percent_set_to_null': 0,
+            'mismatch_by_field': {}
+        }
+
+        # Initialise stacks
+        mismatch_changes_stack = []
+
+        # Initialise score and rank differences
+        score_rank_diffs = {
+            'degree_score': [],
+            'degree_score_factor': []
+        }
+
+        #----------------------------#
+        # Analyse comparison results #
+        #----------------------------#
+
+        # Initialise field missing or renamed list
+        field_missing_or_renamed_list = []
+
+        # Loop over the unique tuples
+        for t in unique_tuples:
+
+            # Check if the tuple is new
+            if t in doc_set_old and t not in doc_set_new:
+                stats['new_docs'] += 1
+            
+            # Check if the tuple is deleted
+            elif t not in doc_set_old and t in doc_set_new:
+                stats['deleted_docs'] += 1
+
+            # Check if the tuple is in both source and target (existing doc)
+            if t in doc_set_old and t in doc_set_new:
+                    
+                # Add to existing docs
+                stats['existing_docs'] += 1
+                
+                # Check if the values fully match
+                if doc_set_old[t] == doc_set_new[t]:
+                    stats['match'] += 1
+
+                # Else, analyse the differences
+                else:
+
+                    # Initialise flags
+                    exact_doc_mismatch_detected = False
+                    custom_field_mismatch_detected = False
+                    set_to_null_detected = False
+
+                    # Loop over non-primary key fields
+                    for k in doc_set_old[t]:
+
+                        # Check if the key is in both source and target
+                        if k not in doc_set_old[t] or k not in doc_set_new[t]:
+
+                            # Add field existance mismatch to list
+                            field_missing_or_renamed_list += [k]
+                            field_missing_or_renamed_list = sorted(list(set(field_missing_or_renamed_list)))
+
+                        # Else, analyse values in matching fields
+                        else: 
+
+                            # Check if the values are different in matching fields
+                            if doc_set_old[t][k] != doc_set_new[t][k]:
+
+                                # Check if field exists in stats dictionary
+                                if k not in stats['mismatch_by_field']:
+                                    stats['mismatch_by_field'][k] = 0
+
+                                # Flag mismatch detected
+                                exact_doc_mismatch_detected = True
+
+                                # Increment the mismatch counter
+                                stats['mismatch_by_field'][k] += 1
+
+                                # Check if custom field mismatch detected
+                                if k not in ['doc_rank', 'doc_score', 'semantic_score', 'degree_score', 'degree_score_factor', 'object_created', 'object_updated']:
+
+                                    # Flag custom field mismatch detected
+                                    custom_field_mismatch_detected = True
+
+                                    # Append the mismatch changes stack
+                                    mismatch_changes_stack += [(f'{k}: [new] {str(doc_set_new[t][k])[:32]} --> [old] {str(doc_set_old[t][k])[:32]}')]
+                                    
+                                # Check if the value is set to NULL from source to target
+                                if doc_set_old[t][k] is None:
+                                    set_to_null_detected = True
+
+                            # Append score and rank differences to list
+                            if k in score_rank_diffs:
+                                score_rank_diffs[k] += [doc_set_old[t][k] - doc_set_new[t][k]]
+
+                    # Increment the mismatch counters based on flags
+                    if exact_doc_mismatch_detected:
+                        stats['mismatch'] += 1
+                    if custom_field_mismatch_detected:
+                        stats['custom_field_mismatch'] += 1
+                    if set_to_null_detected:
+                        stats['set_to_null'] += 1
+
+        # rich.print_json(data=stats)
+        # rich.print_json(data=mismatch_changes_stack)
+
+        # return
+
+        # Initialise test results
+        test_results = {
+            'flawless_match_test' : False,
+            'deleted_docs_test' : True,
+            'field_missing_or_renamed_test' : True,
+            'custom_field_mismatch_test' : True,
+            'set_to_null_test' : True,
+            'median_score_diff_test' : True,
+            'warning_flag' : False
+        }
+
+        # Calculate the percentages
+        try:
+            stats['percent_existing_docs'] = stats['existing_docs'] / sample_size * 100
+            stats['percent_new_docs']      = stats['new_docs'     ] / sample_size * 100
+            stats['percent_deleted_docs']  = stats['deleted_docs' ] / sample_size * 100
+            
+            if stats['existing_docs'] > 0:
+                stats['percent_mismatch']      = stats['mismatch'     ] / stats['existing_docs'] * 100
+                stats['percent_match']         = stats['match'        ] / stats['existing_docs'] * 100
+                # stats['percent_set_to_null']   = stats['set_to_null'  ] / stats['existing_docs'] * 100
+            else:
+                stats['percent_mismatch']    = 0
+                stats['percent_match']       = 0
+                # stats['percent_set_to_null'] = 0
+            
+            if stats['mismatch'] > 0:
+                stats['percent_custom_field_mismatch'] = stats['custom_field_mismatch'] / stats['mismatch'] * 100
+                stats['percent_set_to_null'] = stats['set_to_null'] / stats['mismatch'] * 100
+            else:
+                stats['percent_custom_field_mismatch'] = 0
+                stats['percent_set_to_null'] = 0
+        except ZeroDivisionError:
+            print('ZeroDivisionError')
+            print('sample_size:', sample_size)
+            print('stats dict:')
+            rich.print_json(data=stats)
+            exit()
+
+        # print("\033[31mThis is red text\033[0m")
+        # print("\033[32mThis is green text\033[0m")
+        # print("\033[34mThis is blue text\033[0m")
+        # print("\033[33mThis is yellow text\033[0m")
+        # print("\033[35mThis is purple text\033[0m")
+        # print("\033[36mThis is cyan text\033[0m")
+        # print("\033[37mThis is white text\033[0m")
+        # print("\033[1;31mThis is bold red text\033[0m")
+
+        # Flawless match test
+        if stats['percent_match'] == 100:
+            test_results['flawless_match_test'] = True
+            print(f"🚀 \033[32mFlawless match test passed for {index_name_new}.\033[0m")
+            return
+
+        # Generate print colours
+        if stats['percent_deleted_docs'] >= 25:
+            percent_deleted_docs_colour = '\033[31m'
+            test_results['deleted_docs_test'] = False
+        elif stats['percent_deleted_docs'] >= 10:
+            percent_deleted_docs_colour = '\033[33m'
+            test_results['warning_flag'] = True
+        else:
+            percent_deleted_docs_colour = '\033[37m'
+
+        if stats['percent_mismatch'] >= 10:
+            percent_mismatch_colour = '\033[33m'
+        elif stats['percent_mismatch'] >= 5:
+            percent_mismatch_colour = '\033[33m'
+        else:
+            percent_mismatch_colour = '\033[37m'
+
+        if stats['percent_custom_field_mismatch'] >= 10:
+            percent_custom_field_mismatch_colour = '\033[31m'
+            test_results['custom_field_mismatch_test'] = False
+        elif stats['percent_custom_field_mismatch'] >= 5:
+            percent_custom_field_mismatch_colour = '\033[33m'
+            test_results['warning_flag'] = True
+        else:
+            percent_custom_field_mismatch_colour = '\033[37m'
+
+        if stats['percent_set_to_null'] >= 10:
+            percent_set_to_null_colour = '\033[31m'
+            test_results['set_to_null_test'] = False
+        elif stats['percent_set_to_null'] >= 5:
+            percent_set_to_null_colour = '\033[33m'
+            test_results['warning_flag'] = True
+        else:
+            percent_set_to_null_colour = '\033[37m'
+        
+        # Print the stats
+        print('')
+        print('==============================================================================================')
+        print('')
+        print(f"Results for \033[36m{engine_name_new}:{index_name_new}:\033[0m (new) vs \033[36m{engine_name_old}:{index_name_old}:\033[0m (old). doc_types: {doc_types}")
+        print('')
+        print(f" - Sample size ....... {sample_size}")
+        print(f" - Existing docs ..... {stats['existing_docs']} {' '*(8-len(str(stats['existing_docs'])))} {stats['percent_existing_docs']:.1f}%")
+        print(f" - New docs .......... {stats['new_docs']     } {' '*(8-len(str(stats['new_docs'])))     } {stats['percent_new_docs'     ]:.1f}%")
+        print(f"{percent_deleted_docs_colour} - Deleted docs ...... {stats['deleted_docs'] } {' '*(8-len(str(stats['deleted_docs']))) } {stats['percent_deleted_docs' ]:.1f}% \033[0m")
+        print('')
+        print(f" - Match ............. {stats['match']        } {' '*(8-len(str(stats['match'])))        } {stats['percent_match'        ]:.1f}%")
+        print(f"{percent_mismatch_colour} - Mismatch .......... {stats['mismatch']     } {' '*(8-len(str(stats['mismatch'])))     } {stats['percent_mismatch'     ]:.1f}% \033[0m")
+        print(f"{percent_custom_field_mismatch_colour} - (custom fields) ... {stats['custom_field_mismatch']  } {' '*(8-len(str(stats['custom_field_mismatch']))  )} {stats['percent_custom_field_mismatch'  ]:.1f}% \033[0m")
+        print(f"{percent_set_to_null_colour} - Set to NULL ....... {stats['set_to_null']  } {' '*(8-len(str(stats['set_to_null'])))  } {stats['percent_set_to_null'  ]:.1f}% \033[0m")
+        print('')
+        if len(stats['mismatch_by_field']) > 0:
+            print('Mismatch(s) by field:')
+            for field in stats['mismatch_by_field']:
+                if stats['mismatch_by_field'][field] == 0:
+                    print(f"\t- {field} {'.'*(64-len(field))} {stats['mismatch_by_field'][field]}")
+                else:
+                    if field in ['doc_rank', 'doc_score', 'semantic_score', 'degree_score', 'degree_score_factor', 'object_created', 'object_updated']:
+                        print(f"\033[33m\t- {field} {'.'*(64-len(field))} {stats['mismatch_by_field'][field]}\033[0m")
+                    else:
+                        print(f"\033[31m\t- {field} {'.'*(64-len(field))} {stats['mismatch_by_field'][field]}\033[0m")
+            print('')
+        
+        # Print score and rank average differences
+        if len(score_rank_diffs['degree_score'])>0 or len(score_rank_diffs['degree_score_factor'])>0 or len(score_rank_diffs['doc_rank'])>0:
+            print('Median score and rank differences:')
+            for k in score_rank_diffs:
+                if score_rank_diffs[k]:
+                    # avg_val = sum(score_rank_diffs[k])/len(score_rank_diffs[k])
+                    med_val = np.median(score_rank_diffs[k])
+                    if   k in ['degree_score', 'degree_score_factor'] and abs(med_val)>=0.2:
+                        test_results['median_score_diff_test'] = False
+                        print(f"\033[31m\t- {k}: {med_val:.2f}\033[0m")
+                    elif k in ['degree_score', 'degree_score_factor'] and abs(med_val)>=0.1:
+                        test_results['warning_flag'] = True
+                        print(f"\033[33m\t- {k}: {med_val:.2f}\033[0m")
+                    else:
+                        print(f"\t- {k}: {med_val:.2f}")
+            print('')
+
+        if len(field_missing_or_renamed_list) > 0:
+            test_results['field_missing_or_renamed_test'] = False
+            print(f"\033[31mfield mismatch(s) detected:\033[0m {field_missing_or_renamed_list}")
+            print('')
+
+        # Print the first 3 mismatch changes
+        if len(mismatch_changes_stack) > 0:
+            mismatch_changes_stack = list(set(mismatch_changes_stack))
+            # randomize
+            mismatch_changes_stack = random.sample(mismatch_changes_stack, len(mismatch_changes_stack))
+            print('Example mismatch changes:')
+            for n,r in enumerate(mismatch_changes_stack):
+                print('\t-', r)
+                if n==32:
+                    break
+            print('')
+
+        #----------------------------------------------------#
+        # Calculate conditions for passing the test (or not) #
+        #----------------------------------------------------#
+
+        print('')
+        if test_results['deleted_docs_test'] and test_results['field_missing_or_renamed_test'] and test_results['custom_field_mismatch_test'] and test_results['set_to_null_test'] and test_results['median_score_diff_test']:
+            if test_results['warning_flag']:
+                print("Test result: \033[33mMinor changes detected.\033[0m")
+            else:
+                print("Test result: \033[32mNo significant changes detected.\033[0m")
+        else:
+            print("Test result: \033[31mMajor changes detected!\033[0m")
+        print('')
+
+        time.sleep(1)
+
+        return
 
 
 
-        pass
+
 
 #----------------------------------#
 # Class definition: Graph Registry #
@@ -2882,6 +3860,7 @@ class GraphRegistry():
     # Constructor
     def __init__(self):
         self.db = GraphDB()
+        self.idx = GraphIndex()
         self.orchestrator = self.Orchestration()
         self.cachemanager = self.CacheManagement()
         self.indexdb = self.IndexDB()
@@ -3294,7 +4273,7 @@ class GraphRegistry():
                     """)
 
                     # Print status
-                    sysmsg.trace(f"⚙️  ... done.")
+                    sysmsg.trace(f"⚙️  done.")
 
             # Set object type flag (1 key only)
             def set_for_object(self, object_type_key, flag_type=None, to_process=None):
@@ -3514,7 +4493,7 @@ class GraphRegistry():
                     """)
 
                     # Print status
-                    sysmsg.trace(f"⚙️  ... done.")
+                    sysmsg.trace(f"⚙️  done.")
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json, reset=False, verbose=False):
@@ -4028,7 +5007,7 @@ class GraphRegistry():
                 """)
 
                 # Print status
-                sysmsg.trace(f"⚙️  ... done.")
+                sysmsg.trace(f"⚙️  done.")
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json, reset=False, verbose=False):
@@ -5030,7 +6009,9 @@ class GraphRegistry():
 
             # Print action specific status
             if len(actions) == 0:
-                sysmsg.warning(f"No actions specified. Nothing to do.")
+                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                sysmsg.info(f"🚀 📝 Nothing to do.")
+                return
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
@@ -5476,7 +6457,9 @@ class GraphRegistry():
 
             # Print action specific status
             if len(actions) == 0:
-                sysmsg.warning(f"No actions specified. Nothing to do.")
+                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                sysmsg.info(f"🚀 📝 Nothing to do.")
+                return
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
@@ -5776,6 +6759,14 @@ class GraphRegistry():
             # Print status
             sysmsg.info(f"🚜 📝 Vertical patch of doc index tables [actions: {actions}].")
 
+            # Print action specific status
+            if len(actions) == 0:
+                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                sysmsg.info(f"🚜 📝 Nothing to do.")
+                return
+            elif 'eval' in actions and 'commit' not in actions:
+                sysmsg.warning(f"Executing in evaluation mode only.")
+
             # Print status
             sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
 
@@ -5810,6 +6801,14 @@ class GraphRegistry():
 
             # Print status
             sysmsg.info(f"🚜 📝 Vertical patch of doc-link index tables [actions: {actions}].")
+
+            # Print action specific status
+            if len(actions) == 0:
+                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                sysmsg.info(f"🚜 📝 Nothing to do.")
+                return
+            elif 'eval' in actions and 'commit' not in actions:
+                sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Print status
             sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
@@ -5854,6 +6853,14 @@ class GraphRegistry():
 
             # Print status
             sysmsg.info(f"🚜 📝 Horizontal patch of doc-link index tables [actions: {actions}].")
+
+            # Print action specific status
+            if len(actions) == 0:
+                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                sysmsg.info(f"🚜 📝 Nothing to do.")
+                return
+            elif 'eval' in actions and 'commit' not in actions:
+                sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Print status
             sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
@@ -6284,6 +7291,14 @@ class GraphRegistry():
 
                 # Print action specific status
                 if len(actions) == 0:
+                    sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                    sysmsg.info(f"🚜 📝 Nothing to do.")
+                    return
+                elif 'eval' in actions and 'commit' not in actions:
+                    sysmsg.warning(f"Executing in evaluation mode only.")
+
+                # Print action specific status
+                if len(actions) == 0:
                     sysmsg.warning(f"No actions specified. Nothing to do.")
                 elif 'eval' in actions and 'commit' not in actions:
                     sysmsg.warning(f"Executing in evaluation mode only.")
@@ -6422,7 +7437,9 @@ class GraphRegistry():
 
                 # Print action specific status
                 if len(actions) == 0:
-                    sysmsg.warning(f"No actions specified. Nothing to do.")
+                    sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                    sysmsg.info(f"🚜 📝 Nothing to do.")
+                    return
                 elif 'eval' in actions and 'commit' not in actions:
                     sysmsg.warning(f"Executing in evaluation mode only.")
 
@@ -8024,29 +9041,13 @@ class GraphRegistry():
         # Class constructor
         def __init__(self):
             self.db = GraphDB()
-            self.params_test, self.engine_test = self.initiate_engine(global_config['mysql']['server_test'])
-            self.params_prod, self.engine_prod = self.initiate_engine(global_config['mysql']['server_prod'])
-            self.params = {'test': self.params_test, 'prod': self.params_prod}
-            self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+            self.idx = GraphIndex()
 
-        def initiate_engine(self, server_name):
-            if server_name not in global_config['elasticsearch']:
-                raise ValueError(
-                    f'could not find the configuration for elasticsearch server {server_name} in {global_config_file}.'
-                )
-            params = global_config['elasticsearch'][server_name]
-            if "password" in params:
-                es_hosts = f'https://{params["username"]}:{quote(params["password"])}@{params["host"]}:{params["port"]}'
-            else:
-                es_hosts = f'https://{params["username"]}@{params["host"]}:{params["port"]}'
-            cert_file = params["cert_file"] if "cert_file" in params else None
-            engine = ElasticSearchEngine(
-                hosts=es_hosts, http_compress=True, ca_certs=cert_file, verify_certs=False, request_timeout=3600
-            )
-            return params, engine
-        
-        # Generate ES index --> keep
-        def generate_split_files(self, index_date=False):
+        # Generate local JSON cache for ElasticSearch index creation
+        def generate_local_cache(self, index_date=False):
+
+            # Print status
+            sysmsg.info(f"🐙 📝 Generate local JSON cache for ElasticSearch index creation (index date: {index_date}).")
 
             # Initialise default column names
             default_column_names_doc  = ['doc_type', 'doc_id', 'degree_score', 'short_code', 'subtype_en', 'subtype_fr', 'name_en', 'name_fr', 'short_description_en', 'short_description_fr', 'long_description_en', 'long_description_fr']
@@ -8056,13 +9057,26 @@ class GraphRegistry():
             # Loop over all doc types #
             #-------------------------#
             # Loop over all doc types
-            for dummy, doc_type in index_doc_types_list:
+            for _, doc_type in index_doc_types_list:
+
+                # Print status
+                sysmsg.trace(f"Process doc type: {doc_type}")
+
+                # Create target folder (if not exists) - with date
+                target_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}"
+                if not os.path.exists(target_folder):
+                    os.makedirs(target_folder)
+
+                # Generate target output path
+                target_output_path = f"{target_folder}/es_splitindex_{index_date}_{doc_type}.json.gz"
+
+                # Check if target file already exists
+                if os.path.exists(target_output_path):
+                    sysmsg.warning(f"File already exists: {target_output_path}")
+                    continue
 
                 # Initialise index dict struct
                 es_index_struct = {}
-
-                # Display status
-                print('Processing doc type:', doc_type)
 
                 # Fetch doc fields
                 obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][doc_type]]
@@ -8076,12 +9090,16 @@ class GraphRegistry():
                 column_names_doc = default_column_names_doc + custom_column_names_doc
 
                 # Fetch list of docs for doc_type
-                print('Loading docs ...')
+                sysmsg.trace(f"⚙️  Loading docs from 'elasticsearch_cache.Index_D_{doc_type}' table ...")
                 list_of_docs = self.db.execute_query(engine_name='test', query=f"""
-                    SELECT {', '.join(column_names_doc)}
-                    FROM elasticsearch_cache.Index_D_{doc_type}
+                      SELECT {', '.join(column_names_doc)}
+                        FROM elasticsearch_cache.Index_D_{doc_type}
                     ORDER BY doc_id ASC
                 """)
+                sysmsg.trace(f"⚙️  done.")
+
+                # Print status
+                sysmsg.trace(f"⚙️  Initialising docs JSON object for doc type '{doc_type}' ...")
 
                 # Add doc type to index struct
                 if doc_type not in es_index_struct:
@@ -8114,267 +9132,163 @@ class GraphRegistry():
                     if d[1] not in es_index_struct[doc_type]:
                         es_index_struct[doc_type][d[1]] = doc_json
                     
+                # Print status
+                sysmsg.trace(f"⚙️  done.")
+
+                # Print status
+                sysmsg.trace(f"Append links to docs JSON object for doc type '{doc_type}'.")
+
                 # Loop over all link doc types
-                for dummy, link_type in index_doc_types_list:
+                with tqdm(index_doc_types_list, unit='link type') as pb:
+                    for _, link_type in pb:
 
-                    # Fetch doc fields
-                    obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][link_type]]
-                    custom_column_names_link = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} -> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
-                    # TODO: fix this
-                    if link_type == 'Lecture':
-                        custom_column_names_link = ["video_stream_url", "video_duration", "is_restricted"]
+                        # Fetch doc fields
+                        obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][link_type]]
+                        custom_column_names_link = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
 
-                    # Combine default and custom column names
-                    column_names_link = default_column_names_link + custom_column_names_link
+                        # TODO: fix this
+                        if link_type == 'Lecture':
+                            custom_column_names_link = ["video_stream_url", "video_duration", "is_restricted"]
 
-                    # Check if link table exists
-                    if not self.db.table_exists(engine_name='test', schema_name='elasticsearch_cache', table_name=f"Index_D_{doc_type}_L_{link_type}"):
-                        print('Warning: Table does not exist:', f"Index_D_{doc_type}_L_{link_type}")
-                        continue
+                        # Combine default and custom column names
+                        column_names_link = default_column_names_link + custom_column_names_link
 
-                    print(f'Loading {link_type} links ...')
-                    list_of_links = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT {', '.join(column_names_link)}
-                        FROM elasticsearch_cache.Index_D_{doc_type}_L_{link_type}
-                        ORDER BY doc_id ASC, link_rank ASC
-                    """)
-
-                    # Loop over list of links
-                    for l in list_of_links:
-
-                        # Build link JSON
-                        json_link = {
-                            'doc_type'     : l[0],
-                            'doc_id'       : l[1],
-                            'link_type'    : l[2],
-                            'link_subtype' : l[3],
-                            'link_id'      : l[4],
-                            'link_rank'    : l[5],
-                            'link_name'              : {'en': l[6],  'fr': l[7]},
-                            'link_short_description' : {'en': l[8],  'fr': l[9]}
-                        }
-
-                        # Append remaining custom columns to JSON (as fields)
-                        for i, c in enumerate(custom_column_names_link):
-                            json_link[c] = l[i+10]
-
-                        # Check if doc_id exists in index struct
-                        if l[1] not in es_index_struct[doc_type]:
-                            print('Warning: doc_id not found in index struct:', l[1])
+                        # Check if link table exists
+                        if not self.db.table_exists(engine_name='test', schema_name='elasticsearch_cache', table_name=f"Index_D_{doc_type}_L_{link_type}"):
+                            print('')
+                            sysmsg.warning(f"Table does not exist: Index_D_{doc_type}_L_{link_type}.")
                             continue
 
-                        # Append link to doc JSON
-                        es_index_struct[doc_type][l[1]]['links'] += [json_link]
-    
-                # Create target folder (if not exists)
-                target_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}"
-                if not os.path.exists(target_folder):
-                    os.makedirs(target_folder)
+                        # Fetch list of links for doc_type and link_type
+                        print('')
+                        sysmsg.trace(f"⚙️  Loading links from 'elasticsearch_cache.Index_D_{doc_type}_L_{link_type}' table ...")
+                        list_of_links = self.db.execute_query(engine_name='test', query=f"""
+                              SELECT {', '.join(column_names_link)}
+                                FROM elasticsearch_cache.Index_D_{doc_type}_L_{link_type}
+                            ORDER BY doc_id ASC, link_rank ASC
+                        """)
+                        sysmsg.trace(f"⚙️  done.")
 
-                # Save index JSON to file
-                with open(f'{ELASTICSEARCH_DATA_EXPORT_PATH}/es_splitindex_{index_date}_{doc_type}.json', 'w') as f:
+                        # Print status
+                        sysmsg.trace(f"⚙️  Appending links to docs JSON object for doc type '{doc_type}' ...")
+
+                        # Loop over list of links
+                        for l in list_of_links:
+
+                            # Build link JSON
+                            json_link = {
+                                'doc_type'     : l[0],
+                                'doc_id'       : l[1],
+                                'link_type'    : l[2],
+                                'link_subtype' : l[3],
+                                'link_id'      : l[4],
+                                'link_rank'    : l[5],
+                                'link_name'              : {'en': l[6],  'fr': l[7]},
+                                'link_short_description' : {'en': l[8],  'fr': l[9]}
+                            }
+
+                            # Append remaining custom columns to JSON (as fields)
+                            for i, c in enumerate(custom_column_names_link):
+                                json_link[c] = l[i+10]
+
+                            # Check if doc_id exists in index struct
+                            if l[1] not in es_index_struct[doc_type]:
+                                print('')
+                                sysmsg.warning(f"Doc ID '{l[1]}' not found in index struct for doc type '{doc_type}'. Skipping link append.")
+                                continue
+
+                            # Append link to doc JSON
+                            es_index_struct[doc_type][l[1]]['links'] += [json_link]
+
+                        # Print status
+                        sysmsg.trace(f"⚙️  done.")
+
+                # Save index JSON to file (as json.gz)
+                sysmsg.trace(f"⚙️  Saving index JSON to file '{target_output_path}' ...")
+                with gzip.open(f'{target_output_path}', 'wt', encoding='utf-8') as f:
                     json.dump(es_index_struct, f, indent=4)
+                sysmsg.trace(f"⚙️  done.")
 
-        # Generate ES final index --> keep
-        def generate_index(self, index_date=False):
+            # Print status
+            sysmsg.success(f"🐙 ✅ Done generating local JSON cache.")
 
-            es_index = []
-        
-            for inst_id, doc_type in index_doc_types_list:
+        # Generate ElasticSearch index from local JSON cache
+        def generate_index_from_local_cache(self, index_date=False):
 
-                print(f"Loading index struct for {doc_type} ...")
-                with open(f'{ELASTICSEARCH_DATA_EXPORT_PATH}/es_splitindex_{index_date}_{doc_type}.json', 'r') as f:
-                    es_index_struct = json.load(f)
+            # Print status
+            sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
 
-                for doc_id in es_index_struct[doc_type]:
-                    es_index += [es_index_struct[doc_type][doc_id]]
+            # Generate target file path
+            target_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
 
-            # Save index JSON to file
-            print(f"Saving final index to file ...")
-            with open(f'{ELASTICSEARCH_DATA_EXPORT_PATH}/es_fullindex_{index_date}.json', 'w') as f:
-                json.dump(es_index, f, indent=4)
+            # Check if target file already exists
+            if os.path.exists(target_file_path):
+                sysmsg.warning(f"Target file already exists: {target_file_path}")
 
-        def info(self, engine_name):
-            # print(self.engine[engine_name])
-            # return self.engine[engine_name]
-            rich.print_json(data=dict(self.engine[engine_name].info()))
+            # Else, proceed with index generation
+            else:
 
-        def cluster_health(self, engine_name):
-            rich.print_json(data=dict(self.engine[engine_name].cluster.health()))
+                # Initialize index doc types list
+                es_index = []
 
-        # GET /_cluster/allocation/explain?pretty
-        def cluster_allocation_explain(self, engine_name):
-            rich.print_json(data=dict(self.engine[engine_name].cluster.allocation_explain()))
+                # Loop over all doc types
+                with tqdm(index_doc_types_list, unit='doc type') as pb:
+                    for _, doc_type in pb:
 
-        def index_list(self, engine_name):
-            print(f"List of indexes on {engine_name}:")
-            for index in self.engine[engine_name].indices.get(index="*"):
-                if not index.startswith('.'):
-                    print(' - ', index)
+                        # Print status
+                        pb.set_description(f"⚙️  Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
-        def index_list_with_size(self, engine_name='test'):
-            index_sizes = []
-            for index in self.engine[engine_name].indices.get(index="*"):
-                if not index.startswith('.'):
-                    index_sizes += [(index, self.engine[engine_name].indices.stats(index=index)['indices'][index]['total']['store']['size_in_bytes'])]
-            print(f"List of indexes on {engine_name}:")
-            for index, index_size in sorted(index_sizes, key=lambda x: x[0], reverse=False):
-                print(f' - {index} ({index_size/1024/1024/1024:.2f} GB)')
+                        # Generate source file path
+                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
 
-        def drop_index(self, engine_name, index_name):
-            try:
-                self.engine[engine_name].indices.delete(index=index_name)
-                print(f'Index {index_name} deleted')
-            except:
-                print(f'Index {index_name} does not exist')
-                pass
+                        # Load JSON structure from file
+                        with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
+                            es_index_struct = json.load(f)
 
-        def alias_list(self, engine_name):
-            print(f"List of aliases on {engine_name}:")
-            aliases = self.engine[engine_name].indices.get_alias()
-            alias_to_index = {}
-            for index, alias_info in aliases.items():
-                if not index.startswith('.'):
-                    for alias in alias_info['aliases']:
-                        if not alias.startswith('.'):
-                            alias_to_index[alias] = index
-            for alias, index in alias_to_index.items():
-                print(f" - {alias} --> {index}")
+                        # Append JSON structure to index
+                        for doc_id in es_index_struct[doc_type]:
+                            es_index += [es_index_struct[doc_type][doc_id]]
 
-        def set_alias(self, engine_name, alias_name, index_name):
-            es = self.engine[engine_name]
+                # Save index JSON to file (as json.gz)
+                sysmsg.trace(f"⚙️  Saving index JSON to file '{target_file_path}' ...")
+                with gzip.open(target_file_path, 'wt', encoding='utf-8') as f:
+                    json.dump(es_index, f, indent=4)
+                sysmsg.trace(f"⚙️  done.")
+
+            # Print status
+            sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.")
+
+
+
+
+        # # Copy ElasticSearch index from test to production environment
+        # def copy_index_from_test_to_prod(self, index_name, rename_to=None, chunk_size=1000):
             
-            # Check if the alias exists
-            existing_aliases = es.indices.get_alias(name=alias_name, ignore=404)
+        #     # Print status
+        #     sysmsg.info(f"➡️ 📝 Copy ElasticSearch index '{index_name}' from test to prod environment (rename to: {rename_to}).")
+
+        #     # Define the index names
+        #     index_name_test = index_name
+        #     index_name_prod = index_name
+        #     if rename_to is not None:
+        #         index_name_prod = rename_to
+
+        #     # Define the parameters for the ElasticDump command
+        #     params_server_test = f"https://{self.idx.params_test['username']}:{quote(self.idx.params_test['password'])}@{self.idx.params_test['host']}:{self.idx.params_test['port']}/{index_name_test}"
+        #     params_server_prod = f"https://{self.idx.params_prod['username']}:{quote(self.idx.params_prod['password'])}@{self.idx.params_prod['host']}:{self.idx.params_prod['port']}/{index_name_prod}"
+        #     base_command = [global_config['elasticsearch']['dump_bin'], f"--input={params_server_test}", f"--output={params_server_prod}", f"--input-ca={self.idx.params_test['cert_file']}", f"--output-ca={self.idx.params_prod['cert_file']}", f"--limit={chunk_size}"]
             
-            actions = []
-            
-            if existing_aliases and existing_aliases.get('status', 200) == 200:
-                # Remove alias from existing indices
-                for existing_index in existing_aliases.keys():
-                    actions.append({"remove": {"index": existing_index, "alias": alias_name}})
-                
-                if actions:
-                    es.indices.update_aliases(body={"actions": actions})
-                    print(f"Removed alias '{alias_name}' from indices: {', '.join(existing_aliases.keys())}")
+        #     # Copy the index from test to prod
+        #     sysmsg.trace(f"⚙️  Dumping and transferring index ...")
+        #     # for type in ['settings', 'mapping', 'data']:
+        #         # subprocess.run(base_command + [f"--type={type}"], env={**os.environ, "NODE_TLS_REJECT_UNAUTHORIZED": "0"})
+        #     sysmsg.trace(f"⚙️  done.")
 
-            # Add alias to the new index
-            actions.append({"add": {"index": index_name, "alias": alias_name}})
-            es.indices.update_aliases(body={"actions": actions})
-            print(f"Alias '{alias_name}' now points to index '{index_name}'")
-
-        def drop_alias(self, engine_name, alias_name):
-            es = self.engine[engine_name]
-            existing_aliases = es.indices.get_alias(name=alias_name, ignore=404)
-            actions = []
-            if existing_aliases and existing_aliases.get('status', 200) == 200:
-                for existing_index in existing_aliases.keys():
-                    actions.append({"remove": {"index": existing_index, "alias": alias_name}})
-            if actions:
-                es.indices.update_aliases(body={"actions": actions})
-                print(f"Removed alias '{alias_name}' from indices: {', '.join(existing_aliases.keys())}")
-
-        def create_index_from_file(self, engine_name, index_name, index_file, chunk_size=1000, delete_if_exists=False):
-
-            def sort_dict_alphabetically(d):
-                """
-                Recursively sorts a dictionary (and any nested dictionaries) by their keys.
-                """
-                if isinstance(d, dict):
-                    # Recursively sort nested dictionaries
-                    return {key: sort_dict_alphabetically(value) for key, value in sorted(d.items())}
-                elif isinstance(d, list):
-                    # If lists are encountered, apply the sort function to each element
-                    return [sort_dict_alphabetically(item) for item in d]
-                else:
-                    # Return non-dict, non-list values as-is
-                    return d
-
-            # Delete index
-            if delete_if_exists:
-                try:
-                    self.engine[engine_name].indices.delete(index=index_name)
-                    print(f'Index {index_name} deleted')
-                except:
-                    print(f'Index {index_name} does not exist')
-                    pass
-                    
-            # Create the new index with settings and mappings
-            print(f'Creating index {index_name} with custom settings and mappings...')
-            self.engine[engine_name].indices.create(index=index_name, body=es_settings_and_mappings)
-            print(f'Index {index_name} created.')
-
-            # Verify that the new index was created with the correct settings and mappings (fail and exit if not)
-            print(f'Verifying index {index_name} settings and mappings...')
-            index_info = self.engine[engine_name].indices.get(index=index_name)
-            condition_1 = sort_dict_alphabetically(index_info[index_name]['settings']['index']['analysis']) == sort_dict_alphabetically(es_settings_and_mappings['settings']['index']['analysis'])
-            condition_2 = sort_dict_alphabetically(index_info[index_name]['mappings']) == sort_dict_alphabetically(es_settings_and_mappings['mappings'])
-
-            # Read the index settings and mappings from the file
-            print(f'Reading index {index_file} ...')
-            with open(index_file, 'r') as file:
-                es_index = json.load(file)
-
-            # Print progress
-            print(f"Indexing ...")
-
-            # Prepare the actions for bulk indexing
-            actions = [
-                {
-                    "_index": index_name,
-                    "_id": doc["doc_type"]+'-'+doc["doc_id"],
-                    "_source": doc
-                }
-                for doc in es_index
-            ]
-
-            # Assuming 'actions' is a list of actions prepared for the Bulk API
-            total_docs = len(actions)
-            count = 0
-
-            # Perform the bulk index operation
-            try:
-                # Iterate over the results from streaming_bulk with chunk_size of 100
-                for success, info in helpers.streaming_bulk(self.engine[engine_name], actions, chunk_size=chunk_size, request_timeout=120):
-                    if not success:
-                        print('A document failed:', info)
-                    count += 1
-                    if count % 1000 == 0:
-                        es_write_progress(count, total_docs, status='Continuing...')
-                es_write_progress(total_docs, total_docs, status='Done')
-                print("\nBulk index operation completed")
-            except helpers.BulkIndexError as e:
-                print(f"Bulk indexing error: {e}")
-                for error in e.errors:
-                    print(f"Error details: {error}")
-                exit()
-            except Exception as e:
-                print(f"Error during bulk index operation: {e}")
-                exit()
-    
-        def copy_index_from_test_to_prod(self, index_name, rename_to=None, chunk_size=1000):
-            
-            # Define the index names
-            index_name_test = index_name
-            index_name_prod = index_name
-            if rename_to is not None:
-                index_name_prod = rename_to
-
-            # Define the parameters for the ElasticDump command
-            params_server_test = f"https://{self.params_test['username']}:{quote(self.params_test['password'])}@{self.params_test['host']}:{self.params_test['port']}/{index_name_test}"
-            params_server_prod = f"https://{self.params_prod['username']}:{quote(self.params_prod['password'])}@{self.params_prod['host']}:{self.params_prod['port']}/{index_name_prod}"
-            base_command = [global_config['elasticsearch']['dump_bin'], f"--input={params_server_test}", f"--output={params_server_prod}", f"--input-ca={self.params_test['cert_file']}", f"--output-ca={self.params_prod['cert_file']}", f"--limit={chunk_size}"]
-            
-            # Copy the index from test to prod
-            for type in ['settings', 'mapping', 'data']:
-                subprocess.run(base_command + [f"--type={type}"], env={**os.environ, "NODE_TLS_REJECT_UNAUTHORIZED": "0"})
-
-        def execute_query(self, engine_name, index_name, query):
-            return self.engine[engine_name].search(index=index_name, body=query)
-
-        def fetch_docs_by_id(self, engine_name, index_name, doc_ids_list):
-            return self.engine[engine_name].mget(index=index_name, body={"ids": doc_ids_list})
+        #     # Print status
+        #     sysmsg.success(f"➡️ ✅ Done copying ElasticSearch index.")
 
 
         # es.create_index_from_file(engine_name='test', index_name='graphsearch_test_2025_03-27', index_file='/Users/francisco/Cloud/Academia/CEDE/EPFLGraph/GitHub/data/elasticsearch_data_exports/es_fullindex_2025-03-27.json', chunk_size=1000, delete_if_exists=True)
@@ -8613,43 +9527,6 @@ def LaunchGUI(gr):
                             print(f"""gr.cachemanager.consolidate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}')""")
                             gr.cachemanager.consolidate_scores_matrix(from_object_type=from_object_type, to_object_type=to_object_type)
 
-
-
-                # 'cachemanage apply views'
-                # 'cachemanage apply formulas'
-                # 'cachemanage calculate scores matrix'
-                # 'cachemanage consolidate scores matrix'
-
-                # 'indexdb cache_buildup info'
-                # 'indexdb cache_buildup build docs fields'
-                # 'indexdb cache_buildup build links parentchild'
-
-                # 'indexdb page_profile info'
-                # 'indexdb page_profile create table'
-                # 'indexdb page_profile patch'
-
-                # 'indexdb index_docs info'
-                # 'indexdb index_docs create table'
-                # 'indexdb index_docs patch'
-
-                # 'indexdb index_doc_links info'
-                # 'indexdb index_doc_links create table'
-                # 'indexdb index_doc_links horiz. patch'
-                # 'indexdb index_doc_links vert. patch'
-                # 'indexdb index_doc_links vertical patch p2c'
-
-                # 'indexdb index_docs_es info'
-                # 'indexdb index_docs_es create table'
-                # 'indexdb index_docs_es patch'
-
-                # 'indexdb index_doc_links_es info'
-                # 'indexdb index_doc_links_es create table'
-                # 'indexdb index_doc_links_es horizontal patch'
-                # 'indexdb index_doc_links_es vertical patch'
-
-                # 'indexdb create mixed views'
-                # 'indexdb copy patches to prod'
-
             #-----------------------------#
             # GraphIndex Management panel #
             #-----------------------------#
@@ -8661,18 +9538,9 @@ def LaunchGUI(gr):
                     if gui['processing']['indexdb']['actions'][method_action_name].get():
                         method_actions += (method_action_name,)
 
-                # Fetch doc types and dic-link types to process
-                if 'indexdb index_docs' in button_input_action or 'indexdb index_doc_links' in button_input_action:
-                    out = gr.orchestrator.typeflags.status(types_only=True)
-                    doctypes_to_process = [o[1] for o in out['nodes']]
-                    doclinktypes_to_process = [o[1]+'-'+o[3]+'-'+o[4] for o in out['edges']]
-
                 # IndexDB cache buildup info
                 if button_input_action == 'indexdb cache_buildup info':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.cachebuilder.info()")
-                    gr.indexdb.cachebuilder.info()
+                    pass
 
                 # IndexDB cache buildup build all docs and link fields
                 elif button_input_action == 'indexdb cache_buildup build all':
@@ -8683,17 +9551,11 @@ def LaunchGUI(gr):
 
                 # IndexDB page profile info
                 elif button_input_action == 'indexdb page_profile info':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.pageprofile.info()")
-                    gr.indexdb.pageprofile.info()
+                    pass
 
                 # IndexDB page profile create table
                 elif button_input_action == 'indexdb page_profile create table':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.pageprofile.create_table(actions={method_actions})")
-                    gr.indexdb.pageprofile.create_table(actions=method_actions)
+                    pass
 
                 # IndexDB page profile patch
                 elif button_input_action == 'indexdb page_profile patch':
@@ -8704,15 +9566,11 @@ def LaunchGUI(gr):
 
                 # IndexDB index docs info
                 elif button_input_action == 'indexdb index_docs info':
-                    for doc_type in doctypes_to_process:
-                        print(f"""gr.indexdb.idocs[doc_type].info()""")
-                        gr.indexdb.idocs[doc_type].info()
+                    pass
 
                 # IndexDB index docs create table
                 elif button_input_action == 'indexdb index_docs create table':
-                    for doc_type in doctypes_to_process:
-                        print(f"""gr.indexdb.idocs['{doc_type}'].create_table(actions={method_actions})""")
-                        gr.indexdb.idocs[doc_type].create_table(actions=method_actions)
+                    pass
 
                 # IndexDB index docs patch
                 elif button_input_action == 'indexdb index_docs patch':
@@ -8723,30 +9581,18 @@ def LaunchGUI(gr):
 
                 # IndexDB index doc-links info
                 elif button_input_action == 'indexdb index_doc_links info':
-                    for doc_link_type_subtype in doclinktypes_to_process:
-                        doc_type, link_type, flag_type = doc_link_type_subtype.split('-')
-                        for link_subtype in ['ORG', 'SEM']:
-                            if link_subtype in gr.indexdb.idoclinks[doc_type][link_type]:
-                                print(f"""gr.indexdb.idoclinks['{doc_type}']['{link_type}']['{link_subtype}'].info()""")
-                                gr.indexdb.idoclinks[doc_type][link_type][link_subtype].info()
+                    pass
 
                 # IndexDB index doc-links create table
                 elif button_input_action == 'indexdb index_doc_links create table':
-                    for doc_link_type_subtype in doclinktypes_to_process:
-                        doc_type, link_type, flag_type = doc_link_type_subtype.split('-')
-                        for link_subtype in ['ORG', 'SEM']:
-                            if link_subtype in gr.indexdb.idoclinks[doc_type][link_type]:
-                                print(f"""gr.indexdb.idoclinks['{doc_type}']['{link_type}']['{link_subtype}'].create_table(actions={method_actions})""")
-                                gr.indexdb.idoclinks[doc_type][link_type][link_subtype].create_table(actions=method_actions)
-
+                    pass
+                
                 # IndexDB index doc-links horizontal patch
                 elif button_input_action == 'indexdb index_doc_links horizontal patch':
-                    for doc_link_type_subtype in doclinktypes_to_process:
-                        doc_type, link_type, flag_type = doc_link_type_subtype.split('-')
-                        for link_subtype in ['ORG', 'SEM']:
-                            if link_subtype in gr.indexdb.idoclinks[doc_type][link_type]:
-                                print(f"""gr.indexdb.idoclinks['{doc_type}']['{link_type}']['{link_subtype}'].horizontal_patch(actions={method_actions})""")
-                                gr.indexdb.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=method_actions)
+
+                    # Print and execute method
+                    print(f"\n🖥️  ~ gr.indexdb.doclinks_horizontal_patch_all(actions={method_actions})")
+                    gr.indexdb.doclinks_horizontal_patch_all(actions=method_actions)
 
                 # IndexDB index doc-links vertical patch
                 elif button_input_action == 'indexdb index_doc_links vertical patch':
@@ -8754,34 +9600,6 @@ def LaunchGUI(gr):
                     # Print and execute method
                     print(f"\n🖥️  ~ gr.indexdb.doclinks_vertical_patch_all(actions={method_actions})")
                     gr.indexdb.doclinks_vertical_patch_all(actions=method_actions)
-
-                # IndexDB index docs ES info
-                elif button_input_action == 'indexdb index_docs_es info':
-                    pass
-
-                # IndexDB index docs ES create table
-                elif button_input_action == 'indexdb index_docs_es create table':
-                    pass
-
-                # IndexDB index docs ES patch
-                elif button_input_action == 'indexdb index_docs_es patch':
-                    pass
-
-                # IndexDB index doc links ES info
-                elif button_input_action == 'indexdb index_doc_links_es info':
-                    pass
-
-                # IndexDB index doc links ES create table
-                elif button_input_action == 'indexdb index_doc_links_es create table':
-                    pass
-
-                # IndexDB index doc links ES horizontal patch
-                elif button_input_action == 'indexdb index_doc_links_es horizontal patch':
-                    pass
-
-                # IndexDB index doc links ES vertical patch
-                elif button_input_action == 'indexdb index_doc_links_es vertical patch':
-                    pass
 
                 # IndexDB create mixed views
                 elif button_input_action == 'indexdb create mixed views':
@@ -9050,41 +9868,12 @@ def LaunchGUI(gr):
                 create_buttons_row(
                     frame_pointer  = gui['processing']['indexdb']['index_doc_links']['subframe'],
                     actions_matrix = [
-                        (0, 0, 7, 'info'        ), (0, 1, 10, 'horizontal patch'),
-                        (1, 0, 7, 'create table'), (1, 1, 10, 'vertical patch'  ),
+                        (0, 0, 7, 'info'        ), (0, 1, 10, 'vertical patch'  ),
+                        (1, 0, 7, 'create table'), (1, 1, 10, 'horizontal patch'),
                     ],
                     function_subspace = 'indexdb index_doc_links'
                 )
 
-                # Labeled subframe
-                gui['processing']['indexdb']['index_docs_es']['subframe'] = tk.LabelFrame(gui['processing']['indexdb']['subframe'], text="Index docs (for ElacticSearch)", width=380, height=60, padx=4, pady=4)
-                gui['processing']['indexdb']['index_docs_es']['subframe'].pack_propagate(False)
-                gui['processing']['indexdb']['index_docs_es']['subframe'].pack(padx=10, pady=(2,2))
-
-                # Create buttons row for cache management actions
-                create_buttons_row(
-                    frame_pointer  = gui['processing']['indexdb']['index_docs_es']['subframe'],
-                    actions_matrix = [
-                        (0, 0, 2, 'info'), (0, 1, 7, 'create table'), (0, 2, 3, 'patch'),
-                    ],
-                    function_subspace = 'indexdb index_docs_es'
-                )
-
-                # Labeled subframe
-                gui['processing']['indexdb']['index_doc_links_es']['subframe'] = tk.LabelFrame(gui['processing']['indexdb']['subframe'], text="Index doc-links (for ElacticSearch)", width=380, height=88, padx=4, pady=4)
-                gui['processing']['indexdb']['index_doc_links_es']['subframe'].pack_propagate(False)
-                gui['processing']['indexdb']['index_doc_links_es']['subframe'].pack(padx=10, pady=(2,10))
-
-                # Create buttons row for cache management actions
-                create_buttons_row(
-                    frame_pointer  = gui['processing']['indexdb']['index_doc_links_es']['subframe'],
-                    actions_matrix = [
-                        (0, 0, 7, 'info'        ), (0, 1, 10, 'horizontal patch'),
-                        (1, 0, 7, 'create table'), (1, 1, 10, 'vertical patch'  ),
-                    ],
-                    function_subspace = 'indexdb index_doc_links_es'
-                )
-            
             # Create buttons row for cache management actions
             create_buttons_row(
                 frame_pointer  = gui['processing']['indexdb']['subframe'],
