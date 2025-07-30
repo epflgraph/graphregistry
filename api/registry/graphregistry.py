@@ -2356,26 +2356,81 @@ class GraphDB():
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        # Get minimum row_id
-        min_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MIN(row_id),0) FROM {schema_name}.{table_name} WHERE {filter_by}")[0][0]
-        
-        # Get maximum row_id
-        max_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX(row_id),0) FROM {schema_name}.{table_name} WHERE {filter_by}")[0][0]
+        # Check if row_id column exists in the table
+        check_column_query = f"""
+            SELECT COUNT(*) 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = '{schema_name}' AND TABLE_NAME = '{table_name}' AND COLUMN_NAME = 'row_id'
+        """
+        has_row_id = self.execute_query(engine_name=engine_name, query=check_column_query)[0][0] > 0
 
-        # Convert values to integers
-        min_row_id = int(min_row_id)
-        max_row_id = int(max_row_id)
+        # If row_id exists, proceed with chunked dump
+        if has_row_id:
 
-        # Check if there are any rows to process
-        if min_row_id >= max_row_id:
-            sysmsg.warning(f"No rows found in table {schema_name}.{table_name} with filter '{filter_by}'.")
-            return
+            # Get minimum row_id
+            min_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MIN(row_id),0) FROM {schema_name}.{table_name} WHERE {filter_by}")[0][0]
+            
+            # Get maximum row_id
+            max_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX(row_id),0) FROM {schema_name}.{table_name} WHERE {filter_by}")[0][0]
 
-        # Process table in chunks (from min to max row_id)
-        for offset in tqdm(range(min_row_id-1, max_row_id+1, chunk_size)):
+            # Convert values to integers
+            min_row_id = int(min_row_id)
+            max_row_id = int(max_row_id)
 
-            # Generate shell command to dump table chunck using mysqldump executable
-            shell_command = self.base_command_mysqldump[engine_name] + [schema_name, table_name, f'--where="{filter_by} AND (row_id BETWEEN {offset} AND {offset + chunk_size - 1})"'] + ['--result-file=' + f'{folder_path}/{table_name}_{str(offset).zfill(10)}.sql']
+            # Check if there are any rows to process
+            if min_row_id >= max_row_id:
+                sysmsg.warning(f"No rows found in table {schema_name}.{table_name} with filter '{filter_by}'.")
+                return
+
+            # Process table in chunks (from min to max row_id)
+            for offset in tqdm(range(min_row_id-1, max_row_id+1, chunk_size)):
+
+                # Generate output file path
+                output_file = f'{folder_path}/{table_name}_{str(offset).zfill(10)}.sql'
+
+                # Check if the output file already exists
+                if os.path.exists(output_file):
+                    continue
+
+                # Generate shell command to dump table chunck using mysqldump executable
+                shell_command = self.base_command_mysqldump[engine_name] + [schema_name, table_name, f'--where="{filter_by} AND (row_id BETWEEN {offset} AND {offset + chunk_size - 1})"'] + ['--result-file=' + output_file]
+
+                # Generate shell text command
+                shell_text_command = ' '.join(shell_command)
+
+                # Run the command and capture stdout and stderr
+                result = subprocess.run(shell_text_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+
+                # Check if there's a MySQL-specific warning
+                if result.stderr:
+                    if result.stderr.strip() == 'mysql: [Warning] Using a password on the command line interface can be insecure.':
+                        # Suppress the warning by doing nothing
+                        pass
+                    else:
+                        # Print the stderr output if it's not the specific MySQL warning
+                        if 'ERROR' in result.stderr:
+                            print('Error dumping table:', table_name)
+                            print(result.stderr)
+                            exit()
+
+        # Else, if row_id does not exist, dump the entire table at once
+        else:
+
+            # Generate output file path
+            output_file = f'{folder_path}/{table_name}_full.sql'
+
+            # Check if the output file already exists
+            if os.path.exists(output_file):
+                sysmsg.warning(f"Output file {output_file} already exists. Skipping dump for table {table_name}.")
+                return
+
+            # Fallback: dump entire table with optional filter
+            shell_command = self.base_command_mysqldump[engine_name] + [
+                schema_name,
+                table_name,
+                f'--where="{filter_by}"',
+                f'--result-file={output_file}'
+            ]
 
             # Generate shell text command
             shell_text_command = ' '.join(shell_command)
@@ -2384,16 +2439,10 @@ class GraphDB():
             result = subprocess.run(shell_text_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
 
             # Check if there's a MySQL-specific warning
-            if result.stderr:
-                if result.stderr.strip() == 'mysql: [Warning] Using a password on the command line interface can be insecure.':
-                    # Suppress the warning by doing nothing
-                    pass
-                else:
-                    # Print the stderr output if it's not the specific MySQL warning
-                    if 'ERROR' in result.stderr:
-                        print('Error dumping table:', table_name)
-                        print(result.stderr)
-                        exit()
+            if result.stderr and 'Using a password on the command line interface can be insecure' not in result.stderr:
+                print('Error dumping table (full):', table_name)
+                print(result.stderr)
+                exit()
 
     #----------------------------------#
     # Method: Import table from folder #
@@ -3847,10 +3896,6 @@ class GraphIndex():
         time.sleep(1)
 
         return
-
-
-
-
 
 #----------------------------------#
 # Class definition: Graph Registry #
@@ -7734,39 +7779,12 @@ class GraphRegistry():
                             key_column_names  = ['doc_type', 'doc_id'],
                             upd_column_names  = upd_column_names,
                             eval_column_names = ['doc_type'],
-                            actions           = ('commit'),
+                            actions           = actions,
                             table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
                             chunk_size        = 100000,
                             row_id_name       = 'p.row_id'
 
                         )
-
-
-
-
-                
-
-                # # Generate SQL query
-                # sql_query = f"""
-                #     \t\tSELECT {', '.join(self.key_column_names)}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
-                #     \t\tFROM {cache_schema_name}.{buildup_table_name} t WHERE to_process > 0.5
-                # """
-                # print(sql_query)
-
-                # # Execute query
-                # self.db.execute_query_as_safe_inserts_in_chunks(
-                #     engine_name       = self.engine_name,
-                #     schema_name       = target_schema_name,
-                #     table_name        = target_table_name,
-                #     query             = sql_query,
-                #     key_column_names  = self.key_column_names,
-                #     upd_column_names  = self.upd_column_names,
-                #     eval_column_names = ['doc_institution', 'doc_type'],
-                #     actions           = actions,
-                #     table_to_chunk    = f"{mysql_schema_names[self.engine_name]['cache']}.{self.buildup_table_name}",
-                #     chunk_size        = 10000,
-                #     row_id_name       = 't.row_id',
-                # )
 
             # Index > Docs > General patching > Insert new rows, update existing fields (elascticsearch_cache)
             def patch_elasticsearch(self, actions=()):
@@ -7935,6 +7953,28 @@ class GraphRegistry():
                             SET {', '.join([f'i.{c} = b.{c}' for c in self.obj_fields_with_lang])}, i.degree_score = b.degree_score
                         WHERE b.rollback_date = '{rollback_date}';
                 """
+
+            #=================#
+            # Airflow updates #
+            #=================#
+
+            # Index > Docs > Airflow updates > Update 'Operations_N_Object_T_FieldsChanged'
+            def airflow_update(self, verbose=False):
+
+                # Generate commit query
+                sql_query_commit = f"""
+                      UPDATE graph_airflow.Operations_N_Object_T_FieldsChanged a
+                  INNER JOIN graph_cache.Data_N_Object_T_PageProfile p
+                          ON (a.object_type, a.object_id) = (p.object_type, p.object_id)
+                  INNER JOIN graph_cache.IndexBuildup_Fields_Docs_{self.doc_type} n
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                         SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
+                       WHERE p.object_type = '{self.doc_type}'
+                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                """
+
+                # Execute the commit query
+                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
         #------------------------------------------------#
         # Sub-subclass definition: Index Doc-Links Table #
@@ -9032,6 +9072,56 @@ class GraphRegistry():
                     print(SQLQuery)
                 else:
                     self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
+
+            #=================#
+            # Airflow updates #
+            #=================#
+
+            # Index > Doc-Links > Airflow updates > Update 'Operations_N_Object_N_Object_T_FieldsChanged' and 'Operations_N_Object_T_ScoresExpired'
+            def airflow_update(self, verbose=False):
+                
+                # Generate commit query
+                sql_query_commit = f"""
+                      UPDATE graph_airflow.Operations_N_Object_N_Object_T_FieldsChanged a
+                  INNER JOIN graphsearch_test.Index_D_{self.doc_type}_L_{self.link_type}_T_{self.link_subtype} i
+                          ON (a.from_object_type, a.from_object_id, a.to_object_type, a.to_object_id) = (i.doc_type, i.doc_id, i.link_type, i.link_id)
+                  INNER JOIN graph_cache.IndexBuildup_Fields_Docs_{self.link_type} b
+                          ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
+                         SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
+                       WHERE b.to_process > 0.5
+                """
+
+                # Execute the commit query
+                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+
+                # Execute semantic related quries if the link type is 'Semantic'
+                if self.link_subtype == 'SEM':
+
+                    # Generate commit query
+                    sql_query_commit = f"""
+                          UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired a
+                      INNER JOIN graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_AS s
+                              ON (a.object_type, a.object_id) = (s.from_object_type, s.from_object_id)
+                             SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
+                           WHERE (s.from_object_type, s.to_object_type) = ('{self.doc_type}', '{self.link_type}')
+                             AND s.to_process > 0.5
+                    """
+
+                    # Execute the commit query
+                    self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+
+                    # Generate commit query
+                    sql_query_commit = f"""
+                          UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired a
+                      INNER JOIN graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_AS s
+                              ON (a.object_type, a.object_id) = (s.to_object_type, s.to_object_id)
+                             SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
+                           WHERE (s.from_object_type, s.to_object_type) = ('{self.link_type}', '{self.doc_type}')
+                             AND s.to_process > 0.5
+                    """
+
+                    # Execute the commit query
+                    self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
     #------------------------------------------------------------#
     # Subclass definition: GraphIndex Management (ElasticSearch) #
