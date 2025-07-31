@@ -3901,9 +3901,27 @@ class GraphIndex():
 # Class definition: Graph Registry #
 #----------------------------------#
 class GraphRegistry():
-    
+
+    # Class variable to hold the single instance
+    _instance = None
+
+    # Create new instance of class before __init__ is called
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = object.__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
     # Constructor
-    def __init__(self):
+    def __init__(self, name="GraphRegistry"):
+
+        # Check if the instance is already initialized
+        if not self._initialized:
+            self.name = name
+            self._initialized = True
+            print(f"GraphRegistry initialized with name: {self.name}")
+
+        # Initialize all children objects
         self.db = GraphDB()
         self.idx = GraphIndex()
         self.orchestrator = self.Orchestration()
@@ -3995,7 +4013,7 @@ class GraphRegistry():
 
             # Print input parameters
             if len(options) > 0:
-                sysmsg.trace(f"Selected options: {options}.")
+                sysmsg.trace(f"Selected option(s): {options}.")
             else:
                 sysmsg.warning("Nothing to do: 'options' parameter missing.")
                 sysmsg.warning("options : 'typeflags', 'airflow', 'cache'")
@@ -4423,28 +4441,79 @@ class GraphRegistry():
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json):
-                
+                """
+                    Format:
+                        config_json = {
+                            'nodes': [['node_type', process_fields, process_scores], ...],
+                            'edges': [['from_node_type', 'to_node_type', process_fields, process_scores], ...],
+                        }
+                    Example:
+                        config_json = {
+                            'nodes': [['Course', True, False], ['Category', True, True], ['Publication', False, True]],
+                            'edges': [['Concept', 'Lecture', True, False], ['MOOC', 'Person', True, True], ['Publication', 'Unit', False, True]]
+                        }
+                """
+
                 # Reset airflow flags
                 self.reset()
 
                 # Node types
-                for d in config_json['nodes']:
-                    node_type, process_fields, process_scores = d
-                    institution_id = object_type_to_institution_id[node_type]
-                    if process_fields:
-                        self.set(object_type_key=(institution_id, node_type), flag_type='fields', to_process=1)
-                    if process_scores:
-                        self.set(object_type_key=(institution_id, node_type), flag_type='scores', to_process=1)
+                if 'nodes' in config_json:
+                    for d in config_json['nodes']:
+                        node_type, process_fields, process_scores = d
+                        institution_id = object_type_to_institution_id[node_type]
+                        if process_fields:
+                            self.set(object_type_key=(institution_id, node_type), flag_type='fields', to_process=1)
+                        if process_scores:
+                            self.set(object_type_key=(institution_id, node_type), flag_type='scores', to_process=1)
 
                 # Edge types
-                for d in config_json['edges']:
-                    source_node_type, target_node_type, process_fields, process_scores = d
-                    source_institution_id = object_type_to_institution_id[source_node_type]
-                    target_institution_id = object_type_to_institution_id[target_node_type]
-                    if process_fields:
-                        self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='fields', to_process=1)
-                    if process_scores:
-                        self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='scores', to_process=1)
+                if 'edges' in config_json:
+                    for d in config_json['edges']:
+                        source_node_type, target_node_type, process_fields, process_scores = d
+                        source_institution_id = object_type_to_institution_id[source_node_type]
+                        target_institution_id = object_type_to_institution_id[target_node_type]
+                        if process_fields:
+                            self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='fields', to_process=1)
+                        if process_scores:
+                            self.set(object_type_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), flag_type='scores', to_process=1)
+
+            # Get airflow typeflags config JSON
+            def get_config_json(self):
+
+                # Initialize config JSON
+                config_json = {'nodes': [], 'edges': []}
+
+                # Define SQL query for fetching nodes config
+                sql_query = """ 
+                     SELECT t1.object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
+                       FROM graph_airflow.Operations_N_Object_T_TypeFlags t1
+                 INNER JOIN graph_airflow.Operations_N_Object_T_TypeFlags t2
+                      USING (object_type)
+                      WHERE t1.flag_type = 'fields'
+                        AND t2.flag_type = 'scores'
+                        AND (t1.to_process > 0.5 OR t2.to_process > 0.5)
+                """
+
+                # Execute the query
+                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in self.db.execute_query(engine_name='test', query=sql_query)]
+
+                # Define SQL query for fetching edges config
+                sql_query = """
+                     SELECT t1.from_object_type, t1.to_object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
+                       FROM graph_airflow.Operations_N_Object_N_Object_T_TypeFlags t1
+                 INNER JOIN graph_airflow.Operations_N_Object_N_Object_T_TypeFlags t2
+                      USING (from_object_type, to_object_type)
+                      WHERE t1.flag_type = 'fields'
+                        AND t2.flag_type = 'scores'
+                        AND (t1.to_process > 0.5 OR t2.to_process > 0.5)
+                """
+
+                # Execute the query
+                config_json['edges'] = [[row[0], row[1], row[2]>0.5, row[3]>0.5] for row in self.db.execute_query(engine_name='test', query=sql_query)]
+
+                # Return the config JSON
+                return config_json
 
         # === Fields Changed Flags ===
         class FieldsChanged():
@@ -6812,31 +6881,45 @@ class GraphRegistry():
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
-            # Print status
-            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
+            # Fetch typeflags config JSON
+            typeflags = GraphRegistry.Orchestration.TypeFlags()
+            config_json = typeflags.get_config_json()
 
-            # Loop over doc types
-            with tqdm(list(self.idocs.keys()), unit='doc type') as pb:
-                for doc_type in pb:
+            # Check if empty
+            if len(config_json['nodes'])==0:
+                sysmsg.warning(f"No type flags found for 'docs'. Nothing to do.")
 
-                    # Print status
-                    pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+            # If not empty, proceed
+            else:
 
-                    # Patch index doc table
-                    self.idocs[doc_type].patch(actions=actions)
+                # Get doc types to process
+                doc_types_to_process = [r[0] for r in config_json['nodes']]
 
-            # Print status
-            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+                # Print status
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
 
-            # Loop over doc types
-            with tqdm(list(self.idocs.keys()), unit='doc type') as pb:
-                for doc_type in pb:
+                # Loop over doc types
+                with tqdm(doc_types_to_process, unit='doc type') as pb:
+                    for doc_type in pb:
 
-                    # Print status
-                    pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
-                    # Patch index doc table
-                    self.idocs[doc_type].patch_elasticsearch(actions=actions)
+                        # Patch index doc table
+                        self.idocs[doc_type].patch(actions=actions)
+
+                # Print status
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+
+                # Loop over doc types
+                with tqdm(doc_types_to_process, unit='doc type') as pb:
+                    for doc_type in pb:
+
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Patch index doc table
+                        self.idocs[doc_type].patch_elasticsearch(actions=actions)
 
             # Print status
             sysmsg.success(f"🚜 ✅ Done vertical patching of doc index tables.")
@@ -6855,40 +6938,64 @@ class GraphRegistry():
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
-            # Print status
-            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
+            # Fetch typeflags config JSON
+            typeflags = GraphRegistry.Orchestration.TypeFlags()
+            config_json = typeflags.get_config_json()
 
-            # Loop over doc-link types
-            with tqdm(list((doc_type, link_type, link_subtype)
-                    for doc_type in self.idoclinks
-                    for link_type in self.idoclinks[doc_type]
-                    for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
-                for doc_type, link_type, link_subtype in pb:
+            # Check if empty
+            if len(config_json['edges'])==0:
+                sysmsg.warning(f"No type flags found for 'doc-links'. Nothing to do.")
 
-                    # Print status
-                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+            # If not empty, proceed
+            else:
 
-                    # Patch index doc-link table (mysql)
-                    if link_subtype == 'SEM':
-                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch(actions=actions)
-                    elif link_subtype == 'ORG':
-                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_parentchild(actions=actions)
+                # Get doc-link types to process
+                doclink_types_to_process  = [(r[0], r[1], 'SEM') for r in config_json['edges']]
+                doclink_types_to_process += [(r[0], r[1], 'ORG') for r in config_json['edges']]
 
-            # Print status
-            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+                # Print status
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
 
-            # Loop over doc-link types
-            with tqdm(list((doc_type, link_type)
-                    for doc_type in self.idoclinks
-                    for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
-                for doc_type, link_type in pb:
+                # Loop over doc-link types
+                with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
+                    for doc_type, link_type, link_subtype in pb:
 
-                    # Print status
-                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        # with tqdm(list((doc_type, link_type, link_subtype)
+                        #         for doc_type in self.idoclinks
+                        #         for link_type in self.idoclinks[doc_type]
+                        #         for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
+                        #     for doc_type, link_type, link_subtype in pb:
 
-                    # Patch index doc-link table (elasticsearch)
-                    link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
-                    self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Patch index doc-link table (mysql)
+                        if link_subtype == 'SEM':
+                            self.idoclinks[doc_type][link_type][link_subtype].vertical_patch(actions=actions)
+                        elif link_subtype == 'ORG':
+                            self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_parentchild(actions=actions)
+
+                # Get doc-link types to process
+                doclink_types_to_process = [(r[0], r[1]) for r in config_json['edges']]
+
+                # Print status
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+
+                # Loop over doc-link types
+                with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
+                    for doc_type, link_type in pb:
+
+                        # with tqdm(list((doc_type, link_type)
+                        #         for doc_type in self.idoclinks
+                        #         for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
+                        #     for doc_type, link_type in pb:
+
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Patch index doc-link table (elasticsearch)
+                        link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
+                        self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
 
             # Print status
             sysmsg.success(f"🚜 ✅ Done vertical patching of doc-link index tables.")
@@ -6907,37 +7014,61 @@ class GraphRegistry():
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
-            # Print status
-            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
+            # Fetch typeflags config JSON
+            typeflags = GraphRegistry.Orchestration.TypeFlags()
+            config_json = typeflags.get_config_json()
 
-            # Loop over doc-link types
-            with tqdm(list((doc_type, link_type, link_subtype)
-                    for doc_type in self.idoclinks
-                    for link_type in self.idoclinks[doc_type]
-                    for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
-                for doc_type, link_type, link_subtype in pb:
+            # Check if empty
+            if len(config_json['edges'])==0:
+                sysmsg.warning(f"No type flags found for 'doc-links'. Nothing to do.")
 
-                    # Print status
-                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+            # If not empty, proceed
+            else:
 
-                    # Patch index doc-link table
-                    self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=actions)
+                # Get doc-link types to process
+                doclink_types_to_process  = [(r[0], r[1], 'SEM') for r in config_json['edges']]
+                doclink_types_to_process += [(r[0], r[1], 'ORG') for r in config_json['edges']]
 
-            # Print status
-            sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+                # Print status
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
 
-            # Loop over doc-link types
-            with tqdm(list((doc_type, link_type)
-                    for doc_type in self.idoclinks
-                    for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
-                for doc_type, link_type in pb:
+                # Loop over doc-link types
+                with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
+                    for doc_type, link_type, link_subtype in pb:
 
-                    # Print status
-                    pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        # with tqdm(list((doc_type, link_type, link_subtype)
+                        #         for doc_type in self.idoclinks
+                        #         for link_type in self.idoclinks[doc_type]
+                        #         for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
+                        #     for doc_type, link_type, link_subtype in pb:
 
-                    # Patch index doc-link table (elasticsearch)
-                    link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
-                    self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Patch index doc-link table
+                        self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=actions)
+
+                # Get doc-link types to process
+                doclink_types_to_process = [(r[0], r[1]) for r in config_json['edges']]
+
+                # Print status
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
+
+                # Loop over doc-link types
+                with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
+                    for doc_type, link_type in pb:
+
+                        # with tqdm(list((doc_type, link_type)
+                        #         for doc_type in self.idoclinks
+                        #         for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
+                        #     for doc_type, link_type in pb:
+
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Patch index doc-link table (elasticsearch)
+                        link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
+                        self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
 
             # Print status
             sysmsg.success(f"🚜 ✅ Done horizontal patching of doc-link index tables.")
@@ -7342,37 +7473,52 @@ class GraphRegistry():
                 elif 'eval' in actions and 'commit' not in actions:
                     sysmsg.warning(f"Executing in evaluation mode only.")
 
-                # Print action specific status
-                if len(actions) == 0:
-                    sysmsg.warning(f"No actions specified. Nothing to do.")
-                elif 'eval' in actions and 'commit' not in actions:
-                    sysmsg.warning(f"Executing in evaluation mode only.")
+                # Fetch typeflags config JSON
+                typeflags = GraphRegistry.Orchestration.TypeFlags()
+                config_json = typeflags.get_config_json()
 
-                # Print status
-                sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
+                # Check if empty
+                if len(config_json['nodes'])==0 and len(config_json['edges'])==0:
+                    sysmsg.warning(f"No type flags found. Nothing to do.")
 
-                # Loop over doc types
-                with tqdm(index_doc_types_list, unit='doc type') as pb:
-                    for inst_id, doc_type in pb:
+                # If not empty, proceed
+                else:
 
-                        # Print status
-                        pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                    # Print status
+                    sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
 
-                        # Build docs fields
-                        self.build_docs_fields(doc_type, actions)
+                    # Get doc types to process
+                    doc_types_to_process = [r[0] for r in config_json['nodes']]
 
-                # Print status
-                sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
+                    # Loop over doc types
+                    with tqdm(doc_types_to_process, unit='doc type') as pb:
+                        for doc_type in pb:
 
-                # Loop over doc-link types
-                with tqdm([('Course', 'Person'), ('Person', 'Unit')], unit='doc-link type') as pb:
-                    for doc_type, link_type in pb:
-                        
-                        # Print status
-                        pb.set_description(f"⚙️  Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
+                            # Print status
+                            pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Build doc-link fields
-                        self.build_links_parentchild(doc_type, link_type, actions)
+                            # Build docs fields
+                            self.build_docs_fields(doc_type, actions)
+
+                    # Print status
+                    sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
+
+                    # Get doc-link types to process
+                    doclink_types_to_process = [(r[0], r[1]) for r in config_json['edges']]
+
+                    # Loop over doc-link types
+                    with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
+                        for doc_type, link_type in pb:
+
+                            # TODO: Get this from config
+                            if (doc_type, link_type) not in [('Course', 'Person'), ('Person', 'Unit')]:
+                                continue
+
+                            # Print status
+                            pb.set_description(f"⚙️  Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
+
+                            # Build doc-link fields
+                            self.build_links_parentchild(doc_type, link_type, actions)
 
                 # Print status
                 sysmsg.success(f"🚜 ✅ Done building up and/or updating index field tables.")
@@ -7490,8 +7636,13 @@ class GraphRegistry():
 
                 # Generate SQL query
                 sql_query = f"""
-                    \t\tSELECT {', '.join(self.key_column_names)}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
-                    \t\tFROM {mysql_schema_names[self.engine_name]['cache']}.{self.table_name} WHERE to_process > 0.5
+                    \t\t     SELECT {', '.join([f'p.{k}' for k in self.key_column_names])}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
+                    \t\t       FROM {mysql_schema_names[self.engine_name]['cache']}.{self.table_name} p
+                    \t\t INNER JOIN graph_airflow.Operations_N_Object_T_FieldsChanged fc
+                    \t\t      USING (object_type, object_id)
+                    \t\t INNER JOIN graph_airflow.Operations_N_Object_T_TypeFlags tf
+                    \t\t      USING (object_type)
+                    \t\t      WHERE p.to_process > 0.5 AND fc.to_process > 0.5 AND tf.to_process > 0.5
                 """
 
                 # Print status
@@ -7509,6 +7660,10 @@ class GraphRegistry():
                     eval_column_names = ['institution_id', 'object_type'],
                     actions           = actions
                 )
+
+                # Print status
+                if 'commit' in actions:
+                    sysmsg.trace(f"⚙️  done.")
 
                 # Print status
                 sysmsg.success(f"🚜 ✅ Done patching page profile table.")
