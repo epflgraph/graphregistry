@@ -1700,11 +1700,15 @@ class GraphDB():
 
             # Generate evaluation query
             query_eval = f"""
-                SELECT {', '.join(eval_column_names)}, COUNT(*) AS n_to_process
+                SELECT t.{', t.'.join(eval_column_names)},
+                       COUNT(*) AS n_to_process,
+                       SUM({' OR '.join([f"COALESCE(t.{c}, '__null__') != COALESCE(j.{c}, '__null__')" for c in upd_column_names])}) AS n_to_patch
                   FROM (
                         {query}
                        ) t
-              GROUP BY {', '.join(eval_column_names)}
+            INNER JOIN {target_table_path} j
+                    ON {' AND '.join([f"t.{c} = j.{c}" for c in key_column_names])}
+              GROUP BY t.{', t.'.join(eval_column_names)}
             """
 
             # Print the evaluation query
@@ -1714,8 +1718,8 @@ class GraphDB():
             # Execute the evaluation query and print the results
             out = self.execute_query(engine_name=engine_name, query=query_eval)
             if len(out) > 0:
-                df = pd.DataFrame(out, columns=eval_column_names+['# to process'])
-                print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+                df = pd.DataFrame(out, columns=eval_column_names+['rows to process', 'rows to patch'])
+                print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
 
         # Generate the SQL commit query
         query_commit = f"""
@@ -1797,7 +1801,7 @@ class GraphDB():
             out = self.execute_query(engine_name=engine_name, query=query_eval)
             if len(out) > 0:
                 df = pd.DataFrame(out, columns=eval_column_names+['# to process'])
-                print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+                print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
 
         # Build the commit query (non-chunked)
         query_commit = f"""
@@ -3986,6 +3990,25 @@ class GraphRegistry():
         print(instructions)
         pass
 
+    # Test run function
+    def test_run(self, doc_type, verbose=False):
+
+        # TODO: check if doc_type should be processed based on config json
+
+        # self.orchestrator.fieldschanged.reset(    doc_type=doc_type, verbose=verbose)
+        # self.orchestrator.fieldschanged.randomize(doc_type=doc_type, verbose=verbose)
+        # self.orchestrator.fieldschanged.expire(   doc_type=doc_type, verbose=verbose)
+        self.orchestrator.fieldschanged.refresh(  doc_type=doc_type, refresh_checksums=False, verbose=verbose)
+        self.orchestrator.fieldschanged.status()
+        self.cachemanager.apply_views(actions=('eval', 'commit'))
+        self.indexdb.build(actions=('eval', 'commit'))
+        self.indexdb.patch(actions=('eval', 'commit'))
+        self.orchestrator.fieldschanged.rollover( doc_type=doc_type, verbose=verbose)
+        self.indexdb.idocs[doc_type].airflow_update(verbose=True)
+        self.indexdb.idocs[doc_type].flags_cleanup( verbose=True)
+        self.orchestrator.fieldschanged.status()
+
+
     #--------------------------------------------------#
     # Subclass definition: GraphRegistry Orchestration #
     #--------------------------------------------------#
@@ -4006,7 +4029,7 @@ class GraphRegistry():
         
         # Reset airflow and chache flags
         # Options: ('typeflags', 'airflow', 'cache')
-        def reset(self, options=()):
+        def reset(self, options=(), doc_type=None, verbose=False):
 
             # Print status
             sysmsg.info("🧹 📝 Reset 'to_process' flags to 0.")
@@ -4024,8 +4047,8 @@ class GraphRegistry():
 
             # Reset flags on graph_airflow
             if 'airflow' in options:
-                self.fieldschanged.reset()
-                self.scoresexpired.reset()
+                self.fieldschanged.reset(doc_type=doc_type, verbose=verbose)
+                self.scoresexpired.reset(doc_type=doc_type, verbose=verbose)
 
             # Reset flags on graph_cache
             if 'cache' in options:
@@ -4232,19 +4255,27 @@ class GraphRegistry():
             self.scoresexpired.sync(to_process=to_process)
 
         # Randomize airflow fields [OPTIONAL: For testing purposes]
-        def randomize(self, time_period=182):
-            self.fieldschanged.randomize(time_period=time_period)
-            self.scoresexpired.randomize(time_period=time_period)
+        def randomize(self, doc_type=None, time_period=182, verbose=False):
+            self.fieldschanged.randomize(doc_type=doc_type, time_period=time_period, verbose=verbose)
+            self.scoresexpired.randomize(doc_type=doc_type, time_period=time_period, verbose=verbose)
 
         # Set expiration dates
-        def expire(self, time_period=90, limit=100):
-            self.fieldschanged.expire(time_period=time_period, limit=limit)
-            self.scoresexpired.expire(time_period=time_period, limit=limit)
+        def expire(self, doc_type=None, older_than=90, limit_per_type=100, verbose=False):
+            self.fieldschanged.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, verbose=verbose)
+            self.scoresexpired.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, verbose=verbose)
 
         # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-        def refresh(self, refresh_checksums=False):
-            self.fieldschanged.refresh(refresh_checksums=refresh_checksums)
-            self.scoresexpired.refresh()
+        def refresh(self, doc_type=None, refresh_checksums=False, verbose=False):
+            self.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, verbose=verbose)
+            self.scoresexpired.refresh(doc_type=doc_type, verbose=verbose)
+
+        # Rollover checksums (replace previous one with current)
+        def rollover(self, doc_type=None, verbose=False):
+            self.fieldschanged.rollover(doc_type=doc_type, verbose=verbose)
+
+        # Clean up flags in cache after all processing is done
+        def cleanup(self, verbose=False):
+            pass
 
         # === Object Type Flags ===
         class TypeFlags():
@@ -4591,7 +4622,24 @@ class GraphRegistry():
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object-to-Object [stats]')
 
             # Reset current settings
-            def reset(self):
+            def reset(self, doc_type=None, verbose=False):
+
+                # Print status
+                sysmsg.info("🧹 📝 Reset 'to_process' flags in 'FieldsChanged' airflow tables.")
+
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': f"object_type = '{doc_type}'",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': f"(from_object_type = '{doc_type}' OR to_object_type = '{doc_type}')"
+                    }
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': "TRUE",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': "TRUE"
+                    }
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
 
                 # Loop over airflow tables and reset to_process flags
                 for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
@@ -4599,15 +4647,23 @@ class GraphRegistry():
                     # Print status
                     sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
 
-                    # Execute query to reset to_process flags
-                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                    # Generate SQL query
+                    sql_query = f"""
                         UPDATE graph_airflow.{table_name}
                            SET to_process = 0
                          WHERE to_process > 0.5
-                    """)
+                           AND {where_condition[table_name]}
+                    """
 
-                    # Print status
-                    sysmsg.trace(f"⚙️  done.")
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
+                    # Execute query to reset to_process flags
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+
+                # Print status
+                sysmsg.success("🧹 ✅ Done resetting flags in 'FieldsChanged' airflow tables.\n")
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json, reset=False, verbose=False):
@@ -4814,10 +4870,24 @@ class GraphRegistry():
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'FieldsChanged' airflow tables.\n")
 
             # Randomize airflow fields [OPTIONAL: For testing purposes]
-            def randomize(self, time_period=182):
+            def randomize(self, doc_type=None, time_period=182, verbose=False):
 
                 # Print status
                 sysmsg.info("🎲 📝 Randomize 'last_date_cached' field in 'FieldsChanged' airflow tables.")
+
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': f"object_type = '{doc_type}'",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': f"(from_object_type = '{doc_type}' OR to_object_type = '{doc_type}')"
+                    }
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': "TRUE",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': "TRUE"
+                    }
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
 
                 # Loop over airflow tables
                 for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
@@ -4825,22 +4895,30 @@ class GraphRegistry():
                     # Print status
                     sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
 
+                    # Generate SQL query
+                    sql_query = f"""
+                        UPDATE graph_airflow.{table_name}
+                           SET last_date_cached = CURDATE() - INTERVAL FLOOR(RAND() * {time_period}) DAY
+                         WHERE {where_condition[table_name]}
+                    """
+
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
                     # Set random date for "last_date_cached" column
                     self.db.execute_query_in_chunks(
                         engine_name = 'test',
                         schema_name = 'graph_airflow',
                         table_name  = table_name,
-                        query       = f"""
-                            UPDATE graph_airflow.{table_name}
-                            SET last_date_cached = CURDATE() - INTERVAL FLOOR(RAND() * {time_period}) DAY
-                        """,
+                        query       = sql_query,
                         chunk_size  = 1000000)
                     
                 # Print status
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'FieldsChanged' airflow tables.\n")
 
             # Set expiration dates
-            def expire(self, older_than=90, limit_per_type=100):
+            def expire(self, doc_type=None, older_than=90, limit_per_type=100, verbose=False):
 
                 # Print status
                 sysmsg.info("⌛️ 📝 Set 'has_expired' flag to 1 for expired dates in 'FieldsChanged' airflow tables.")
@@ -4848,28 +4926,46 @@ class GraphRegistry():
                 # Print parameters
                 sysmsg.trace(f"Input parameters: older_than={older_than} (days), limit_per_type={limit_per_type} (rows).")
 
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': f"object_type = '{doc_type}'",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': f"(from_object_type = '{doc_type}' OR to_object_type = '{doc_type}')"
+                    }
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': "TRUE",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': "TRUE"
+                    }
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
+
                 # Loop over airflow tables
                 for u, table_name in [('n', 'Operations_N_Object_T_FieldsChanged'), ('e', 'Operations_N_Object_N_Object_T_FieldsChanged')]:
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing table '{table_name}' - resetting all 'has_expired' flags ...")
 
+                    # Generate SQL query
+                    sql_query = f"""
+                        UPDATE graph_airflow.{table_name}
+                           SET has_expired = 0
+                         WHERE has_expired > 0.5
+                           AND {where_condition[table_name]}
+                    """
+
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
                     # Reset all expiration flags
-                    self.db.execute_query_in_shell(
-                        engine_name = 'test',
-                        query       = f"""
-                            UPDATE graph_airflow.{table_name}
-                               SET has_expired = 0
-                             WHERE has_expired > 0.5
-                        """)
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
                     
                     # Print status
                     sysmsg.trace(f"⚙️  Processing table '{table_name}' - setting 'has_expired' flags to 1 ...")
 
-                    # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                    self.db.execute_query_in_shell(
-                        engine_name = 'test',
-                        query       = f"""
+                    # Generate SQL query
+                    sql_query = f"""
                             WITH ranked_rows AS (
                                 SELECT row_id
                                 FROM (
@@ -4883,15 +4979,23 @@ class GraphRegistry():
                                 WHERE rn <= {limit_per_type}
                             )
                             UPDATE graph_airflow.{table_name}
-                            JOIN ranked_rows USING (row_id)
-                            SET has_expired = 1
-                        """)
+                              JOIN ranked_rows USING (row_id)
+                               SET has_expired = 1
+                             WHERE {where_condition[table_name]}
+                        """
+                    
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
+                    # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
                 # Print status
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'FieldsChanged' airflow tables.\n")
 
             # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-            def refresh(self, refresh_checksums=False):
+            def refresh(self, doc_type=None, refresh_checksums=False, verbose=False):
 
                 # Print status
                 sysmsg.info("🧩 🏁 📝 Refresh checksums and set 'to_process' flags to 1 in 'FieldsChanged' airflow tables.")
@@ -4909,6 +5013,10 @@ class GraphRegistry():
                     # Loop over node types tables
                     with tqdm(object_type_to_institution_id.items(), unit='Node type') as pb:
                         for object_type, institution_id in pb:
+
+                            # Filter by doc type
+                            if doc_type is not None and object_type != doc_type:
+                                continue
                             
                             # Print status
                             pb.set_description(f"⚙️  Node type: {object_type}".ljust(PBWIDTH)[:PBWIDTH])
@@ -4963,6 +5071,10 @@ class GraphRegistry():
                     with tqdm(from_to_object_type_pairs, unit='Edge type') as pb:
                         for from_institution_id, from_object_type, to_institution_id, to_object_type in pb:
 
+                            # Filter by doc type
+                            if doc_type is not None and (from_object_type != doc_type and to_object_type != doc_type):
+                                continue
+
                             # Print status
                             pb.set_description(f"⚙️  Edge type: {from_object_type} -> {to_object_type}".ljust(PBWIDTH)[:PBWIDTH])
 
@@ -5005,27 +5117,55 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Set 'to_process' flags to 1.")
 
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': f"object_type = '{doc_type}'",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': f"(from_object_type = '{doc_type}' OR to_object_type = '{doc_type}')"
+                    }
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': "TRUE",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': "TRUE"
+                    }
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
+
                 # Loop over airflow tables
                 for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
 
-                    # Reset to_process flags for all nodes
-                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                    # Generate SQL query (reset to_process flags before setting again)
+                    sql_query = f"""
                         UPDATE graph_airflow.{table_name}
                            SET to_process = 0
                          WHERE to_process > 0.5
-                    """)
+                           AND {where_condition[table_name]}
+                    """
 
-                    # Update to_process flags for nodes
-                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
+                    # Reset to_process flags for all nodes
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+
+                    # Generate SQL query
+                    sql_query = f"""
                         UPDATE graph_airflow.{table_name}
                            SET to_process = 1
-                         WHERE has_changed > 0.5
-                            OR has_expired > 0.5
-                            OR last_date_cached IS NULL
-                    """)
+                         WHERE (has_changed > 0.5 OR has_expired > 0.5 OR last_date_cached IS NULL)
+                           AND {where_condition[table_name]}
+                    """
+
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
+                    # Update to_process flags for nodes
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
                 #--------------------------------#
                 # Fetch stats on what to process #
@@ -5042,7 +5182,8 @@ class GraphRegistry():
                         SELECT {'object_type' if u=='n' else 'from_object_type, to_object_type'},
                                SUM(    ISNULL(last_date_cached)                                    ) AS new_or_never_cached,
                                SUM(NOT ISNULL(last_date_cached) AND     has_changed                ) AS checksum_changed,
-                               SUM(NOT ISNULL(last_date_cached) AND NOT has_changed AND has_expired) AS cache_expired
+                               SUM(NOT ISNULL(last_date_cached) AND NOT has_changed AND has_expired) AS cache_expired,
+                               SUM(to_process)                                                       AS to_process
                           FROM graph_airflow.{table_name}
                       GROUP BY {'object_type' if u=='n' else 'from_object_type, to_object_type'}
                         HAVING new_or_never_cached + checksum_changed + cache_expired > 0
@@ -5050,25 +5191,73 @@ class GraphRegistry():
 
                     # Execute evaluation query
                     out = self.db.execute_query(engine_name='test', query=sql_query_eval)
-                    df = pd.DataFrame(out, columns=[['object_type'] if u=='n' else ['from_object_type', 'to_object_type']][0]+['new_or_never_cached', 'checksum_changed', 'cache_expired'])
-                    print_dataframe(df, title=f'🔍 Evaluation results for table: "{table_name}"')
+                    df = pd.DataFrame(out, columns=[['object_type'] if u=='n' else ['from_object_type', 'to_object_type']][0]+['new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
                     # Generate evaluation query
                     sql_query_eval = f"""
                         SELECT 'Total' AS c,
                                SUM(    ISNULL(last_date_cached)                                    ) AS new_or_never_cached,
                                SUM(NOT ISNULL(last_date_cached) AND     has_changed                ) AS checksum_changed,
-                               SUM(NOT ISNULL(last_date_cached) AND NOT has_changed AND has_expired) AS cache_expired
+                               SUM(NOT ISNULL(last_date_cached) AND NOT has_changed AND has_expired) AS cache_expired,
+                               SUM(to_process)                                                       AS to_process
                           FROM graph_airflow.{table_name}
                     """
 
                     # Execute evaluation query
                     out = self.db.execute_query(engine_name='test', query=sql_query_eval)
-                    df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'checksum_changed', 'cache_expired'])
-                    print_dataframe(df, title=f'🔍 Evaluation results for table: "{table_name}"')
+                    df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
                 # Print status
                 sysmsg.success("🧩 🏁 ✅ Done refreshing checksums and setting 'to_process' flags in 'FieldsChanged' airflow tables.\n")
+
+            # Rollover checksums (replace previous one with current)
+            def rollover(self, doc_type=None, verbose=False):
+                
+                # Print status
+                sysmsg.info("⬅️  📝 Rollover checksums (make previous checksum equal to current) in 'FieldsChanged' airflow tables.")
+
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': f"object_type = '{doc_type}'",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': f"(from_object_type = '{doc_type}' OR to_object_type = '{doc_type}')"
+                    }
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = {
+                        'Operations_N_Object_T_FieldsChanged': "TRUE",
+                        'Operations_N_Object_N_Object_T_FieldsChanged': "TRUE"
+                    }
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
+
+                # Loop over airflow tables
+                for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
+
+                    # Generate SQL query
+                    sql_query = f"""
+                        UPDATE graph_airflow.{table_name}
+                           SET checksum_previous = checksum_current, has_changed = 0
+                         WHERE (   COALESCE(checksum_previous, '__null__') != COALESCE(checksum_current, '__null__')
+                                OR has_changed > 0.5
+                                OR (has_changed IS NULL AND checksum_current IS NOT NULL)
+                               )
+                           AND {where_condition[table_name]}
+                    """
+
+                    # Print query if verbose
+                    if verbose:
+                        print(f"\nExecuting query:\n{sql_query}\n")
+
+                    # Reset all expiration flags
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                    
+                # Print status
+                sysmsg.success("⬅️  ✅ Done rolling over checksums.\n")
 
         # === Scores Expired Flags ===
         class ScoresExpired():
@@ -5108,20 +5297,39 @@ class GraphRegistry():
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [stats]')
 
             # Reset current settings
-            def reset(self):
+            def reset(self, doc_type=None, verbose=False):
+
+                # Print status
+                sysmsg.info("🧹 📝 Reset 'to_process' flags in 'ScoresExpired' airflow table.")
+
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = f"object_type = '{doc_type}'"
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = "TRUE"
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
 
                 # Print status
                 sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' ...")
 
-                # Execute query to reset to_process flags
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
+                # Generate SQL query
+                sql_query = f"""
                     UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
                        SET to_process = 0
                      WHERE to_process > 0.5
-                """)
+                       AND {where_condition}
+                """
+
+                # Print query if verbose
+                if verbose:
+                    print(f"\nExecuting query:\n{sql_query}\n")
+
+                # Execute query to reset to_process flags
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
                 # Print status
-                sysmsg.trace(f"⚙️  done.")
+                sysmsg.success("🧹 ✅ Done resetting flags in 'ScoresExpired' airflow table.\n")
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json, reset=False, verbose=False):
@@ -5259,30 +5467,43 @@ class GraphRegistry():
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'ScoresExpired' airflow tables.\n")
 
             # Randomize airflow fields [OPTIONAL: For testing purposes]
-            def randomize(self, time_period=182):
+            def randomize(self, doc_type=None, time_period=182, verbose=False):
 
                 # Print status
                 sysmsg.info("🎲 📝 Randomize 'last_date_cached' field in 'ScoresExpired' airflow table.")
 
-                # Print status
-                sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' ...")
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = f"object_type = '{doc_type}'"
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = "TRUE"
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
+
+                # Generate SQL query
+                sql_query = f"""
+                    UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
+                       SET last_date_cached = CURDATE() - INTERVAL FLOOR(RAND() * {time_period}) DAY
+                     WHERE {where_condition}
+                """
+
+                # Print query if verbose
+                if verbose:
+                    print(f"\nExecuting query:\n{sql_query}\n")
                 
                 # Set random date for "last_date_cached" column
                 self.db.execute_query_in_chunks(
                     engine_name = 'test',
                     schema_name = 'graph_airflow',
                     table_name  = 'Operations_N_Object_T_ScoresExpired',
-                    query       = f"""
-                        UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
-                        SET last_date_cached = CURDATE() - INTERVAL FLOOR(RAND() * {time_period}) DAY
-                    """,
+                    query       = sql_query,
                     chunk_size  = 100000)
                 
                 # Print status
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'ScoresExpired' airflow table.\n")
 
             # Set expiration dates
-            def expire(self, older_than=90, limit_per_type=100):
+            def expire(self, doc_type=None, older_than=90, limit_per_type=100, verbose=False):
 
                 # Print status
                 sysmsg.info("⌛️ 📝 Set 'has_expired' flag to 1 for expired dates in 'ScoresExpired' airflow table.")
@@ -5290,25 +5511,37 @@ class GraphRegistry():
                 # Print parameters
                 sysmsg.trace(f"Input parameters: older_than={older_than} (days), limit_per_type={limit_per_type} (rows).")
 
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = f"object_type = '{doc_type}'"
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = "TRUE"
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
+
                 # Print status
                 sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - resetting all 'has_expired' flags ...")
 
+                # Generate SQL query
+                sql_query = f"""
+                    UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
+                       SET has_expired = 0
+                     WHERE has_expired > 0.5
+                       AND {where_condition}
+                """
+
+                # Print query if verbose
+                if verbose:
+                    print(f"\nExecuting query:\n{sql_query}\n")
+
                 # Reset all expiration flags
-                self.db.execute_query_in_shell(
-                    engine_name = 'test',
-                    query       = f"""
-                        UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
-                           SET has_expired = 0
-                         WHERE has_expired > 0.5
-                    """)
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
                 
                 # Print status
                 sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - setting 'has_expired' flags to 1 ...")
 
-                # Set has_expired=1 for dates older than time_period
-                self.db.execute_query_in_shell(
-                    engine_name = 'test',
-                    query       = f"""
+                # Generate SQL query
+                sql_query = f"""
                         WITH ranked_rows AS (
                             SELECT row_id
                             FROM (
@@ -5322,15 +5555,23 @@ class GraphRegistry():
                             WHERE rn <= {limit_per_type}
                         )
                         UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
-                        JOIN ranked_rows USING (row_id)
-                        SET has_expired = 1
-                    """)
+                          JOIN ranked_rows USING (row_id)
+                           SET has_expired = 1
+                         WHERE {where_condition}
+                """
+
+                # Print query if verbose
+                if verbose:
+                    print(f"\nExecuting query:\n{sql_query}\n")
+
+                # Set has_expired=1 for dates older than time_period
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
                 # Print status
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'ScoresExpired' airflow table.\n")
 
             # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-            def refresh(self):
+            def refresh(self, doc_type=None, verbose=False):
 
                 # Print status
                 sysmsg.info("🏁 📝 Set 'to_process' flags to 1 in 'ScoresExpired' airflow tables.")
@@ -5342,20 +5583,43 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"⚙️  Processing 'Operations_N_Object_T_ScoresExpired' table ...")
 
-                # Reset to_process flags for all nodes
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
+                # Define WHERE conditions
+                if doc_type is not None:
+                    where_condition = f"object_type = '{doc_type}'"
+                    sysmsg.trace(f"Filtering by document type: {doc_type}")
+                else:
+                    where_condition = "TRUE"
+                    sysmsg.trace(f"No doc type select. Applying to all document types.")
+
+                # Generate SQL query (reset to_process flags before setting again)
+                sql_query = f"""
                     UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
                        SET to_process = 0
                      WHERE to_process > 0.5
-                """)
+                       AND {where_condition}
+                """
 
-                # Update to_process flags for nodes
-                self.db.execute_query_in_shell(engine_name='test', query=f"""
+                # Print query if verbose
+                if verbose:
+                    print(f"\nExecuting query:\n{sql_query}\n")
+
+                # Reset to_process flags for all nodes
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+
+                # Generate SQL query
+                sql_query = f"""
                     UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
                        SET to_process = 1
-                     WHERE has_expired > 0.5
-                        OR last_date_cached IS NULL
-                """)
+                     WHERE (has_expired > 0.5 OR last_date_cached IS NULL)
+                       AND {where_condition}
+                """
+
+                # Print query if verbose
+                if verbose:
+                    print(f"\nExecuting query:\n{sql_query}\n")
+
+                # Update to_process flags for nodes
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
                 #--------------------------------#
                 # Fetch stats on what to process #
@@ -5377,7 +5641,7 @@ class GraphRegistry():
                 # Execute evaluation query
                 out = self.db.execute_query(engine_name='test', query=sql_query_eval)
                 df = pd.DataFrame(out, columns=['object_type', 'new_or_never_cached', 'cache_expired'])
-                print_dataframe(df, title=f'🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
+                print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
                 # Generate evaluation query
                 sql_query_eval = f"""
@@ -5390,7 +5654,7 @@ class GraphRegistry():
                 # Execute evaluation query
                 out = self.db.execute_query(engine_name='test', query=sql_query_eval)
                 df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'cache_expired'])
-                print_dataframe(df, title=f'🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
+                print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
 
 
@@ -6115,7 +6379,7 @@ class GraphRegistry():
         def __init__(self):
             self.db = GraphDB()
 
-        # Commit for all views
+        # Commit for all views [calls 'cache_update_from_view']
         def apply_views(self, actions=()):
 
             # Print status
@@ -6145,7 +6409,7 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🚀 ✅ Done executing views and committing updated data to 'graph_cache'.\n")
 
-        # Compute and cache scores
+        # Compute and cache scores [calls 'cache_update_from_formula']
         def apply_formulas(self, verbose=True):
 
             # Print status
@@ -6471,7 +6735,7 @@ class GraphRegistry():
                 out = self.db.execute_query(engine_name='test', query=sql_query_eval)
                 df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                 if len(df) > 0:
-                    print_dataframe(df, title=f'🔍 Evaluation results for view: "{view_name}"')
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for view: "{view_name}"')
 
             # Execute commit
             if 'commit' in actions:
@@ -6747,7 +7011,7 @@ class GraphRegistry():
                 out = self.db.execute_query(engine_name='test', query=sql_eval_query)
                 df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
                 if len(df) > 0:
-                    print_dataframe(df, title=f'🔍 Evaluation results for ({from_object_type}, {to_object_type})')
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for ({from_object_type}, {to_object_type})')
 
             # Commit query
             if 'commit' in actions and sql_commit_query is not None:
@@ -6764,7 +7028,7 @@ class GraphRegistry():
                 self.db.execute_query_in_shell(engine_name='test', query=sql_commit_query)
 
             # Print status
-            sysmsg.success(f"🚀 ✅ Done calculating scores matrix.")
+            sysmsg.success(f"🚀 ✅ Done calculating scores matrix.\n")
 
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
         def consolidate_scores_matrix(self, from_object_type, to_object_type, actions=()):
@@ -6861,7 +7125,6 @@ class GraphRegistry():
 
         # Apply all patching methods
         def patch(self, actions=()):
-            self.create_mixed_views(drop_existing=False)
             self.pageprofile.patch(actions=actions)
             self.docs_patch_all(actions=actions)
             self.doclinks_vertical_patch_all(actions=actions)
@@ -6874,8 +7137,8 @@ class GraphRegistry():
             sysmsg.info(f"🚜 📝 Vertical patch of doc index tables [actions: {actions}].")
 
             # Print action specific status
-            if len(actions) == 0:
-                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+            if len(actions)==0 and actions!=('settle',):
+                sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit', 'settle'.")
                 sysmsg.info(f"🚜 📝 Nothing to do.")
                 return
             elif 'eval' in actions and 'commit' not in actions:
@@ -6896,33 +7159,33 @@ class GraphRegistry():
                 doc_types_to_process = [r[0] for r in config_json['nodes']]
 
                 # Print status
-                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' schema.")
+                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['ui']}' and '{mysql_schema_names[self.engine_name]['es']}' schemas.")
 
                 # Loop over doc types
                 with tqdm(doc_types_to_process, unit='doc type') as pb:
                     for doc_type in pb:
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  Processing doc type: {doc_type} [graphsearch]".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Patch index doc table
+                        # Patch index doc table (graphsearch tables)
                         self.idocs[doc_type].patch(actions=actions)
 
-                # Print status
-                sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es']}' schema.")
-
-                # Loop over doc types
-                with tqdm(doc_types_to_process, unit='doc type') as pb:
-                    for doc_type in pb:
-
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  Processing doc type: {doc_type} [elasticsearch]".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Patch index doc table
+                        # Patch index doc table (elasticsearch cache)
                         self.idocs[doc_type].patch_elasticsearch(actions=actions)
 
+                        # Print status
+                        pb.set_description(f"⚙️  Processing doc type: {doc_type} [airflow]".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Update Airflow 'Operations_N_Object_T_FieldsChanged' table
+                        if 'settle' in actions:
+                            self.idocs[doc_type].airflow_update(verbose=('print' in actions))
+
             # Print status
-            sysmsg.success(f"🚜 ✅ Done vertical patching of doc index tables.")
+            sysmsg.success(f"🚜 ✅ Done vertical patching of doc index tables.\n")
 
         # Patch all index doc-link tables on graphsearch_test
         def doclinks_vertical_patch_all(self, actions=()):
@@ -6998,7 +7261,7 @@ class GraphRegistry():
                         self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
 
             # Print status
-            sysmsg.success(f"🚜 ✅ Done vertical patching of doc-link index tables.")
+            sysmsg.success(f"🚜 ✅ Done vertical patching of doc-link index tables.\n")
 
         # Patch all index doc-link tables on graphsearch_test
         def doclinks_horizontal_patch_all(self, actions=()):
@@ -7071,7 +7334,7 @@ class GraphRegistry():
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
 
             # Print status
-            sysmsg.success(f"🚜 ✅ Done horizontal patching of doc-link index tables.")
+            sysmsg.success(f"🚜 ✅ Done horizontal patching of doc-link index tables.\n")
 
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
@@ -7158,8 +7421,10 @@ class GraphRegistry():
 
             pass
         
-        # Copy patched data to production cache schema
+        # Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
+
+            return
 
             list_of_table = self.db.get_tables_in_schema(
                 engine_name   = 'test',
@@ -7186,8 +7451,10 @@ class GraphRegistry():
                     drop_table = True
                 )
 
-        # Delete loose ends in index tables
+        # Delete loose ends in index tables [NEEDS WORK]
         def delete_loose_ends(self):
+
+            return
 
             sql_template_docs = """
               %s
@@ -7441,7 +7708,7 @@ class GraphRegistry():
                     out = self.db.execute_query(engine_name='test', query=sql_query_eval)
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
-                        print_dataframe(df, title=f'🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"')
 
                 # Execute commit
                 if 'commit' in actions:
@@ -7521,7 +7788,7 @@ class GraphRegistry():
                             self.build_links_parentchild(doc_type, link_type, actions)
 
                 # Print status
-                sysmsg.success(f"🚜 ✅ Done building up and/or updating index field tables.")
+                sysmsg.success(f"🚜 ✅ Done building up and/or updating index field tables.\n")
 
         #----------------------------------------------#
         # Sub-subclass definition: Page Profiles Table #
@@ -7556,7 +7823,7 @@ class GraphRegistry():
                     GROUP BY institution_id, object_type
                 """)
                 df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
-                print_dataframe(df, title=f'🔍 Evaluation results for page profile')
+                print_dataframe(df, title=f'\n🔍 Evaluation results for page profile')
 
             # Index > Page Profile > Get engine
             def get_engine(self):
@@ -7666,7 +7933,7 @@ class GraphRegistry():
                     sysmsg.trace(f"⚙️  done.")
 
                 # Print status
-                sysmsg.success(f"🚜 ✅ Done patching page profile table.")
+                sysmsg.success(f"🚜 ✅ Done patching page profile table.\n")
 
             # Index > Page Profile > General patching > Roll back to previous state
             def rollback(self, actions=()):
@@ -7888,7 +8155,7 @@ class GraphRegistry():
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
                         df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
                         if rows_to_patch == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
 
@@ -8028,7 +8295,7 @@ class GraphRegistry():
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
                         df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
                         if rows_to_patch == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
 
@@ -8109,11 +8376,11 @@ class GraphRegistry():
                         WHERE b.rollback_date = '{rollback_date}';
                 """
 
-            #=================#
-            # Airflow updates #
-            #=================#
+            #=====================================#
+            # Airflow, Flag, and Checksum updates #
+            #=====================================#
 
-            # Index > Docs > Airflow updates > Update 'Operations_N_Object_T_FieldsChanged'
+            # Index > Docs > Airflow updates > Update 'Operations_N_Object_T_FieldsChanged' [last_date_cached=NOW, has_expired=0, to_process=0]
             def airflow_update(self, verbose=False):
 
                 # Generate commit query
@@ -8126,6 +8393,30 @@ class GraphRegistry():
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                """
+
+                # Execute the commit query
+                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+
+            # Index > Docs > Flags cleanup > Update 'Data_N_Object_T_PageProfile' and 'IndexBuildup_Fields_Docs_*' [to_process=0]
+            def flags_cleanup(self, verbose=False):
+
+                # Generate commit query
+                sql_query_commit = f"""
+                      UPDATE graph_cache.Data_N_Object_T_PageProfile
+                         SET to_process = 0
+                       WHERE object_type = '{self.doc_type}'
+                         AND to_process > 0.5
+                """
+
+                # Execute the commit query
+                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+
+                # Generate commit query
+                sql_query_commit = f"""
+                      UPDATE graph_cache.IndexBuildup_Fields_Docs_{self.doc_type}
+                         SET to_process = 0
+                       WHERE to_process > 0.5
                 """
 
                 # Execute the commit query
@@ -8385,7 +8676,7 @@ class GraphRegistry():
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
                         df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
                         if rows_to_patch == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
 
@@ -8503,14 +8794,14 @@ class GraphRegistry():
                     # Print the evaluation results for query 1
                     if rows_to_process_1 + rows_to_patch_1 > 0:
                         df = pd.DataFrame(out_1, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path_1}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path_1}:')
                         if rows_to_patch_1 == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_table_name_1}'.")
 
                     # Print the evaluation results for query 2
                     if rows_to_process_2 + rows_to_patch_2 > 0:
                         df = pd.DataFrame(out_2, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path_2}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path_2}:')
                         if rows_to_patch_2 == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_table_name_2}'.")
 
@@ -8640,7 +8931,7 @@ class GraphRegistry():
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
                         df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'🔍 Evaluation results for {target_table_path}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
                         if rows_to_patch == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
                     
@@ -9458,7 +9749,7 @@ class GraphRegistry():
                 sysmsg.trace(f"⚙️  done.")
 
             # Print status
-            sysmsg.success(f"🐙 ✅ Done generating local JSON cache.")
+            sysmsg.success(f"🐙 ✅ Done generating local JSON cache.\n")
 
         # Generate ElasticSearch index from local JSON cache
         def generate_index_from_local_cache(self, index_date=False):
@@ -9504,7 +9795,7 @@ class GraphRegistry():
                 sysmsg.trace(f"⚙️  done.")
 
             # Print status
-            sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.")
+            sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
 
 
 
@@ -9533,7 +9824,7 @@ class GraphRegistry():
         #     sysmsg.trace(f"⚙️  done.")
 
         #     # Print status
-        #     sysmsg.success(f"➡️ ✅ Done copying ElasticSearch index.")
+        #     sysmsg.success(f"➡️ ✅ Done copying ElasticSearch index.\n")
 
 
         # es.create_index_from_file(engine_name='test', index_name='graphsearch_test_2025_03-27', index_file='/Users/francisco/Cloud/Academia/CEDE/EPFLGraph/GitHub/data/elasticsearch_data_exports/es_fullindex_2025-03-27.json', chunk_size=1000, delete_if_exists=True)
