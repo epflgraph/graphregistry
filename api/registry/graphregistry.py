@@ -1997,7 +1997,7 @@ class GraphDB():
 
         # Generate the WHERE clause
         if len(where) > 0:
-            where_clause = ' AND '.join([f"{col} = '{val}'" for col, val in where])
+            where_clause = ' AND '.join([f"{col} = '{val}'" if col is not None else f"({val})" for col, val in where])
         else:
             where_clause = "TRUE"
 
@@ -4094,6 +4094,8 @@ class GraphRegistry():
 
         # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
         # TODO: check if doc_type should be processed based on config json (in all methods)
+        # --> Pick up from here after the holidays
+        # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
         self.orchestrator.fieldschanged.reset(    doc_type=doc_type, verbose=verbose)
         self.orchestrator.fieldschanged.randomize(doc_type=doc_type, verbose=verbose)
@@ -4331,22 +4333,6 @@ class GraphRegistry():
 
             # Print status
             sysmsg.success("⛳️ ✅ All 'to_process' flags have been propagated throughout cache.\n")
-
-        # Get fields for input object type or id (fields and scores)
-        def get(self, object_key):
-            self.typeflags.get(object_key, print_output=True)
-            self.fieldschanged.get(object_key, print_output=True)
-            self.scoresexpired.get(object_key, print_output=True)
-
-        # Set fields for input object type or id (fields and scores)
-        def set(self, object_key, flag_type=None, to_process=None):
-            if flag_type == 'fields':
-                self.fieldschanged.set(object_key, to_process=to_process)
-            elif flag_type == 'scores':
-                self.scoresexpired.set(object_key, to_process=to_process)
-            else:
-                self.fieldschanged.set(object_key, to_process=to_process)
-                self.scoresexpired.set(object_key, to_process=to_process)
 
         # Sync new objects to operations table
         def sync(self, to_process=1):
@@ -4653,131 +4639,136 @@ class GraphRegistry():
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object-to-Object [stats]')
 
-            # Quick configuration for input list of node and edge types
-            def config(self, config_json, reset=False, verbose=False):
-                
-                # Reset airflow flags
-                if reset:
-                    self.reset()
-
-                # Node types
-                for d in config_json['nodes']:
-                    node_type, process_fields, process_scores = d
-                    institution_id = object_type_to_institution_id[node_type]
-                    if process_fields:
-                        self.set(object_key=(institution_id, node_type), to_process=1)
-
-                # Edge types
-                for d in config_json['edges']:
-                    source_node_type, target_node_type, process_fields, process_scores = d
-                    source_institution_id = object_type_to_institution_id[source_node_type]
-                    target_institution_id = object_type_to_institution_id[target_node_type]
-                    if process_fields:
-                        self.set(object_key=(source_institution_id, source_node_type, target_institution_id, target_node_type), to_process=1)
-
-                # Print status
-                if verbose:
-                    self.status()
-                print('Done.')
-
             # Set fields for input object type or id
-            def set(self, object_key, checksum_current=None, checksum_previous=None, has_changed=None, last_date_cached=None, has_expired=None, to_process=None):
+            def set(self, object_key, checksum_current=None, checksum_previous=None, has_changed=None, last_date_cached=None, has_expired=None, to_process=None, verbose=False):
 
-                columns_to_update = []
-                for column, value in zip(['checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'], [checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process]):
-                    if value is not None:
-                        columns_to_update.append(f"{column} = '{value}'")
-
-                if len(columns_to_update) > 0:
-                    if len(object_key) == 2:
-                        sql_query = f"""
-                            UPDATE graph_airflow.Operations_N_Object_T_FieldsChanged
-                            SET {', '.join(columns_to_update)}
-                            WHERE (institution_id, object_type) = ("{object_key[0]}", "{object_key[1]}");
-                        """
-                    elif len(object_key) == 3:
-                        sql_query = f"""
-                            UPDATE graph_airflow.Operations_N_Object_T_FieldsChanged
-                            SET {', '.join(columns_to_update)}
-                            WHERE (institution_id, object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}");
-                        """
-                    elif len(object_key) == 4:
-                        sql_query = f"""
-                            UPDATE graph_airflow.Operations_N_Object_N_Object_T_FieldsChanged
-                            SET {', '.join(columns_to_update)}
-                            WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}");
-                        """
-                    elif len(object_key) == 6:
-                        sql_query = f"""
-                            UPDATE graph_airflow.Operations_N_Object_N_Object_T_FieldsChanged
-                            SET {', '.join(columns_to_update)}
-                            WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}", "{object_key[4]}", "{object_key[5]}");
-                        """
-                    else:
-                        msg = 'Invalid key length.'
-                        print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
-                        return                        
-
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
-                else:
-                    print('No columns to update.')
+                # Check object_type_key input
+                if not isinstance(object_key, tuple) or len(object_key) not in [2, 3, 4, 6]:
+                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 2, 3, 4, or 6.")
                     return
 
-            # Get fields for input object id
-            def get(self, object_key, time_period=None, has_expired=None):
+                # Check input parameters
+                if (checksum_current  is None and
+                    checksum_previous is None and
+                    has_changed       is None and
+                    last_date_cached  is None and
+                    has_expired       is None and
+                    to_process        is None
+                ):
+                    sysmsg.error("Invalid input. One of the following must be provided: checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process.")
+                    return
                 
-                # Generate time period condition
-                if time_period is not None:
-                    # Only rows where last_date_cached is newer than time_period (in days) with respect to current date
-                    time_condition = f"AND last_date_cached >= NOW() - INTERVAL {time_period} DAY"
-                else:
-                    time_condition = ""
-
-                # Generate has_expired condition
-                if has_expired is not None:
-                    # Only rows where has_expired is True
-                    has_expired_condition = f"AND has_expired = {has_expired}"
-                else:
-                    has_expired_condition = ""                
-
+                # Generate WHERE condition
                 if len(object_key) == 2:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT institution_id, object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
-                        FROM graph_airflow.Operations_N_Object_T_FieldsChanged
-                        WHERE (institution_id, object_type)
-                            = ("{object_key[0]}", "{object_key[1]}")
-                          {time_condition} {has_expired_condition}
-                    """)
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1])
+                    ]
                 elif len(object_key) == 3:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT institution_id, object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
-                        FROM graph_airflow.Operations_N_Object_T_FieldsChanged
-                        WHERE (institution_id, object_type, object_id)
-                            = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")
-                          {time_condition} {has_expired_condition}
-                    """)
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1]),
+                        ('object_id'     , object_key[2])
+                    ]
                 elif len(object_key) == 4:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
-                        FROM graph_airflow.Operations_N_Object_N_Object_T_FieldsChanged
-                        WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                            = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}")
-                          {time_condition} {has_expired_condition}
-                    """)
+                    where_conditions = [
+                        ('from_institution_id', object_key[0]),
+                        ('from_object_type'   , object_key[1]),
+                        ('to_institution_id'  , object_key[2]),
+                        ('to_object_type'     , object_key[3])
+                    ]
                 elif len(object_key) == 6:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
-                        FROM graph_airflow.Operations_N_Object_N_Object_T_FieldsChanged
-                        WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
-                            = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}", "{object_key[4]}", "{object_key[5]}")
-                          {time_condition} {has_expired_condition}
-                    """)
-                else:
-                    msg = 'Invalid key length.'
-                    print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
-                    return None
+                    where_conditions = [
+                        ('from_institution_id', object_key[0]),
+                        ('from_object_type'   , object_key[1]),
+                        ('from_object_id'     , object_key[2]),
+                        ('to_institution_id'  , object_key[3]),
+                        ('to_object_type'     , object_key[4]),
+                        ('to_object_id'       , object_key[5])
+                    ]
 
-                return out
+                # Generate SET clause list
+                set_clause_list = [(k, v) for k, v in {'checksum_current': checksum_current, 'checksum_previous': checksum_previous, 'has_changed': has_changed, 'last_date_cached': last_date_cached, 'has_expired': has_expired, 'to_process': to_process}.items() if v is not None]
+
+                # Set object type flags
+                self.db.set_cells(
+                    engine_name = 'test',
+                    schema_name = 'graph_airflow',
+                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [4,6] else ''}_T_FieldsChanged",
+                    set         = set_clause_list,
+                    where       = where_conditions,
+                    verbose     = verbose)
+
+            # Get fields for input object id
+            def get(self, object_key, older_than=None, has_expired=None, verbose=False):
+
+                # Check object_type_key input
+                if not isinstance(object_key, tuple) or len(object_key) not in [2, 3, 4, 6]:
+                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 2, 3, 4, or 6.")
+                    return
+
+                # Check input parameters
+                if (older_than  is None and
+                    has_expired is None
+                ):
+                    sysmsg.error("Invalid input. One of the following must be provided: older_than, has_expired.")
+                    return
+                
+                # Generate time period condition (only rows where last_date_cached is older than 'older_than' (in days) with respect to current date)
+                time_condition = f"last_date_cached < CURDATE() - INTERVAL {older_than} DAY" if older_than is not None else "TRUE"
+
+                # Generate has_expired condition (only rows where has_expired is True)
+                has_expired_condition = f"has_expired = {has_expired}" if has_expired is not None else "TRUE"
+
+                # Generate WHERE condition
+                if len(object_key) == 2:
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1]),
+                        (None            , time_condition),
+                        (None            , has_expired_condition)
+                    ]
+                elif len(object_key) == 3:
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1]),
+                        ('object_id'     , object_key[2]),
+                        (None            , time_condition),
+                        (None            , has_expired_condition)
+                    ]
+                elif len(object_key) == 4:
+                    where_conditions = [
+                        ('from_institution_id', object_key[0]),
+                        ('from_object_type'   , object_key[1]),
+                        ('to_institution_id'  , object_key[2]),
+                        ('to_object_type'     , object_key[3]),
+                        (None                 , time_condition),
+                        (None                 , has_expired_condition)
+                    ]
+                elif len(object_key) == 6:
+                    where_conditions = [
+                        ('from_institution_id', object_key[0]),
+                        ('from_object_type'   , object_key[1]),
+                        ('from_object_id'     , object_key[2]),
+                        ('to_institution_id'  , object_key[3]),
+                        ('to_object_type'     , object_key[4]),
+                        ('to_object_id'       , object_key[5]),
+                        (None                 , time_condition),
+                        (None                 , has_expired_condition)
+                    ]
+
+                # Get object type flags
+                output = self.db.get_cells(
+                    engine_name = 'test',
+                    schema_name = 'graph_airflow',
+                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [4,6] else ''}_T_FieldsChanged",
+                    select      = ['institution_id', 'object_type', 'object_id', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'] if len(object_key) in [2,3] else
+                                  ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id', 'context', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'],
+                    where       = where_conditions,
+                    verbose     = verbose)
+                
+                # Return output as tuples
+                return output
             
             # Sync new objects to operations table
             def sync(self, to_process=1):
@@ -4908,8 +4899,7 @@ class GraphRegistry():
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'FieldsChanged' airflow tables.\n")
 
-            # Randomize airflow fields
-            # [OPTIONAL: For testing purposes]
+            # Randomize airflow fields [OPTIONAL: For testing purposes]
             def randomize(self, doc_type=None, time_period=182, verbose=False):
 
                 # Print status
@@ -5364,95 +5354,96 @@ class GraphRegistry():
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [stats]')
 
-            # Quick configuration for input list of node and edge types
-            def config(self, config_json, reset=False, verbose=False):
-                
-                # Reset airflow flags
-                if reset:
-                    self.reset()
-
-                # Node types
-                for d in config_json['nodes']:
-                    node_type, process_fields, process_scores = d
-                    institution_id = object_type_to_institution_id[node_type]
-                    if process_scores:
-                        self.set(object_key=(institution_id, node_type), to_process=1)
-
-                # Print status
-                if verbose:
-                    self.status()
-                print('Done.')
-
             # Set fields for input object type or id
-            def set(self, object_key, last_date_cached=None, has_expired=None, to_process=None):
-                
-                columns_to_update = []
-                for column, value in zip(['last_date_cached', 'has_expired', 'to_process'], [last_date_cached, has_expired, to_process]):
-                    if value is not None:
-                        columns_to_update.append(f"{column} = {value}")
+            def set(self, object_key, last_date_cached=None, has_expired=None, to_process=None, verbose=False):
 
-                if len(columns_to_update) > 0:
-                    if len(object_key) == 2:
-                        sql_query = f"""
-                            UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
-                            SET {', '.join(columns_to_update)}
-                            WHERE (institution_id, object_type) = ("{object_key[0]}", "{object_key[1]}");
-                        """
-                    elif len(object_key) == 3:
-                        sql_query = f"""
-                            UPDATE graph_airflow.Operations_N_Object_T_ScoresExpired
-                            SET {', '.join(columns_to_update)}
-                            WHERE (institution_id, object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}");
-                        """
-                    else:
-                        msg = 'Invalid key length.'
-                        print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
-                        return                        
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
-                else:
-                    print('No columns to update.')
+                # Check object_type_key input
+                if not isinstance(object_key, tuple) or len(object_key) not in [2, 3]:
+                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 2 or 3.")
                     return
+
+                # Check input parameters
+                if (last_date_cached  is None and
+                    has_expired       is None and
+                    to_process        is None
+                ):
+                    sysmsg.error("Invalid input. One of the following must be provided: last_date_cached, has_expired, to_process.")
+                    return
+                
+                # Generate WHERE condition
+                if len(object_key) == 2:
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1])
+                    ]
+                elif len(object_key) == 3:
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1]),
+                        ('object_id'     , object_key[2])
+                    ]
+
+                # Generate SET clause list
+                set_clause_list = [(k, v) for k, v in {'last_date_cached': last_date_cached, 'has_expired': has_expired, 'to_process': to_process}.items() if v is not None]
+
+                # Set object type flags
+                self.db.set_cells(
+                    engine_name = 'test',
+                    schema_name = 'graph_airflow',
+                    table_name  = 'Operations_N_Object_T_ScoresExpired',
+                    set         = set_clause_list,
+                    where       = where_conditions,
+                    verbose     = verbose)
 
             # Get fields for input object id
-            def get(self, object_key, print_output=False):
+            def get(self, object_key, older_than=None, has_expired=None, verbose=False):
+
+                # Check object_type_key input
+                if not isinstance(object_key, tuple) or len(object_key) not in [2, 3]:
+                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 2 or 3.")
+                    return
+
+                # Check input parameters
+                if (older_than  is None and
+                    has_expired is None
+                ):
+                    sysmsg.error("Invalid input. One of the following must be provided: older_than, has_expired.")
+                    return
+                
+                # Generate time period condition (only rows where last_date_cached is older than 'older_than' (in days) with respect to current date)
+                time_condition = f"last_date_cached < CURDATE() - INTERVAL {older_than} DAY" if older_than is not None else "TRUE"
+
+                # Generate has_expired condition (only rows where has_expired is True)
+                has_expired_condition = f"has_expired = {has_expired}" if has_expired is not None else "TRUE"
+
+                # Generate WHERE condition
                 if len(object_key) == 2:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT institution_id, object_type, COUNT(*) AS n_to_process
-                        FROM graph_airflow.Operations_N_Object_T_ScoresExpired
-                        WHERE (institution_id, object_type)
-                            = ("{object_key[0]}", "{object_key[1]}")
-                     GROUP BY institution_id, object_type
-                    """)
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1]),
+                        (None            , time_condition),
+                        (None            , has_expired_condition)
+                    ]
                 elif len(object_key) == 3:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT last_date_cached, has_expired, to_process
-                        FROM graph_airflow.Operations_N_Object_T_ScoresExpired
-                        WHERE (institution_id, object_type, object_id)
-                            = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")
-                    """)
-                elif len(object_key) == 4:
-                    return
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT from_institution_id, from_object_type, from_object_id, to_institution_id, COUNT(*) AS n_to_process
-                        FROM graph_airflow.Operations_N_Object_N_Object_T_ScoresExpired
-                        WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                            = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}")
-                        GROUP BY from_institution_id, from_object_type, to_institution_id, to_object_type
-                    """)
-                elif len(object_key) == 6:
-                    out = self.db.execute_query(engine_name='test', query=f"""
-                        SELECT last_date_cached, has_expired, to_process
-                        FROM graph_airflow.Operations_N_Object_N_Object_T_ScoresExpired
-                        WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
-                            = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}", "{object_key[4]}", "{object_key[5]}")
-                    """)
-                else:
-                    msg = 'Invalid key length.'
-                    print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
-                    return
-                if print_output:
-                    print(out[0] if len(out) > 0 else [])
-                return out[0] if len(out) > 0 else []
+                    where_conditions = [
+                        ('institution_id', object_key[0]),
+                        ('object_type'   , object_key[1]),
+                        ('object_id'     , object_key[2]),
+                        (None            , time_condition),
+                        (None            , has_expired_condition)
+                    ]
+
+                # Get object type flags
+                output = self.db.get_cells(
+                    engine_name = 'test',
+                    schema_name = 'graph_airflow',
+                    table_name  = 'Operations_N_Object_T_ScoresExpired',
+                    select      = ['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'],
+                    where       = where_conditions,
+                    verbose     = verbose)
+                
+                # Return output as tuples
+                return output
 
             # Sync new objects to operations table -> TODO: optimise queries and include graph_lectures (done?)
             def sync(self, to_process=1):
