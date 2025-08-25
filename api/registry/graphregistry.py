@@ -1309,28 +1309,28 @@ class GraphDB():
             self.name = name
             self._initialized = True  # Mark as initialized
             print(f"GraphDB initialized with name: {self.name}")
-
-        # Initialize the MySQL engines
-        self.params_test, self.engine_test = self.initiate_engine(global_config['mysql']['server_test'])
-        self.params_prod, self.engine_prod = self.initiate_engine(global_config['mysql']['server_prod'])
-        self.params = {'test': self.params_test, 'prod': self.params_prod}
-        self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+            # Initialize the MySQL engines
+            print(f'initialise engine test "{global_config["mysql"]["server_test"]}"')
+            self.params_test, self.engine_test = self.initiate_engine(global_config['mysql']['server_test'])
+            print(f'initialise engine prod "{global_config["mysql"]["server_prod"]}"')
+            self.params_prod, self.engine_prod = self.initiate_engine(global_config['mysql']['server_prod'])
+            self.params = {'test': self.params_test, 'prod': self.params_prod}
+            self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+            # Build base shell command (for MySQL)
+            self.base_command_mysql = {
+                'test': [global_config['mysql']['client_bin'], '-u', self.params_test['username'], f'--password={self.params_test["password"]}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port'])],
+                'prod': [global_config['mysql']['client_bin'], '-u', self.params_prod['username'], f'--password={self.params_prod["password"]}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port'])]
+            }
+            # Build base shell command (for MySQLDump)
+            self.base_command_mysqldump = {
+                'test': [global_config['mysql']['dump_bin'], '-u', self.params_test['username'], f'--password={self.params_test["password"]}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
+                'prod': [global_config['mysql']['dump_bin'], '-u', self.params_prod['username'], f'--password={self.params_prod["password"]}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
+            }
 
         # Set the MySQL password in an environment variable
         os.environ['MYSQL_TEST_PWD'] = self.params_test['password']
         os.environ['MYSQL_PROD_PWD'] = self.params_prod['password']
 
-        # Build base shell command (for MySQL)
-        self.base_command_mysql = {
-            'test': [global_config['mysql']['client_bin'], '-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port'])],
-            'prod': [global_config['mysql']['client_bin'], '-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port'])]
-        }
-
-        # Build base shell command (for MySQLDump)
-        self.base_command_mysqldump = {
-            'test': [global_config['mysql']['dump_bin'], '-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
-            'prod': [global_config['mysql']['dump_bin'], '-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
-        }
 
     #-------------------------------------#
     # Method: Initialize the MySQL engine #
