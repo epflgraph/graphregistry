@@ -1905,31 +1905,32 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print("Executing query:", query)
+            print(f"Executing query:\n{query}")
 
         # Run the command and capture stdout and stderr
         result = subprocess.run(shell_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        # If verbose is enabled, print the outputs
-        if verbose:
-            print("Command stdout:", result.stdout)
-            print("Command stderr:", result.stderr)
+        # Initialise return value
+        return_value = None
 
-        # Check if there's a MySQL-specific warning
-        if result.stderr:
-            if result.stderr.strip() == 'mysql: [Warning] Using a password on the command line interface can be insecure.':
-                # Suppress the warning by doing nothing
-                pass
+        # Handle stderr
+        if result.returncode == 0:
+            return_value = True
+            if verbose:
+                print("Query executed successfully.\n")
+        else:
+            return_value = False
+            if verbose and result.stderr:
+                # Ignore the common password warning
+                if result.stderr.strip() == ("mysql: [Warning] Using a password on the command line interface can be insecure."):
+                    pass
+                else:
+                    print(f"Error executing query. Error message:\n{result.stderr.strip()}\n")
             else:
-                # Print the stderr output if it's not the specific MySQL warning
-                print('Error executing query:', query)
-                print(result.stderr)
-                if 'ERROR' in result.stderr:
-                    print('MySQL error:', result.stderr)
-                    return False
+                print("Unknown error occurred.")
 
         # Return the result
-        return result
+        return return_value
 
     #--------------------------------------------------------------#
     # Method: Executes a query in the MySQL shell from an SQL file #
@@ -1983,12 +1984,8 @@ class GraphDB():
              WHERE {where_clause}
         """
 
-        # Print query if verbose
-        if verbose:
-            print(f"\nExecuting query:\n{sql_query}\n")
-
         # Execute the query in the MySQL shell
-        self.execute_query_in_shell(engine_name=engine_name, query=sql_query)
+        self.execute_query_in_shell(engine_name=engine_name, query=sql_query, verbose=verbose)
 
     #------------------------------------#
     # Method: Get cell values from table #
@@ -2008,12 +2005,8 @@ class GraphDB():
              WHERE {where_clause}
         """
 
-        # Print query if verbose
-        if verbose:
-            print(f"\nExecuting query:\n{sql_query}\n")
-
         # Execute the query in the MySQL shell
-        result = self.execute_query(engine_name=engine_name, query=sql_query)
+        result = self.execute_query(engine_name=engine_name, query=sql_query) # TODO: add verbose
         if len(result) == 0:
             return []
         
@@ -4090,22 +4083,31 @@ class GraphRegistry():
         pass
 
     # Test run function
-    def test_run(self, doc_type=False, refresh_checksums=False, verbose=False):
+    def test_run(self, doc_type=False, add_new=False, randomize=False, refresh_checksums=False, verbose=False):
 
         # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
         # TODO: check if doc_type should be processed based on config json (in all methods)
         # --> Pick up from here after the holidays
         # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-        self.orchestrator.fieldschanged.reset(    doc_type=doc_type, verbose=verbose)
-        self.orchestrator.fieldschanged.randomize(doc_type=doc_type, verbose=verbose)
-        self.orchestrator.fieldschanged.expire(   doc_type=doc_type, verbose=verbose)
-        self.orchestrator.fieldschanged.refresh(  doc_type=doc_type, refresh_checksums=refresh_checksums, verbose=verbose)
+        config_json = {
+            'nodes': [[doc_type, True, False]]
+        }
+        self.orchestrator.typeflags.config(config_json=config_json)
+        self.orchestrator.typeflags.status()
+
+        if add_new:
+            self.orchestrator.fieldschanged.reset(doc_type=doc_type, verbose=verbose)
+            if randomize:
+                self.orchestrator.fieldschanged.randomize(doc_type=doc_type, verbose=verbose)
+            self.orchestrator.fieldschanged.expire(doc_type=doc_type, verbose=verbose)
+            self.orchestrator.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, verbose=verbose)
+
         self.orchestrator.fieldschanged.status()
         self.cachemanager.apply_views(actions=('eval', 'commit'))
         self.indexdb.build(actions=('eval', 'commit'))
         self.indexdb.patch(actions=('eval', 'commit'))
-        self.orchestrator.fieldschanged.rollover( doc_type=doc_type, verbose=verbose)
+        self.orchestrator.fieldschanged.rollover(doc_type=doc_type, verbose=verbose)
         self.indexdb.idocs[doc_type].airflow_update(verbose=verbose)
         self.indexdb.idocs[doc_type].flags_cleanup( verbose=verbose)
         self.orchestrator.fieldschanged.status()
@@ -4889,12 +4891,8 @@ class GraphRegistry():
                                AND {where_conditions[table_name]}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Execute query to reset to_process flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'FieldsChanged' airflow tables.\n")
@@ -4949,7 +4947,7 @@ class GraphRegistry():
                             schema_name = 'graph_airflow',
                             table_name  = table_name,
                             query       = sql_query,
-                            chunk_size  = 1000000)
+                            chunk_size  = 1000000) # TODO: add verbose
                         
                 # Print status
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'FieldsChanged' airflow tables.\n")
@@ -4998,12 +4996,8 @@ class GraphRegistry():
                                AND {where_conditions[table_name]}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Reset all expiration flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                         
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' - setting 'has_expired' flags to 1 ...")
@@ -5028,12 +5022,8 @@ class GraphRegistry():
                                  WHERE {where_conditions[table_name]}
                             """
                         
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'FieldsChanged' airflow tables.\n")
@@ -5196,12 +5186,8 @@ class GraphRegistry():
                                AND {where_conditions[table_name]}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Reset to_process flags for all nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                         # Generate SQL query
                         sql_query = f"""
@@ -5211,12 +5197,8 @@ class GraphRegistry():
                                AND {where_conditions[table_name]}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Update to_process flags for nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                     #--------------------------------#
                     # Fetch stats on what to process #
@@ -5307,13 +5289,9 @@ class GraphRegistry():
                                AND {where_conditions[table_name]}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Reset all expiration flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
-                        
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+
                 # Print status
                 sysmsg.success("⬅️  ✅ Done rolling over checksums.\n")
 
@@ -5531,12 +5509,8 @@ class GraphRegistry():
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Execute query to reset to_process flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'ScoresExpired' airflow table.\n")
@@ -5591,7 +5565,7 @@ class GraphRegistry():
                             schema_name = 'graph_airflow',
                             table_name  = 'Operations_N_Object_T_ScoresExpired',
                             query       = sql_query,
-                            chunk_size  = 100000)
+                            chunk_size  = 100000) # TODO: add verbose
                         
                 # Print status
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'ScoresExpired' airflow table.\n")
@@ -5640,12 +5614,8 @@ class GraphRegistry():
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Reset all expiration flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                         
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - setting 'has_expired' flags to 1 ...")
@@ -5670,12 +5640,8 @@ class GraphRegistry():
                                  WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Set has_expired=1 for dates older than time_period
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'ScoresExpired' airflow table.\n")
@@ -5728,12 +5694,8 @@ class GraphRegistry():
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Reset to_process flags for all nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                         # Generate SQL query
                         sql_query = f"""
@@ -5743,12 +5705,8 @@ class GraphRegistry():
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
-                        # Print query if verbose
-                        if verbose:
-                            print(f"\nExecuting query:\n{sql_query}\n")
-
                         # Update to_process flags for nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                         #--------------------------------#
                         # Fetch stats on what to process #
@@ -7345,11 +7303,9 @@ class GraphRegistry():
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
                     for doc_type, link_type, link_subtype in pb:
 
-                        # with tqdm(list((doc_type, link_type, link_subtype)
-                        #         for doc_type in self.idoclinks
-                        #         for link_type in self.idoclinks[doc_type]
-                        #         for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
-                        #     for doc_type, link_type, link_subtype in pb:
+                        # Check if table type exists (continue otherwise)
+                        if link_subtype not in self.idoclinks[doc_type][link_type]:
+                            continue
 
                         # Print status
                         pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
@@ -7369,17 +7325,16 @@ class GraphRegistry():
                 # Loop over doc-link types
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
                     for doc_type, link_type in pb:
-
-                        # with tqdm(list((doc_type, link_type)
-                        #         for doc_type in self.idoclinks
-                        #         for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
-                        #     for doc_type, link_type in pb:
+                        
+                        # Check if table type exists (continue otherwise)
+                        link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
+                        if link_subtype not in self.idoclinks[doc_type][link_type]:
+                            continue
 
                         # Print status
                         pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (elasticsearch)
-                        link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
                         self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
 
             # Print status
@@ -7421,11 +7376,9 @@ class GraphRegistry():
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
                     for doc_type, link_type, link_subtype in pb:
 
-                        # with tqdm(list((doc_type, link_type, link_subtype)
-                        #         for doc_type in self.idoclinks
-                        #         for link_type in self.idoclinks[doc_type]
-                        #         for link_subtype in self.idoclinks[doc_type][link_type]), unit='doc-link type') as pb:
-                        #     for doc_type, link_type, link_subtype in pb:
+                        # Check if table type exists (continue otherwise)
+                        if link_subtype not in self.idoclinks[doc_type][link_type]:
+                            continue
 
                         # Print status
                         pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
@@ -7443,16 +7396,15 @@ class GraphRegistry():
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
                     for doc_type, link_type in pb:
 
-                        # with tqdm(list((doc_type, link_type)
-                        #         for doc_type in self.idoclinks
-                        #         for link_type in self.idoclinks[doc_type]), unit='doc-link type') as pb:
-                        #     for doc_type, link_type in pb:
+                        # Check if table type exists (continue otherwise)
+                        link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
+                        if link_subtype not in self.idoclinks[doc_type][link_type]:
+                            continue
 
                         # Print status
                         pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (elasticsearch)
-                        link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
 
             # Print status
@@ -7756,7 +7708,7 @@ class GraphRegistry():
                         print(sql_query_eval, '\n')
 
                     # Execute evaluation query
-                    out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                    out = self.db.execute_query(engine_name='test', query=sql_query_eval) # TODO: add verbose
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc type: "{doc_type}"')
