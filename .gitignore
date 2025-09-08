@@ -12,4 +12,5 @@ data/
 resources/certificates/*.crt
 resources/credentials/*
 config.yaml
+config_switch.yaml
 geckodriver.log
