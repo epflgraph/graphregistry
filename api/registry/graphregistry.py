@@ -6770,7 +6770,14 @@ class GraphRegistry():
 
                 # Append queries for custom fields
                 for schema_name in [schema_registry, schema_lectures, schema_ontology]:
-                    sql_query_stack += [sql_query_template % (schema_name, 'CustomFields', schema_name, 'CustomFields')]
+                    sql_query_stack += [sql_query_template % (
+                        schema_airflow,
+                        schema_name, 'CustomFields',
+                        schema_airflow,
+                        schema_airflow,
+                        schema_name, 'CustomFields',
+                        schema_airflow
+                    )]
 
                 # Append query for cached calculated fields
                 sql_query_stack += [sql_query_template % (
@@ -6847,7 +6854,11 @@ class GraphRegistry():
 
                 # Append queries for custom fields
                 for schema_name in [schema_registry, schema_lectures, schema_ontology]:
-                    sql_query_stack += [sql_query_template % (schema_name, 'CustomFields')]
+                    sql_query_stack += [sql_query_template % (
+                        schema_airflow,
+                        schema_name, 'CustomFields',
+                        schema_airflow
+                    )]
 
                 # Append query for cached calculated fields
                 sql_query_stack += [sql_query_template % (
@@ -6934,7 +6945,7 @@ class GraphRegistry():
                     FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                INNER JOIN graph_ontology.Edges_N_Category_N_Category_T_ChildToParent c2p
+                INNER JOIN {schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
                         ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
                         = ('Ont', 'Category', c2p.from_id, 'Ont', 'Category', c2p.to_id)
                     WHERE tp.to_process = 1
@@ -6950,7 +6961,7 @@ class GraphRegistry():
                     FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                INNER JOIN graph_ontology.Edges_N_Category_N_Category_T_ChildToParent c2p
+                INNER JOIN {schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
                         ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
                         = ('Ont', 'Category', c2p.to_id, 'Ont', 'Category', c2p.from_id)
                     WHERE tp.to_process = 1
@@ -6963,8 +6974,8 @@ class GraphRegistry():
                         'Ont' AS from_institution_id, 'Category' AS from_object_type, c.from_id AS from_object_id,
                         'Ont' AS   to_institution_id, 'Concept'  AS   to_object_type,   l.to_id AS   to_object_id,
                         'n/a' AS context, 1 AS to_process
-                    FROM graph_ontology.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
-                INNER JOIN graph_ontology.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
+                    FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
+                INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
                         ON c.to_id = l.from_id
                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                         ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
@@ -6981,8 +6992,8 @@ class GraphRegistry():
                         'Ont' AS from_institution_id, 'Concept'  AS from_object_type,   l.to_id AS from_object_id,
                         'Ont' AS   to_institution_id, 'Category' AS   to_object_type, c.from_id AS   to_object_id,
                         'n/a' AS context, 1 AS to_process
-                    FROM graph_ontology.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
-                INNER JOIN graph_ontology.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
+                    FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
+                INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
                         ON c.to_id = l.from_id
                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                         ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
@@ -7155,11 +7166,11 @@ class GraphRegistry():
                         SELECT 'Ont' AS from_institution_id, 'Category' AS from_object_type, l1.from_id AS from_object_id,
                                 'Ont' AS   to_institution_id, 'Category' AS   to_object_type, l2.from_id AS   to_object_id,
                                 SUM(t.score) AS score, 1 AS to_process
-                        FROM graph_ontology.Edges_N_Concept_N_Concept_T_Symmetric t
-                STRAIGHT_JOIN graph_ontology.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild  c1 ON  t.from_id = c1.to_id
-                STRAIGHT_JOIN graph_ontology.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild  c2 ON    t.to_id = c2.to_id
-                STRAIGHT_JOIN graph_ontology.Edges_N_Category_N_ConceptsCluster_T_ParentToChild l1 ON c1.from_id = l1.to_id
-                STRAIGHT_JOIN graph_ontology.Edges_N_Category_N_ConceptsCluster_T_ParentToChild l2 ON c2.from_id = l2.to_id
+                        FROM {schema_ontology}.Edges_N_Concept_N_Concept_T_Symmetric t
+                STRAIGHT_JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild  c1 ON  t.from_id = c1.to_id
+                STRAIGHT_JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild  c2 ON    t.to_id = c2.to_id
+                STRAIGHT_JOIN {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild l1 ON c1.from_id = l1.to_id
+                STRAIGHT_JOIN {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild l2 ON c2.from_id = l2.to_id
                         WHERE l1.from_id < l2.from_id
                     GROUP BY l1.from_id, l2.from_id
                         HAVING score >= 1;
@@ -7176,7 +7187,7 @@ class GraphRegistry():
                      SELECT 'Ont' AS from_institution_id, 'Category' AS from_object_type, object_id  AS from_object_id,
                             'Ont' AS   to_institution_id, 'Concept'  AS   to_object_type, concept_id AS   to_object_id,
                             score, 1 AS to_process
-                       FROM graph_ontology.Edges_N_Object_N_Concept_T_CalculatedScores
+                       FROM {schema_ontology}.Edges_N_Object_N_Concept_T_CalculatedScores
                       WHERE (institution_id, object_type, calculation_type) = ('Ont', 'Category', 'concept sum-scores aggregation (bounded)')
                         AND score >= 0.1;
                 """ # ADD flags
@@ -7189,7 +7200,7 @@ class GraphRegistry():
                 # Build evaluation query
                 sql_eval_query = f"""
                     SELECT 'Concept' AS from_object_type, 'Concept' AS to_object_type, COUNT(*) AS n_to_process
-                      FROM graph_ontology.Edges_N_Concept_N_Concept_T_Undirected
+                      FROM {schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected
                      WHERE normalised_score >= 0.1
                 """
 
@@ -7200,7 +7211,7 @@ class GraphRegistry():
                       SELECT 'Ont' AS from_institution_id, 'Concept' AS from_object_type, from_id AS from_object_id,
                              'Ont' AS   to_institution_id, 'Concept' AS   to_object_type,   to_id AS   to_object_id,
                              normalised_score AS score, 1 AS to_process
-                        FROM graph_ontology.Edges_N_Concept_N_Concept_T_Undirected
+                        FROM {schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected
                        WHERE normalised_score >= 0.1
                 """ # ADD flags
             
