@@ -21,8 +21,16 @@ mysql:
   data_path:
     formula: database/formulas/mysql
     export: data/mysql_data_dumps
-  schema_test: graphsearch_test
-  schema_cache: graph_cache
+  db_schema_names:
+    ontology: graph_ontology
+    registry: graph_registry
+    lectures: graph_lectures
+    airflow: graph_airflow
+    elasticsearch_cache: elasticsearch_cache
+    graph_cache_test: graph_cache
+    graph_cache_prod: graph_cache
+    graphsearch_test: graphsearch_test
+    graphsearch_prod: graphsearch_prod
 
 elasticsearch:
   dump_bin: /usr/local/bin/elasticdump
