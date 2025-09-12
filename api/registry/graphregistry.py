@@ -4453,9 +4453,9 @@ class GraphRegistry():
             sysmsg.success("⛳️ ✅ All 'to_process' flags have been propagated throughout cache.\n")
 
         # Sync new objects to operations table
-        def sync(self, to_process=1):
-            self.fieldschanged.sync(to_process=to_process)
-            self.scoresexpired.sync(to_process=to_process)
+        def sync(self, to_process=1, verbose=False):
+            self.fieldschanged.sync(to_process=to_process, verbose=verbose)
+            self.scoresexpired.sync(to_process=to_process, verbose=verbose)
 
         # Randomize airflow fields [OPTIONAL: For testing purposes]
         def randomize(self, doc_type=None, time_period=182, verbose=False):
@@ -4889,7 +4889,7 @@ class GraphRegistry():
                 return output
             
             # Sync new objects to operations table
-            def sync(self, to_process=1):
+            def sync(self, to_process=1, verbose=False):
 
                 # Print status
                 sysmsg.info("♻️  📝 Synching new objects added to the registry with 'FieldsChanged' airflow tables.")
@@ -4925,11 +4925,26 @@ class GraphRegistry():
                                  AND cp.object_type != 'Transcript'
                                  AND cp.object_type != 'Slide';
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                     # Print status
-                    sysmsg.trace(f"New objects synched: {out}'")
-                    
+                    sysmsg.trace(f"Done.New objects synched: {out}'")
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  Updating type flags for new objects on schema '{schema_name}' ...")
+
+                    # Execute object sync
+                    sql_query = f"""
+                       INSERT IGNORE INTO {schema_airflow}.Operations_N_Object_T_TypeFlags
+                                         (institution_id, object_type, flag_type, to_process)
+                          SELECT DISTINCT institution_id, object_type, 'fields' AS flag_type, 0 AS to_process
+                                     FROM {schema_airflow}.Operations_N_Object_T_FieldsChanged;
+                    """
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+
+                    # Print status
+                    sysmsg.trace(f"Done.")
+
                     # Print status
                     sysmsg.trace(f"⚙️  Processing edges on schema '{schema_name}' ...")
 
@@ -4958,11 +4973,26 @@ class GraphRegistry():
                                  AND cp.from_object_type != 'Transcript' AND cp.to_object_type != 'Transcript'
                                  AND cp.from_object_type != 'Slide'      AND cp.to_object_type != 'Slide'
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                     
                     # Print status
-                    sysmsg.trace(f"New object tuples synched: {out}'")
-            
+                    sysmsg.trace(f"Done. New object tuples synched: {out}'")
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  Updating type flags for new edges on schema '{schema_name}' ...")
+
+                    # Execute object sync
+                    sql_query = f"""
+                       INSERT IGNORE INTO {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                                         (from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type, to_process)
+                          SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 'fields' AS flag_type, 0 AS to_process
+                                     FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged;
+                    """
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+
+                    # Print status
+                    sysmsg.trace(f"Done.")
+
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'FieldsChanged' airflow tables.\n")
 
@@ -5540,7 +5570,7 @@ class GraphRegistry():
                 return output
 
             # Sync new objects to operations table -> TODO: optimise queries and include graph_lectures (done?)
-            def sync(self, to_process=1):
+            def sync(self, to_process=1, verbose=False):
                 
                 # Print status
                 sysmsg.info("♻️  📝 Synching new objects added to the registry with 'ScoresExpired' airflow tables.")
@@ -5576,10 +5606,25 @@ class GraphRegistry():
                                  AND n.object_type != 'Transcript'
                                  AND n.object_type != 'Slide'
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                     
                     # Print status
-                    sysmsg.trace(f"New objects synched: {out}'")
+                    sysmsg.trace(f"Done. New objects synched: {out}'")
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  Updating type flags for new objects on schema '{schema_name}' ...")
+
+                    # Execute object sync
+                    sql_query = f"""
+                       INSERT IGNORE INTO {schema_airflow}.Operations_N_Object_T_TypeFlags
+                                         (institution_id, object_type, flag_type, to_process)
+                          SELECT DISTINCT institution_id, object_type, 'scores' AS flag_type, 0 AS to_process
+                                     FROM {schema_airflow}.Operations_N_Object_T_ScoresExpired;
+                    """
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+
+                    # Print status
+                    sysmsg.trace(f"Done.")
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'ScoresExpired' airflow tables.\n")
