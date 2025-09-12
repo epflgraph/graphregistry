@@ -18,7 +18,7 @@ db = GraphDB()
 #==================================================#
 
 # Execute step?
-if True:
+if False:
 
     # Print info message
     sysmsg.info("🔌 📝 Test MySQL connection.")
@@ -42,7 +42,7 @@ if True:
 #===========================================================================#
 
 # Execute step?
-if True:
+if False:
 
     # Print info message
     sysmsg.info("🗄️ 📝 Check if required databases exist. Create them otherwise.")
@@ -73,13 +73,13 @@ if True:
 #==========================================================#
 
 # Execute step?
-if True:
+if False:
 
     # Print info message
     sysmsg.info("🗂️ 📝 Create required MySQL tables if they don't exist.")
 
     # Execute CREATE TABLE statements from files
-    for schema_name in ['registry', 'lectures', 'airflow', 'graph_cache_test']:
+    for schema_name in ['registry', 'lectures', 'airflow', 'graph_cache_test', 'graphsearch_test', 'elasticsearch_cache']:
 
         # Print info message
         sysmsg.trace(f"Processing database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
@@ -127,3 +127,34 @@ if True:
 
     # Print success message
     sysmsg.success("🗂️ ✅ All required MySQL tables were created.\n")
+
+#===============================================#
+# Step 4: Insert default data into MySQL tables #
+#===============================================#
+
+# Execute step?
+if False:
+
+    # Print info message
+    sysmsg.info("➡️ 📝 Insert default data into MySQL tables.")
+
+    # Get list of SQL files with default data
+    list_of_sql_files = sorted(glob.glob('/Users/francisco/Cloud/Academia/CEDE/EPFLGraph/GitHub/graphregistry/database/init/default_data/*.sql'))
+    
+    # Loop over SQL files and execute them
+    for sql_file in list_of_sql_files:
+
+        # Extract the schema name from the file name
+        match = re.match(r'.*schema_([a-z]*)_.*\.sql', os.path.basename(sql_file))
+        if not match:
+            sysmsg.error(f"➡️ ❌ Could not extract schema name from file name '{os.path.basename(sql_file)}'.")
+            exit()
+
+        # Get the schema name
+        schema_name = match.group(1)
+
+        # Execute SQL file
+        db.execute_query_from_file(engine_name='test', file_path=sql_file, database=global_config['mysql']['db_schema_names'][schema_name])
+
+    # Print success message
+    sysmsg.success("➡️ ✅ Done inserting default data.\n")

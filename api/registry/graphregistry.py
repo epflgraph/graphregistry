@@ -81,6 +81,8 @@ ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(
     global_config["elasticsearch"]["data_path"]["export"]
 )
 
+SQL_FORMULAS_PATH = resolve_repo_path('database/formulas')
+
 # # Table configuration file path
 # config_es_index_config_file = global_config['elasticsearch']['index_configuration_file']
 # if os.path.isabs(config_es_index_config_file):
@@ -1994,14 +1996,18 @@ class GraphDB():
                 print("Query executed successfully.\n")
         else:
             return_value = False
-            if verbose and result.stderr:
+            if result.stderr:
                 # Ignore the common password warning
                 if result.stderr.strip() == ("mysql: [Warning] Using a password on the command line interface can be insecure."):
                     pass
                 else:
-                    print(f"Error executing query. Error message:\n{result.stderr.strip()}\n")
+                    print(f"Error message from MySQL:\n{result.stderr.strip()}\n")
+                    sysmsg.critical(f"Failed to execute query.")
+                    exit()
             else:
                 print("Unknown error occurred.")
+                sysmsg.critical(f"Failed to execute query.")
+                exit()
 
         # Return the result
         return return_value
@@ -2737,7 +2743,7 @@ class GraphDB():
         # Play sound
         play_system_sound('info', 'moderate')
 
-        # Get list of tables in graphsearch_test
+        # Get list of tables in graphsearch test
         if len(list_of_tables) == 0:
             list_of_tables = self.get_tables_in_schema(engine_name=source_engine_name, schema_name=source_schema_name)
 
@@ -4650,7 +4656,7 @@ class GraphRegistry():
                 config_json = {'nodes': [], 'edges': []}
 
                 # Define SQL query for fetching nodes config
-                sql_query = """ 
+                sql_query = f""" 
                      SELECT t1.object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
                        FROM {schema_airflow}.Operations_N_Object_T_TypeFlags t1
                  INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags t2
@@ -4664,7 +4670,7 @@ class GraphRegistry():
                 config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in self.db.execute_query(engine_name='test', query=sql_query)]
 
                 # Define SQL query for fetching edges config
-                sql_query = """
+                sql_query = f"""
                     SELECT DISTINCT LEAST(t1.from_object_type, t1.to_object_type) AS from_object_type,
                                     GREATEST(t1.from_object_type, t1.to_object_type) AS to_object_type,
                                     IF(t1.flag_type='fields', t1.to_process, t2.to_process) AS process_fields,
@@ -7072,17 +7078,14 @@ class GraphRegistry():
 
             # Print status
             sysmsg.trace(f"⚙️  Processing formula: '{formula_name}' ...")
-
-            # Define the file path
-            config_mysql_formula_path = global_config['mysql']['data_path']['formula']
-            if os.path.isabs(config_mysql_formula_path):
-                file_path = os.path.join(config_mysql_formula_path, f'formula.{formula_name}.sql')
-            else:
-                file_path = os.path.join(package_dir, config_mysql_formula_path, f'formula.{formula_name}.sql')
-
+            
             # Read the SQL formula
-            with open(file_path, 'r') as file:
+            with open(f'{SQL_FORMULAS_PATH}/formula.{formula_name}.sql', 'r') as file:
                 sql_formula = file.read()
+
+            # Fill in the template variables
+            for db_schema_name in mysql_schema_names['test']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', mysql_schema_names['test'][db_schema_name])
 
             # Execute the SQL formula
             self.db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
@@ -7412,10 +7415,11 @@ class GraphRegistry():
             self.pageprofile = self.PageProfile()
             self.idocs = {}
             self.idoclinks = {}
-            self.list_of_index_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=f'graphsearch_{self.engine_name}')
+            self.list_of_index_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'])
 
             # Initialize IndexDoc objects for all doc types
             for doc_type in [t[0] for t in [re.findall(r'Index_D_([^_]*)$', table_name) for table_name in self.list_of_index_tables] if len(t)>0]:
+                print(doc_type)
                 self.idocs[doc_type] = self.IndexDocs(doc_type=doc_type)
 
             # Initialize IndexDocLinks objects for all doc-link types
@@ -7437,7 +7441,7 @@ class GraphRegistry():
             self.doclinks_vertical_patch_all(actions=actions)
             self.doclinks_horizontal_patch_all(actions=actions)
 
-        # Patch all index doc tables on graphsearch_test
+        # Patch all index doc tables on graphsearch test
         def docs_patch_all(self, actions=()):
 
             # Print status
@@ -7476,6 +7480,8 @@ class GraphRegistry():
                         pb.set_description(f"⚙️  Processing doc type: {doc_type} [graphsearch]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc table (graphsearch tables)
+                        print(self.idocs)
+                        print(self.idocs.keys())
                         self.idocs[doc_type].patch(actions=actions)
 
                         # Print status
@@ -7494,7 +7500,7 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🚜 ✅ Done vertical patching of doc index tables.\n")
 
-        # Patch all index doc-link tables on graphsearch_test
+        # Patch all index doc-link tables on graphsearch test
         def doclinks_vertical_patch_all(self, actions=()):
 
             # Print status
@@ -7567,7 +7573,7 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🚜 ✅ Done vertical patching of doc-link index tables.\n")
 
-        # Patch all index doc-link tables on graphsearch_test
+        # Patch all index doc-link tables on graphsearch test
         def doclinks_horizontal_patch_all(self, actions=()):
 
             # Print status
@@ -7640,8 +7646,8 @@ class GraphRegistry():
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
-            # Get the list of tables in graphsearch_test
-            list_of_tables = self.db.get_tables_in_schema(engine_name='test', schema_name='graphsearch_test', use_regex=[r'.*_ORG'], include_views=False)
+            # Get the list of tables in graphsearch test
+            list_of_tables = self.db.get_tables_in_schema(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], use_regex=[r'.*_ORG'], include_views=False)
 
             # Loop over all tables
             for table_name_org in tqdm(list_of_tables):
@@ -7655,14 +7661,14 @@ class GraphRegistry():
                     continue
 
                 # Check if view already exists
-                if self.db.table_exists(engine_name='test', schema_name='graphsearch_test', table_name=table_name_mix) and not drop_existing:
+                if self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_mix) and not drop_existing:
                     continue
 
                 # Check if SEM table exists
-                if self.db.table_exists(engine_name='test', schema_name='graphsearch_test', table_name=table_name_sem):
+                if self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_sem):
 
                     # Get list of columns for SEM table
-                    list_of_columns_sem = self.db.get_column_names(engine_name='test', schema_name='graphsearch_test', table_name=table_name_sem)
+                    list_of_columns_sem = self.db.get_column_names(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_sem)
 
                     # Remove row_id
                     list_of_columns_sem.remove('row_id')
@@ -7698,7 +7704,7 @@ class GraphRegistry():
                 else:
 
                     # Get list of columns for ORG table
-                    list_of_columns_org = self.db.get_column_names(engine_name='test', schema_name='graphsearch_test', table_name=table_name_org)
+                    list_of_columns_org = self.db.get_column_names(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_org)
 
                     # Remove row_id
                     list_of_columns_org.remove('row_id')
@@ -7953,12 +7959,12 @@ class GraphRegistry():
                     # Build commit query                
                     sql_query_commit = f"\tREPLACE INTO {schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
-                    # Print query
-                    if 'print' in actions:
-                        print(sql_query_commit)
+                    # # Print query
+                    # if 'print' in actions:
+                    #     print(sql_query_commit)
 
                     # Execute commit
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit, verbose=('print' in actions))
 
             # Update index buildup tables: link parent-child type
             def build_links_parentchild(self, doc_type, link_type, actions=()):
@@ -8188,7 +8194,7 @@ class GraphRegistry():
                 #             AND ({' OR '.join([f'p.{c} != c.{c}' for c in column_names])});
                 # """
 
-            # Index > Page Profile > General patching > Insert new rows, update existing fields (graphsearch_test)
+            # Index > Page Profile > General patching > Insert new rows, update existing fields (graphsearch test)
             def patch(self, actions=()):
                 
                 # Print status
@@ -8289,7 +8295,7 @@ class GraphRegistry():
             def set_engine(self, engine_name):
                 self.engine_name = engine_name
 
-            # Index > Docs > Create table on graphsearch_test
+            # Index > Docs > Create table on graphsearch test
             def create_table(self, actions=()):
                 
                 sql_query_create_table = f"""
@@ -8383,7 +8389,7 @@ class GraphRegistry():
                             AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score);
                 """
 
-            # Index > Docs > General patching > Insert new rows, update existing fields (graphsearch_test)
+            # Index > Docs > General patching > Insert new rows, update existing fields (graphsearch test)
             def patch(self, actions=()):
 
                 # Full table paths
@@ -8509,7 +8515,7 @@ class GraphRegistry():
 
                         )
 
-            # Index > Docs > General patching > Insert new rows, update existing fields (elascticsearch_cache)
+            # Index > Docs > General patching > Insert new rows, update existing fields (elascticsearch cache)
             def patch_elasticsearch(self, actions=()):
 
                 # Full table paths
@@ -9631,7 +9637,7 @@ class GraphRegistry():
                 
                 # Resolve table name or return if it doesn't exist
                 # Table type: MIX
-                if self.db.table_exists(engine_name='test', schema_name='graphsearch_test', table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
+                if self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX"
@@ -9658,7 +9664,7 @@ class GraphRegistry():
                     """
 
                 # Table type: ORG
-                elif self.db.table_exists(engine_name='test', schema_name='graphsearch_test', table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
+                elif self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG"
@@ -9675,7 +9681,7 @@ class GraphRegistry():
                     """
 
                 # Table type: SEM
-                elif self.db.table_exists(engine_name='test', schema_name='graphsearch_test', table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
+                elif self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM"
@@ -9800,7 +9806,7 @@ class GraphRegistry():
                 table_name = f'Index_D_{source_doc_type}_L_{target_doc_type}_T_{index_type}'
 
                 # Check if table exists
-                if not self.db.table_exists(engine_name='test', schema_name='graphsearch_test', table_name=table_name):
+                if not self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name):
                     # print(f"Table '{schema_graphsearch_test}.{table_name}' does not exist.")
                     return False
                 

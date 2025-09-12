@@ -23,7 +23,7 @@ if False:
 if False:
 
     # Choose import method (object or list)
-    import_method = 'list'
+    import_method = 'object'
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
@@ -31,9 +31,8 @@ if False:
         # Process nodes
         for node_json in sample_set['nodes']:
             node = gr.Node()
-            node.set_from_json(doc_json=node_json, detect_concepts=True)
+            node.set_from_json(doc_json=node_json, detect_concepts=False)
             node.commit(actions=('eval', 'commit'))
-            exit()
         
         # Process edges
         for edge_json in sample_set['edges']:
@@ -90,6 +89,7 @@ if False:
 #=====================================================#
 
 if True:
-    gr.cachemanager.apply_views(actions=('eval', 'commit'))
-    # gr.indexdb.build(actions=('eval', 'commit'))
-    # gr.indexdb.patch(actions=('eval', 'commit'))
+    # gr.cachemanager.apply_views(actions=('eval', 'commit'))
+    # gr.cachemanager.apply_formulas(verbose=True)
+    gr.indexdb.build(actions=('eval', 'commit'))
+    gr.indexdb.patch(actions=('eval', 'commit'))

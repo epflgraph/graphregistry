@@ -41,7 +41,7 @@
             "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
             "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
             "Person"      : ["is_at_epfl", "gender"],
-            "Publication" : ["year", "published_in", "publisher"],
+            "Publication" : ["year", "published_in", "publisher", "publication_id_v1"],
             "Startup"     : [],
             "Unit"        : ["is_active_unit", "is_research_unit", "subtype_rank"],
             "Widget"      : ["chapter_id", "mainly_math_notation", "mooc_id", "platform_name", "quiz_filename", "quiz_type", "sequential_id", "study_level", "vertical_id"]

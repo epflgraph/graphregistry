@@ -1663,7 +1663,13 @@
             "object_title": "Fictitious University of Machine Intelligence",
             "text_source": "unit website",
             "raw_text": "Fictitious University of Machine Intelligence. The Fictitious University of Machine Intelligence (FUMI) is dedicated to advancing knowledge in artificial intelligence, data science, and engineering. With strong ties to industry and public institutions, FUMI fosters innovation through interdisciplinary programs, open science practices, and a commitment to responsible, human-centered AI. Its ecosystem includes leading departments and labs that translate fundamental discoveries into real-world impact.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2001-06-23"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "University",
                 "name_en_is_auto_generated": 1,
@@ -1694,7 +1700,13 @@
             "object_title": "Department of Computer Science",
             "text_source": "unit website",
             "raw_text": "Department of Computer Science. The Department of Computer Science (DCS) unites scholars working across machine learning, natural language processing, computer vision, systems, and theoretical computer science. DCS offers undergraduate to doctoral programs with strong methodological training and extensive hands-on experience. Partnerships with industry and public-sector organizations enable impactful, scalable deployments.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2008-08-10"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Department",
                 "name_en_is_auto_generated": 1,
@@ -1725,7 +1737,13 @@
             "object_title": "Department of Intelligent Systems & Robotics",
             "text_source": "unit website",
             "raw_text": "Department of Intelligent Systems & Robotics. The Department of Intelligent Systems & Robotics (DISR) conducts research on autonomous decision-making, safe and reliable control, and the societal integration of AI. With facilities for embodied robotics and interactive systems, DISR trains students to design responsible, human-centered technologies for transportation, healthcare, and education.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "1998-12-01"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Department",
                 "name_en_is_auto_generated": 1,
@@ -1756,7 +1774,13 @@
             "object_title": "Vision and AI Lab",
             "text_source": "unit website",
             "raw_text": "Vision and AI Lab. The Vision and AI Lab (VAIL) advances computer vision through robust, transparent learning methods. Research spans recognition, detection, and imaging, emphasizing interpretability and clinical applicability via collaborations with hospitals and industry partners.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2019-01-27"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Laboratory",
                 "name_en_is_auto_generated": 1,
@@ -1787,7 +1811,18 @@
             "object_title": "Machine Learning for Natural Language Processing Lab",
             "text_source": "unit website",
             "raw_text": "Machine Learning for Natural Language Processing Lab. The Machine Learning for Natural Language Processing Lab (MLNLP) researches language modeling, cross-lingual transfer, and low-resource NLP. The lab collaborates with linguistics teams and global partners to broaden access to AI across languages and domains.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "1990-03-25"
+                },
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_terminated",
+                    "field_value": "2024-10-13"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Laboratory",
                 "name_en_is_auto_generated": 1,
@@ -1818,7 +1853,13 @@
             "object_title": "Secure and Scalable Machine Learning Lab",
             "text_source": "unit website",
             "raw_text": "Secure and Scalable Machine Learning Lab. The Secure and Scalable Machine Learning Lab (SECURE) develops robust ML for enterprise and public infrastructures. Research includes anomaly detection, federated optimization, and privacy guarantees, with deployments in cloud and edge environments.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2012-03-10"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Laboratory",
                 "name_en_is_auto_generated": 1,
@@ -1849,7 +1890,13 @@
             "object_title": "Reinforcement Learning and Autonomous Intelligence Lab",
             "text_source": "unit website",
             "raw_text": "Reinforcement Learning and Autonomous Intelligence Lab. The Reinforcement Learning and Autonomous Intelligence Lab (RLAI) builds algorithms for adaptive decision-making in robots and autonomous systems. Research spans sim-to-real transfer, safe exploration, and equilibrium analysis in multi-agent environments.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2009-02-01"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Laboratory",
                 "name_en_is_auto_generated": 1,
@@ -1880,7 +1927,13 @@
             "object_title": "Fairness and Explainable AI Lab",
             "text_source": "unit website",
             "raw_text": "Fairness and Explainable AI Lab. The Fairness and Explainable AI Lab (FAIRX) develops methods and frameworks for algorithmic fairness, interpretability, and governance. The lab collaborates with policy groups and NGOs to align technical advances with societal values.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2025-02-29"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Laboratory",
                 "name_en_is_auto_generated": 1,
@@ -1911,7 +1964,13 @@
             "object_title": "AI for Education and Learning Sciences Lab",
             "text_source": "unit website",
             "raw_text": "AI for Education and Learning Sciences Lab. The AI for Education and Learning Sciences Lab (EDUAI) integrates reinforcement learning, multimodal analytics, and learning sciences to personalize education at scale. Field deployments evaluate impact on engagement and achievement.",
-            "custom_fields": [],
+            "custom_fields": [
+                {		
+                    "field_language": "n/a",
+                    "field_name": "date_established",
+                    "field_value": "2004-11-07"
+                }
+            ],
             "page_profile": {
                 "subtype_en": "Laboratory",
                 "name_en_is_auto_generated": 1,
@@ -6921,7 +6980,13 @@
             "to_object_type": "Unit",
             "to_object_id": "VAIL",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6931,7 +6996,13 @@
             "to_object_type": "Unit",
             "to_object_id": "VAIL",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6941,7 +7012,18 @@
             "to_object_type": "Unit",
             "to_object_id": "VAIL",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2025-08-30"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6951,7 +7033,18 @@
             "to_object_type": "Unit",
             "to_object_id": "RLAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2030-12-31"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6961,7 +7054,13 @@
             "to_object_type": "Unit",
             "to_object_id": "RLAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6971,7 +7070,13 @@
             "to_object_type": "Unit",
             "to_object_id": "RLAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6981,7 +7086,13 @@
             "to_object_type": "Unit",
             "to_object_id": "MLNLP",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -6991,7 +7102,13 @@
             "to_object_type": "Unit",
             "to_object_id": "MLNLP",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7001,7 +7118,13 @@
             "to_object_type": "Unit",
             "to_object_id": "FAIRX",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7011,7 +7134,13 @@
             "to_object_type": "Unit",
             "to_object_id": "FAIRX",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7021,7 +7150,13 @@
             "to_object_type": "Unit",
             "to_object_id": "SECURE",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7031,7 +7166,13 @@
             "to_object_type": "Unit",
             "to_object_id": "SECURE",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7041,7 +7182,13 @@
             "to_object_type": "Unit",
             "to_object_id": "SECURE",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7051,7 +7198,13 @@
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7061,7 +7214,13 @@
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Researcher"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7071,7 +7230,13 @@
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
@@ -7081,7 +7246,13 @@
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
-            "custom_fields": []
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "current_position_name",
+                    "field_value": "Professor"
+                }
+            ]
         },
         {
             "from_institution_id": "EPFL",
