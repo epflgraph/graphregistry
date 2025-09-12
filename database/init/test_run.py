@@ -59,7 +59,37 @@ if False:
 #=====================================================#
 
 # Execute step?
-if True:
+if False:
     
     # Sync new objects from Registry with Airflow
     gr.orchestrator.sync()
+
+    # Config type flags to process everything
+    gr.orchestrator.typeflags.config(config_json={
+        'nodes': [
+            ['Course'     , True, True],
+            ['Person'     , True, True],
+            ['Publication', True, True],
+            ['Startup'    , True, True],
+            ['Unit'       , True, True]
+        ],
+        'edges': [
+            ['Course'     , 'Person', True, True],
+            ['Person'     , 'Unit'  , True, True],
+            ['Publication', 'Person', True, True],
+            ['Startup'    , 'Person', True, True],
+            ['Unit'       , 'Unit'  , True, True]
+        ]
+    })
+
+    # Display orchestration status
+    gr.orchestrator.status()
+
+#=====================================================#
+# Step 3: ... #
+#=====================================================#
+
+if True:
+    gr.cachemanager.apply_views(actions=('eval', 'commit'))
+    # gr.indexdb.build(actions=('eval', 'commit'))
+    # gr.indexdb.patch(actions=('eval', 'commit'))
