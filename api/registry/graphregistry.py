@@ -1939,7 +1939,7 @@ class GraphDB():
     #-------------------------------------------------#
     # Method: Executes a query sequentially by chunks #
     #-------------------------------------------------#
-    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, chunk_size=10000, row_id_name='row_id'):
+    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, chunk_size=10000, row_id_name='row_id', show_progress=False):
 
         # Remove trailing semicolon from the query
         if query.strip()[-1] == ';':
@@ -1958,18 +1958,18 @@ class GraphDB():
             row_id_name_no_alias = row_id_name
 
         # Get min and max row_id
-        row_num_min = self.execute_query(engine_name=engine_name, query=f"SELECT MIN({row_id_name_no_alias}) FROM {schema_name}.{table_name}")[0][0]
-        row_num_max = self.execute_query(engine_name=engine_name, query=f"SELECT MAX({row_id_name_no_alias}) FROM {schema_name}.{table_name}")[0][0]
+        row_num_min = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MIN({row_id_name_no_alias}), 0) FROM {schema_name}.{table_name}")[0][0]
+        row_num_max = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX({row_id_name_no_alias}), 0) FROM {schema_name}.{table_name}")[0][0]
         n_rows = row_num_max - row_num_min + 1
 
         # Process table in chunks
-        for offset in tqdm(range(row_num_min, row_num_max, chunk_size), desc=f'Executing query', unit='chunks', total=round(n_rows/chunk_size)):
+        for offset in tqdm(range(row_num_min, row_num_max, chunk_size), total=round(n_rows/chunk_size)) if show_progress else range(row_num_min, row_num_max, chunk_size):
 
             # Generate SQL query
             sql_query = f"{query} {filter_command} {row_id_name} BETWEEN {offset} AND {offset + chunk_size - 1};"
 
             # Execute the query
-            self.execute_query_in_shell(engine_name=engine_name, query=sql_query)
+            self.execute_query_in_shell(engine_name=engine_name, query=sql_query, verbose=False)
 
     #---------------------------------------------#
     # Method: Executes a query in the MySQL shell #
@@ -6703,7 +6703,7 @@ class GraphRegistry():
             sysmsg.success(f"🚀 ✅ Done executing views and committing updated data to '{schema_graph_cache_test}'.\n")
 
         # Compute and cache scores [calls 'cache_update_from_formula']
-        def apply_formulas(self, verbose=True):
+        def apply_formulas(self, verbose=False):
 
             # Print status
             sysmsg.info(f"🚀 📝 Apply formulas commit updated data to '{schema_graph_cache_test}' [verbose: {verbose}].")
@@ -6723,6 +6723,35 @@ class GraphRegistry():
             
             # Print status
             sysmsg.success(f"🚀 ✅ Done applying formulas and committing updated data to '{schema_graph_cache_test}'.\n")
+
+        # Update all scores
+        def update_scores(self, actions):
+
+            # Print status
+            sysmsg.info(f"🧮 📝 Calculate and consolidate scores matrix.")
+            
+            # Fetch typeflags config JSON
+            typeflags = GraphRegistry.Orchestration.TypeFlags()
+            config_json = typeflags.get_config_json()
+
+            # Get node types to process
+            node_types_to_process = [node_type for node_type, _, process_scores in config_json['nodes'] if process_scores]
+
+            # Generate all possible edge types
+            node_types_to_process = list(itertools.product(node_types_to_process, repeat=2))
+
+            # Loop over edge types
+            with tqdm(node_types_to_process, unit='edge type') as pb:
+                for n1, n2 in pb:
+
+                    # Print status
+                    pb.set_description(f"⚙️  Processing edge type: {n1} --> {n2}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Calculate and consolidate scores matrix
+                    self.calculate_scores_matrix(from_object_type=n1, to_object_type=n2, actions=actions)
+                    self.consolidate_scores_matrix(from_object_type=n1, to_object_type=n2, update_averages=True, actions=actions)
+
+            sysmsg.success(f"🧮 ✅ Done updating scores matrix.\n")
 
         # Update cache table from registry view
         def cache_update_from_view(self, view_name, actions=()):
@@ -7140,9 +7169,6 @@ class GraphRegistry():
         # TODO: Widget-Concept/Catagory tables
         def calculate_scores_matrix(self, from_object_type, to_object_type, actions=()):
 
-            # Print status
-            sysmsg.info(f"🚀 📝 Calculate scores matrix on '{schema_graph_cache_test}' [actions: {actions}].")
-
             # Print action specific status
             if len(actions) == 0:
                 sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
@@ -7278,9 +7304,9 @@ class GraphRegistry():
                               ON (s2.institution_id, s2.object_type, s2.object_id)
                                = (e2.institution_id, e2.object_type, e2.object_id)
                             
-                      INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                              ON (e1.institution_id, e1.object_type, e2.institution_id, e2.object_type)
-                               = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+                    --   INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+                    --           ON (e1.institution_id, e1.object_type, e2.institution_id, e2.object_type)
+                    --            = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
                             
                       INNER JOIN {schema_registry}.Nodes_N_Object n1
                               ON (e1.institution_id, e1.object_type, e1.object_id)
@@ -7296,13 +7322,14 @@ class GraphRegistry():
                              AND e2.score >= 0.1
                             
                              AND s{n}.to_process = 1
-                             AND tf.flag_type = 'scores'
-                             AND tf.to_process = 1
+                            --  AND tf.flag_type = 'scores'
+                            --  AND tf.to_process = 1
                             
                              AND e1.object_type = "{from_object_type if n==1 else to_object_type}"
                              AND e2.object_type = "{from_object_type if n==2 else to_object_type}"
                             
-                        GROUP BY e1.object_id, e2.object_id
+                        GROUP BY e1.institution_id, e1.object_type, e1.object_id,
+                                 e2.institution_id, e2.object_type, e2.object_id
                             
                           HAVING COUNT(DISTINCT e1.concept_id) >= 4
                              AND SUM(e1.score*e2.score) >= 0.1
@@ -7326,9 +7353,6 @@ class GraphRegistry():
             # Commit query
             if 'commit' in actions and sql_commit_query is not None:
 
-                # Print status
-                sysmsg.trace(f"⚙️  Processing edges of type: {from_object_type} --> {to_object_type} ...")
-
                 # Print commit query
                 if 'print' in actions:
                     print('Executing query:')
@@ -7337,16 +7361,26 @@ class GraphRegistry():
                 # Execute commit query
                 self.db.execute_query_in_shell(engine_name='test', query=sql_commit_query)
 
-            # Print status
-            sysmsg.success(f"🚀 ✅ Done calculating scores matrix.\n")
-
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
-        def consolidate_scores_matrix(self, from_object_type, to_object_type, actions=()):
+        def consolidate_scores_matrix(self, from_object_type, to_object_type, update_averages=False, score_thr=0.1, actions=()):
 
-            print('Under construction...')
-            return
-            # Print status
-            sysmsg.info(f"🚀 📝 Consolidate scores matrix on '{schema_graph_cache_test}' [actions: {actions}].")
+            # Check if update averages is requested
+            if update_averages:
+
+                # Generate SQL query for average score calculation (if needed)
+                sql_query_avg = f"""
+                        REPLACE INTO {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG
+                                    (from_institution_id, from_object_type, to_institution_id, to_object_type, avg_score, n_rows)
+                              SELECT from_institution_id, from_object_type, to_institution_id, to_object_type,
+                                     AVG(score) AS avg_score, COUNT(*) AS n_rows
+                                FROM test_graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_GBC
+                               WHERE (from_object_type, to_object_type) = ('{from_object_type}', '{to_object_type}')
+                            GROUP BY from_institution_id, from_object_type, to_institution_id, to_object_type
+               """
+            
+                # Execute average score calculation
+                if 'commit' in actions:
+                    self.db.execute_query_in_shell(engine_name='test', query=sql_query_avg, verbose='print' in actions)
 
             # Print action specific status
             if len(actions) == 0:
@@ -7366,7 +7400,7 @@ class GraphRegistry():
 						   USING (institution_id, object_type, object_id)
                            WHERE (institution_id, object_type) = ('EPFL', '{from_object_type}')
                              AND tf.to_process = 1 AND se.to_process = 1
-                             AND score >= 0.1;
+                             AND score >= {score_thr};
                 """
             else:
 
@@ -7391,17 +7425,17 @@ class GraphRegistry():
                            WHERE to_process = 1
                              AND (from_institution_id, from_object_type, to_institution_id, to_object_type)
                                = ('EPFL', '{from_object_type}', 'EPFL', '{to_object_type}')
-                             AND (2/(1 + EXP(-score/(4 * avg_score))) - 1) >= 0.1;
+                             AND (2/(1 + EXP(-score/(4 * avg_score))) - 1) >= {score_thr};
                 """
-            # if test_mode:
-            print(sql_query)
-            # else:
-                # if verbose:
-                    # print(sql_query)
-            self.db.execute_query_in_shell(engine_name='test', query=sql_query)
 
-            pass
-            
+            # Print commit query
+            if 'print' in actions:
+                print('Executing query:')
+                print(sql_query)
+
+            if 'commit' in actions:
+                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+        
     #-----------------------------------------------------------#
     # Subclass definition: GraphIndex Management (SQL Database) #
     #-----------------------------------------------------------#
@@ -7419,7 +7453,6 @@ class GraphRegistry():
 
             # Initialize IndexDoc objects for all doc types
             for doc_type in [t[0] for t in [re.findall(r'Index_D_([^_]*)$', table_name) for table_name in self.list_of_index_tables] if len(t)>0]:
-                print(doc_type)
                 self.idocs[doc_type] = self.IndexDocs(doc_type=doc_type)
 
             # Initialize IndexDocLinks objects for all doc-link types
@@ -7440,7 +7473,7 @@ class GraphRegistry():
             self.docs_patch_all(actions=actions)
             self.doclinks_vertical_patch_all(actions=actions)
             self.doclinks_horizontal_patch_all(actions=actions)
-
+            
         # Patch all index doc tables on graphsearch test
         def docs_patch_all(self, actions=()):
 
@@ -7480,8 +7513,6 @@ class GraphRegistry():
                         pb.set_description(f"⚙️  Processing doc type: {doc_type} [graphsearch]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc table (graphsearch tables)
-                        print(self.idocs)
-                        print(self.idocs.keys())
                         self.idocs[doc_type].patch(actions=actions)
 
                         # Print status
@@ -7526,8 +7557,8 @@ class GraphRegistry():
             else:
 
                 # Get doc-link types to process
-                doclink_types_to_process  = [(r[0], r[1], 'SEM') for r in config_json['edges']]
-                doclink_types_to_process += [(r[0], r[1], 'ORG') for r in config_json['edges']]
+                list_of_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
+                doclink_types_to_process = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' schema.")
@@ -7538,6 +7569,7 @@ class GraphRegistry():
 
                         # Check if table type exists (continue otherwise)
                         if link_subtype not in self.idoclinks[doc_type][link_type]:
+                            sysmsg.warning(f"Doc-link type not found: {doc_type} --> {link_type} [{link_subtype}]. Skipping.")
                             continue
 
                         # Print status
@@ -7549,15 +7581,12 @@ class GraphRegistry():
                         elif link_subtype == 'ORG':
                             self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_parentchild(actions=actions)
 
-                # Get doc-link types to process
-                doclink_types_to_process = [(r[0], r[1]) for r in config_json['edges']]
-
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es_cache']}' schema.")
 
                 # Loop over doc-link types
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
-                    for doc_type, link_type in pb:
+                    for doc_type, link_type, _ in pb:
                         
                         # Check if table type exists (continue otherwise)
                         link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
@@ -7599,8 +7628,8 @@ class GraphRegistry():
             else:
 
                 # Get doc-link types to process
-                doclink_types_to_process  = [(r[0], r[1], 'SEM') for r in config_json['edges']]
-                doclink_types_to_process += [(r[0], r[1], 'ORG') for r in config_json['edges']]
+                list_of_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
+                doclink_types_to_process = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' schema.")
@@ -7619,15 +7648,12 @@ class GraphRegistry():
                         # Patch index doc-link table
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=actions)
 
-                # Get doc-link types to process
-                doclink_types_to_process = [(r[0], r[1]) for r in config_json['edges']]
-
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es_cache']}' schema.")
 
                 # Loop over doc-link types
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
-                    for doc_type, link_type in pb:
+                    for doc_type, link_type, _ in pb:
 
                         # Check if table type exists (continue otherwise)
                         link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
@@ -8216,7 +8242,8 @@ class GraphRegistry():
                     \t\t      USING (object_type, object_id)
                     \t\t INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags tf
                     \t\t      USING (object_type)
-                    \t\t      WHERE p.to_process > 0.5 AND fc.to_process > 0.5 AND tf.to_process > 0.5
+                    \t\t      WHERE tf.flag_type = 'fields'
+                    \t\t        AND p.to_process > 0.5 AND fc.to_process > 0.5 AND tf.to_process > 0.5
                 """
 
                 # Print status
@@ -8404,6 +8431,7 @@ class GraphRegistry():
                     schema_name = target_schema_name,
                     table_name  = target_table_name
                 ):
+                    # sysmsg.warning(f"Target table '{target_schema_name}.{target_table_name}' does not exist. Nothing to do.")
                     return
                 
                 # Get object fields with language
@@ -8425,9 +8453,9 @@ class GraphRegistry():
                       SELECT COUNT(*) AS n_total,
                              COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
                              ), 0) AS n_patch
-                        FROM {target_schema_name}.{target_table_name} t
+                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
 
-                  INNER JOIN {cache_schema_name}.Data_N_Object_T_PageProfile p
+                   LEFT JOIN {target_schema_name}.{target_table_name} t
                           ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
 
                   INNER JOIN {cache_schema_name}.{buildup_table_name} n
@@ -8500,6 +8528,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query as safe inserts
                     else:
+                        print('execute_query_as_safe_inserts_in_chunks')
                         self.db.execute_query_as_safe_inserts_in_chunks(
                             engine_name       = self.engine_name,
                             schema_name       = target_schema_name,
@@ -8565,9 +8594,9 @@ class GraphRegistry():
                       SELECT COUNT(*) AS n_total,
                              COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
                              ), 0) AS n_patch
-                        FROM {target_schema_name}.{target_table_name} t
+                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
 
-                  INNER JOIN {cache_schema_name}.Data_N_Object_T_PageProfile p
+                   LEFT JOIN {target_schema_name}.{target_table_name} t
                           ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
 
                   INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
@@ -8952,8 +8981,8 @@ class GraphRegistry():
                 # Generate evaluation query
                 sql_query_eval = f"""
                     SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj_fields_with_lang])}), 0) AS n_patch
-                      FROM {target_table_path} i
-                INNER JOIN {buildup_link_table_path} b
+                      FROM {buildup_link_table_path} b
+                 LEFT JOIN {target_table_path} i
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                      WHERE b.to_process > 0.5;
                 """
@@ -9009,7 +9038,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query in chunks
                     else:
-                        self.db.execute_query_in_chunks(engine_name=self.engine_name, schema_name=target_schema_name, table_name=target_table_name, query=sql_query_commit, chunk_size=10000, row_id_name='i.row_id')
+                        self.db.execute_query_in_chunks(engine_name=self.engine_name, schema_name=target_schema_name, table_name=target_table_name, query=sql_query_commit, chunk_size=10000, row_id_name='i.row_id', show_progress=False)
 
             # Index > Doc-Links > Vertical patching > Update ORG-table specific custom fields
             def vertical_patch_parentchild(self, actions=()):
@@ -9055,8 +9084,8 @@ class GraphRegistry():
                 # Generate evaluation query 1
                 sql_query_eval_1 = f"""
                     SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj2obj_fields_with_lang])}), 0) AS n_patch
-                      FROM {target_table_path_1} i
-                INNER JOIN {buildup_link_table_path} b
+                      FROM {buildup_link_table_path} b
+                 LEFT JOIN {target_table_path_1} i
                         ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
                          = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
                      WHERE b.to_process > 0.5;
@@ -9065,8 +9094,8 @@ class GraphRegistry():
                 # Generate evaluation query 2
                 sql_query_eval_2 = f"""
                     SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj2obj_fields_with_lang])}), 0) AS n_patch
-                      FROM {target_table_path_2} i
-                INNER JOIN {buildup_link_table_path} b
+                      FROM {buildup_link_table_path} b
+                 LEFT JOIN {target_table_path_2} i
                         ON ( i.doc_institution,  i.doc_type,  i.doc_id, i.link_institution, i.link_type, i.link_id)
                          = (b.link_institution, b.link_type, b.link_id,  b.doc_institution,  b.doc_type,  b.doc_id)
                      WHERE b.to_process > 0.5;
@@ -9201,9 +9230,9 @@ class GraphRegistry():
                                 OR COALESCE(t.link_short_description_fr, "__null__") != COALESCE(p.description_short_fr_value, "__null__")
                                 {'OR ' if len(self.obj_fields_with_lang)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.obj_fields_with_lang])}
                              ), 0) AS n_patch
-                        FROM {target_table_path} t
+                        FROM {schema_graph_cache_test}.Data_N_Object_T_PageProfile p
 
-                  INNER JOIN {schema_graph_cache_test}.Data_N_Object_T_PageProfile p 
+                   LEFT JOIN {target_table_path} t
                           ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
 
                   INNER JOIN {buildup_link_table_path} l
@@ -9611,26 +9640,26 @@ class GraphRegistry():
                         df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
 
-                # Print SQL query
-                if 'print' in actions:
-                    if SQLQuery1:
-                        print('')
-                        print(SQLQuery1)
-                    if SQLQuery2:
-                        print('')
-                        print(SQLQuery2)
-                    if SQLQuery3:
-                        print('')
-                        print(SQLQuery3)
+                # # Print SQL query
+                # if 'print' in actions:
+                #     if SQLQuery1:
+                #         print('')
+                #         print(SQLQuery1)
+                #     if SQLQuery2:
+                #         print('')
+                #         print(SQLQuery2)
+                #     if SQLQuery3:
+                #         print('')
+                #         print(SQLQuery3)
                 
                 # Execute SQL query
                 if 'commit' in actions:
                     if SQLQuery1:
-                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1)
+                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions)
                     if SQLQuery2:
-                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2)
+                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2, verbose='print' in actions)
                     if SQLQuery3:
-                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3)
+                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions)
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
