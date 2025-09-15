@@ -48,7 +48,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ============= Calculate average score for 'slide sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
       WHERE (institution_id, object_type, calculation_type) = ('EPFL', 'Course', 'slide sum-scores aggregation')
         AND score>=1);
@@ -111,7 +111,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ============= Calculate average score for 'slide sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
       WHERE (institution_id, object_type, calculation_type) = ('EPFL', 'MOOC', 'slide sum-scores aggregation')
         AND score>=1);
@@ -169,7 +169,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ============= Calculate average score for 'slide sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
       WHERE (institution_id, object_type, calculation_type) = ('EPFL', 'Lecture', 'slide sum-scores aggregation')
         AND score>=1);
@@ -238,7 +238,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ============= Calculate average score for 'people sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
       WHERE (institution_id, object_type, calculation_type) = ('EPFL', 'MOOC', 'people sum-scores aggregation'));
 
@@ -282,7 +282,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ============= Calculate average score for 'abstract sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
       WHERE (institution_id, object_type, calculation_type) = ('EPFL', 'Person', 'abstract sum-scores aggregation'));
 
@@ -326,7 +326,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ============= Calculate average score for 'abstract sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores e
  INNER JOIN [[graph_cache]].Data_N_Object_T_CalculatedFields d1 ON (d1.institution_id, d1.object_type, d1.object_id, d1.field_language, d1.field_name, d1.field_value) = ('EPFL', 'Unit', e.object_id, 'n/a', 'is_active_unit'  , 1)
  INNER JOIN [[graph_cache]].Data_N_Object_T_CalculatedFields d2 ON (d2.institution_id, d2.object_type, d2.object_id, d2.field_language, d2.field_name, d2.field_value) = ('EPFL', 'Unit', e.object_id, 'n/a', 'is_research_unit', 1)
@@ -377,7 +377,7 @@ STRAIGHT_JOIN [[ontology]].Edges_N_Concept_N_Concept_T_Symmetric t3
 
 -- ============= Calculate average score for 'concept sum-scores aggregation'
 SET @avg_score = (
-     SELECT AVG(score)
+     SELECT COALESCE(AVG(score), 1)
        FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
       WHERE (institution_id, object_type, calculation_type) = ('Ont', 'Category', 'concept sum-scores aggregation'));
 

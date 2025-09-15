@@ -18,7 +18,7 @@ db = GraphDB()
 #==================================================#
 
 # Execute step?
-if False:
+if True:
 
     # Print info message
     sysmsg.info("🔌 📝 Test MySQL connection.")
@@ -42,7 +42,7 @@ if False:
 #===========================================================================#
 
 # Execute step?
-if False:
+if True:
 
     # Print info message
     sysmsg.info("🗄️ 📝 Check if required databases exist. Create them otherwise.")
@@ -73,7 +73,7 @@ if False:
 #==========================================================#
 
 # Execute step?
-if False:
+if True:
 
     # Print info message
     sysmsg.info("🗂️ 📝 Create required MySQL tables if they don't exist.")
@@ -85,7 +85,7 @@ if False:
         sysmsg.trace(f"Processing database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
 
         # Get SQL file path
-        sql_file_path = f'/Users/francisco/Cloud/Academia/CEDE/EPFLGraph/GitHub/graphregistry/database/init/create_tables/schema_{schema_name}.sql'
+        sql_file_path = f'database/init/create_tables/schema_{schema_name}.sql'
 
         # Open SQL file and get all table names that should be created
         with open(sql_file_path, 'r') as sql_file:
@@ -133,13 +133,13 @@ if False:
 #===============================================#
 
 # Execute step?
-if False:
+if True:
 
     # Print info message
     sysmsg.info("➡️ 📝 Insert default data into MySQL tables.")
 
     # Get list of SQL files with default data
-    list_of_sql_files = sorted(glob.glob('/Users/francisco/Cloud/Academia/CEDE/EPFLGraph/GitHub/graphregistry/database/init/default_data/*.sql'))
+    list_of_sql_files = sorted(glob.glob('database/init/default_data/*.sql'))
     
     # Loop over SQL files and execute them
     for sql_file in list_of_sql_files:

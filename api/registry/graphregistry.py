@@ -1856,7 +1856,7 @@ class GraphDB():
     #------------------------------------------------------------------------------#
     # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE (in chunks) #
     #------------------------------------------------------------------------------#
-    def execute_query_as_safe_inserts_in_chunks(self, engine_name, schema_name, table_name, query, key_column_names, upd_column_names, eval_column_names=None, actions=(), table_to_chunk=None, chunk_size=None, row_id_name=None):
+    def execute_query_as_safe_inserts_in_chunks(self, engine_name, schema_name, table_name, query, key_column_names, upd_column_names, eval_column_names=None, actions=(), table_to_chunk=None, chunk_size=None, row_id_name=None, show_progress=False):
 
         # Target table path
         t = target_table_path = f'{schema_name}.{table_name}'
@@ -1894,7 +1894,7 @@ class GraphDB():
 
             # Execute each chunk with progress bar
             n_rows = row_num_max - row_num_min + 1
-            for offset in tqdm(range(row_num_min, row_num_max + 1, chunk_size), desc='Executing in chunks', unit='chunk', total=(n_rows // chunk_size) + 1):
+            for offset in tqdm(range(row_num_min, row_num_max + 1, chunk_size), desc='Executing in chunks', unit='chunk', total=(n_rows // chunk_size) + 1) if show_progress else range(row_num_min, row_num_max + 1, chunk_size):
                 chunk_condition = f"{'WHERE' if 'WHERE' not in base_query.upper() else 'AND'} {row_id_name} BETWEEN {offset} AND {offset + chunk_size - 1}"
                 chunked_query = build_chunked_commit_query(chunk_condition)
                 self.execute_query_in_shell(engine_name=engine_name, query=chunked_query)
@@ -8528,7 +8528,6 @@ class GraphRegistry():
                         return
                     # Else, execute the query as safe inserts
                     else:
-                        print('execute_query_as_safe_inserts_in_chunks')
                         self.db.execute_query_as_safe_inserts_in_chunks(
                             engine_name       = self.engine_name,
                             schema_name       = target_schema_name,
