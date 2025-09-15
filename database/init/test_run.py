@@ -6,6 +6,7 @@ import rich, json
 
 # Initialize the GraphRegistry instance
 gr = GraphRegistry()
+print('\n')
 
 # Open JSON sample set
 with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
@@ -31,7 +32,7 @@ if False:
         # Process nodes
         for node_json in sample_set['nodes']:
             node = gr.Node()
-            node.set_from_json(doc_json=node_json, detect_concepts=False)
+            node.set_from_json(doc_json=node_json, detect_concepts=True)
             node.commit(actions=('eval', 'commit'))
         
         # Process edges
@@ -58,7 +59,7 @@ if False:
 #=====================================================#
 
 # Execute step?
-if False:
+if True:
     
     # Sync new objects from Registry with Airflow
     gr.orchestrator.sync()
@@ -84,12 +85,13 @@ if False:
     # Display orchestration status
     gr.orchestrator.status()
 
-#=====================================================#
-# Step 3: ... #
-#=====================================================#
+#===================================#
+# Step 3: Execute all major actions #
+#===================================#
 
 if True:
-    # gr.cachemanager.apply_views(actions=('eval', 'commit'))
-    # gr.cachemanager.apply_formulas(verbose=True)
-    gr.indexdb.build(actions=('eval', 'commit'))
-    gr.indexdb.patch(actions=('eval', 'commit'))
+    gr.cachemanager.apply_views(actions=('commit'))
+    gr.cachemanager.apply_formulas(verbose=False)
+    gr.cachemanager.update_scores(actions=('commit'))
+    gr.indexdb.build(actions=('commit'))
+    gr.indexdb.patch(actions=('commit'))
