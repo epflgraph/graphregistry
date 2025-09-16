@@ -1,4 +1,4 @@
-SELECT e.from_institution_id, e.from_object_type, e.from_object_id, 'n/a' AS field_language, 'is_at_epfl' AS field_name,
+SELECT e.from_institution_id AS institution_id, e.from_object_type AS object_type, e.from_object_id AS object_id, 'n/a' AS field_language, 'is_at_epfl' AS field_name,
        CASE
        WHEN EXISTS (SELECT 1
                       FROM [[registry]].Data_N_Object_N_Object_T_CustomFields cf
