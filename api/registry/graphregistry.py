@@ -1191,7 +1191,7 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
                     AND to_object_type='{object_type}' 
                     AND to_object_id IN :object_id
                 )'''
-    eval_results = {} if 'eval' in actions else None
+    eval_results = {}
     queries_remove = []
     for table, query_where in query_where_per_table.items():
         if 'eval' in actions:
@@ -1222,7 +1222,7 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
             db_connector, 'Edges_N_Object_N_Concept_T_ManualMapping', institution_id, object_type, nodes_id,
             engine_name=engine_name, actions=actions
         )
-    return eval_results
+    return eval_results if 'eval' in actions else None
 
 
 def delete_edges_by_ids(
