@@ -6702,25 +6702,47 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🚀 ✅ Done executing views and committing updated data to '{schema_graph_cache_test}'.\n")
 
-        # Compute and cache scores [calls 'cache_update_from_formula']
-        def apply_formulas(self, verbose=False):
+        # Compute and cache scores [calls 'cache_update_from_batch_formula']
+        def apply_formulas(self, formula_type=None, verbose=False):
 
             # Print status
             sysmsg.info(f"🚀 📝 Apply formulas commit updated data to '{schema_graph_cache_test}' [verbose: {verbose}].")
 
-            # List of formulas to execute
-            list_of_formulas = [
-                'Traversal_*',
-                'Edges_N_Object_N_Concept_T_CalculatedScores',
-                'Edges_N_Object_N_Concept_T_FinalScores',
-                'Edges_N_Object_N_Category_T_CalculatedScores',
-                'Nodes_N_Object_T_DegreeScores'
-            ]
+            #---------------------------------#
+            # Formula type: Calculated fields #
+            #---------------------------------#
 
-            # Execute and commit all formulas
-            for formula_name in list_of_formulas:
-                self.cache_update_from_formula(formula_name, verbose=verbose)
-            
+            # Process formula type?
+            if formula_type is None or formula_type == 'calculated fields':
+
+                # Fetch list of calculated field formulas to execute
+                list_of_calcfield_formulas = []
+                for d in ['obj', 'obj2obj']:
+
+                    # Fetch list of calculated field formulas to execute
+                    list_of_unparsed_names = [re.findall(r'\/formula\.(.*)\.sql$', f)[0] for f in sorted(glob.glob(f'{SQL_FORMULAS_PATH}/calculated_fields/{d}/formula.*.sql'))]
+
+                    # Extract list of object type keys and field names
+                    list_of_calcfield_formulas += [tuple(f.split('.')) if d=='obj' else (tuple(f.split('.')[:2]), f.split('.')[2]) for f in list_of_unparsed_names]
+                
+                # Execute and commit all formulas
+                for object_type_key, field_name in list_of_calcfield_formulas:
+                    self.cache_update_from_calculated_field(object_type_key=object_type_key, field_name=field_name, verbose=verbose)
+
+            #---------------------------------#
+            # Formula type: Calculated fields #
+            #---------------------------------#
+
+            # Process formula type?
+            if formula_type is None or formula_type == 'batch':
+
+                # Fetch list of batch formulas to execute
+                list_of_batch_formulas = [re.findall(r'\/formula\.(.*)\.sql$', f)[0] for f in sorted(glob.glob(f'{SQL_FORMULAS_PATH}/batch/formula.*.sql'))]
+
+                # Execute and commit all formulas
+                for formula_name in list_of_batch_formulas:
+                    self.cache_update_from_batch_formula(formula_name, verbose=verbose)
+                
             # Print status
             sysmsg.success(f"🚀 ✅ Done applying formulas and committing updated data to '{schema_graph_cache_test}'.\n")
 
@@ -7102,14 +7124,14 @@ class GraphRegistry():
                 # Execute commit
                 self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
 
-        # Update cache table from SQL formula
-        def cache_update_from_formula(self, formula_name, verbose=False):
+        # Update cache table from SQL batch formula
+        def cache_update_from_batch_formula(self, formula_name, verbose=False):
 
             # Print status
-            sysmsg.trace(f"⚙️  Processing formula: '{formula_name}' ...")
+            sysmsg.trace(f"⚙️  Applying batch formula: '{formula_name.split('.')[1]}' ...")
             
             # Read the SQL formula
-            with open(f'{SQL_FORMULAS_PATH}/formula.{formula_name}.sql', 'r') as file:
+            with open(f'{SQL_FORMULAS_PATH}/batch/formula.{formula_name}.sql', 'r') as file:
                 sql_formula = file.read()
 
             # Fill in the template variables
@@ -7118,6 +7140,64 @@ class GraphRegistry():
 
             # Execute the SQL formula
             self.db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
+
+        # Update cache table from SQL calculated field formula
+        def cache_update_from_calculated_field(self, object_type_key, field_name, verbose=False):
+            
+            # Print status
+            sysmsg.trace(f"⚙️  Applying calculated field formula: {object_type_key} / {field_name} ...")
+
+            # Does object type key refer to node or edge?
+            if type(object_type_key) is str: # Node
+
+                # Define target cache table
+                target_table = 'Data_N_Object_T_CalculatedFields'
+
+                # Define key and update column names
+                key_column_names = ['institution_id', 'object_type', 'object_id']
+                upd_column_names = ['field_language', 'field_name', 'field_value']
+                
+                # Read the SQL formula
+                with open(f'{SQL_FORMULAS_PATH}/calculated_fields/obj/formula.{object_type_key}.{field_name}.sql', 'r') as file:
+                    sql_formula = file.read()
+                
+            elif type(object_type_key) is tuple and len(object_type_key)==2: # Edge
+
+                # Define target cache table
+                target_table = 'Data_N_Object_N_Object_T_CalculatedFields'
+
+                # Define key and update column names
+                key_column_names = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
+                upd_column_names = ['field_language', 'field_name', 'field_value']
+
+                # Read the SQL formula
+                with open(f'{SQL_FORMULAS_PATH}/calculated_fields/obj2obj/formula.{object_type_key[0]}.{object_type_key[1]}.{field_name}.sql', 'r') as file:
+                    sql_formula = file.read()
+
+            else:
+                sysmsg.error(f"Invalid object_type_key: {object_type_key}. Must be string (node) or tuple of two strings (edge).")
+                return
+            
+            # Check if SQL formula is valid (return otherwise)
+            if 'SELECT' not in sql_formula.upper():
+                sysmsg.warning(f"Invalid SQL formula.")
+                return
+
+            # Fill in the template variables
+            for db_schema_name in mysql_schema_names['test']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', mysql_schema_names['test'][db_schema_name])
+
+            # Execute SQL formula as safe inserts
+            self.db.execute_query_as_safe_inserts(
+                engine_name       = 'test',
+                schema_name       = schema_graph_cache_test,
+                table_name        = target_table,
+                query             = sql_formula,
+                key_column_names  = key_column_names,
+                upd_column_names  = upd_column_names,
+                eval_column_names = ['institution_id', 'object_type'],
+                actions           = ('print', 'commit') if verbose else ('commit')
+            )
 
         # Update cached lecture timestamps
         def cache_lecture_timestamps(self):

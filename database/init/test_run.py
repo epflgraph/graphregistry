@@ -13,7 +13,7 @@ with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
     sample_set = json.load(fp)
 
 # Print sample set content
-if True:
+if False:
     print('Input JSON sample set:')
     rich.print_json(data=sample_set)
 
@@ -22,13 +22,13 @@ if True:
 #=============================================#
 
 # Detect/update concepts? [disable for faster imports]
-detect_concepts = True
+detect_concepts = False
 
 # Choose import method (object or list)
 import_method = 'object'
 
 # Execute step?
-if True:
+if False:
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
@@ -63,7 +63,7 @@ if True:
 #=====================================================#
 
 # Execute step?
-if True:
+if False:
     
     # Sync new objects from Registry with Airflow
     gr.orchestrator.sync()
@@ -95,8 +95,9 @@ if True:
 
 # Execute step?
 if True:
+    gr.cachemanager.apply_formulas(formula_type='calculated fields', verbose=False)
     gr.cachemanager.apply_views(actions=('commit'))
-    gr.cachemanager.apply_formulas(verbose=False)
+    gr.cachemanager.apply_formulas(formula_type='batch', verbose=False)
     gr.cachemanager.update_scores(actions=('commit'))
     gr.indexdb.build(actions=('commit'))
     gr.indexdb.patch(actions=('commit'))
