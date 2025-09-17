@@ -1981,7 +1981,9 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"Executing query:\n{query}")
+            print(f"\n\033[96m⚙️ Executing query:\033[0m")
+            print(f"\n\t{query.strip().replace('\n','\n\t')}\n")
+            
 
         # Run the command and capture stdout and stderr
         result = subprocess.run(shell_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -1993,7 +1995,8 @@ class GraphDB():
         if result.returncode == 0:
             return_value = True
             if verbose:
-                print("Query executed successfully.\n")
+                print("\033[92m✅ Query executed successfully.\033[0m\n")
+
         else:
             return_value = False
             if result.stderr:
@@ -2005,7 +2008,7 @@ class GraphDB():
                     sysmsg.critical(f"Failed to execute query.")
                     exit()
             else:
-                print("Unknown error occurred.")
+                print("\033[91m‼️ Unknown error occurred.\033[0m\n")
                 sysmsg.critical(f"Failed to execute query.")
                 exit()
 
@@ -4934,7 +4937,7 @@ class GraphRegistry():
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                     # Print status
-                    sysmsg.trace(f"Done.New objects synched: {out}'")
+                    sysmsg.trace(f"Done. New objects synched: {out}'")
 
                     # Print status
                     sysmsg.trace(f"⚙️  Updating type flags for new objects on schema '{schema_name}' ...")
@@ -6269,7 +6272,7 @@ class GraphRegistry():
                 self.concepts_detection = extract_concepts_from_text(self.raw_text, login_info=graphai_login_info)
 
                 # Print status when done
-                sysmsg.trace(f"done. List of detected concepts:")
+                sysmsg.trace(f"Done. List of detected concepts:")
                 print(f"""\n{[c['concept_name'] for c in self.concepts_detection]}\n""")
 
         # Commit detected concepts to database
@@ -6673,10 +6676,10 @@ class GraphRegistry():
             self.db = GraphDB()
 
         # Commit for all views [calls 'cache_update_from_view']
-        def apply_views(self, actions=()):
+        def materialize_views(self, actions=()):
 
             # Print status
-            sysmsg.info(f"🚀 📝 Execute views and commit updated data to '{schema_graph_cache_test}' [actions: {actions}].")
+            sysmsg.info(f"👀 📝 Materialize views and commit updated data to '{schema_graph_cache_test}' [actions: {actions}].")
 
             # Print action specific status
             if len(actions) == 0:
@@ -6700,7 +6703,7 @@ class GraphRegistry():
                 self.cache_update_from_view(view_name, actions=actions)
 
             # Print status
-            sysmsg.success(f"🚀 ✅ Done executing views and committing updated data to '{schema_graph_cache_test}'.\n")
+            sysmsg.success(f"👀 ✅ Done materializing views.\n")
 
         # Compute and cache scores [calls 'cache_update_from_batch_formula']
         def apply_formulas(self, formula_type=None, verbose=False):
@@ -6745,6 +6748,25 @@ class GraphRegistry():
                 
             # Print status
             sysmsg.success(f"🚀 ✅ Done applying formulas and committing updated data to '{schema_graph_cache_test}'.\n")
+
+        # Batch apply formulas: calculated fields only
+        def apply_calculated_field_formulas(self, verbose=False):
+            for local_path in [
+                'calculated_fields/obj',
+                'calculated_fields/obj2obj'
+            ]:
+                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
+
+        # Batch apply formulas: traversal and scoring
+        def apply_traversal_and_scoring_formulas(self, verbose=False):
+            for local_path in [
+                'graph_traversals',
+                'calculated_scores/obj2ontology/concepts',
+                'calculated_scores/obj2ontology/concepts_union',
+                'calculated_scores/obj2ontology/categories',
+                'calculated_scores/degree_scores'
+            ]:
+                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
 
         # Update all scores
         def update_scores(self, actions):
@@ -7123,6 +7145,103 @@ class GraphRegistry():
 
                 # Execute commit
                 self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
+
+        # Apply formula from SQL file
+        def apply_formulas_from_folder(self, local_path, verbose=False):
+
+            # Print status
+            sysmsg.info(f"🧪 📝 Apply formulas of type '{local_path}'.")
+
+            # Fetch list of batch formulas to execute
+            list_of_files = sorted(glob.glob(f'{SQL_FORMULAS_PATH}/{local_path}/formula.*.sql'))
+
+            # Loop over and execute all formulas
+            for file_path in list_of_files:
+                self.apply_formula_from_file(file_path=file_path, verbose=verbose)
+
+            # Print status
+            sysmsg.success(f"🧪 ✅ Done applying formulas.\n")
+
+        # Apply formula from SQL file
+        def apply_formula_from_file(self, file_path, verbose=False):
+
+            # Extract formula name from file path
+            formula_name = re.findall(r'formula\.(.*)\.sql$', file_path)[0]
+
+            # Extract formula type from file path
+            formula_type = re.findall(r'(.*)\/formula\..*\.sql$', file_path.replace(f'{SQL_FORMULAS_PATH}/', ''))[0]
+
+            # Print status
+            sysmsg.trace(f"⚙️  Applying formula: '{formula_name}' ...")
+            
+            # Read the SQL formula
+            with open(file_path, 'r') as file:
+                sql_formula = file.read()
+
+            # Fill in the template variables
+            for db_schema_name in mysql_schema_names['test']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', mysql_schema_names['test'][db_schema_name])
+
+            # Determine type of formula (safe inserts vs direct execution)
+            if (
+                   'INSERT'  in sql_formula
+                or 'REPLACE' in sql_formula
+                or 'UPDATE'  in sql_formula
+                or 'DELETE'  in sql_formula
+                or 'CREATE'  in sql_formula
+                or 'DROP'    in sql_formula
+                or 'ALTER'   in sql_formula
+            ):
+                execution_type = 'direct execution'
+            elif 'SELECT' in sql_formula:
+                execution_type = 'safe inserts'
+            else:
+                sysmsg.warning(f"Could not determine type of formula (safe inserts vs direct execution).")
+                return
+            
+            #-------------------------------#
+            # Execute based on formula type #
+            #-------------------------------#
+
+            # Execute as safe inserts?
+            if execution_type == 'safe inserts':
+
+                # Define key and update column names, and target table (object calculated fields)
+                if formula_type == 'calculated_fields/obj':
+                    target_table      = 'Data_N_Object_T_CalculatedFields'
+                    key_column_names  = ['institution_id', 'object_type', 'object_id']
+                    upd_column_names  = ['field_language', 'field_name', 'field_value']
+                    eval_column_names = ['institution_id', 'object_type']
+
+                # Define key and update column names, and target table (object-to-object calculated fields)
+                elif formula_type == 'calculated_fields/obj2obj':
+                    target_table      = 'Data_N_Object_N_Object_T_CalculatedFields'
+                    key_column_names  = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
+                    upd_column_names  = ['field_language', 'field_name', 'field_value']
+                    eval_column_names = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
+                
+                # Execute SQL formula as safe inserts
+                self.db.execute_query_as_safe_inserts(
+                    engine_name       = 'test',
+                    schema_name       = schema_graph_cache_test,
+                    table_name        = target_table,
+                    query             = sql_formula,
+                    key_column_names  = key_column_names,
+                    upd_column_names  = upd_column_names,
+                    eval_column_names = eval_column_names,
+                    actions           = ('print', 'commit') if verbose else ('commit')
+                )
+
+            # Execute as direct execution?
+            elif execution_type == 'direct execution':
+
+                # Execute the SQL formula
+                self.db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
+
+            # Unknown execution type
+            else:
+                sysmsg.warning(f"Could not determine type of formula (safe inserts vs direct execution).")
+                return
 
         # Update cache table from SQL batch formula
         def cache_update_from_batch_formula(self, formula_name, verbose=False):

@@ -145,7 +145,7 @@ if True:
     for sql_file in list_of_sql_files:
 
         # Extract the schema name from the file name
-        match = re.match(r'.*schema_([a-z]*)_.*\.sql', os.path.basename(sql_file))
+        match = re.match(r'.*schema_([a-z]*)\.data\..*\.sql', os.path.basename(sql_file))
         if not match:
             sysmsg.error(f"➡️ ❌ Could not extract schema name from file name '{os.path.basename(sql_file)}'.")
             exit()
