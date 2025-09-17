@@ -94,10 +94,18 @@ if False:
 #===================================#
 
 # Execute step?
-if True:
-    gr.cachemanager.apply_formulas(formula_type='calculated fields', verbose=False)
-    gr.cachemanager.apply_views(actions=('commit'))
-    gr.cachemanager.apply_formulas(formula_type='batch', verbose=False)
+if False:
+    gr.cachemanager.apply_calculated_field_formulas()
+    gr.cachemanager.materialize_views(actions=('commit'))
+    gr.cachemanager.apply_traversal_and_scoring_formulas()
     gr.cachemanager.update_scores(actions=('commit'))
     gr.indexdb.build(actions=('commit'))
     gr.indexdb.patch(actions=('commit'))
+
+
+# gr.cachemanager.calculate_scores_matrix(from_object_type='Concept', to_object_type='Concept', actions=('print', 'eval'))
+
+
+
+
+
