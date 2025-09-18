@@ -6807,6 +6807,7 @@ class GraphRegistry():
                     # Consolidate scores matrix
                     self.consolidate_scores_matrix(from_object_type=n1, to_object_type=n2, update_averages=True, actions=actions)
 
+            # Print status
             sysmsg.success(f"🧮 ✅ Done updating scores matrices.\n")
 
         # Update cache table from registry view
@@ -7458,7 +7459,7 @@ class GraphRegistry():
 
         # Core function that updates the object-to-object scores matrix
         # TODO: Widget-Concept/Catagory tables
-        # Also, might need to avoid creating edges where from_id=to_id (self-edges)
+        # Also, might need to avoid creating edges where from_id=to_id (self-edges). TBD...
         def calculate_scores_matrix(self, from_object_type, to_object_type, actions=()):
 
             # Print action specific status
@@ -7605,7 +7606,6 @@ class GraphRegistry():
                 self.db.execute_query_in_shell(engine_name='test', query=sql_commit_query)
 
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
-        # TODO: Typeflag checking is a mess. Correct!
         def consolidate_scores_matrix(self, from_object_type, to_object_type, update_averages=False, score_thr=0.1, actions=()):
 
             # Re-arrange from/to object types alphabetically (since undirected scores)
@@ -7650,25 +7650,25 @@ class GraphRegistry():
 
                 # Generate commit query
                 sql_query = f"""
-                          SELECT 'Ont'      AS from_institution_id,
-                                 'Concept'  AS from_object_type,
-                                 fs.from_id AS from_object_id,
-                                 'Ont'      AS to_institution_id,
-                                 'Concept'  AS to_object_type,
-                                 fs.to_id   AS to_object_id,
-                                 fs.normalised_score AS score, 1 AS to_process
-                            FROM {schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected fs
-                      INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                              ON tf.object_type = 'Concept'
-                      INNER JOIN {schema_airflow}.Operations_N_Object_T_ScoresExpired se1
-                              ON se1.object_id = fs.from_id
-                      INNER JOIN {schema_airflow}.Operations_N_Object_T_ScoresExpired se2
-                              ON se2.object_id = fs.to_id
-                           WHERE tf.to_process = 1
-                             AND se1.object_type = 'Concept'
-                             AND se2.object_type = 'Concept'
-                             AND (se1.to_process = 1 OR se2.to_process = 1)
-                             AND fs.normalised_score >= {score_thr}
+                    SELECT 'Ont'      AS from_institution_id,
+                           'Concept'  AS from_object_type,
+                           fs.from_id AS from_object_id,
+                           'Ont'      AS to_institution_id,
+                           'Concept'  AS to_object_type,
+                           fs.to_id   AS to_object_id,
+                           fs.normalised_score AS score, 1 AS to_process
+                      FROM {schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected fs
+                INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                        ON tf.object_type = 'Concept'
+                INNER JOIN {schema_airflow}.Operations_N_Object_T_ScoresExpired se1
+                        ON se1.object_id = fs.from_id
+                INNER JOIN {schema_airflow}.Operations_N_Object_T_ScoresExpired se2
+                        ON se2.object_id = fs.to_id
+                     WHERE tf.to_process = 1
+                       AND se1.object_type = 'Concept'
+                       AND se2.object_type = 'Concept'
+                       AND (se1.to_process = 1 OR se2.to_process = 1)
+                       AND fs.normalised_score >= {score_thr}
                 """
 
                 # This is a slow query; execute in chunks
@@ -7727,7 +7727,7 @@ class GraphRegistry():
                     print(f'No average score calculation available for ({from_object_type}, {to_object_type})')
                     return
 
-                # Generate SQL query for adjusted score calculation
+                # Generate SQL query for adjusted scores calculation
                 sql_query = f"""
                     REPLACE INTO {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AS
                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
@@ -8263,7 +8263,7 @@ class GraphRegistry():
                 INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags tf
                         ON ( p.institution_id,  p.object_type)
                          = (tf.institution_id, tf.object_type)
-                     WHERE (p.institution_id, p.object_type) = ('EPFL', '{doc_type}')
+                     WHERE (p.institution_id, p.object_type) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}')
                        AND fc.to_process > 0.5
                        AND tf.to_process > 0.5
                 """
@@ -8562,9 +8562,9 @@ class GraphRegistry():
                     \t\t     SELECT {', '.join([f'p.{k}' for k in self.key_column_names])}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
                     \t\t       FROM {mysql_schema_names[self.engine_name]['graph_cache']}.{self.table_name} p
                     \t\t INNER JOIN {schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                    \t\t      USING (object_type, object_id)
+                    \t\t      USING (institution_id, object_type, object_id)
                     \t\t INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                    \t\t      USING (object_type)
+                    \t\t      USING (institution_id, object_type)
                     \t\t      WHERE tf.flag_type = 'fields'
                     \t\t        AND p.to_process > 0.5 AND fc.to_process > 0.5 AND tf.to_process > 0.5
                 """
@@ -8775,10 +8775,10 @@ class GraphRegistry():
                         FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
 
                    LEFT JOIN {target_schema_name}.{target_table_name} t
-                          ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+                          ON (t.doc_institution, t.doc_type, t.doc_id) = (p.institution_id, p.object_type, p.object_id)
 
                   INNER JOIN {cache_schema_name}.{buildup_table_name} n
-                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process > 0.5 OR n.to_process > 0.5)
@@ -8830,7 +8830,7 @@ class GraphRegistry():
                      SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
-                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                         ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
                 """
@@ -8918,7 +8918,7 @@ class GraphRegistry():
                           ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
 
                   INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
-                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process > 0.5 OR n.to_process > 0.5)
@@ -8986,7 +8986,7 @@ class GraphRegistry():
                      SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
-                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                         ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
                 """
@@ -9043,7 +9043,7 @@ class GraphRegistry():
                   INNER JOIN {schema_graph_cache_test}.Data_N_Object_T_PageProfile p
                           ON (a.object_type, a.object_id) = (p.object_type, p.object_id)
                   INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} n
-                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process > 0.5 OR n.to_process > 0.5)

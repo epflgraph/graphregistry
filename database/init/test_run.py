@@ -66,27 +66,48 @@ if False:
 if False:
     
     # Sync new objects from Registry with Airflow
-    gr.orchestrator.sync()
+    # gr.orchestrator.sync()
 
     # Config type flags to process everything
     gr.orchestrator.typeflags.config(config_json={
         'nodes': [
+            ['Category'   , True, True],
+            ['Concept'    , True, True],
             ['Course'     , True, True],
             ['Person'     , True, True],
             ['Publication', True, True],
             ['Startup'    , True, True],
-            ['Unit'       , True, True],
-            ['Concept'    , True, True],
-            ['Category'   , True, True]
+            ['Unit'       , True, True]
         ],
         'edges': [
-            ['Course'     , 'Person'  , True, True],
-            ['Person'     , 'Unit'    , True, True],
-            ['Publication', 'Person'  , True, True],
-            ['Startup'    , 'Person'  , True, True],
-            ['Unit'       , 'Unit'    , True, True],
-            ['Concept'    , 'Category', True, True],
-            ['Category'   , 'Category', True, True]
+            ['Category'   , 'Category'   , True, True],
+            ['Category'   , 'Concept'    , True, True],
+            ['Concept'    , 'Concept'    , True, True],
+            ['Course'     , 'Category'   , True, True],
+            ['Course'     , 'Concept'    , True, True],
+            ['Course'     , 'Course'     , True, True],
+            ['Course'     , 'Person'     , True, True],
+            ['Course'     , 'Publication', True, True],
+            ['Course'     , 'Startup'    , True, True],
+            ['Course'     , 'Unit'       , True, True],
+            ['Person'     , 'Category'   , True, True],
+            ['Person'     , 'Concept'    , True, True],
+            ['Person'     , 'Person'     , True, True],
+            ['Person'     , 'Publication', True, True],
+            ['Person'     , 'Startup'    , True, True],
+            ['Person'     , 'Unit'       , True, True],
+            ['Publication', 'Category'   , True, True],
+            ['Publication', 'Concept'    , True, True],
+            ['Publication', 'Publication', True, True],
+            ['Publication', 'Startup'    , True, True],
+            ['Publication', 'Unit'       , True, True],
+            ['Startup'    , 'Category'   , True, True],
+            ['Startup'    , 'Concept'    , True, True],
+            ['Startup'    , 'Startup'    , True, True],
+            ['Startup'    , 'Unit'       , True, True],
+            ['Unit'       , 'Category'   , True, True],
+            ['Unit'       , 'Concept'    , True, True],
+            ['Unit'       , 'Unit'       , True, True]
         ]
     })
 
@@ -98,13 +119,17 @@ if False:
 #===================================#
 
 # Execute step?
-if True:
+if False:
     # gr.cachemanager.apply_calculated_field_formulas()
     # gr.cachemanager.materialize_views(actions=('commit'))
     # gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
-    gr.cachemanager.update_scores(actions=('commit'))
-    # gr.indexdb.build(actions=('commit'))
-    # gr.indexdb.patch(actions=('commit'))
+    # gr.cachemanager.update_scores(actions=('commit'))
+    gr.indexdb.build(actions=('commit'))
+    gr.indexdb.patch(actions=('commit'))
 
 
 # gr.cachemanager.calculate_scores_matrix(from_object_type='Concept', to_object_type='Concept', actions=('print', 'eval', 'commit'))
+
+# gr.indexdb.build(actions=('eval', 'commit'))
+gr.indexdb.patch(actions=('print', 'commit'))
+# gr.indexdb.idoclinks['Course']['Concept']['SEM'].horizontal_patch(actions=('print', 'eval'))
