@@ -1,15 +1,16 @@
 
-CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_AllFieldsSymmetric (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
-  from_object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
-  to_object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  field_language enum('en','fr','de','it','n/a') COLLATE utf8mb4_unicode_ci NOT NULL,
-  field_name varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  field_value text COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name),
+CREATE TABLE Data_N_Object_N_Object_T_AllFieldsSymmetric (
+  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  from_object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  to_object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  field_language enum('en','fr','de','it','n/a') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  field_name varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  field_value text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  row_id int NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name),
   KEY from_institution_id (from_institution_id),
   KEY from_object_type (from_object_type),
@@ -19,7 +20,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_AllFieldsSymmetric (
   KEY to_object_id (to_object_id),
   KEY field_language (field_language),
   KEY field_name (field_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -45,21 +46,22 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
-  object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  field_language enum('en','fr','de','it','n/a') COLLATE utf8mb4_unicode_ci NOT NULL,
-  field_name varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
-  field_value longtext COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id,field_language,field_name),
+CREATE TABLE Data_N_Object_T_AllFields (
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  field_language enum('en','fr','de','it','n/a') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  field_name varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  field_value longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  row_id int NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (institution_id,object_type,object_id,field_language,field_name),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY field_language (field_language),
   KEY field_name (field_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CalculatedFields (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -312,7 +314,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_CalculatedScores (
   calculation_type varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   score float NOT NULL,
   to_process tinyint DEFAULT '0',
-  PRIMARY KEY (institution_id,object_type,object_id,category_id),
+  PRIMARY KEY (institution_id,object_type,object_id,category_id,calculation_type),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
@@ -344,8 +346,8 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_CalculatedScores (
   calculation_type varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   score float NOT NULL,
   to_process tinyint DEFAULT '0',
-  PRIMARY KEY (institution_id,object_type,object_id,concept_id),
-  UNIQUE KEY uid (institution_id,object_type,object_id,concept_id),
+  PRIMARY KEY (institution_id,object_type,object_id,concept_id,calculation_type),
+  UNIQUE KEY uid (institution_id,object_type,object_id,concept_id,calculation_type),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
@@ -422,7 +424,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_CalculatedScores (
   calculation_type varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   score float NOT NULL,
   to_process tinyint DEFAULT '0',
-  PRIMARY KEY (institution_id,object_type,object_id,curated_area_id),
+  PRIMARY KEY (institution_id,object_type,object_id,curated_area_id,calculation_type),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),

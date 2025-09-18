@@ -3,11 +3,11 @@
         REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_ScoringMatrix
                     (institution_id, object_type, object_id, concept_id, score_1, score_2, score_3)
         
-              SELECT t0.institution_id, t0.object_type, t0.object_id, t0.concept_id, --                                                                                             SCORING MATRIX
-                     --                                                             Course     Lecture     MOOC        Person     Publication  Startup     Unit                   ← NODE TYPES   ↓ SCORE TYPES
-                     COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t11.score, t21.score), t31.score), t41.score), t51.score), t61.score), t71.score), t81.score)   AS score_1, -- Score type 1
-                     COALESCE(COALESCE(COALESCE(COALESCE(                           t12.score, t22.score), t32.score), t42.score)                        , t72.score)               AS score_2, -- Score type 2
-                     COALESCE(                                                      t13.score                                                            , t73.score)               AS score_3  -- Score type 3
+              SELECT t0.institution_id, t0.object_type, t0.object_id, t0.concept_id, --                                                                                                                  SCORING MATRIX
+                     --                                                                      Course     Lecture     MOOC        Person     Publication  Startup     Unit        Widget      Category   ← NODE TYPES   ↓ SCORE TYPES
+                     COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(COALESCE(t11.score, t21.score), t31.score), t41.score), t51.score), t61.score), t71.score), t81.score), t91.score)   AS score_1, -- Score type 1
+                     COALESCE(COALESCE(COALESCE(COALESCE(                                    t12.score, t22.score), t32.score), t42.score)                        , t72.score)                           AS score_2, -- Score type 2
+                     COALESCE(                                                               t13.score                                                            , t73.score)                           AS score_3  -- Score type 3
                 
                 FROM [[graph_cache]].Edges_N_Object_N_Concept_T_Tuples t0
                 
@@ -69,4 +69,9 @@
                  
            LEFT JOIN [[graph_cache]].Edges_N_Object_N_Concept_T_UnionAllScores  t81
                   ON (t0.object_id, t0.concept_id) = (t81.object_id, t81.concept_id)
-                 AND (t81.institution_id, t81.object_type, t81.calculation_type) = ('EPFL', 'Widget', 'concept detection on quiz description');
+                 AND (t81.institution_id, t81.object_type, t81.calculation_type) = ('EPFL', 'Widget', 'concept detection on quiz description')
+                 
+           LEFT JOIN [[graph_cache]].Edges_N_Object_N_Concept_T_UnionAllScores  t91
+                  ON (t0.object_id, t0.concept_id) = (t91.object_id, t91.concept_id)
+                 AND (t91.institution_id, t91.object_type, t91.calculation_type) = ('Ont', 'Category', 'concept sum-scores aggregation (bounded)');
+;

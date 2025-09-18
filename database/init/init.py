@@ -79,7 +79,7 @@ if True:
     sysmsg.info("🗂️ 📝 Create required MySQL tables if they don't exist.")
 
     # Execute CREATE TABLE statements from files
-    for schema_name in ['registry', 'lectures', 'airflow', 'graph_cache_test', 'graphsearch_test', 'elasticsearch_cache']:
+    for schema_name in ['registry', 'lectures', 'airflow', 'ontology', 'graph_cache_test', 'graphsearch_test', 'elasticsearch_cache']:
 
         # Print info message
         sysmsg.trace(f"Processing database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
@@ -89,19 +89,20 @@ if True:
 
         # Open SQL file and get all table names that should be created
         with open(sql_file_path, 'r') as sql_file:
-            required_tables = re.findall(r'CREATE TABLE IF NOT EXISTS\s*([^\s]*)\s*', sql_file.read())
+            match = re.findall(r'CREATE (TABLE IF NOT EXISTS|OR REPLACE VIEW)\s*([^\s]*)\s*', sql_file.read())
 
         # Check if any tables were found in the SQL file
-        if not required_tables:
-            sysmsg.error(f"🗂️ ❌ No CREATE TABLE statements found in SQL file.")
+        if not match:
+            sysmsg.error(f"🗂️ ❌ No CREATE TABLE or VIEW statements found in SQL file.")
             exit()
         else:
-            sysmsg.trace(f"Found {len(required_tables)} CREATE TABLE statements in SQL file:")
+            sysmsg.trace(f"Found {len(match)} CREATE TABLE or VIEW statements in SQL file:")
+            required_tables = [table_name for _, table_name in match]
             for table_name in required_tables:
                 print(f" - {table_name}")
 
         # Print info message
-        sysmsg.trace(f"Executing CREATE TABLE statements ...")
+        sysmsg.trace(f"Executing CREATE TABLE or VIEW statements ...")
 
         # Execute SQL file
         db.execute_query_from_file(engine_name='test', file_path=sql_file_path, database=global_config['mysql']['db_schema_names'][schema_name], verbose=True)
@@ -110,10 +111,10 @@ if True:
         sysmsg.trace(f"Verifying that all required tables were created ...")
 
         # Get list of tables in schema
-        tables_in_schema = sorted(db.get_tables_in_schema(engine_name='test', schema_name=global_config['mysql']['db_schema_names'][schema_name]))
+        tables_in_schema = sorted(db.get_tables_in_schema(engine_name='test', schema_name=global_config['mysql']['db_schema_names'][schema_name], include_views=True))
 
         # Check if all required tables were created
-        if not set(required_tables).issubset(tables_in_schema):
+        if not set([t.lower() for t in required_tables]).issubset([t.lower() for t in tables_in_schema]):
             sysmsg.trace(f"Not all required tables were created. Tables missing: {set(required_tables) - set(tables_in_schema)}")
             sysmsg.error(f"🗂️ ❌ Failed to create all required tables in database '{global_config['mysql']['db_schema_names'][schema_name]}'.")
             exit()
