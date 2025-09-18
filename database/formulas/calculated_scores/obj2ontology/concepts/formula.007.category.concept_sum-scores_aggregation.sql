@@ -44,7 +44,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
   INNER JOIN [[airflow]].Operations_N_Object_T_ScoresExpired se
           ON (se.institution_id, se.object_type, se.object_id) = ('Ont', 'Category', s.object_id)
   INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
-          ON (se.institution_id, se.object_type) = (tf.institution_id, tf.object_type)        
+          ON (se.institution_id, se.object_type) = (tf.institution_id, tf.object_type)
        WHERE (s.institution_id, s.object_type, s.calculation_type) = ('Ont', 'Category', 'concept sum-scores aggregation')
          AND se.to_process = 1
          AND tf.to_process = 1;

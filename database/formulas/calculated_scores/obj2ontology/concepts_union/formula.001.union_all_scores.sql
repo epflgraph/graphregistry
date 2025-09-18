@@ -11,13 +11,14 @@
                USING (institution_id, object_type)
                WHERE se.to_process = 1
                  AND tf.to_process = 1
-                 AND (    (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Course' ,    'slide sum-scores aggregation (bounded)')
-                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Lecture',    'slide sum-scores aggregation (bounded)')
-                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Lecture',          'LLM keyword extraction (bounded)')
-                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'MOOC'   ,    'slide sum-scores aggregation (bounded)')
-                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'MOOC'   ,   'people sum-scores aggregation (bounded)')
-                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Person' , 'abstract sum-scores aggregation (bounded)')
-                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Unit'   , 'abstract sum-scores aggregation (bounded)')
+                 AND (    (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Course'  ,    'slide sum-scores aggregation (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Lecture' ,    'slide sum-scores aggregation (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Lecture' ,          'LLM keyword extraction (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'MOOC'    ,    'slide sum-scores aggregation (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'MOOC'    ,   'people sum-scores aggregation (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Person'  , 'abstract sum-scores aggregation (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('EPFL', 'Unit'    , 'abstract sum-scores aggregation (bounded)')
+                       OR (s.institution_id, s.object_type, s.calculation_type) = ('Ont' , 'Category',  'concept sum-scores aggregation (bounded)')
                      )
                  AND s.score >= 0.1
                  

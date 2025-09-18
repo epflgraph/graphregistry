@@ -75,14 +75,18 @@ if False:
             ['Person'     , True, True],
             ['Publication', True, True],
             ['Startup'    , True, True],
-            ['Unit'       , True, True]
+            ['Unit'       , True, True],
+            ['Concept'    , True, True],
+            ['Category'   , True, True]
         ],
         'edges': [
-            ['Course'     , 'Person', True, True],
-            ['Person'     , 'Unit'  , True, True],
-            ['Publication', 'Person', True, True],
-            ['Startup'    , 'Person', True, True],
-            ['Unit'       , 'Unit'  , True, True]
+            ['Course'     , 'Person'  , True, True],
+            ['Person'     , 'Unit'    , True, True],
+            ['Publication', 'Person'  , True, True],
+            ['Startup'    , 'Person'  , True, True],
+            ['Unit'       , 'Unit'    , True, True],
+            ['Concept'    , 'Category', True, True],
+            ['Category'   , 'Category', True, True]
         ]
     })
 
@@ -94,18 +98,13 @@ if False:
 #===================================#
 
 # Execute step?
-if False:
-    gr.cachemanager.apply_calculated_field_formulas()
-    gr.cachemanager.materialize_views(actions=('commit'))
-    gr.cachemanager.apply_traversal_and_scoring_formulas()
+if True:
+    # gr.cachemanager.apply_calculated_field_formulas()
+    # gr.cachemanager.materialize_views(actions=('commit'))
+    # gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
     gr.cachemanager.update_scores(actions=('commit'))
-    gr.indexdb.build(actions=('commit'))
-    gr.indexdb.patch(actions=('commit'))
+    # gr.indexdb.build(actions=('commit'))
+    # gr.indexdb.patch(actions=('commit'))
 
 
-# gr.cachemanager.calculate_scores_matrix(from_object_type='Concept', to_object_type='Concept', actions=('print', 'eval'))
-
-
-
-
-
+# gr.cachemanager.calculate_scores_matrix(from_object_type='Concept', to_object_type='Concept', actions=('print', 'eval', 'commit'))

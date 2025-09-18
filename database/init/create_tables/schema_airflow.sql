@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
   to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
   to_object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  context varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '0',
+  context varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   checksum_current char(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   checksum_previous char(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   has_changed tinyint DEFAULT '0',
