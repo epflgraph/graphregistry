@@ -144,7 +144,7 @@ if True:
 #===============================================#
 
 # Execute step?
-if False:
+if True:
 
     # Print info message
     sysmsg.info("➡️ 📝 Insert default data into MySQL tables.")

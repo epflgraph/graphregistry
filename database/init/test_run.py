@@ -99,9 +99,9 @@ if True:
 
 # Execute step?
 if True:
-    gr.cachemanager.apply_calculated_field_formulas()
+    gr.cachemanager.apply_calculated_field_formulas(verbose=False)
     gr.cachemanager.materialize_views(actions=('commit'))
-    gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=True)
+    gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
     gr.cachemanager.update_scores(actions=('commit'))
     gr.indexdb.build(actions=('commit'))
     gr.indexdb.patch(actions=('commit'))
@@ -119,17 +119,3 @@ index_date = '2025-09-20'
 if True:
     gr.indexes.generate_local_cache(index_date=index_date)
     gr.indexes.generate_index_from_local_cache(index_date=index_date)
-
-
-# gr.cachemanager.calculate_scores_matrix(from_object_type='Concept', to_object_type='Concept', actions=('print', 'eval', 'commit'))
-
-# gr.indexdb.build(actions=('eval', 'commit'))
-# gr.indexdb.patch(actions=('print', 'commit'))
-
-
-# gr.indexdb.idoclinks['Category']['Category']['SEM'].horizontal_patch_elasticsearch(actions=('print', 'eval', 'commit'))
-# gr.db.print_database_stats(engine_name='test', schema_name='test_elasticsearch_cache', re_include=[r'.*Category.*'], re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
-
-# gr.cachemanager.cache_update_from_view(view_name='obj: all fields', actions=('commit'))
-
-# gr.cachemanager.cache_update_from_view(view_name='obj2obj: parent-child symmetric (ontology)', actions=('print', 'eval'))

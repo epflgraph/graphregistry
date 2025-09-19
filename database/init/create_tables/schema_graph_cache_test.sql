@@ -407,6 +407,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_UnionAllScores (
   concept_id bigint NOT NULL DEFAULT '0',
   calculation_type varchar(44) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   score float NOT NULL DEFAULT '0',
+  UNIQUE KEY uid (institution_id,object_type,object_id,concept_id,calculation_type),
   KEY join_id (object_id,concept_id),
   KEY filter_id (institution_id,object_type,calculation_type),
   KEY institution_id (institution_id),
