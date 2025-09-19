@@ -6638,16 +6638,6 @@
             "from_object_id": "1122aabb3344ccdd",
             "to_institution_id": "EPFL",
             "to_object_type": "Person",
-            "to_object_id": "112384",
-            "context": "authorship",
-            "custom_fields": []
-        },
-        {
-            "from_institution_id": "EPFL",
-            "from_object_type": "Publication",
-            "from_object_id": "1122aabb3344ccdd",
-            "to_institution_id": "EPFL",
-            "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []

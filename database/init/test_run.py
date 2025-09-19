@@ -28,7 +28,7 @@ detect_concepts = False
 import_method = 'object'
 
 # Execute step?
-if False:
+if True:
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
@@ -37,13 +37,13 @@ if False:
         for node_json in sample_set['nodes']:
             node = gr.Node()
             node.set_from_json(doc_json=node_json, detect_concepts=detect_concepts)
-            node.commit(actions=('eval', 'commit'))
+            node.commit(actions=('commit'))
         
         # Process edges
         for edge_json in sample_set['edges']:
             edge = gr.Edge()
             edge.set_from_json(doc_json=edge_json)
-            edge.commit(actions=('eval', 'commit'))
+            edge.commit(actions=('commit'))
 
     # Method 2: Process and commit as list of objects
     elif import_method == 'list':
@@ -128,8 +128,9 @@ if False:
     gr.indexdb.patch(actions=('commit'))
 
 
+# gr.db.print_database_stats(engine_name='test', schema_name='test_graphsearch_test', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
 # gr.cachemanager.calculate_scores_matrix(from_object_type='Concept', to_object_type='Concept', actions=('print', 'eval', 'commit'))
 
 # gr.indexdb.build(actions=('eval', 'commit'))
-gr.indexdb.patch(actions=('print', 'commit'))
+# gr.indexdb.patch(actions=('print', 'commit'))
 # gr.indexdb.idoclinks['Course']['Concept']['SEM'].horizontal_patch(actions=('print', 'eval'))

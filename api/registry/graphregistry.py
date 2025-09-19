@@ -4,7 +4,9 @@
 # - Create object to category tables (some are still missing)
 # - delete all local variables in functions
 
-from sqlalchemy import create_engine as SQLEngine, text
+from sqlalchemy import create_engine as SQLEngine, text, event
+from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
+from sqlalchemy.dialects import mysql
 from tqdm import tqdm
 from loguru import logger as sysmsg
 import base64, re, time, subprocess, warnings, os, glob, rich, hashlib, random, termios, tty, inspect
@@ -1363,18 +1365,31 @@ def registry_insert(
                 )};"""
     else:
         sql_query_commit = f"""
-            INSERT IGNORE INTO {t}
+            INSERT INTO {t}
                 ({', '.join(key_column_names)})
             SELECT 
                 {', '.join([f':{key_column_names[k]} AS {key_column_names[k]}' for k in range(num_key_columns)])};"""
 
     # Print the SQL query
     if 'print' in actions:
-        print(sql_query_commit)
+        stmt = text(sql_query_commit).bindparams(**sql_params)
+        print(stmt.compile(
+            dialect=mysql.dialect(),
+            compile_kwargs={"literal_binds": True}
+        ))
 
     # Execute commit
     if 'commit' in actions:
-        db_connector.execute_query(engine_name='test', query=sql_query_commit, params=sql_params, commit=True)
+        out = db_connector.execute_query(engine_name='test', query=sql_query_commit, params=sql_params, commit=True, return_exception=True)
+        if not type(out) is list:
+            error_type, error_msg, dbapi_code = out
+            if dbapi_code==1062: # Duplicate entry
+                sysmsg.warning(f'Duplicate entry error when inserting into {t} with keys {sql_params}. Continuing ...')
+            else:
+                sysmsg.critical(f'Error when inserting into {t} with keys {sql_params}. Exiting ...')
+                print('Error details:')
+                print(f'{error_type}: {error_msg} (DBAPI code: {dbapi_code})')
+                exit()
 
     # Return the test results
     return eval_results
@@ -1601,8 +1616,14 @@ class GraphDB():
             )
         params = global_config['mysql'][server_name]
         engine = SQLEngine(
-            f'mysql+pymysql://{params["username"]}:{params["password"]}@{params["host_address"]}:{params["port"]}/'
+            f'mysql+pymysql://{params["username"]}:{params["password"]}@{params["host_address"]}:{params["port"]}/',
+            pool_pre_ping=True
         )
+        @event.listens_for(engine, "connect")
+        def set_sql_mode(dbapi_conn, _):
+            with dbapi_conn.cursor() as cur:
+                cur.execute("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION'")
+
         return params, engine
 
     #-------------------------------#
@@ -1779,7 +1800,7 @@ class GraphDB():
     #----------------------------------------------#
     # Method: Executes a query using Python module #
     #----------------------------------------------#
-    def execute_query(self, engine_name, query, params=None, commit=False):
+    def execute_query(self, engine_name, query, params=None, commit=False, return_exception=False):
         connection = self.engine[engine_name].connect()
         try:
             result = connection.execute(text(query), parameters=params)
@@ -1789,16 +1810,48 @@ class GraphDB():
                 rows = []
             if commit:
                 connection.commit()
-        except Exception as e:
-            print('Error executing query.')
-            # print specific error
-            print(e)
-            raise e
-            rows = []
+        except (DataError, IntegrityError, SQLAlchemyError) as e:
+            if return_exception:
+                # You can return different levels of detail here
+                error_type = type(e).__name__      # e.g. "DataError"
+                error_message = str(e)             # human-readable
+                # if you want the underlying DBAPI code, it's in e.orig (if available)
+                dbapi_code = getattr(e.orig, "args", [None])[0] if hasattr(e, "orig") else None
+                return error_type, error_message, dbapi_code
+            else:
+                print("\033[91mError executing query.\033[0m")
+                print(e)
+                raise
         finally:
             connection.close()
         return rows
-    
+        
+    # def execute_query(self, engine_name, query, params=None, commit=False):
+    #     connection = self.engine[engine_name].connect()
+    #     try:
+    #         result = connection.execute(text(query), parameters=params)
+    #         rows = result.fetchall() if result.returns_rows else []
+    #         if commit:
+    #             connection.commit()
+    #         return {
+    #             "success": True,
+    #             "rows": rows,
+    #             "error_type": None,
+    #             "error_code": None,
+    #             "error_message": None,
+    #         }
+    #     except (DataError, IntegrityError, SQLAlchemyError) as e:
+    #         dbapi_code = getattr(e.orig, "args", [None])[0] if hasattr(e, "orig") else None
+    #         return {
+    #             "success": False,
+    #             "rows": [],
+    #             "error_type": type(e).__name__,
+    #             "error_code": dbapi_code,
+    #             "error_message": str(e),
+    #         }
+    #     finally:
+    #         connection.close()
+            
     #------------------------------------------------------------------#
     # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE #
     #------------------------------------------------------------------#
@@ -3229,6 +3282,32 @@ class GraphDB():
         print('')
 
         time.sleep(1)
+
+    #----------------------------#
+    # Method: Get database stats #
+    #----------------------------#
+    def print_database_stats(self, engine_name, schema_name, re_include=[], re_exclude=[]):
+
+        # Get list of tables in the schema
+        list_of_tables = self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name)
+
+        # Apply include/exclude filters
+        if len(re_include) > 0:
+            list_of_tables = [t for t in list_of_tables if     any(re.search(pattern, t) for pattern in re_include)]
+        if len(re_exclude) > 0:
+            list_of_tables = [t for t in list_of_tables if not any(re.search(pattern, t) for pattern in re_exclude)]
+
+        # Loop over the tables
+        for table_name in list_of_tables:
+
+            # Get the row count
+            row_count = self.execute_query(engine_name=engine_name, query=f"SELECT COUNT(*) FROM {schema_name}.{table_name};")[0][0]
+            
+            # Print table : row count (in red if =0 else in blue)
+            if row_count > 0:
+                print(f"\033[34m{table_name}: {row_count}\033[0m")
+            else:
+                print(f"\033[31m{table_name}: {row_count}\033[0m")
 
 #-------------------------------------------------#
 # Class definition for Graph ElasticSearch engine #
@@ -6224,7 +6303,7 @@ class GraphRegistry():
             return eval_results
 
         # Commit all to database
-        def commit(self, actions=('eval',), verbose=True):
+        def commit(self, actions=('eval',), verbose=False):
 
             # Print actions info
             if actions == ('eval',):
@@ -6276,7 +6355,7 @@ class GraphRegistry():
         def commit_concepts(self, actions=('eval',), delete_existing=False):
 
             if self.concepts_detection is None or len(self.concepts_detection) == 0:
-                sysmsg.warning("No concepts to commit. Run 'detect_concepts()' first.")
+                sysmsg.warning(f"No concepts to commit for key ({self.institution_id}, {self.object_type}, {self.object_id}). Run 'detect_concepts()' first.")
                 return None
 
             schema_name = object_type_to_schema.get(self.object_type, schema_registry)
@@ -6545,7 +6624,7 @@ class GraphRegistry():
             return eval_results
 
         # Commit all to database
-        def commit(self, actions=('eval',), verbose=True):
+        def commit(self, actions=('eval',), verbose=False):
 
             # Print actions info
             if actions == ('eval',):
