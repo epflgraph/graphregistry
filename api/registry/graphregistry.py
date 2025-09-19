@@ -1996,7 +1996,7 @@ class GraphDB():
     #-------------------------------------------------#
     # Method: Executes a query sequentially by chunks #
     #-------------------------------------------------#
-    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, has_filters=None, chunk_size=10000, row_id_name='row_id', show_progress=False):
+    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, has_filters=None, chunk_size=10000, row_id_name='row_id', show_progress=False, verbose=False):
 
         # Remove trailing semicolon from the query
         if query.strip()[-1] == ';':
@@ -2029,7 +2029,7 @@ class GraphDB():
             sql_query = f"{query} {filter_command} {row_id_name} BETWEEN {offset} AND {offset + chunk_size - 1};"
 
             # Execute the query
-            self.execute_query_in_shell(engine_name=engine_name, query=sql_query, verbose=False)
+            self.execute_query_in_shell(engine_name=engine_name, query=sql_query, verbose=verbose)
 
     #---------------------------------------------#
     # Method: Executes a query in the MySQL shell #
@@ -7096,15 +7096,15 @@ class GraphRegistry():
                 sql_query_stack = []
 
                 # Loop over schemas
-                for schema_name in [schema_registry, schema_lectures]:
+                for schema_name in [schema_registry, schema_lectures, schema_ontology]:
 
                     # Append query
                     sql_query_stack += [f"""
                         SELECT 'Child-to-Parent' AS edge_type,
                                c2p.from_institution_id, c2p.from_object_type, c2p.from_object_id,
-                               c2p.to_institution_id,   c2p.to_object_type,   c2p.to_object_id,
-                               COALESCE(c2p.context, 'n/a') AS context, 1 AS to_process,
-                               tp.row_id
+                                 c2p.to_institution_id,   c2p.to_object_type,   c2p.to_object_id,
+                               c2p.context, 1 AS to_process,
+                               c2p.row_id
                           FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
                          USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
@@ -7123,8 +7123,8 @@ class GraphRegistry():
                                c2p.from_institution_id AS to_institution_id,
                                c2p.from_object_type    AS to_object_type,
                                c2p.from_object_id      AS to_object_id,
-                               COALESCE(CONCAT(c2p.context, ' (mirror)'), 'n/a') AS context, 1 AS to_process,
-                               tp.row_id
+                               CONCAT(c2p.context, ' (mirror)') AS context, 1 AS to_process,
+                               c2p.row_id
                           FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
                          USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
@@ -7168,7 +7168,7 @@ class GraphRegistry():
                     SELECT 'Child-to-Parent' AS edge_type,
                            from_institution_id, from_object_type, c2p.from_id AS from_object_id,
                            to_institution_id, to_object_type,   c2p.to_id AS   to_object_id,
-                           'n/a' AS context, 1 AS to_process,
+                           context, 1 AS to_process,
                            tp.row_id
                       FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
@@ -7185,7 +7185,7 @@ class GraphRegistry():
                     SELECT 'Parent-to-Child' AS edge_type,
                            from_institution_id, from_object_type,   to_id AS from_object_id,
                            to_institution_id, to_object_type, from_id AS   to_object_id,
-                           'n/a' AS context, 1 AS to_process,
+                           context, 1 AS to_process,
                            tp.row_id
                       FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
@@ -7202,7 +7202,7 @@ class GraphRegistry():
                     SELECT 'Parent-to-Child' AS edge_type,
                            from_institution_id, from_object_type, c.from_id AS from_object_id,
                            to_institution_id, to_object_type,   l.to_id AS   to_object_id,
-                           'n/a' AS context, 1 AS to_process,
+                           context, 1 AS to_process,
                            tp.row_id
                       FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
                 INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
@@ -7223,7 +7223,7 @@ class GraphRegistry():
                     SELECT 'Child-to-Parent' AS edge_type,
                            from_institution_id, from_object_type,   l.to_id AS from_object_id,
                            to_institution_id, to_object_type, c.from_id AS   to_object_id,
-                           'n/a' AS context, 1 AS to_process,
+                           context, 1 AS to_process,
                            tp.row_id
                       FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
                 INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
@@ -7315,7 +7315,7 @@ class GraphRegistry():
 
                 # Execute commit
                 # self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
-                self.db.execute_query_in_chunks(engine_name='test', schema_name=schema_graph_cache_test, table_name=target_table, query=sql_query_commit, has_filters=query_has_filters, show_progress=True)
+                self.db.execute_query_in_chunks(engine_name='test', schema_name=schema_graph_cache_test, table_name=target_table, query=sql_query_commit, has_filters=query_has_filters, show_progress=True, verbose=True)
                 # def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, chunk_size=10000, row_id_name='row_id', show_progress=False):
 
         # Apply formula from SQL file
