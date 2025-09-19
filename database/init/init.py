@@ -17,11 +17,8 @@ db = GraphDB()
 # Step 1: Test MySQL and ElasticSearch connections #
 #==================================================#
 
-# Execute step?
-if True:
-
-    # Print info message
-    sysmsg.info("🔌 📝 Test MySQL connection.")
+# Define function to test MySQL connection
+def test():
 
     # Test the MySQL connection
     test_result = db.test(engine_name='test')
@@ -36,6 +33,15 @@ if True:
         case None:
             sysmsg.critical("🔌 🚨 An error occurred while trying to connect to the MySQL test server.\n")
             exit()
+
+# Execute step?
+if True:
+
+    # Print info message
+    sysmsg.info("🔌 📝 Test MySQL connection.")
+
+    # Test MySQL connection
+    test()
 
 #===========================================================================#
 # Step 2: Check if required MySQL databases exist and create them otherwise #
@@ -98,11 +104,15 @@ if True:
         else:
             sysmsg.trace(f"Found {len(match)} CREATE TABLE or VIEW statements in SQL file:")
             required_tables = [table_name for _, table_name in match]
-            for table_name in required_tables:
-                print(f" - {table_name}")
+            if False:
+                for table_name in required_tables:
+                    print(f" - {table_name}")
 
         # Print info message
-        sysmsg.trace(f"Executing CREATE TABLE or VIEW statements ...")
+        sysmsg.trace(f"Executing CREATE TABLE or VIEW statements for database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
+
+        # Test MySQL connection
+        # test()
 
         # Execute SQL file
         db.execute_query_from_file(engine_name='test', file_path=sql_file_path, database=global_config['mysql']['db_schema_names'][schema_name], verbose=True)
@@ -134,7 +144,7 @@ if True:
 #===============================================#
 
 # Execute step?
-if True:
+if False:
 
     # Print info message
     sysmsg.info("➡️ 📝 Insert default data into MySQL tables.")

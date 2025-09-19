@@ -1,5 +1,5 @@
 
-CREATE TABLE Data_N_Object_N_Object_T_AllFieldsSymmetric (
+CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_AllFieldsSymmetric (
   from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   from_object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE Data_N_Object_T_AllFields (
+CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,

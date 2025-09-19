@@ -3297,6 +3297,9 @@ class GraphDB():
         if len(re_exclude) > 0:
             list_of_tables = [t for t in list_of_tables if not any(re.search(pattern, t) for pattern in re_exclude)]
 
+        # Print line break
+        print('')
+
         # Loop over the tables
         for table_name in list_of_tables:
 
@@ -3308,6 +3311,9 @@ class GraphDB():
                 print(f"\033[34m{table_name}: {row_count}\033[0m")
             else:
                 print(f"\033[31m{table_name}: {row_count}\033[0m")
+
+        # Print line break
+        print('')
 
 #-------------------------------------------------#
 # Class definition for Graph ElasticSearch engine #
@@ -5017,6 +5023,7 @@ class GraphRegistry():
                                USING (institution_id, object_type, object_id)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
@@ -5026,12 +5033,13 @@ class GraphRegistry():
                     # Print status
                     sysmsg.trace(f"⚙️  Updating type flags for new objects on schema '{schema_name}' ...")
 
-                    # Execute object sync
+                    # Execute object sync @@@@@@@@
                     sql_query = f"""
-                       INSERT IGNORE INTO {schema_airflow}.Operations_N_Object_T_TypeFlags
-                                         (institution_id, object_type, flag_type, to_process)
-                          SELECT DISTINCT institution_id, object_type, 'fields' AS flag_type, 0 AS to_process
-                                     FROM {schema_airflow}.Operations_N_Object_T_FieldsChanged
+                                INSERT INTO {schema_airflow}.Operations_N_Object_T_TypeFlags
+                                           (institution_id, object_type, flag_type, to_process)
+                            SELECT DISTINCT institution_id, object_type, 'fields' AS flag_type, 0 AS to_process
+                                       FROM {schema_airflow}.Operations_N_Object_T_FieldsChanged
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
@@ -5064,6 +5072,7 @@ class GraphRegistry():
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
                              AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                     
@@ -5073,12 +5082,13 @@ class GraphRegistry():
                     # Print status
                     sysmsg.trace(f"⚙️  Updating type flags for new edges on schema '{schema_name}' ...")
 
-                    # Execute object sync
+                    # Execute object sync @@@@@@@@
                     sql_query = f"""
-                       INSERT IGNORE INTO {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
-                                         (from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type, to_process)
-                          SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 'fields' AS flag_type, 0 AS to_process
-                                     FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
+                                INSERT INTO {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                                           (from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type, to_process)
+                            SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 'fields' AS flag_type, 0 AS to_process
+                                       FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
@@ -5693,6 +5703,7 @@ class GraphRegistry():
                                USING (institution_id, object_type, object_id)
                                WHERE o.institution_id IS NULL
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                     
@@ -5702,12 +5713,13 @@ class GraphRegistry():
                     # Print status
                     sysmsg.trace(f"⚙️  Updating type flags for new objects on schema '{schema_name}' ...")
 
-                    # Execute object sync
+                    # Execute object sync @@@@@@@
                     sql_query = f"""
-                       INSERT IGNORE INTO {schema_airflow}.Operations_N_Object_T_TypeFlags
-                                         (institution_id, object_type, flag_type, to_process)
-                          SELECT DISTINCT institution_id, object_type, 'scores' AS flag_type, 0 AS to_process
-                                     FROM {schema_airflow}.Operations_N_Object_T_ScoresExpired;
+                                INSERT INTO {schema_airflow}.Operations_N_Object_T_TypeFlags
+                                           (institution_id, object_type, flag_type, to_process)
+                            SELECT DISTINCT institution_id, object_type, 'scores' AS flag_type, 0 AS to_process
+                                       FROM {schema_airflow}.Operations_N_Object_T_ScoresExpired
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
@@ -6770,8 +6782,8 @@ class GraphRegistry():
                 'obj2obj: all fields symmetric',
                 'obj: page profile',
                 'obj: all fields',
-                'obj2obj: parent-child symmetric',
-                'obj2obj: parent-child symmetric (ontology)'
+                'obj2obj: parent-child symmetric'
+                # 'obj2obj: parent-child symmetric (ontology)'
             ]
             
             # Execute and commit all views
@@ -6912,9 +6924,9 @@ class GraphRegistry():
                 # Query template
                 sql_query_template = """
                     SELECT cf.from_institution_id, cf.from_object_type, cf.from_object_id,
-                           cf.to_institution_id,   cf.to_object_type,   cf.to_object_id,
+                             cf.to_institution_id,   cf.to_object_type,   cf.to_object_id,
                            cf.field_language, cf.field_name, cf.field_value,
-                           tp.row_id
+                           cf.row_id
                       FROM %s.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_N_Object_T_%s cf
                      USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
@@ -6933,7 +6945,7 @@ class GraphRegistry():
                            cf.from_object_type    AS to_object_type,
                            cf.from_object_id      AS to_object_id,
                            cf.field_language, cf.field_name, cf.field_value,
-                           tp.row_id
+                           cf.row_id
                       FROM %s.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_N_Object_T_%s cf
                      USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
@@ -7042,7 +7054,7 @@ class GraphRegistry():
                 sql_query_template = """
                     SELECT cf.institution_id, cf.object_type, cf.object_id,
                            cf.field_language, cf.field_name, cf.field_value,
-                           tp.row_id
+                           cf.row_id
                       FROM %s.Operations_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_T_%s cf
                      USING (institution_id, object_type, object_id)
@@ -7152,107 +7164,107 @@ class GraphRegistry():
                 # Specify input for execution method
                 query_has_filters = False
 
-            #------------------------------#
-            # Process query for input name #
-            #------------------------------#
-            elif view_name == 'obj2obj: parent-child symmetric (ontology)':
+            # #------------------------------#
+            # # Process query for input name #
+            # #------------------------------#
+            # elif view_name == 'obj2obj: parent-child symmetric (ontology)':
 
-                # Target cache table
-                target_table = 'Edges_N_Object_N_Object_T_ParentChildSymmetric'
+            #     # Target cache table
+            #     target_table = 'Edges_N_Object_N_Object_T_ParentChildSymmetric'
 
-                # List of evaluation columns
-                eval_columns = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
+            #     # List of evaluation columns
+            #     eval_columns = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
 
-                # Build query (base)
-                sql_query = f"""
-                    SELECT 'Child-to-Parent' AS edge_type,
-                           from_institution_id, from_object_type, c2p.from_id AS from_object_id,
-                           to_institution_id, to_object_type,   c2p.to_id AS   to_object_id,
-                           context, 1 AS to_process,
-                           tp.row_id
-                      FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-                INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                INNER JOIN {schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
-                        ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-                         = ('Ont', 'Category', c2p.from_id, 'Ont', 'Category', c2p.to_id)
-                     WHERE tp.to_process = 1
-                       AND tf.flag_type = 'fields'
-                       AND tf.to_process = 1
+            #     # Build query (base)
+            #     sql_query = f"""
+            #         SELECT 'Child-to-Parent' AS edge_type,
+            #                from_institution_id, from_object_type, c2p.from_id AS from_object_id,
+            #                to_institution_id, to_object_type,   c2p.to_id AS   to_object_id,
+            #                context, 1 AS to_process,
+            #                tp.row_id
+            #           FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
+            #     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+            #     INNER JOIN {schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
+            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
+            #              = ('Ont', 'Category', c2p.from_id, 'Ont', 'Category', c2p.to_id)
+            #          WHERE tp.to_process = 1
+            #            AND tf.flag_type = 'fields'
+            #            AND tf.to_process = 1
 
-                 UNION ALL
+            #      UNION ALL
 
-                    SELECT 'Parent-to-Child' AS edge_type,
-                           from_institution_id, from_object_type,   to_id AS from_object_id,
-                           to_institution_id, to_object_type, from_id AS   to_object_id,
-                           context, 1 AS to_process,
-                           tp.row_id
-                      FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-                INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                INNER JOIN {schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
-                        ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-                         = ('Ont', 'Category', c2p.to_id, 'Ont', 'Category', c2p.from_id)
-                     WHERE tp.to_process = 1
-                       AND tf.flag_type = 'fields'
-                       AND tf.to_process = 1
+            #         SELECT 'Parent-to-Child' AS edge_type,
+            #                from_institution_id, from_object_type,   to_id AS from_object_id,
+            #                to_institution_id, to_object_type, from_id AS   to_object_id,
+            #                context, 1 AS to_process,
+            #                tp.row_id
+            #           FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
+            #     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+            #     INNER JOIN {schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
+            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
+            #              = ('Ont', 'Category', c2p.to_id, 'Ont', 'Category', c2p.from_id)
+            #          WHERE tp.to_process = 1
+            #            AND tf.flag_type = 'fields'
+            #            AND tf.to_process = 1
 
-                 UNION ALL
+            #      UNION ALL
 
-                    SELECT 'Parent-to-Child' AS edge_type,
-                           from_institution_id, from_object_type, c.from_id AS from_object_id,
-                           to_institution_id, to_object_type,   l.to_id AS   to_object_id,
-                           context, 1 AS to_process,
-                           tp.row_id
-                      FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
-                INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
-                        ON c.to_id = l.from_id
-                INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-                        ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-                         = ('Ont', 'Category', c.from_id, 'Ont', 'Concept', l.to_id)
-                        OR (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-                         = ('Ont', 'Concept', c.from_id, 'Ont', 'Category', l.to_id)
-                INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                     WHERE tp.to_process = 1
-                       AND tf.flag_type = 'fields'
-                       AND tf.to_process = 1
+            #         SELECT 'Parent-to-Child' AS edge_type,
+            #                from_institution_id, from_object_type, c.from_id AS from_object_id,
+            #                to_institution_id, to_object_type,   l.to_id AS   to_object_id,
+            #                context, 1 AS to_process,
+            #                tp.row_id
+            #           FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
+            #     INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
+            #             ON c.to_id = l.from_id
+            #     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
+            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
+            #              = ('Ont', 'Category', c.from_id, 'Ont', 'Concept', l.to_id)
+            #             OR (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
+            #              = ('Ont', 'Concept', c.from_id, 'Ont', 'Category', l.to_id)
+            #     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+            #          WHERE tp.to_process = 1
+            #            AND tf.flag_type = 'fields'
+            #            AND tf.to_process = 1
 
-                 UNION ALL
+            #      UNION ALL
 
-                    SELECT 'Child-to-Parent' AS edge_type,
-                           from_institution_id, from_object_type,   l.to_id AS from_object_id,
-                           to_institution_id, to_object_type, c.from_id AS   to_object_id,
-                           context, 1 AS to_process,
-                           tp.row_id
-                      FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
-                INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
-                        ON c.to_id = l.from_id
-                INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-                        ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-                         = ('Ont', 'Category', l.to_id, 'Ont', 'Concept', c.from_id)
-                        OR (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-                         = ('Ont', 'Concept', l.to_id, 'Ont', 'Category', c.from_id)
-                INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                     WHERE tp.to_process = 1
-                       AND tf.flag_type = 'fields'
-                       AND tf.to_process = 1
-                """
+            #         SELECT 'Child-to-Parent' AS edge_type,
+            #                from_institution_id, from_object_type,   l.to_id AS from_object_id,
+            #                to_institution_id, to_object_type, c.from_id AS   to_object_id,
+            #                context, 1 AS to_process,
+            #                tp.row_id
+            #           FROM {schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
+            #     INNER JOIN {schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
+            #             ON c.to_id = l.from_id
+            #     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
+            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
+            #              = ('Ont', 'Category', l.to_id, 'Ont', 'Concept', c.from_id)
+            #             OR (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
+            #              = ('Ont', 'Concept', l.to_id, 'Ont', 'Category', c.from_id)
+            #     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+            #          WHERE tp.to_process = 1
+            #            AND tf.flag_type = 'fields'
+            #            AND tf.to_process = 1
+            #     """
 
-                # Enclose query
-                sql_query = f"""
-                    SELECT edge_type,
-                           from_institution_id, from_object_type, from_object_id,
-                             to_institution_id,   to_object_type,   to_object_id,
-                           context, to_process
-                    FROM (
-                        {sql_query}
-                    ) AS t
-                """
+            #     # Enclose query
+            #     sql_query = f"""
+            #         SELECT edge_type,
+            #                from_institution_id, from_object_type, from_object_id,
+            #                  to_institution_id,   to_object_type,   to_object_id,
+            #                context, to_process
+            #         FROM (
+            #             {sql_query}
+            #         ) AS t
+            #     """
 
-                # Specify input for execution method
-                query_has_filters = False
+            #     # Specify input for execution method
+            #     query_has_filters = False
 
             #------------------------------#
             # Process query for input name #
@@ -7314,9 +7326,15 @@ class GraphRegistry():
                     print(sql_query_commit)
 
                 # Execute commit
-                # self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
-                self.db.execute_query_in_chunks(engine_name='test', schema_name=schema_graph_cache_test, table_name=target_table, query=sql_query_commit, has_filters=query_has_filters, show_progress=True, verbose=True)
-                # def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, chunk_size=10000, row_id_name='row_id', show_progress=False):
+                self.db.execute_query_in_chunks(
+                    engine_name   = 'test',
+                    schema_name   = schema_graph_cache_test,
+                    table_name    = target_table,
+                    query         = sql_query_commit,
+                    has_filters   = query_has_filters,
+                    show_progress = True,
+                    verbose       = False
+                )
 
         # Apply formula from SQL file
         def apply_formulas_from_folder(self, local_path, verbose=False):
@@ -7912,19 +7930,19 @@ class GraphRegistry():
                     for doc_type in pb:
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc type: {doc_type} [graphsearch]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [D-P-DB] Processing doc type: {doc_type} [graphsearch]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc table (graphsearch tables)
                         self.idocs[doc_type].patch(actions=actions)
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc type: {doc_type} [elasticsearch]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [D-P-ES] Processing doc type: {doc_type} [elasticsearch]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc table (elasticsearch cache)
                         self.idocs[doc_type].patch_elasticsearch(actions=actions)
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc type: {doc_type} [airflow]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [D-P-AF] Processing doc type: {doc_type} [airflow]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Update Airflow 'Operations_N_Object_T_FieldsChanged' table
                         if 'settle' in actions:
@@ -7975,7 +7993,7 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [DL-VP-DB] Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (mysql)
                         if link_subtype == 'SEM':
@@ -7996,7 +8014,7 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [DB-VP-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (elasticsearch)
                         self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
@@ -8045,7 +8063,7 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [DL-HP-DB] Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=actions)
@@ -8063,7 +8081,7 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [DL-HP-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (elasticsearch)
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
@@ -8317,7 +8335,7 @@ class GraphRegistry():
                 # Generate SQL slices to replace placeholders
                 sql_slice_field_names           = ', '.join(obj_fields_with_lang)
                 sql_slice_field_values_as_names = ', '.join([f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for k, (field_language, field_name) in enumerate(obj_fields)])
-                sql_slice_joins_doc             = '\n'.join([f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_T_AllFields t{k+1} ON (t{k+1}.institution_id, t{k+1}.object_type, t{k+1}.object_id, t{k+1}.field_language, t{k+1}.field_name) = ('EPFL', '{doc_type}', p.object_id, '{field_language}', '{field_name}')" for k, (field_language, field_name) in enumerate(obj_fields)])
+                sql_slice_joins_doc             = '\n'.join([f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_T_AllFields t{k+1} ON (t{k+1}.institution_id, t{k+1}.object_type, t{k+1}.object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', p.object_id, '{field_language}', '{field_name}')" for k, (field_language, field_name) in enumerate(obj_fields)])
                 
                 # Add trailing comma if necessary
                 if len(sql_slice_field_names) > 0:
@@ -8406,7 +8424,7 @@ class GraphRegistry():
                 # Generate SQL slices to replace placeholders
                 sql_slice_field_names           = ', '.join(obj2obj_fields_with_lang)
                 sql_slice_field_values_as_names = ', '.join([f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for k, (field_language, field_name) in enumerate(obj2obj_fields)])
-                sql_slice_joins_obj2obj         = '\n'.join([f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_N_Object_T_AllFieldsSymmetric t{k+1} ON (t{k+1}.from_institution_id, t{k+1}.from_object_type, t{k+1}.from_object_id, t{k+1}.to_institution_id, t{k+1}.to_object_type, t{k+1}.to_object_id, t{k+1}.field_language, t{k+1}.field_name) = ('EPFL', '{doc_type}', s.from_object_id, 'EPFL', '{link_type}',   s.to_object_id, '{field_language}', '{field_name}')" for k, (field_language, field_name) in enumerate(obj2obj_fields)])
+                sql_slice_joins_obj2obj         = '\n'.join([f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_N_Object_T_AllFieldsSymmetric t{k+1} ON (t{k+1}.from_institution_id, t{k+1}.from_object_type, t{k+1}.from_object_id, t{k+1}.to_institution_id, t{k+1}.to_object_type, t{k+1}.to_object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', s.from_object_id, '{object_type_to_institution_id[link_type]}', '{link_type}',   s.to_object_id, '{field_language}', '{field_name}')" for k, (field_language, field_name) in enumerate(obj2obj_fields)])
 
                 # Add trailing comma if necessary
                 if len(sql_slice_field_names) > 0:
@@ -8419,7 +8437,7 @@ class GraphRegistry():
                          {sql_slice_field_values_as_names},
                          1 AS to_process
                     FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric s\n{sql_slice_joins_obj2obj}
-                   WHERE (s.from_institution_id, s.from_object_type, s.to_institution_id, s.to_object_type) = ('EPFL', '{doc_type}', 'EPFL', '{link_type}')
+                   WHERE (s.from_institution_id, s.from_object_type, s.to_institution_id, s.to_object_type) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', '{object_type_to_institution_id[link_type]}', '{link_type}')
                      AND s.to_process > 0.5
                 """
 
@@ -8497,7 +8515,7 @@ class GraphRegistry():
                         for doc_type in pb:
 
                             # Print status
-                            pb.set_description(f"⚙️  Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                            pb.set_description(f"⚙️  [B-BD] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                             # Build docs fields
                             self.build_docs_fields(doc_type, actions)
@@ -8517,7 +8535,7 @@ class GraphRegistry():
                                 continue
 
                             # Print status
-                            pb.set_description(f"⚙️  Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
+                            pb.set_description(f"⚙️  [B-P2C] Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
 
                             # Build doc-link fields
                             self.build_links_parentchild(doc_type, link_type, actions)
@@ -8755,7 +8773,7 @@ class GraphRegistry():
                 #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
                 #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
-            # Index > Docs > Create table on elasticsearch_cache
+            # Index > Docs > Create table on elasticsearch cache
             def create_table_elasticsearch(self, actions=()):
                 
                 sql_query_create_table = f"""
@@ -8793,7 +8811,7 @@ class GraphRegistry():
 
                 # if 'commit' in actions:
                 #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
-                #     self.db.apply_datatypes(engine_name='test', schema_name='elasticsearch_cache', table_name=f'Index_D_{self.doc_type}', datatypes_json=datatypes_json)
+                #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}', datatypes_json=datatypes_json)
 
             #==================#
             # General patching #
@@ -8802,16 +8820,17 @@ class GraphRegistry():
             # Index > Docs > General patching > Generate snapshot
             def snapshot(self, rollback_date=False, actions=()):
                 
-                # Generate SQL query
+                # Generate SQL query @@@@@@@
                 SQLQuery = f"""
-                INSERT IGNORE INTO {schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type}
+                    INSERT INTO {schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type}
                                 (rollback_date, doc_institution, doc_type, doc_id, include_code_in_name, {', '.join(self.custom_column_names_with_lang)}{',' if len(self.custom_column_names_with_lang)>0 else ''} degree_score)
                 SELECT DISTINCT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.include_code_in_name, {', '.join([f'i.{c}' for c in self.custom_column_names_with_lang])}{',' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score
                             FROM {schema_graphsearch_test}.Index_D_{self.doc_type} i
                         INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} b
                             USING (doc_institution, doc_type, doc_id)
                             WHERE b.to_process > 0.5
-                            AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score);
+                            AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score)
+                ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                 """
 
             # Index > Docs > General patching > Insert new rows, update existing fields (graphsearch test)
@@ -9267,7 +9286,7 @@ class GraphRegistry():
                 #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
                 #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
-            # Index > Doc-Links > Create table on elasticsearch_cache
+            # Index > Doc-Links > Create table on elasticsearch cache
             def create_table_elasticsearch(self, actions=()):
                 
                 sql_query_create_table = f"""
@@ -9306,7 +9325,7 @@ class GraphRegistry():
 
                 # if 'commit' in actions:
                 #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
-                #     self.db.apply_datatypes(engine_name='test', schema_name='elasticsearch_cache', table_name=f'Index_D_{self.doc_type}_L_{self.link_type}', datatypes_json=datatypes_json)
+                #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}_L_{self.link_type}', datatypes_json=datatypes_json)
 
             #===================#
             # Vertical patching #
@@ -9317,9 +9336,9 @@ class GraphRegistry():
             # Index > Doc-Links > Vertical patching > Generate snapshot
             def vertical_snapshot_parentchild(self, rollback_date=False):
 
-                # Generate the SQL query
+                # Generate the SQL query  @@@@@
                 sql_query = f"""
-                INSERT IGNORE INTO {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}
+                      INSERT INTO {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}
                                 (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_id, {', '.join(self.obj2obj_fields_with_lang)})
 
                             SELECT '{rollback_date}' AS rollback_date,
@@ -9346,7 +9365,8 @@ class GraphRegistry():
                                             WHERE b.to_process > 0.5
                                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.obj2obj_fields_with_lang])})
                                 ) t2
-                            USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_id);
+                            USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_id)
+                ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                 """
 
             # ------- Patching ------- #
@@ -9775,9 +9795,9 @@ class GraphRegistry():
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
 
-                    # Generate SQL query
+                    # Generate SQL query @@@@@
                     SQLQuery = f"""
-                    INSERT IGNORE INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
+                    INSERT INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
                                       (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
                                 SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.degree_score AS score, i.row_score, i.row_rank
                                   FROM {schema_graphsearch_test}.{self.index_table_name} i
@@ -9785,15 +9805,16 @@ class GraphRegistry():
                                                    FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
                                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
                                                     AND to_process > 0.5) c
-                                 USING (doc_institution, doc_type, doc_id);
+                                 USING (doc_institution, doc_type, doc_id)
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
 
                 # Semantic table?
                 elif self.link_subtype.upper() == 'SEM':
 
-                    # Generate SQL query
+                    # Generate SQL query @@@@@@
                     SQLQuery = f"""
-                    INSERT IGNORE INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
+                    INSERT INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
                                       (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
                                 SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.semantic_score AS score, i.row_score, i.row_rank
                                   FROM {schema_graphsearch_test}.{self.index_table_name} i
@@ -9803,7 +9824,8 @@ class GraphRegistry():
                                                      ON (s.from_object_type,   s.to_object_type,   s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                                                      OR (  s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                                                   WHERE s.to_process > 0.5) c
-                                 USING (doc_institution, doc_type, doc_id);
+                                 USING (doc_institution, doc_type, doc_id)
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
 
             # ------- Patching ------- #
@@ -10408,7 +10430,7 @@ class GraphRegistry():
                     for _, link_type in pb:
 
                         # Print status
-                        pb.set_description(f"⚙️  Processing doc-link type: {doc_type} -> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [GLC-ES] Processing doc-link type: {doc_type} -> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Fetch doc fields
                         obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][link_type]]
@@ -10422,7 +10444,7 @@ class GraphRegistry():
                         column_names_link = default_column_names_link + custom_column_names_link
 
                         # Check if link table exists
-                        if not self.db.table_exists(engine_name='test', schema_name='elasticsearch_cache', table_name=f"Index_D_{doc_type}_L_{link_type}"):
+                        if not self.db.table_exists(engine_name='test', schema_name=schema_es_cache, table_name=f"Index_D_{doc_type}_L_{link_type}"):
                             print('')
                             sysmsg.warning(f"Table does not exist: Index_D_{doc_type}_L_{link_type}.")
                             continue
@@ -11163,102 +11185,4 @@ def LaunchGUI(gr):
 # Main: >> python graphregistry.py #
 #==================================#
 if __name__ == '__main__':
-
-    exit()
-
-    from graphregistry import GraphRegistry
-    gr = GraphRegistry()
-    node = gr.Node()
-    node.set(('EPFL','Publication','148964'))
-    node.set_from_existing()
-    node.detect_concepts()
-    node.set_text_source('abstract')
-    node.commit_concepts(actions=('eval'))
-    node.commit_concepts(actions=('commit'))
-    node.commit_concepts(actions=('eval'))
-
-
-    list_of_tables = gr.db.get_tables_in_schema(
-        engine_name = 'prod',
-        schema_name = 'graphsearch_prod_2025_02_10',
-        include_views = False
-    )
-
-    for table_name in list_of_tables:
-        gr.db.compare_tables_by_random_sampling(
-            source_engine_name = 'prod',
-            source_schema_name = 'graphsearch_prod_2025_02_10',
-            source_table_name  = table_name,
-            target_engine_name = 'prod',
-            target_schema_name = 'graphsearch_prod',
-            target_table_name  = table_name,
-            sample_size        = 8
-        )
-
-
-    list_of_tables = gr.db.get_tables_in_schema(
-        engine_name = 'prod',
-        schema_name = 'graphsearch_prod',
-        include_views = False,
-        use_regex = [r'.*Widget.*']
-    )
-
-    for table_name in list_of_tables:
-        print('Copying table:', table_name)
-        gr.db.copy_table(
-            engine_name           = 'prod',
-            source_schema_name    = 'graphsearch_prod',
-            source_table_name     = table_name,
-            target_schema_name    = 'graphsearch_prod_2025_02_10',
-            target_table_name     = table_name,
-            list_of_columns       = False,
-            where_condition       = 'TRUE',
-            row_id_name           = 'row_id',
-            chunk_size            = 100000,
-            create_table          = True,
-            drop_keys             = False,
-            use_replace_or_ignore = 'IGNORE'
-        )
-
-
-    exit()
-    
-    # gr.db.copy_table_across_engines(
-    #     source_engine_name = 'test',
-    #     source_schema_name = 'graph_cache',
-    #     source_table_name  = 'IndexBuildup_Fields_Docs_Widget',
-    #     target_engine_name = 'prod',
-    #     target_schema_name = 'graph_cache',
-    #     keys_json  = table_keys_json['doc_profile'],
-    #     filter_by  = 'to_process > 0.5',
-    #     chunk_size = 100000,
-    #     drop_table = False
-    # )
-
-    # gr.db.copy_table_across_engines(
-    #     source_engine_name = 'test',
-    #     source_schema_name = 'graph_cache',
-    #     source_table_name  = 'Edges_N_Object_N_Object_T_ScoresMatrix_AS',
-    #     target_engine_name = 'prod',
-    #     target_schema_name = 'graph_cache',
-    #     keys_json  = table_keys_json['object_to_object'],
-    #     filter_by  = 'to_process > 0.5',
-    #     chunk_size = 100000,
-    #     drop_table = False
-    # )
-
-
-
-    # # get_table_type_from_name    
-
-    # pass
-
-
-    # Config object types to process
-    gr.orchestrator.config(
-        node_types = [('EPFL', 'Lecture')],
-        edge_types = [],
-        sync  = False,
-        reset = False,
-        print = True
-    )
+    pass
