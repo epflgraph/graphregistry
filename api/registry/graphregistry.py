@@ -8934,7 +8934,7 @@ class GraphRegistry():
 
                 # Generate commit query
                 sql_query_commit = f"""
-                     SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
+                     SELECT n.doc_institution, n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
@@ -8959,9 +8959,9 @@ class GraphRegistry():
                             schema_name       = target_schema_name,
                             table_name        = target_table_name,
                             query             = sql_query_commit,
-                            key_column_names  = ['doc_type', 'doc_id'],
+                            key_column_names  = ['doc_institution', 'doc_type', 'doc_id'],
                             upd_column_names  = upd_column_names,
-                            eval_column_names = ['doc_type'],
+                            eval_column_names = ['doc_institution', 'doc_type'],
                             actions           = actions,
                             table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
                             chunk_size        = 100000,
