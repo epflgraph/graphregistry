@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import GraphDB
+from api.registry.graphregistry import GraphDB, GraphIndex
 from sqlalchemy import create_engine as SQLEngine, text
 from loguru import logger as sysmsg
 from yaml import safe_load
@@ -13,12 +13,15 @@ with open('config.yaml', 'r') as fp:
 # Initialize the GraphDB instance
 db = GraphDB()
 
+# Initialize the ElasticSearch instance
+es = GraphIndex()
+
 #==================================================#
 # Step 1: Test MySQL and ElasticSearch connections #
 #==================================================#
 
 # Define function to test MySQL connection
-def test():
+def test_mysql():
 
     # Test the MySQL connection
     test_result = db.test(engine_name='test')
@@ -41,7 +44,33 @@ if True:
     sysmsg.info("🔌 📝 Test MySQL connection.")
 
     # Test MySQL connection
-    test()
+    test_mysql()
+
+# Define function to test ElasticSearch connection
+def test_elastic():
+
+    # Test the ElasticSearch connection
+    test_result = es.test(engine_name='test')
+
+    # Provide feedback based on the test result
+    match test_result:
+        case True:
+            sysmsg.success("🔌 ✅ Successfully connected to the ElasticSearch test server.\n")
+        case False:
+            sysmsg.error("🔌 ❌ Failed to connect to the ElasticSearch test server.\n")
+            exit()
+        case None:
+            sysmsg.critical("🔌 🚨 An error occurred while trying to connect to the ElasticSearch test server.\n")
+            exit()
+
+# Execute step?
+if True:
+
+    # Print info message
+    sysmsg.info("🔌 📝 Test ElasticSearch connection.")
+
+    # Test MySQL connection
+    test_elastic()
 
 #===========================================================================#
 # Step 2: Check if required MySQL databases exist and create them otherwise #
@@ -112,7 +141,7 @@ if True:
         sysmsg.trace(f"Executing CREATE TABLE or VIEW statements for database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
 
         # Test MySQL connection
-        # test()
+        # test_mysql()
 
         # Execute SQL file
         db.execute_query_from_file(engine_name='test', file_path=sql_file_path, database=global_config['mysql']['db_schema_names'][schema_name], verbose=True)

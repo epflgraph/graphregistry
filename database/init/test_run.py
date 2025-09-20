@@ -13,7 +13,7 @@ with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
     sample_set = json.load(fp)
 
 # Print sample set content
-if False:
+if True:
     print('Input JSON sample set:')
     rich.print_json(data=sample_set)
 
@@ -119,3 +119,7 @@ index_date = '2025-09-20'
 if True:
     gr.indexes.generate_local_cache(index_date=index_date)
     gr.indexes.generate_index_from_local_cache(index_date=index_date)
+    gr.indexes.import_index(engine_name='test', index_date=index_date, delete_if_exists=False)
+    gr.indexes.idx.info(engine_name='test')
+    gr.indexes.idx.index_list(engine_name='test')
+    gr.indexes.idx.alias_list(engine_name='test')
