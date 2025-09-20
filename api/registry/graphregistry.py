@@ -3391,18 +3391,29 @@ class GraphIndex():
     def test(self, engine_name):
         """
         Test the connection to the ElasticSearch engine.
-        """
 
+        Returns:
+            True  -> Connection successful
+            False -> Connection failed
+            None  -> Unexpected error
+        """
         # Check if the engine name is valid
         if engine_name not in self.engine:
             raise ValueError(f"Engine '{engine_name}' not found in the GraphIndex instance.")
+
         try:
             # Perform a simple operation to test the connection
             self.engine[engine_name].info()
-            sysmsg.success(f"Connection to ElasticSearch '{engine_name}' is successful.")
-        except Exception as e:
+            return True
+        except ConnectionError as e:
+            # Could not connect to the server
             sysmsg.error(f"Failed to connect to ElasticSearch '{engine_name}': {e}")
-
+            return False
+        except Exception as e:
+            # Catch-all for unexpected issues
+            sysmsg.critical(f"Unexpected error while connecting to ElasticSearch '{engine_name}': {e}")
+            return None
+        
     #-------------------------------#
     # Method: Get index information #
     #-------------------------------#
@@ -10540,7 +10551,20 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
 
+        # Import index from local JSON file to ElasticSearch engine
+        def import_index(self, engine_name, index_date, chunk_size=1000, delete_if_exists=False):
 
+            # Generate index file path form date
+            index_file = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
+
+            # Import index from file
+            self.idx.import_index_from_file(
+                engine_name = engine_name,
+                index_name  = f'graphsearch_{engine_name}_{index_date.replace("-", "_")}',
+                index_file  = index_file,
+                chunk_size  = chunk_size,
+                delete_if_exists = delete_if_exists
+            )
 
 
         # # Copy ElasticSearch index from test to production environment
