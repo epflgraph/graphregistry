@@ -8,6 +8,11 @@ import rich, json
 gr = GraphRegistry()
 print('\n')
 
+# gr.indexes.idx.index_list(engine_name='test')
+# gr.indexes.idx.drop_index(engine_name='test', index_name='graphsearch_test_2025_09_20')
+# gr.indexes.idx.index_list(engine_name='test')
+# exit()
+
 # Open JSON sample set
 with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
     sample_set = json.load(fp)

@@ -15,6 +15,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MATH-132",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -51,6 +52,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "STAT-201",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -87,6 +89,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "COMP-140",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -123,6 +126,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MLAI-210",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -159,6 +163,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-245",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -195,6 +200,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "DATA-202",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -231,6 +237,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MATH-305",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -267,6 +274,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "STAT-322",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -303,6 +311,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-330",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -339,6 +348,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-350",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -375,6 +385,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "DATA-315",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -411,6 +422,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MLAI-320",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -447,6 +459,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "STAT-410",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -483,6 +496,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MATH-415",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -519,6 +533,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-425",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -555,6 +570,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "NEUR-510",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -591,6 +607,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MLAI-530",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -627,6 +644,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "COMP-545",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -663,6 +681,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-601",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -699,6 +718,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "NEUR-620",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -735,6 +755,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MLAI-635",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -771,6 +792,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "NLP-701",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -807,6 +829,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "LING-725",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -843,6 +866,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-740",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -879,6 +903,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "DATA-801",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -915,6 +940,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "MLAI-815",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
@@ -951,6 +977,7 @@
                 }
             ],
             "page_profile": {
+                "short_code": "CSCI-835",
                 "name_en_is_auto_generated": 1,
                 "name_en_is_auto_corrected": 0,
                 "name_en_is_auto_translated": 0,
