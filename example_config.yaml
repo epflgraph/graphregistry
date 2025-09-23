@@ -22,8 +22,9 @@ mysql:
     formula: database/formulas/mysql
     export: data/mysql_data_dumps
   db_schema_names:
-    ontology: graph_ontology
+    ontology: graph_ontology_light # Which one to use in knowledge graph construction
     ontology_light: graph_ontology_light
+    ontology_full: graph_ontology
     registry: graph_registry
     lectures: graph_lectures
     airflow: graph_airflow
