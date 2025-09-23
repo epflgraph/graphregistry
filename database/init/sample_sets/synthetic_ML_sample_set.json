@@ -1686,6 +1686,18 @@
         {
             "institution_id": "EPFL",
             "object_type": "Unit",
+            "object_id": "(racine)",
+            "object_title": "",
+            "text_source": "unit website",
+            "raw_text": "",
+            "custom_fields": [
+            ],
+            "page_profile": {
+            }
+        },
+        {
+            "institution_id": "EPFL",
+            "object_type": "Unit",
             "object_id": "FUMI",
             "object_title": "Fictitious University of Machine Intelligence",
             "text_source": "unit website",
@@ -1694,7 +1706,7 @@
                 {		
                     "field_language": "n/a",
                     "field_name": "date_established",
-                    "field_value": "2001-06-23"
+                    "field_value": "1990-06-23"
                 }
             ],
             "page_profile": {
@@ -7002,6 +7014,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2012-11-16"
                 }
             ]
         },
@@ -7018,6 +7035,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2008-03-13"
                 }
             ]
         },
@@ -7034,6 +7056,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2023-05-06"
                 },
                 {
                     "field_language": "n/a",
@@ -7058,6 +7085,11 @@
                 },
                 {
                     "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2017-09-29"
+                },
+                {
+                    "field_language": "n/a",
                     "field_name": "end_datetime",
                     "field_value": "2030-12-31"
                 }
@@ -7076,6 +7108,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2016-07-19"
                 }
             ]
         },
@@ -7092,6 +7129,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2022-09-04"
                 }
             ]
         },
@@ -7108,6 +7150,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2001-01-10"
                 }
             ]
         },
@@ -7124,6 +7171,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2007-11-20"
                 }
             ]
         },
@@ -7140,6 +7192,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2009-02-13"
                 }
             ]
         },
@@ -7156,6 +7213,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2022-01-20"
                 }
             ]
         },
@@ -7172,6 +7234,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2024-09-25"
                 }
             ]
         },
@@ -7188,6 +7255,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2020-05-31"
                 }
             ]
         },
@@ -7204,6 +7276,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2017-11-01"
                 }
             ]
         },
@@ -7220,6 +7297,16 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2023-11-21"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2025-06-30"
                 }
             ]
         },
@@ -7236,6 +7323,16 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Researcher"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2024-08-15"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2025-12-30"
                 }
             ]
         },
@@ -7252,6 +7349,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2016-06-25"
                 }
             ]
         },
@@ -7268,6 +7370,11 @@
                     "field_language": "n/a",
                     "field_name": "current_position_name",
                     "field_value": "Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2001-06-19"
                 }
             ]
         },
@@ -7288,6 +7395,16 @@
             "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "FUMI",
+            "context": "affiliation",
+            "custom_fields": []
+        },
+{
+            "from_institution_id": "EPFL",
+            "from_object_type": "Unit",
+            "from_object_id": "FUMI",
+            "to_institution_id": "EPFL",
+            "to_object_type": "Unit",
+            "to_object_id": "(racine)",
             "context": "affiliation",
             "custom_fields": []
         },
