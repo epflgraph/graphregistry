@@ -1,4 +1,12 @@
 
+CREATE TABLE IF NOT EXISTS _concept_ids (
+  concept_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS _category_ids (
+  category_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
   from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,

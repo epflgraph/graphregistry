@@ -76,17 +76,20 @@ if True:
 # Step 2: Check if required MySQL databases exist and create them otherwise #
 #===========================================================================#
 
+# Schemas to process
+schemas_to_process = ['ontology', 'registry', 'lectures', 'airflow', 'elasticsearch_cache', 'graph_cache_test', 'graphsearch_test', 'website']
+
 # Execute step?
 if True:
 
     # Print info message
     sysmsg.info("🗄️ 📝 Check if required databases exist. Create them otherwise.")
 
-    for schema_name in [s for s in global_config['mysql']['db_schema_names'].keys() if 'prod' not in s]:
+    # Loop over all required database schema names
+    for schema_key in schemas_to_process:
 
-        # Skip production databases
-        if 'prod' in schema_name:
-            continue
+        # Get the schema name from config
+        schema_name = global_config['mysql']['db_schema_names'][schema_key]
 
         # Check if the database exists, create it otherwise
         if db.database_exists(engine_name='test', schema_name=schema_name):
@@ -113,14 +116,17 @@ if True:
     # Print info message
     sysmsg.info("🗂️ 📝 Create required MySQL tables if they don't exist.")
 
-    # Execute CREATE TABLE statements from files
-    for schema_name in [s for s in global_config['mysql']['db_schema_names'].keys() if 'prod' not in s]:
+    # Loop over all required database schema names
+    for schema_key in schemas_to_process:
+
+        # Get the schema name from config
+        schema_name = global_config['mysql']['db_schema_names'][schema_key]
 
         # Print info message
-        sysmsg.trace(f"Processing database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
+        sysmsg.trace(f"Processing database '{schema_name}' ...")
 
         # Get SQL file path
-        sql_file_path = f'database/init/create_tables/schema_{schema_name}.sql'
+        sql_file_path = f'database/init/create_tables/schema_{schema_key}.sql'
 
         # Open SQL file and get all table names that should be created
         with open(sql_file_path, 'r') as sql_file:
@@ -138,32 +144,32 @@ if True:
                     print(f" - {table_name}")
 
         # Print info message
-        sysmsg.trace(f"Executing CREATE TABLE or VIEW statements for database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")
+        sysmsg.trace(f"Executing CREATE TABLE or VIEW statements for database '{schema_name}' ...")
 
         # Test MySQL connection
         # test_mysql()
 
         # Execute SQL file
-        db.execute_query_from_file(engine_name='test', file_path=sql_file_path, database=global_config['mysql']['db_schema_names'][schema_name], verbose=True)
+        db.execute_query_from_file(engine_name='test', file_path=sql_file_path, database=schema_name, verbose=True)
 
         # Print info message
         sysmsg.trace(f"Verifying that all required tables were created ...")
 
         # Get list of tables in schema
-        tables_in_schema = sorted(db.get_tables_in_schema(engine_name='test', schema_name=global_config['mysql']['db_schema_names'][schema_name], include_views=True))
+        tables_in_schema = sorted(db.get_tables_in_schema(engine_name='test', schema_name=schema_name, include_views=True))
 
         # Check if all required tables were created
         if not set([t.lower() for t in required_tables]).issubset([t.lower() for t in tables_in_schema]):
             sysmsg.trace(f"Not all required tables were created. Tables missing: {set(required_tables) - set(tables_in_schema)}")
-            sysmsg.error(f"🗂️ ❌ Failed to create all required tables in database '{global_config['mysql']['db_schema_names'][schema_name]}'.")
+            sysmsg.error(f"🗂️ ❌ Failed to create all required tables in database '{schema_name}'.")
             exit()
 
         # Check if there are any extra tables and warn if so
         if len(tables_in_schema) > len(required_tables):
-            sysmsg.warning(f"Database '{global_config['mysql']['db_schema_names'][schema_name]}' contains extra tables that were not created by the init script: {set(tables_in_schema) - set(required_tables)}")
+            sysmsg.warning(f"Database '{schema_name}' contains extra tables that were not created by the init script: {set(tables_in_schema) - set(required_tables)}")
 
         # Print success message
-        sysmsg.trace(f"Done creating tables in database '{global_config['mysql']['db_schema_names'][schema_name]}'.")
+        sysmsg.trace(f"Done creating tables in database '{schema_name}'.")
 
     # Print success message
     sysmsg.success("🗂️ ✅ All required MySQL tables were created.\n")
@@ -191,10 +197,10 @@ if True:
             exit()
 
         # Get the schema name
-        schema_name = match.group(1)
+        schema_key = match.group(1)
 
         # Execute SQL file
-        db.execute_query_from_file(engine_name='test', file_path=sql_file, database=global_config['mysql']['db_schema_names'][schema_name])
+        db.execute_query_from_file(engine_name='test', file_path=sql_file, database=global_config['mysql']['db_schema_names'][schema_key])
 
     # Print success message
     sysmsg.success("➡️ ✅ Done inserting default data.\n")
