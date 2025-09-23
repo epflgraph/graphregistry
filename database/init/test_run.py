@@ -27,7 +27,7 @@ if True:
 #=============================================#
 
 # Detect/update concepts? [disable for faster imports]
-detect_concepts = False
+detect_concepts = True
 
 # Choose import method (object or list)
 import_method = 'object'
@@ -63,8 +63,29 @@ if True:
         edge_list.set_from_json(doc_json_list=sample_set['edges'])
         edge_list.commit(actions=('eval', 'commit'))
 
+#===============================================#
+# Step 2: Generate/update Ontology-Light subset #
+#===============================================#
+
+# Execute step?
+if True:
+
+    # Fetch light ontology schema name from config
+    ontology_light_schema_name = global_config['mysql']['db_schema_names']['ontology_light']
+
+    # Load database/init/formulas/formula.ontology_light.sql from file
+    with open('database/init/formulas/formula.ontology_light.sql', 'r') as fp:
+        sql_query = fp.read()
+
+    # Replace placeholders in SQL query
+    for placeholder, value in global_config['mysql']['db_schema_names'].items():
+        sql_query = sql_query.replace(f'[[{placeholder}]]', value)
+
+    # Execute SQL query in shell
+    gr.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=True)
+
 #=====================================================#
-# Step 2: Sync new data into Airflow and set up flags #
+# Step 3: Sync new data into Airflow and set up flags #
 #=====================================================#
 
 # Execute step?
@@ -99,7 +120,7 @@ if True:
     gr.orchestrator.status()
 
 #===================================#
-# Step 3: Execute all major actions #
+# Step 4: Execute all major actions #
 #===================================#
 
 # Execute step?
@@ -114,7 +135,7 @@ if True:
     gr.db.print_database_stats(engine_name='test', schema_name='test_elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
 
 #======================================#
-# Step 4: Generate ElasticSearch index #
+# Step 5: Generate ElasticSearch index #
 #======================================#
 
 # Fetch index parameters from config
@@ -138,7 +159,7 @@ if True:
     # With explicit index file and name
     print(f"\nImporting index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
     gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, delete_if_exists=True)
-    
+
     #-------------------------------------------------------------#
 
     gr.indexes.idx.info(engine_name='test')

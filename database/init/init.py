@@ -82,7 +82,7 @@ if True:
     # Print info message
     sysmsg.info("🗄️ 📝 Check if required databases exist. Create them otherwise.")
 
-    for schema_name in global_config['mysql']['db_schema_names'].values():
+    for schema_name in [s for s in global_config['mysql']['db_schema_names'].keys() if 'prod' not in s]:
 
         # Skip production databases
         if 'prod' in schema_name:
@@ -114,7 +114,7 @@ if True:
     sysmsg.info("🗂️ 📝 Create required MySQL tables if they don't exist.")
 
     # Execute CREATE TABLE statements from files
-    for schema_name in ['registry', 'lectures', 'airflow', 'ontology', 'graph_cache_test', 'graphsearch_test', 'elasticsearch_cache']:
+    for schema_name in [s for s in global_config['mysql']['db_schema_names'].keys() if 'prod' not in s]:
 
         # Print info message
         sysmsg.trace(f"Processing database '{global_config['mysql']['db_schema_names'][schema_name]}' ...")

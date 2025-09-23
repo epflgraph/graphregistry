@@ -23,6 +23,7 @@ mysql:
     export: data/mysql_data_dumps
   db_schema_names:
     ontology: graph_ontology
+    ontology_light: graph_ontology_light
     registry: graph_registry
     lectures: graph_lectures
     airflow: graph_airflow
@@ -31,6 +32,7 @@ mysql:
     graph_cache_prod: graph_cache
     graphsearch_test: graphsearch_test
     graphsearch_prod: graphsearch_prod
+    website: website
 
 elasticsearch:
   dump_bin: /usr/local/bin/elasticdump
