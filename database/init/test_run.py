@@ -18,7 +18,7 @@ with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
     sample_set = json.load(fp)
 
 # Print sample set content
-if False:
+if True:
     print('Input JSON sample set:')
     rich.print_json(data=sample_set)
 
@@ -27,13 +27,13 @@ if False:
 #=============================================#
 
 # Detect/update concepts? [disable for faster imports]
-detect_concepts = False
+detect_concepts = True
 
 # Choose import method (object or list)
 import_method = 'object'
 
 # Execute step?
-if False:
+if True:
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
@@ -68,7 +68,7 @@ if False:
 #===============================================#
 
 # Execute step?
-if False:
+if True:
 
     # Fetch light ontology schema name from config
     ontology_light_schema_name = global_config['mysql']['db_schema_names']['ontology_light']
