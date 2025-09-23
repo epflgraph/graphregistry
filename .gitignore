@@ -2,14 +2,12 @@
 __pycache__
 *.pkl
 *.gexf
-*data
 *data_exports/*
 */api/modules/_trash/
 */api/modules/concepts/
 .idea/
 _trash/
 venv/
-data/
 resources/certificates/*.crt
 resources/credentials/*
 config.yaml
