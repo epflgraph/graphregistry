@@ -138,13 +138,15 @@ if True:
 # Step 5: Generate ElasticSearch index #
 #======================================#
 
-# Fetch index parameters from config
-index_date = str(global_config['elasticsearch']['index_date'])
-index_file = global_config['elasticsearch']['index_file']
-index_name = global_config['elasticsearch']['index_names']['graphsearch_test']
-
 # Execute step?
 if True:
+
+    # Fetch index parameters from config
+    index_date = str(global_config['elasticsearch']['index_date'])
+    index_file = global_config['elasticsearch']['index_file']
+    index_name = global_config['elasticsearch']['index_names']['graphsearch_test']
+
+
     gr.indexes.generate_local_cache(index_date=index_date)
     gr.indexes.generate_index_from_local_cache(index_date=index_date)
 
