@@ -51,6 +51,11 @@ elasticsearch:
   data_path:
     export: data/elasticsearch_data_exports/
   index_configuration_file: database/config/python/index_config.json
+  index_date: 2025-09-20
+  index_file: 2025-09-20/es_fullindex_2025-09-20.json.gz
+  index_names:
+    graphsearch_test: graphsearch_test_2025_09_20
+    graphsearch_prod: prod_index_name
 
 sound:
   player_bin: /usr/bin/vlc

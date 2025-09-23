@@ -10552,15 +10552,26 @@ class GraphRegistry():
             sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
 
         # Import index from local JSON file to ElasticSearch engine
-        def import_index(self, engine_name, index_date, chunk_size=1000, delete_if_exists=False):
+        def import_index(self, engine_name, index_file=None, index_name=None, index_date=None, chunk_size=1000, delete_if_exists=False):
 
-            # Generate index file path form date
-            index_file = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
+            # Use index date convention (generate file path and name accordingly)
+            if (index_file, index_name)==(None, None):
+                index_file = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
+                index_name = f'graphsearch_{engine_name}_{index_date.replace("-", "_")}'
+
+            # Use input file and name parameters directly
+            elif not (index_file, index_name)==(None, None):
+                index_file = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_file}"
+                index_name = index_name.replace(' ', '_').replace('-', '_')
+
+            # Else, raise error
+            else:
+                raise ValueError("Either both 'index_file' and 'index_name' parameters must be provided, or neither of them (in which case 'index_date' must be provided).")                
 
             # Import index from file
             self.idx.import_index_from_file(
                 engine_name = engine_name,
-                index_name  = f'graphsearch_{engine_name}_{index_date.replace("-", "_")}',
+                index_name  = index_name,
                 index_file  = index_file,
                 chunk_size  = chunk_size,
                 delete_if_exists = delete_if_exists
