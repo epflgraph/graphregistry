@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import GraphRegistry
+from api.registry.graphregistry import GraphRegistry, global_config
 from loguru import logger as sysmsg
 import rich, json
 
@@ -117,14 +117,30 @@ if True:
 # Step 4: Generate ElasticSearch index #
 #======================================#
 
-# Choose index date (YYYY-MM-DD)
-index_date = '2025-09-20'
+# Fetch index parameters from config
+index_date = str(global_config['elasticsearch']['index_date'])
+index_file = global_config['elasticsearch']['index_file']
+index_name = global_config['elasticsearch']['index_names']['graphsearch_test']
 
 # Execute step?
 if True:
     gr.indexes.generate_local_cache(index_date=index_date)
     gr.indexes.generate_index_from_local_cache(index_date=index_date)
-    gr.indexes.import_index(engine_name='test', index_date=index_date, delete_if_exists=False)
+
+    #-------------------------------------------------------------#
+    # Two methods to import index file into ElasticSearch engine: #
+    #-------------------------------------------------------------#
+    
+    # With index date (index name generated automatically)
+    # print(f"\nImporting index date '{index_date}' into ElasticSearch engine...\n")
+    # gr.indexes.import_index(engine_name='test', index_date=index_date, delete_if_exists=True)
+
+    # With explicit index file and name
+    print(f"\nImporting index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
+    gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, delete_if_exists=True)
+    
+    #-------------------------------------------------------------#
+
     gr.indexes.idx.info(engine_name='test')
     gr.indexes.idx.index_list(engine_name='test')
     gr.indexes.idx.alias_list(engine_name='test')
