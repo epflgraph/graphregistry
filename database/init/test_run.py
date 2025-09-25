@@ -27,7 +27,7 @@ if True:
 #=============================================#
 
 # Detect/update concepts? [disable for faster imports]
-detect_concepts = True
+detect_concepts = False
 
 # Choose import method (object or list)
 import_method = 'object'
@@ -68,7 +68,7 @@ if True:
 #===============================================#
 
 # Execute step?
-if True:
+if False:
 
     # Fetch light ontology schema name from config
     ontology_light_schema_name = global_config['mysql']['db_schema_names']['ontology_light']
@@ -128,7 +128,7 @@ if True:
     gr.cachemanager.apply_calculated_field_formulas(verbose=False)
     gr.cachemanager.materialize_views(actions=('commit'))
     gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
-    gr.cachemanager.update_scores(actions=('commit'))
+    gr.cachemanager.update_scores(score_thr=0.01, actions=('commit'))
     gr.indexdb.build(actions=('commit'))
     gr.indexdb.patch(actions=('commit'))
     gr.db.print_database_stats(engine_name='test', schema_name='test_graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
@@ -146,24 +146,26 @@ if True:
     index_file = global_config['elasticsearch']['index_file']
     index_name = global_config['elasticsearch']['index_names']['graphsearch_test']
 
+    # Generate local ES cache from MySQL
+    gr.indexes.generate_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
 
-    gr.indexes.generate_local_cache(index_date=index_date)
-    gr.indexes.generate_index_from_local_cache(index_date=index_date)
+    # Generate ES index file from local cache
+    gr.indexes.generate_index_from_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
 
     #-------------------------------------------------------------#
     # Two methods to import index file into ElasticSearch engine: #
     #-------------------------------------------------------------#
     
     # With index date (index name generated automatically)
-    # print(f"\nImporting index date '{index_date}' into ElasticSearch engine...\n")
-    # gr.indexes.import_index(engine_name='test', index_date=index_date, delete_if_exists=True)
+    print(f"\nMETHOD 1: Importing index date '{index_date}' into ElasticSearch engine...\n")
+    gr.indexes.import_index(engine_name='test', index_date=index_date, replace_existing=True, force_replace=True)
 
     # With explicit index file and name
-    print(f"\nImporting index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
-    gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, delete_if_exists=True)
-
+    # print(f"\nMETHOD 2: Importing index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
+    # gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, replace_existing=True, force_replace=True)
+    
     #-------------------------------------------------------------#
 
-    gr.indexes.idx.info(engine_name='test')
+    # List indexes and aliases in ElasticSearch engine
     gr.indexes.idx.index_list(engine_name='test')
     gr.indexes.idx.alias_list(engine_name='test')

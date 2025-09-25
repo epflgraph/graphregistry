@@ -7,6 +7,7 @@ __pycache__
 */api/modules/concepts/
 .idea/
 _trash/
+_local_data/
 venv/
 resources/certificates/*.crt
 resources/credentials/*

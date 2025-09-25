@@ -1800,9 +1800,11 @@ class GraphDB():
     #----------------------------------------------#
     # Method: Executes a query using Python module #
     #----------------------------------------------#
-    def execute_query(self, engine_name, query, params=None, commit=False, return_exception=False):
+    def execute_query(self, engine_name, query, schema_name=None, params=None, commit=False, return_exception=False):
         connection = self.engine[engine_name].connect()
         try:
+            if schema_name:
+                connection.execute(text(f"USE {schema_name}"))
             result = connection.execute(text(query), parameters=params)
             if result.returns_rows:
                 rows = result.fetchall()
@@ -1826,32 +1828,6 @@ class GraphDB():
             connection.close()
         return rows
         
-    # def execute_query(self, engine_name, query, params=None, commit=False):
-    #     connection = self.engine[engine_name].connect()
-    #     try:
-    #         result = connection.execute(text(query), parameters=params)
-    #         rows = result.fetchall() if result.returns_rows else []
-    #         if commit:
-    #             connection.commit()
-    #         return {
-    #             "success": True,
-    #             "rows": rows,
-    #             "error_type": None,
-    #             "error_code": None,
-    #             "error_message": None,
-    #         }
-    #     except (DataError, IntegrityError, SQLAlchemyError) as e:
-    #         dbapi_code = getattr(e.orig, "args", [None])[0] if hasattr(e, "orig") else None
-    #         return {
-    #             "success": False,
-    #             "rows": [],
-    #             "error_type": type(e).__name__,
-    #             "error_code": dbapi_code,
-    #             "error_message": str(e),
-    #         }
-    #     finally:
-    #         connection.close()
-            
     #------------------------------------------------------------------#
     # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE #
     #------------------------------------------------------------------#
@@ -2661,7 +2637,7 @@ class GraphDB():
         else:
 
             # Generate output file path
-            output_file = f'{folder_path}/{table_name}_full.sql'
+            output_file = f'{folder_path}/{table_name}_FULL.sql'
 
             # Check if the output file already exists
             if os.path.exists(output_file):
@@ -2710,6 +2686,182 @@ class GraphDB():
             # Print the output and any errors
             # print(stdout.decode())
             # print(stderr.decode())
+
+    #---------------------------------#
+    # Method: Dump database to folder #
+    #---------------------------------#
+    def dump_database_to_folder(self, engine_name, schema_name, folder_path, filter_by='TRUE', chunk_size=100000, include_create_tables=True, include_views=True):
+
+        # Display status
+        sysmsg.info(f"📝 Dump database '{schema_name}' from '{engine_name}' to: {folder_path}")
+
+        # Check if the database exists
+        if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
+            sysmsg.error(f"Database '{schema_name}' does not exist in '{engine_name}'.\n")
+            return
+
+        # Get list of tables in the schema
+        list_of_tables = self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name, include_views=include_views)
+        print(list_of_tables)
+
+        # Loop over the tables
+        for table_name in list_of_tables:
+
+            # Display status
+            sysmsg.trace(f"⚙️ Exporting table: {table_name} ...")
+
+            # Create export folder with database schema name and table name (if it doesn't exist)
+            export_path = f"{folder_path}/{schema_name}/{table_name}"
+            if not os.path.exists(export_path):
+                os.makedirs(export_path)
+
+            # If include_create_tables, dump the create table statement
+            if include_create_tables:
+
+                # Get the create table SQL
+                create_table_sql = self.get_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
+
+                # Write the create table SQL to a file
+                with open(f"{folder_path}/{schema_name}/{table_name}/create_table.sql", 'w') as fid:
+                    fid.write(create_table_sql)
+
+            # Dump the table to the folder
+            self.dump_table_to_folder(
+                engine_name = engine_name,
+                schema_name = schema_name,
+                table_name  = table_name,
+                folder_path = export_path,
+                chunk_size  = chunk_size,
+                filter_by   = filter_by
+            )
+        
+        # Display status
+        sysmsg.success(f"✅ Done exporting databases from '{schema_name}'.\n")
+    
+    #-------------------------------------#
+    # Method: Import database from folder #
+    #-------------------------------------#
+    def import_database_from_folder(self, engine_name, folder_path, schema_name=None, create_if_not_exists=False, replace_existing=False, include_views=True):
+
+        # Is schema name provided? If not, extract from folder path
+        if schema_name is None:
+            # Get schema name from the folder path
+            # -> the folder structure is assumed to be: schema_path = root_path/schema_name/
+            #    and the full path is root_path/schema_name/table_name/*.sql
+            schema_name = os.path.basename(os.path.normpath(folder_path))
+
+        # Display status
+        sysmsg.info(f"📝 Import database '{schema_name}' into '{engine_name}'.")
+
+        # Check if the database exists (create if not)
+        if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
+
+            # Display warning
+            sysmsg.warning(f"Database '{schema_name}' does not exist in '{engine_name}'. The flag 'create_if_not_exists' is set to {str(create_if_not_exists).upper()}.")
+
+            # Create database if it does not exist and create_if_not_exists is True
+            if not create_if_not_exists:
+                sysmsg.error(f"❌ Failed to import database.")
+                return
+            else:
+                sysmsg.trace(f"Creating database '{schema_name}' ...")
+                self.create_database(engine_name=engine_name, schema_name=schema_name)
+
+        # If the database exists and replace_existing is True, drop and recreate it
+        elif replace_existing:
+            
+            # Display warning
+            sysmsg.warning(f"Database '{schema_name}' already exists. The flag 'replace_existing' is set to TRUE.")
+            
+            # Ask for confirmation (write yes/no)
+            confirmation = input(f"Are you sure you want to replace the existing database? (yes/no): ")
+            if confirmation.lower() != 'yes':
+                sysmsg.error("❌ Operation cancelled by user.")
+                return
+
+            # Drop and recreate the database
+            self.drop_database(  engine_name=engine_name, schema_name=schema_name)
+            self.create_database(engine_name=engine_name, schema_name=schema_name)
+
+        # Else, if the database exists and replace_existing is False, do nothing
+        else:
+            sysmsg.warning(f"Database '{schema_name}' already exists. The flag 'replace_existing' is set to FALSE.")
+            sysmsg.error("❌ Failed to import database.")
+            return
+        
+        # Get list of tables in the schema folder
+        list_of_tables = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d))]
+
+        # Separate the views from the tables
+        list_of_views = [d for d in list_of_tables if os.path.exists(os.path.join(folder_path, d, 'create_view.sql'))]
+        list_of_tables = [d for d in list_of_tables if d not in list_of_views]
+
+        # Loop over the tables
+        for table_name in list_of_tables:
+
+            # Display status
+            sysmsg.trace(f"⚙️ Importing table: {table_name} ...")
+
+            #----------------------------#
+            # Apply CREATE TABLE queries #
+            #----------------------------#
+
+            # Create the table in the database
+            create_table_file = f"{folder_path}/{table_name}/create_table.sql"
+
+            # Check if the create table file exists
+            if os.path.exists(create_table_file):
+
+                # Read the SQL statement from the file
+                with open(create_table_file, 'r') as f:
+                    create_table_sql = f.read()
+
+                # Execute the SQL statement to create the table
+                self.execute_query(engine_name=engine_name, query=create_table_sql, schema_name=schema_name) 
+
+            else:
+                sysmsg.warning(f"Create table file '{create_table_file}' does not exist. Skipping table import.")
+
+            #----------------------------#
+            # Import data from SQL files #
+            #----------------------------#
+            
+            # Import the table from the folder
+            self.import_table_from_folder(
+                engine_name = engine_name,
+                schema_name = schema_name,
+                folder_path = f"{folder_path}/{table_name}"
+            )
+
+            #---------------------------#
+            # Apply CREATE VIEW queries #
+            #---------------------------#
+
+        # Include views?
+        if include_views:
+                
+            # Loop over the views
+            for view_name in list_of_views:
+
+                # Create the view in the database
+                create_view_file = f"{folder_path}/{view_name}/create_view.sql"
+
+                # Check if the create view file exists
+                if os.path.exists(create_view_file):
+
+                    # Read the SQL statement from the file
+                    with open(create_view_file, 'r') as f:
+                        create_view_sql = f.read()
+
+                    # Execute the SQL statement to create the view
+                    self.execute_query(engine_name=engine_name, query=create_view_sql, schema_name=schema_name)
+
+        # If include_views, import the views
+        if include_views:
+            pass
+
+        # Display status
+        sysmsg.success(f"✅ Done importing database into '{schema_name}'.\n")
 
     #-----------------------------------#
     # Method: Copy table across engines #
@@ -3377,10 +3529,50 @@ class GraphIndex():
         cert_file = params["cert_file"] if "cert_file" in params else None
 
         # Create the ElasticSearch engine instance
-        print('cert_file:', cert_file)
-        engine = ElasticSearchEngine(
-            hosts=es_hosts, http_compress=True, ca_certs=cert_file, verify_certs=False, request_timeout=3600
-        )
+        # print('cert_file:', cert_file)
+        # engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, ca_certs=cert_file, verify_certs=False, request_timeout=3600)
+        # engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, verify_certs=False, request_timeout=3600)
+
+        # print(es_hosts)
+        # exit()
+
+
+        import ssl
+        import socket
+        import hashlib
+        from typing import Tuple
+
+        def get_leaf_cert_der(host: str, port: int, timeout: float = 5.0, server_hostname: str | None = None) -> bytes:
+            """
+            Opens a TLS connection and returns the *leaf* certificate in DER form.
+            - host: what you actually connect to (IP or hostname)
+            - server_hostname: what you present via SNI for the TLS handshake (defaults to host)
+            """
+            if server_hostname is None:
+                server_hostname = host
+
+            # We don't want Python to verify anything here; we just want the raw cert bytes.
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
+            with socket.create_connection((host, port), timeout=timeout) as sock:
+                with ctx.wrap_socket(sock, server_hostname=server_hostname) as ssock:
+                    der_cert: bytes = ssock.getpeercert(binary_form=True)
+                    return der_cert
+
+        def sha256_fingerprint_hex(der_cert: bytes) -> str:
+            """Return lowercase hex (no colons), which is what elasticsearch-py expects."""
+            return hashlib.sha256(der_cert).hexdigest()
+
+        der = get_leaf_cert_der(host='127.0.0.1', port=9200, server_hostname="localhost")  # or server_hostname=host
+        fp = sha256_fingerprint_hex(der)
+        # print("SHA256 (hex, no colons):", fp)
+        # exit()
+
+        engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, 
+            ssl_assert_fingerprint=fp,
+            request_timeout=3600)
 
         # Return the parameters and the engine instance
         return params, engine
@@ -3453,21 +3645,25 @@ class GraphIndex():
         Get a list of indexes in the ElasticSearch engine.
         """
         # Check for level of detail requested
+        acc_str = ''
         if display_size:
             # Equivalent to: GET /_cat/indices?v&s=index
             index_sizes = []
             for index in self.engine[engine_name].indices.get(index="*"):
                 if not index.startswith('.'):
                     index_sizes += [(index, self.engine[engine_name].indices.stats(index=index)['indices'][index]['total']['store']['size_in_bytes'])]
-            print(f"List of indexes on {engine_name}:")
             for index, index_size in sorted(index_sizes, key=lambda x: x[0], reverse=False):
-                print(f' - {index} ({index_size/1024/1024/1024:.2f} GB)')
+                acc_str += f' - {index} ({index_size/1024/1024/1024:.2f} GB)\n'
         else:
             # Equivalent to: GET /_cat/indices?v
-            print(f"List of indexes on {engine_name}:")
             for index in self.engine[engine_name].indices.get(index="*"):
                 if not index.startswith('.'):
-                    print(' - ', index)
+                    acc_str += f' - {index}\n'
+        if acc_str == '':
+            print(f"\n\033[33mNo indexes found on {engine_name}.\033[0m\n")
+        else:
+            print(f"\n\033[32mList of indexes on {engine_name}:\033[0m")
+            print(f"{acc_str}\n")
 
     #-------------------------------#
     # Method: Drop an index by name #
@@ -3497,7 +3693,7 @@ class GraphIndex():
         Get a list of aliases in the ElasticSearch engine.
         """
         # Equivalent to: GET /_cat/aliases?v&s=alias
-        print(f"List of aliases on {engine_name}:")
+        acc_str = ''
         aliases = self.engine[engine_name].indices.get_alias()
         alias_to_index = {}
         for index, alias_info in aliases.items():
@@ -3506,7 +3702,12 @@ class GraphIndex():
                     if not alias.startswith('.'):
                         alias_to_index[alias] = index
         for alias, index in alias_to_index.items():
-            print(f" - {alias} --> {index}")
+            acc_str += f" - {alias} --> {index}\n"
+        if acc_str == '':
+            print(f"\n\033[33mNo aliases found on {engine_name}.\033[0m\n")
+        else:
+            print(f"\n\033[32mList of aliases on {engine_name}:\033[0m")
+            print(f"{acc_str}\n")
 
     #-----------------------------------#
     # Method: Set an alias for an index #
@@ -3574,7 +3775,7 @@ class GraphIndex():
     #-------------------------------------#
     # Method: Create an index from a file #
     #-------------------------------------#
-    def import_index_from_file(self, engine_name, index_name, index_file, chunk_size=10000, delete_if_exists=False):
+    def import_index_from_file(self, engine_name, index_name, index_file, chunk_size=10000, delete_if_exists=False, force_replace=False):
         """
         Create an index in the ElasticSearch engine from a file.
         """
@@ -3593,11 +3794,14 @@ class GraphIndex():
                 # Return non-dict, non-list values as-is
                 return d
 
-        # Delete index
+        # Delete index if exists?
         if delete_if_exists:
             try:
                 # Ask for confirmation before deleting the index
-                confirmation = input(f"Are you sure you want to delete the index '{index_name}' on '{engine_name}'? (yes/no): ")
+                if force_replace:
+                    confirmation = 'yes'
+                else:
+                    confirmation = input(f"Are you sure you want to delete the index '{index_name}' on '{engine_name}'? (yes/no): ")
                 if confirmation.lower() != 'yes':
                     print("Index deletion cancelled.")
                     return
@@ -3607,6 +3811,12 @@ class GraphIndex():
             except:
                 print(f'Index {index_name} does not exist')
                 pass
+
+        # Else, check if index exists and return if it does
+        else:
+            if self.engine[engine_name].indices.exists(index=index_name):
+                sysmsg.error(f'❌ Index {index_name} already exists.')
+                return
                 
         # Create the new index with settings and mappings
         print(f'Creating index {index_name} with custom settings and mappings...')
@@ -6868,7 +7078,7 @@ class GraphRegistry():
                 self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
 
         # Update all scores
-        def update_scores(self, actions):
+        def update_scores(self, score_thr=0.1, actions=()):
 
             # Print status
             sysmsg.info(f"🧮 📝 Calculate and consolidate scores matrices.")
@@ -6907,7 +7117,7 @@ class GraphRegistry():
                     pb.set_description(f"⚙️  Processing edge type: {n1} --> {n2}".ljust(PBWIDTH)[:PBWIDTH])
 
                     # Consolidate scores matrix
-                    self.consolidate_scores_matrix(from_object_type=n1, to_object_type=n2, update_averages=True, actions=actions)
+                    self.consolidate_scores_matrix(from_object_type=n1, to_object_type=n2, update_averages=True, score_thr=score_thr, actions=actions)
 
             # Print status
             sysmsg.success(f"🧮 ✅ Done updating scores matrices.\n")
@@ -10344,7 +10554,7 @@ class GraphRegistry():
             self.idx = GraphIndex()
 
         # Generate local JSON cache for ElasticSearch index creation
-        def generate_local_cache(self, index_date=False):
+        def generate_local_cache(self, index_date=False, ignore_warnings=True, replace_existing=False, force_replace=False):
 
             # Print status
             sysmsg.info(f"🐙 📝 Generate local JSON cache for ElasticSearch index creation (index date: {index_date}).")
@@ -10356,90 +10566,104 @@ class GraphRegistry():
             #-------------------------#
             # Loop over all doc types #
             #-------------------------#
+
+            # Initialise overwrite flag
+            overwrite_flag = False
+
             # Loop over all doc types
-            for _, doc_type in index_doc_types_list:
+            with tqdm(index_doc_types_list, unit='doc type') as pb:
+                for _, doc_type in pb:
 
-                # Print status
-                sysmsg.trace(f"Process doc type: {doc_type}")
+                    # Print status
+                    pb.set_description(f"⚙️ [GLC-ES] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
-                # Create target folder (if not exists) - with date
-                target_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}"
-                if not os.path.exists(target_folder):
-                    os.makedirs(target_folder)
+                    # Create target folder (if not exists) - with date
+                    target_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}"
+                    if not os.path.exists(target_folder):
+                        os.makedirs(target_folder)
 
-                # Generate target output path
-                target_output_path = f"{target_folder}/es_splitindex_{index_date}_{doc_type}.json.gz"
+                    # Generate target output path
+                    target_output_path = f"{target_folder}/es_splitindex_{index_date}_{doc_type}.json.gz"
 
-                # Check if target file already exists
-                if os.path.exists(target_output_path):
-                    sysmsg.warning(f"File already exists: {target_output_path}")
-                    continue
+                    #-------------------------------------------#
+                    # If file exists, handle according to flags #
+                    #-------------------------------------------#
+                    if os.path.exists(target_output_path):
+                        if not ignore_warnings:
+                            sysmsg.warning(f"File already exists: {target_output_path}")
+                        if not replace_existing:
+                            sysmsg.error(f"❌ Failed to generate local ElasticSearch cache. File already exists: {target_output_path}")
+                            return
+                        elif replace_existing:
+                            if not overwrite_flag:
+                                if force_replace:
+                                    confirmation = 'yes'
+                                else:
+                                    confirmation = input(f"Are you sure you want to replace the existing files? (yes/no): ")
+                                if confirmation.lower() != 'yes':
+                                    sysmsg.error("❌ Operation cancelled by user.")
+                                    return
+                                else:
+                                    overwrite_flag = True
+                                    if not ignore_warnings:
+                                        sysmsg.warning(f"Replacing existing files ...")
+                            os.remove(target_output_path)
+                    #-------------------------------------------#
 
-                # Initialise index dict struct
-                es_index_struct = {}
+                    # Initialise index dict struct
+                    es_index_struct = {}
 
-                # Fetch doc fields
-                obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][doc_type]]
-                custom_column_names_doc = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
+                    # Fetch doc fields
+                    obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][doc_type]]
+                    custom_column_names_doc = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
 
-                # TODO: fix this
-                if doc_type == 'Lecture':
-                    custom_column_names_doc = ["video_stream_url", "video_duration", "is_restricted"]
+                    # TODO: fix this
+                    if doc_type == 'Lecture':
+                        custom_column_names_doc = ["video_stream_url", "video_duration", "is_restricted"]
 
-                # Combine default and custom column names
-                column_names_doc = default_column_names_doc + custom_column_names_doc
+                    # Combine default and custom column names
+                    column_names_doc = default_column_names_doc + custom_column_names_doc
 
-                # Fetch list of docs for doc_type
-                sysmsg.trace(f"⚙️  Loading docs from '{schema_es_cache}.Index_D_{doc_type}' table ...")
-                list_of_docs = self.db.execute_query(engine_name='test', query=f"""
-                      SELECT {', '.join(column_names_doc)}
-                        FROM {schema_es_cache}.Index_D_{doc_type}
-                    ORDER BY doc_id ASC
-                """)
+                    # Fetch list of docs for doc_type
+                    list_of_docs = self.db.execute_query(engine_name='test', query=f"""
+                        SELECT {', '.join(column_names_doc)}
+                            FROM {schema_es_cache}.Index_D_{doc_type}
+                        ORDER BY doc_id ASC
+                    """)
 
-                # Print status
-                sysmsg.trace(f"⚙️  Initialising docs JSON object for doc type '{doc_type}' ...")
+                    # Add doc type to index struct
+                    if doc_type not in es_index_struct:
+                        es_index_struct[doc_type] = {}
 
-                # Add doc type to index struct
-                if doc_type not in es_index_struct:
-                    es_index_struct[doc_type] = {}
+                    # Loop over list of docs
+                    for d in list_of_docs:
+                        
+                        # Build doc JSON
+                        doc_json = {
+                            'doc_type'            : d[0],
+                            'doc_id'              : d[1],
+                            'degree_score'        : d[2],
+                            'degree_score_factor' : es_degree_score_factors[doc_type] * d[2],
+                            'short_code'          : d[3],
+                            'subtype'             : {'en': d[4],  'fr': d[5]},
+                            'name'                : {'en': d[6],  'fr': d[7]},
+                            'short_description'   : {'en': d[8],  'fr': d[9]},
+                            'long_description'    : {'en': d[10], 'fr': d[11]}
+                        }
 
-                # Loop over list of docs
-                for d in list_of_docs:
-                    
-                    # Build doc JSON
-                    doc_json = {
-                        'doc_type'            : d[0],
-                        'doc_id'              : d[1],
-                        'degree_score'        : d[2],
-                        'degree_score_factor' : es_degree_score_factors[doc_type] * d[2],
-                        'short_code'          : d[3],
-                        'subtype'             : {'en': d[4],  'fr': d[5]},
-                        'name'                : {'en': d[6],  'fr': d[7]},
-                        'short_description'   : {'en': d[8],  'fr': d[9]},
-                        'long_description'    : {'en': d[10], 'fr': d[11]}
-                    }
+                        # Append remaining custom columns to JSON (as fields)
+                        for i, c in enumerate(custom_column_names_doc):
+                            doc_json[c] = d[i+12]
 
-                    # Append remaining custom columns to JSON (as fields)
-                    for i, c in enumerate(custom_column_names_doc):
-                        doc_json[c] = d[i+12]
+                        # Append links field
+                        doc_json['links'] = []
 
-                    # Append links field
-                    doc_json['links'] = []
-
-                    # Append doc JSON to ES index
-                    if d[1] not in es_index_struct[doc_type]:
-                        es_index_struct[doc_type][d[1]] = doc_json
-                    
-                # Print status
-                sysmsg.trace(f"Append links to docs JSON object for doc type '{doc_type}'.")
-
-                # Loop over all link doc types
-                with tqdm(index_doc_types_list, unit='link type') as pb:
-                    for _, link_type in pb:
-
-                        # Print status
-                        pb.set_description(f"⚙️  [GLC-ES] Processing doc-link type: {doc_type} -> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        # Append doc JSON to ES index
+                        if d[1] not in es_index_struct[doc_type]:
+                            es_index_struct[doc_type][d[1]] = doc_json
+                        
+                    # Loop over all link doc types
+                    for _, link_type in index_doc_types_list:
 
                         # Fetch doc fields
                         obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][link_type]]
@@ -10454,21 +10678,16 @@ class GraphRegistry():
 
                         # Check if link table exists
                         if not self.db.table_exists(engine_name='test', schema_name=schema_es_cache, table_name=f"Index_D_{doc_type}_L_{link_type}"):
-                            print('')
-                            sysmsg.warning(f"Table does not exist: Index_D_{doc_type}_L_{link_type}.")
+                            if not ignore_warnings:
+                                sysmsg.warning(f"Table does not exist: Index_D_{doc_type}_L_{link_type}.")
                             continue
 
                         # Fetch list of links for doc_type and link_type
-                        print('')
-                        sysmsg.trace(f"⚙️  Loading links from '{schema_es_cache}.Index_D_{doc_type}_L_{link_type}' table ...")
                         list_of_links = self.db.execute_query(engine_name='test', query=f"""
-                              SELECT {', '.join(column_names_link)}
+                            SELECT {', '.join(column_names_link)}
                                 FROM {schema_es_cache}.Index_D_{doc_type}_L_{link_type}
                             ORDER BY doc_id ASC, link_rank ASC
                         """)
-
-                        # Print status
-                        sysmsg.trace(f"⚙️  Appending links to docs JSON object for doc type '{doc_type}' ...")
 
                         # Loop over list of links
                         for l in list_of_links:
@@ -10498,61 +10717,78 @@ class GraphRegistry():
                             # Append link to doc JSON
                             es_index_struct[doc_type][l[1]]['links'] += [json_link]
 
-                # Save index JSON to file (as json.gz)
-                sysmsg.trace(f"⚙️  Saving index JSON to file '{target_output_path}' ...")
-                with gzip.open(f'{target_output_path}', 'wt', encoding='utf-8') as f:
-                    json.dump(es_index_struct, f, indent=4)
+                    # Save index JSON to file (as json.gz)
+                    with gzip.open(f'{target_output_path}', 'wt', encoding='utf-8') as f:
+                        json.dump(es_index_struct, f, indent=4)
 
             # Print status
             sysmsg.success(f"🐙 ✅ Done generating local JSON cache.\n")
 
         # Generate ElasticSearch index from local JSON cache
-        def generate_index_from_local_cache(self, index_date=False):
+        def generate_index_from_local_cache(self, index_date=False, ignore_warnings=True, replace_existing=False, force_replace=False):
 
             # Print status
             sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
 
             # Generate target file path
-            target_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
+            target_output_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
 
-            # Check if target file already exists
-            if os.path.exists(target_file_path):
-                sysmsg.warning(f"Target file already exists: {target_file_path}")
+            #-------------------------------------------#
+            # If file exists, handle according to flags #
+            #-------------------------------------------#
+            if os.path.exists(target_output_path):
+                if not ignore_warnings:
+                    sysmsg.warning(f"File already exists: {target_output_path}")
+                if not replace_existing:
+                    sysmsg.error(f"❌ Failed to generate ElasticSearch index. File already exists: {target_output_path}")
+                    return
+                elif replace_existing:
+                    if force_replace:
+                        confirmation = 'yes'
+                    else:
+                        confirmation = input(f"Are you sure you want to replace the existing file? (yes/no): ")
+                    if confirmation.lower() != 'yes':
+                        sysmsg.error("❌ Operation cancelled by user.")
+                        return
+                    elif not ignore_warnings:
+                        sysmsg.warning(f"Replacing existing file ...")
+                    os.remove(target_output_path)
+            #-------------------------------------------#
 
-            # Else, proceed with index generation
-            else:
+            # Initialize index doc types list
+            es_index = []
 
-                # Initialize index doc types list
-                es_index = []
+            # Loop over all doc types
+            with tqdm(index_doc_types_list, unit='doc type') as pb:
+                for _, doc_type in pb:
 
-                # Loop over all doc types
-                with tqdm(index_doc_types_list, unit='doc type') as pb:
-                    for _, doc_type in pb:
+                    # Print status
+                    pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Print status
-                        pb.set_description(f"⚙️  Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                    # Generate source file path
+                    source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
 
-                        # Generate source file path
-                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
+                    # Load JSON structure from file
+                    with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
+                        es_index_struct = json.load(f)
 
-                        # Load JSON structure from file
-                        with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
-                            es_index_struct = json.load(f)
+                    # Append JSON structure to index
+                    for doc_id in es_index_struct[doc_type]:
+                        es_index += [es_index_struct[doc_type][doc_id]]
 
-                        # Append JSON structure to index
-                        for doc_id in es_index_struct[doc_type]:
-                            es_index += [es_index_struct[doc_type][doc_id]]
-
-                # Save index JSON to file (as json.gz)
-                sysmsg.trace(f"⚙️  Saving index JSON to file '{target_file_path}' ...")
-                with gzip.open(target_file_path, 'wt', encoding='utf-8') as f:
-                    json.dump(es_index, f, indent=4)
+            # Save index JSON to file (as json.gz)
+            sysmsg.trace(f"⚙️  Saving index JSON to file '{target_output_path}' ...")
+            with gzip.open(target_output_path, 'wt', encoding='utf-8') as f:
+                json.dump(es_index, f, indent=4)
 
             # Print status
             sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
 
         # Import index from local JSON file to ElasticSearch engine
-        def import_index(self, engine_name, index_file=None, index_name=None, index_date=None, chunk_size=1000, delete_if_exists=False):
+        def import_index(self, engine_name, index_file=None, index_name=None, index_date=None, chunk_size=1000, replace_existing=False, force_replace=False):
+
+            # Print status
+            sysmsg.info(f"🐙 📝 Import index file into ElasticSearch server.")
 
             # Use index date convention (generate file path and name accordingly)
             if (index_file, index_name)==(None, None):
@@ -10574,8 +10810,13 @@ class GraphRegistry():
                 index_name  = index_name,
                 index_file  = index_file,
                 chunk_size  = chunk_size,
-                delete_if_exists = delete_if_exists
+                delete_if_exists = replace_existing,
+                force_replace = force_replace
             )
+
+            # Print status
+            sysmsg.success(f"🐙 ✅ Done importing index file.\n")
+
 
 
         # # Copy ElasticSearch index from test to production environment
