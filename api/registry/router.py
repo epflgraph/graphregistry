@@ -24,7 +24,6 @@ def method_insert(request: schemas.InsertItemRequest):
         f"Inserting {len(request.data)} items - Type: {request.type}, Update Existing: {request.update_existing},",
         f"Actions: {', '.join(request.actions)}"
     )
-
     if request.type == schemas.ItemType.nodes:
         obj_list = gr.NodeList()
     elif request.type == schemas.ItemType.edges:
@@ -60,7 +59,8 @@ def method_delete_nodes(request: schemas.DeleteNodesRequest):
     Deletes multiple nodes from the registry by ID.
     """
     print(
-        f"Deleting {len(request.items_id)} nodes - Type: {request.type}, Actions: {', '.join(request.actions)}"
+        f"Deleting {len(request.nodes_id)} nodes ({request.institution_id}, {request.object_type}), "
+        f"Actions: {', '.join(request.actions)}"
     )
     try:
         r = delete_nodes_by_ids(
