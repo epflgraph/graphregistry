@@ -1164,9 +1164,7 @@ def graphai_get_access_token(username, password):
     return response_login.json()['access_token']
 
 # Function to detect concepts through GraphAI
-headers = None
-def graphai_text_endpoint(object_id, input, endpoint='wikify'):
-
+def graphai_text_endpoint(object_id, input, endpoint='wikify', headers=None):
     #Request access token if needed
     if headers is None:
         response_login = requests.post(
@@ -1260,7 +1258,7 @@ def graphai_text_endpoint(object_id, input, endpoint='wikify'):
 # Function to execute an INSERT operation in the registry
 def registry_insert(
         schema_name, table_name, key_column_names, key_column_values, upd_column_names, upd_column_values, actions=(),
-        db_connector=None
+        db_connector=None, engine_name='test'
 ):
     """
     Possible actions: 'print', 'eval', 'commit'
@@ -1328,7 +1326,7 @@ def registry_insert(
             print(sql_query_eval)
         
         # Execute the query
-        out = db_connector.execute_query(engine_name='test', query=sql_query_eval, params=sql_params)
+        out = db_connector.execute_query(engine_name=engine_name, query=sql_query_eval, params=sql_params)
 
         # Build up the test results dictionary
         print_colour(f'\nChanges on table {t}:', style='bold')
@@ -1394,12 +1392,35 @@ def registry_insert(
     # Return the test results
     return eval_results
 
+def delete_concepts_for_nodes(
+        db_connector, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()
+):
+    schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
+    query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
+    eval_results = None
+    if 'eval' in actions:
+        query_eval = f'SELECT COUNT(*) FROM {schema_objects}.{table} WHERE {query_where};'
+        if 'print' in actions:
+            print(query_eval)
+        out = db_connector.execute_query(query=query_eval, params={'object_id': nodes_id}, engine_name=engine_name)
+        eval_results = {'delete concept': out[0][0]}
+        if eval_results['delete concept'] > 0:
+            print(eval_results)
+    queries_remove = f'DELETE FROM {schema_objects}.{table} WHERE {query_where};'
+    if 'print' in actions:
+        print(queries_remove)
+    if 'commit' in actions:
+        db_connector.execute_query(
+            query=queries_remove, params={'object_id': nodes_id}, engine_name=engine_name, commit=True
+        )
+    return eval_results
+
+
 def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
     schema_objects = object_type_to_schema.get(object_type, schema_registry)
     query_where_per_table = {}
     for table in (
             'Nodes_N_Object', 'Data_N_Object_T_PageProfile', 'Data_N_Object_T_CustomFields',
-            'Edges_N_Object_N_Concept_T_ConceptDetection'
     ):
         query_where_per_table[f'{schema_objects}.{table}'] = \
             f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
@@ -1418,8 +1439,8 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
                     AND to_object_type='{object_type}' 
                     AND to_object_id IN :object_id
                 )'''
-    eval_results = {} if 'eval' in actions else None
-    query_remove = ''
+    eval_results = {}
+    queries_remove = []
     for table, query_where in query_where_per_table.items():
         if 'eval' in actions:
             query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
@@ -1429,14 +1450,27 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
             eval_results[table] = out[0][0]
             if eval_results[table] > 0:
                 print(table, eval_results[table])
-        query_remove += f'DELETE FROM {table} WHERE {query_where};\n'
+        queries_remove.append(f'DELETE FROM {table} WHERE {query_where};\n')
+    if len(queries_remove) > 1:
+        queries_remove.insert(0, 'BEGIN;')
+        queries_remove.append('COMMIT;')
     if 'print' in actions:
-        print(query_remove)
+        for q in queries_remove:
+            print(q)
     if 'commit' in actions:
-        db_connector.execute_query(
-            query=query_remove, params={'object_id': nodes_id}, engine_name=engine_name, commit=True
+        for q in queries_remove:
+            db_connector.execute_query(query=q, params={'object_id': nodes_id}, engine_name=engine_name, commit=True)
+    if db_connector.table_exists(engine_name, schema_objects, 'Edges_N_Object_N_Concept_T_ConceptDetection'):
+        eval_results['Edges_N_Object_N_Concept_T_ConceptDetection'] = delete_concepts_for_nodes(
+            db_connector, 'Edges_N_Object_N_Concept_T_ConceptDetection', institution_id, object_type, nodes_id,
+            engine_name=engine_name, actions=actions
         )
-    return eval_results
+    if db_connector.table_exists(engine_name, schema_objects, 'Edges_N_Object_N_Concept_T_ManualMapping'):
+        eval_results['Edges_N_Object_N_Concept_T_ManualMapping'] = delete_concepts_for_nodes(
+            db_connector, 'Edges_N_Object_N_Concept_T_ManualMapping', institution_id, object_type, nodes_id,
+            engine_name=engine_name, actions=actions
+        )
+    return eval_results if 'eval' in actions else None
 
 def delete_edges_by_ids(
         db_connector, from_institution_id, from_object_type, to_institution_id, to_object_type,
@@ -6236,14 +6270,15 @@ class GraphRegistry():
             self.object_key = object_key
             self.institution_id, self.object_type, self.object_id = object_key
             self.object_title = None
-            self.text_source = None
             self.raw_text = None
             self.record_created_date = None
             self.record_updated_date = None
             self.custom_fields = []
             self.page_profile = {}
-            self.concepts_detection = None
             self.checksum = None
+            self.concepts_detection = None
+            self.text_source = None
+            self.manual_mapping = None
             self.set_from_existing()
                 
         # Check if object exists
@@ -6272,10 +6307,13 @@ class GraphRegistry():
                 'object_title'        : self.object_title,
                 'text_source'         : self.text_source,
                 'raw_text'            : self.raw_text,
+                'text_source'         : self.text_source,
                 'record_created_date' : self.record_created_date if type(self.record_created_date)!=datetime.datetime else self.record_created_date.strftime('%Y-%m-%d %H:%M:%S'),
                 'record_updated_date' : self.record_updated_date if type(self.record_updated_date)!=datetime.datetime else self.record_updated_date.strftime('%Y-%m-%d %H:%M:%S'),
                 'custom_fields'       : self.custom_fields,
-                'page_profile'        : self.page_profile
+                'page_profile'        : self.page_profile,
+                'concepts_detection'  : self.concepts_detection,
+                'manual_mapping'      : self.manual_mapping
             })
             return doc_json
 
@@ -6405,7 +6443,7 @@ class GraphRegistry():
         def set_from_json(self, doc_json, detect_concepts=False):
 
             # Set object fields from input
-            self.object_key     = (doc_json['institution_id'], doc_json['object_type'], doc_json['object_id'])
+            self.object_key = (doc_json['institution_id'], doc_json['object_type'], doc_json['object_id'])
             self.institution_id = doc_json['institution_id']
             self.object_type    = doc_json['object_type']
             self.object_id      = doc_json['object_id']
@@ -6450,6 +6488,35 @@ class GraphRegistry():
                 self.page_profile['record_created_date'] = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                 self.page_profile['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
+            # Fetch record dates (concept detection)
+            for k in range(len(self.concepts_detection)):
+                out = self.db.execute_query(engine_name='test', query=f"""
+                    SELECT record_created_date, record_updated_date
+                    FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
+                    WHERE (institution_id, object_type, object_id, concept_id)
+                        = ('{self.institution_id}', '{self.object_type}', '{self.object_id}', '{self.concepts_detection[k]['concept_id']}');
+                """)
+                if len(out) > 0:
+                    self.concepts_detection[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
+                        0].strftime('%Y-%m-%d %H:%M:%S')
+                    self.concepts_detection[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
+                        1].strftime('%Y-%m-%d %H:%M:%S')
+
+            # Fetch record dates (manual mapping)
+            for k in range(len(self.manual_mapping)):
+                out = self.db.execute_query(engine_name='test', query=f"""
+                    SELECT record_created_date, record_updated_date
+                    FROM {schema}.Edges_N_Object_N_Concept_T_ManualMapping
+                    WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
+                        '{self.institution_id}', '{self.object_type}', '{self.object_id}', 
+                        '{self.manual_mapping[k]["concept_id"]}', '{self.manual_mapping[k]["text_source"]}');
+                """)
+                if len(out) > 0:
+                    self.manual_mapping[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
+                        0].strftime('%Y-%m-%d %H:%M:%S')
+                    self.manual_mapping[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
+                        1].strftime('%Y-%m-%d %H:%M:%S')
+
             # Re-calculate checksum
             self.update_checksum()
 
@@ -6459,10 +6526,8 @@ class GraphRegistry():
 
         # Update global checksum
         def update_checksum(self):
-
             # Convert to JSON
             doc_json = self.to_json()
-
             # Drop all datetime fields
             doc_json.pop('record_created_date', None)
             doc_json.pop('record_updated_date', None)
@@ -6471,7 +6536,12 @@ class GraphRegistry():
                 doc_json['custom_fields'][k].pop('record_updated_date', None)
             doc_json['page_profile'].pop('record_created_date', None)
             doc_json['page_profile'].pop('record_updated_date', None)
-            
+
+            # the concepts detected by concept detections are invalidated by expiration, so we ignore them all here.
+            doc_json.pop('concepts_detection')
+            # same for manually mapped concepts
+            doc_json.pop('manual_mapping')
+
             # Convert to a sorted JSON string
             serialized = json.dumps(doc_json, sort_keys=True, separators=(',', ':'))
 
@@ -6489,7 +6559,8 @@ class GraphRegistry():
                 upd_column_names=['object_title', 'text_source', 'raw_text'],
                 upd_column_values=[self.object_title, self.text_source, self.raw_text],
                 actions=actions,
-                db_connector=self.db
+                db_connector=self.db,
+                engine_name='test'
             )
             return eval_results
 
@@ -6507,7 +6578,8 @@ class GraphRegistry():
                     upd_column_names=['field_value'],
                     upd_column_values=[doc['field_value']],
                     actions=actions,
-                    db_connector=self.db
+                    db_connector=self.db,
+                    engine_name='test'
                 )]
             return eval_results
 
@@ -6531,7 +6603,8 @@ class GraphRegistry():
                 upd_column_names=upd_column_names,
                 upd_column_values=upd_column_values,
                 actions=actions,
-                db_connector=self.db
+                db_connector=self.db,
+                engine_name='test'
             )
             return eval_results
 
@@ -6541,7 +6614,6 @@ class GraphRegistry():
             # Print actions info
             if actions == ('eval',):
                 print(f'\n🔍 Running on evaluation mode. No commits will be made to the database ...')
-
             # Commit all to database
             eval_results = {
                 'node_object'   : self.commit_node_object(actions=actions),
@@ -6549,11 +6621,23 @@ class GraphRegistry():
                 'page_profile'  : self.commit_page_profile(actions=actions),
                 'concepts'      : self.commit_concepts(actions=actions)
             }
-
+            if self.raw_text and not self.concepts_detection:
+                self.detect_concepts(verbose=verbose)
+            if self.concepts_detection:
+                eval_results.update(
+                    {'concepts_detection': self.commit_concepts(
+                        actions=actions, engine_name='test', delete_existing=True
+                    )}
+                )
+            if self.manual_mapping:
+                eval_results.update(
+                    {'manual_mapping': self.commit_manual_mapping(
+                        actions=actions, engine_name='test', delete_existing=True
+                    )}
+                )
             # Print actions info
             if verbose and 'commit' in actions:
                 print(f'\n✅ All data committed to the database.')
-
             # Return evaluation results
             return eval_results
 
@@ -6593,25 +6677,53 @@ class GraphRegistry():
 
             schema_name = object_type_to_schema.get(self.object_type, schema_registry)
             eval_results = []
+            if delete_existing:
+                eval_results += [delete_concepts_for_nodes(
+                    self.db, 'Edges_N_Object_N_Concept_T_ConceptDetection', self.institution_id, self.object_type,
+                    [self.object_id,], engine_name='test', actions=actions
+                )]
             for doc in self.concepts_detection:
                 eval_results += [registry_insert(
-                    schema_name       = schema_name,
-                    table_name        = 'Edges_N_Object_N_Concept_T_ConceptDetection',
-                    key_column_names  = ['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
-                    key_column_values = [self.institution_id, self.object_type, self.object_id, doc['concept_id'], self.text_source],
-                    upd_column_names  = ['score'],
-                    upd_column_values = [doc['mixed_score']],
-                    actions           = actions,
-                    db_connector      = self.db
+                    schema_name=schema_name,
+                    table_name='Edges_N_Object_N_Concept_T_ConceptDetection',
+                    key_column_names=['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
+                    key_column_values=[self.institution_id, self.object_type, self.object_id, doc['concept_id'], doc['text_source']],
+                    upd_column_names=['score'],
+                    upd_column_values=[doc['mixed_score']],
+                    actions=actions,
+                    db_connector=self.db,
+                    engine_name='test'
                 )]
+            return eval_results
 
         # Refine detected concepts
         def refine_concepts(self):
             pass
 
         # Manually map concepts
-        def manually_map_concepts(self, mode='interactive'):
-            pass
+        def commit_manual_mapping(self,actions=('eval',), engine_name='test', delete_existing=False):
+            schema_name = object_type_to_schema.get(self.object_type, 'graph_registry')
+            eval_results = []
+            if delete_existing and self.db.table_exists(engine_name, schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
+                eval_results += [delete_concepts_for_nodes(
+                    self.db, 'Edges_N_Object_N_Concept_T_ManualMapping', self.institution_id, self.object_type,
+                    [self.object_id, ], engine_name='test', actions=actions
+                )]
+            for doc in self.manual_mapping:
+                eval_results += [registry_insert(
+                    schema_name=schema_name,
+                    table_name='Edges_N_Object_N_Concept_T_ManualMapping',
+                    key_column_names=['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
+                    key_column_values=[
+                        self.institution_id, self.object_type, self.object_id, doc['concept_id'], doc['text_source']
+                    ],
+                    upd_column_names=['concept_name', 'score'],
+                    upd_column_values=[doc.get('concept_name', None), doc.get('score', 1)],
+                    actions=actions,
+                    db_connector=self.db,
+                    engine_name='test'
+                )]
+            return eval_results
 
     #-------------------------------------#
     # Subclass definition: Graph NodeList #
