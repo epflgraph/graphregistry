@@ -6489,33 +6489,35 @@ class GraphRegistry():
                 self.page_profile['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
             # Fetch record dates (concept detection)
-            for k in range(len(self.concepts_detection)):
-                out = self.db.execute_query(engine_name='test', query=f"""
-                    SELECT record_created_date, record_updated_date
-                    FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
-                    WHERE (institution_id, object_type, object_id, concept_id)
-                        = ('{self.institution_id}', '{self.object_type}', '{self.object_id}', '{self.concepts_detection[k]['concept_id']}');
-                """)
-                if len(out) > 0:
-                    self.concepts_detection[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
-                        0].strftime('%Y-%m-%d %H:%M:%S')
-                    self.concepts_detection[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
-                        1].strftime('%Y-%m-%d %H:%M:%S')
+            if self.concepts_detection is not None:
+                for k in range(len(self.concepts_detection)):
+                    out = self.db.execute_query(engine_name='test', query=f"""
+                        SELECT record_created_date, record_updated_date
+                        FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
+                        WHERE (institution_id, object_type, object_id, concept_id)
+                            = ('{self.institution_id}', '{self.object_type}', '{self.object_id}', '{self.concepts_detection[k]['concept_id']}');
+                    """)
+                    if len(out) > 0:
+                        self.concepts_detection[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
+                            0].strftime('%Y-%m-%d %H:%M:%S')
+                        self.concepts_detection[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
+                            1].strftime('%Y-%m-%d %H:%M:%S')
 
             # Fetch record dates (manual mapping)
-            for k in range(len(self.manual_mapping)):
-                out = self.db.execute_query(engine_name='test', query=f"""
-                    SELECT record_created_date, record_updated_date
-                    FROM {schema}.Edges_N_Object_N_Concept_T_ManualMapping
-                    WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
-                        '{self.institution_id}', '{self.object_type}', '{self.object_id}', 
-                        '{self.manual_mapping[k]["concept_id"]}', '{self.manual_mapping[k]["text_source"]}');
-                """)
-                if len(out) > 0:
-                    self.manual_mapping[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
-                        0].strftime('%Y-%m-%d %H:%M:%S')
-                    self.manual_mapping[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
-                        1].strftime('%Y-%m-%d %H:%M:%S')
+            if self.manual_mapping is not None:
+                for k in range(len(self.manual_mapping)):
+                    out = self.db.execute_query(engine_name='test', query=f"""
+                        SELECT record_created_date, record_updated_date
+                        FROM {schema}.Edges_N_Object_N_Concept_T_ManualMapping
+                        WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
+                            '{self.institution_id}', '{self.object_type}', '{self.object_id}', 
+                            '{self.manual_mapping[k]["concept_id"]}', '{self.manual_mapping[k]["text_source"]}');
+                    """)
+                    if len(out) > 0:
+                        self.manual_mapping[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
+                            0].strftime('%Y-%m-%d %H:%M:%S')
+                        self.manual_mapping[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
+                            1].strftime('%Y-%m-%d %H:%M:%S')
 
             # Re-calculate checksum
             self.update_checksum()
@@ -6614,6 +6616,7 @@ class GraphRegistry():
             # Print actions info
             if actions == ('eval',):
                 print(f'\n🔍 Running on evaluation mode. No commits will be made to the database ...')
+
             # Commit all to database
             eval_results = {
                 'node_object'   : self.commit_node_object(actions=actions),
@@ -6621,23 +6624,28 @@ class GraphRegistry():
                 'page_profile'  : self.commit_page_profile(actions=actions),
                 'concepts'      : self.commit_concepts(actions=actions)
             }
-            if self.raw_text and not self.concepts_detection:
-                self.detect_concepts(verbose=verbose)
-            if self.concepts_detection:
-                eval_results.update(
-                    {'concepts_detection': self.commit_concepts(
-                        actions=actions, engine_name='test', delete_existing=True
-                    )}
-                )
-            if self.manual_mapping:
-                eval_results.update(
-                    {'manual_mapping': self.commit_manual_mapping(
-                        actions=actions, engine_name='test', delete_existing=True
-                    )}
-                )
+
+            # This was here before PR. Not sure what it was meant to do.
+            # Leaving commented out for now.
+            # if self.raw_text and not self.concepts_detection:
+            #     self.detect_concepts(verbose=verbose)
+            # if self.concepts_detection:
+            #     eval_results.update(
+            #         {'concepts_detection': self.commit_concepts(
+            #             actions=actions, engine_name='test', delete_existing=True
+            #         )}
+            #     )
+            # if self.manual_mapping:
+            #     eval_results.update(
+            #         {'manual_mapping': self.commit_manual_mapping(
+            #             actions=actions, engine_name='test', delete_existing=True
+            #         )}
+            #     )
+
             # Print actions info
             if verbose and 'commit' in actions:
                 print(f'\n✅ All data committed to the database.')
+                
             # Return evaluation results
             return eval_results
 
@@ -6677,22 +6685,24 @@ class GraphRegistry():
 
             schema_name = object_type_to_schema.get(self.object_type, schema_registry)
             eval_results = []
+
             if delete_existing:
                 eval_results += [delete_concepts_for_nodes(
                     self.db, 'Edges_N_Object_N_Concept_T_ConceptDetection', self.institution_id, self.object_type,
                     [self.object_id,], engine_name='test', actions=actions
                 )]
+
             for doc in self.concepts_detection:
                 eval_results += [registry_insert(
-                    schema_name=schema_name,
-                    table_name='Edges_N_Object_N_Concept_T_ConceptDetection',
-                    key_column_names=['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
-                    key_column_values=[self.institution_id, self.object_type, self.object_id, doc['concept_id'], doc['text_source']],
-                    upd_column_names=['score'],
-                    upd_column_values=[doc['mixed_score']],
-                    actions=actions,
-                    db_connector=self.db,
-                    engine_name='test'
+                    schema_name       = schema_name,
+                    table_name        = 'Edges_N_Object_N_Concept_T_ConceptDetection',
+                    key_column_names  = ['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
+                    key_column_values = [self.institution_id, self.object_type, self.object_id, doc['concept_id'], self.text_source],
+                    upd_column_names  = ['score'],
+                    upd_column_values = [doc['mixed_score']],
+                    actions           = actions,
+                    db_connector      = self.db,
+                    engine_name       = 'test'
                 )]
             return eval_results
 
