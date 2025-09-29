@@ -27,7 +27,7 @@ if True:
 #=============================================#
 
 # Detect/update concepts? [disable for faster imports]
-detect_concepts = False
+detect_concepts = True
 
 # Choose import method (object or list)
 import_method = 'object'
@@ -68,7 +68,7 @@ if True:
 #===============================================#
 
 # Execute step?
-if False:
+if True:
 
     # Fetch light ontology schema name from config
     ontology_light_schema_name = global_config['mysql']['db_schema_names']['ontology_light']
