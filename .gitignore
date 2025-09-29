@@ -2,14 +2,15 @@
 __pycache__
 *.pkl
 *.gexf
-*data
 *data_exports/*
 */api/modules/_trash/
 */api/modules/concepts/
 .idea/
+_trash/
+_local_data/
 venv/
-data/
 resources/certificates/*.crt
 resources/credentials/*
 config.yaml
+config_switch.yaml
 geckodriver.log
