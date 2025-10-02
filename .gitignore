@@ -12,5 +12,8 @@ venv/
 resources/certificates/*.crt
 resources/credentials/*
 config.yaml
-config_switch.yaml
+config_*.yaml
 geckodriver.log
+database/init/data_patches/
+database/tests/
+
