@@ -3,6 +3,7 @@
 # TODO:
 # - Create object to category tables (some are still missing)
 # - delete all local variables in functions
+# - add concept-concept to typeflags table
 
 from sqlalchemy import create_engine as SQLEngine, text, event
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
