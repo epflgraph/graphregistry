@@ -1,7 +1,5 @@
 graphai:
-  user: USERNAME
-  password: PASSWORD
-  url: "https://graphai.epfl.ch/"
+  client_config_file: resources/credentials/graphai-client.json
 
 mysql:
   client_bin: /usr/local/mysql/bin/mysql
