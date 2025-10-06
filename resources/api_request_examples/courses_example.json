@@ -35,6 +35,7 @@
             "object_type": "Course",
             "object_id": "COM-502",
             "object_title": "Dynamical system theory for engineers",
+            "text_source": "course page description",
             "raw_text": "Linear and nonlinear dynamical systems are found in all fields of science and engineering. After a short review of linear system theory, the class will explain and develop the main tools for the qualitative analysis of nonlinear systems, both in discrete-time and continuous-time.",
             "custom_fields": [
                 {
@@ -69,6 +70,7 @@
             "object_type": "Course",
             "object_id": "CS-726",
             "object_title": "Machine Learning for Database Systems",
+            "text_source": "course page description",
             "raw_text": "This course covers the emerging interdisciplinary field targeting the intersection of Machine Learning and Database Systems. The students will read, review and present papers from recent venues across Database Systems and Machine Learning fields.",
             "custom_fields": [
                 {

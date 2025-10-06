@@ -9,15 +9,15 @@ from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 from sqlalchemy.dialects import mysql
 from tqdm import tqdm
 from loguru import logger as sysmsg
-import base64, re, time, subprocess, warnings, os, glob, rich, hashlib, random, termios, tty, inspect
+import re, time, subprocess, warnings, os, glob, rich, hashlib, random, termios, tty, inspect
 from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers, ElasticsearchWarning
-import sys, json, logging, sys, datetime, Levenshtein, requests, itertools, gzip, math
+import json, logging, sys, datetime, Levenshtein, requests, itertools, gzip
 from urllib.parse import quote
 from copy import deepcopy
 import numpy as np
 import pandas as pd
-from itertools import groupby, combinations, combinations_with_replacement
-from typing import List, Tuple
+from itertools import combinations_with_replacement
+from typing import List, Tuple, Optional, Union, Literal
 from tabulate import tabulate
 from collections import defaultdict
 from yaml import safe_load
@@ -26,8 +26,6 @@ from graphai_client.client_api.text import extract_concepts_from_text
 import tkinter as tk
 from tkinter import ttk
 from flatten_dict import flatten
-from dictdiffer import diff
-import difflib
 from pathlib import Path
 
 # Enable faulthandler to dump Python tracebacks explicitly on a fault
@@ -56,7 +54,7 @@ PBWIDTH = 64 # Width of the progress bar
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Function to resolve paths
-def resolve_repo_path(p: str | Path) -> Path:
+def resolve_repo_path(p: Union[str, Path]) -> Path:
     """Return an absolute path. If 'p' is relative, resolve it against the repo root."""
     p = Path(p)
     return p if p.is_absolute() else (REPO_ROOT / p)
@@ -1156,105 +1154,6 @@ def normalized_levenshtein(str1, str2):
     # Return the normalized distance
     return normalized_distance
 
-# Function to get access token from GraphAI
-def graphai_get_access_token(username, password):
-    response_login = requests.post(
-        url=f'{global_config["graphai"]["url"]}/token', data={'username': username, 'password': password}
-    )
-    return response_login.json()['access_token']
-
-# Function to detect concepts through GraphAI
-def graphai_text_endpoint(object_id, input, endpoint='wikify', headers=None):
-    #Request access token if needed
-    if headers is None:
-        response_login = requests.post(
-            url=f'{global_config["graphai"]["url"]}/token',
-            data={'username': global_config['graphai']['user'], 'password': global_config['graphai']['password']}
-        )
-        graphai_access_token = response_login.json()['access_token']
-        # Define the headers
-        headers = {
-            'accept': 'application/json',
-            'Authorization': f'Bearer {graphai_access_token}',
-            'Content-Type': 'application/json'
-        }
-
-    # Check input type
-    if type(input) is str:
-
-        # Generate md5 from title
-        request_md5 = hashlib.md5(input.encode()).hexdigest()
-
-    elif type(input) is list:
-
-        # Generate md5 from title
-        request_md5 = hashlib.md5(''.join(input).encode()).hexdigest()
-
-    # Define the JSON payload
-    json_payload = {
-        "object_id" : object_id,
-        "request_md5" : request_md5,
-        {str:"raw_text", list:"keywords"}[type(input)] : input
-    }
-
-    # Initiate the output JSON file
-    output_json = {
-        "payload"  : None,
-        "response" : None,
-        "timestamp_sent" : None,
-        "timestamp_received" : None,
-    }
-
-    # Save the payload to the output JSON
-    output_json['payload'] = deepcopy(json_payload)
-    
-    # Send the POST request
-    output_json['timestamp_sent'] = datetime.datetime.now().timestamp()
-    try:
-        response = requests.post(f"https://graphai.epfl.ch/text/{endpoint}", headers=headers, json=json_payload)
-    except:
-        print(f'Error: Request failed for ID {object_id}.')
-        return None
-    output_json['timestamp_received'] = datetime.datetime.now().timestamp()
-
-    # Get the request body from the response
-    response_request_body = json.loads(deepcopy(response.request.body))
-
-    # Get the JSON response
-    response_json = deepcopy(response.json())
-    output_json['response'] = deepcopy(response_json)
-
-    # Check if the token has expired
-    if 'detail' in response_json:
-        if 'Token has expired' in response_json['detail']:
-            print('Token has expired or has an invalid timestamp, obtain another')
-            return None
-        elif "Could not validate credentials" in response_json['detail']:
-            print('Could not validate credentials')
-            return None
-        else:
-            print('Unknown error')
-            return None
-
-    # Check if the response is valid
-    if response_request_body != json_payload:
-
-        # Print error message
-        print(f'Error: Request body does not match the input for ID {object_id}. Saving as logged error ...')
-
-        # Save output as logged error
-        with open(f'errors/{object_id}_{request_md5}.json', 'w') as fid:
-            fid.write(json.dumps(output_json, indent=2))
-
-        # Return None
-        return None
-
-    # Wait for a bit
-    time.sleep(0.1)
-
-    # Return the response
-    return output_json
-
 # Function to execute an INSERT operation in the registry
 def registry_insert(
         schema_name, table_name, key_column_names, key_column_values, upd_column_names, upd_column_values, actions=(),
@@ -1646,7 +1545,7 @@ class GraphDB():
     def initiate_engine(self, server_name):
         if server_name not in global_config['mysql']:
             raise ValueError(
-                f'could not find the configuration for mysql server {server_name} in {global_config_file}.'
+                f'could not find the configuration for mysql server {server_name} in {GLOBAL_CONFIG_FILE}.'
             )
         params = global_config['mysql'][server_name]
         engine = SQLEngine(
@@ -2052,7 +1951,7 @@ class GraphDB():
         # If verbose is enabled, print the command being executed
         if verbose:
             print(f"\n\033[96m⚙️ Executing query:\033[0m")
-            print(f"\n\t{query.strip().replace('\n','\n\t')}\n")
+            print("\n\t" + query.strip().replace('\n','\n\t') + "\n")
             
 
         # Run the command and capture stdout and stderr
@@ -2414,13 +2313,17 @@ class GraphDB():
     # Method: Print list of tables in the cache    #
     #----------------------------------------------#
     def print_tables_in_cache(self):
-        self.print_tables_in_schema(engine_name='test', schema_name=global_config['mysql']['schema_cache'])
+        self.print_tables_in_schema(
+            engine_name='test', schema_name=global_config['mysql']['db_schema_names'][f'graph_cache_test']
+        )
     
     #----------------------------------------------#
     # Method: Print list of tables in the test     #
     #----------------------------------------------#
     def print_tables_in_test(self):
-        self.print_tables_in_schema(engine_name='test', schema_name=global_config['mysql']['schema_test'])
+        self.print_tables_in_schema(
+            engine_name='test', schema_name=global_config['mysql']['db_schema_names']['graphsearch_test']
+        )
 
     #-------------------------------------------------#
     # Method: Apply data types to a table (from JSON) #
@@ -2929,7 +2832,7 @@ class GraphDB():
         if os.path.isabs(config_mysql_export_path):
             folder_path = os.path.join(             config_mysql_export_path, current_date, md5_hash, source_table_name)
         else:
-            folder_path = os.path.join(package_dir, config_mysql_export_path, current_date, md5_hash, source_table_name)
+            folder_path = os.path.join(REPO_ROOT, config_mysql_export_path, current_date, md5_hash, source_table_name)
 
         # Display status
         sysmsg.info(f"{'Creating' if not drop_table else 'Recreating'} table in target engine '{target_engine_name}'.")
@@ -2987,7 +2890,7 @@ class GraphDB():
     #--------------------------------------#
     # Method: Copy database across engines #
     #--------------------------------------#
-    def copy_database_across_engines(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, chunk_size=100000, list_of_tables=[], drop_tables=False):
+    def copy_database_across_engines(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, chunk_size=100000, list_of_tables=(), drop_tables=False):
 
         # Play sound
         play_system_sound('info', 'moderate')
@@ -3545,7 +3448,7 @@ class GraphIndex():
         # Check if the server name is provided
         if server_name not in global_config['elasticsearch']:
             raise ValueError(
-                f'could not find the configuration for elasticsearch server {server_name} in {global_config_file}.'
+                f'could not find the configuration for elasticsearch server {server_name} in {GLOBAL_CONFIG_FILE}.'
             )
         
         # Import the ElasticSearch engine
@@ -3576,7 +3479,7 @@ class GraphIndex():
         import hashlib
         from typing import Tuple
 
-        def get_leaf_cert_der(host: str, port: int, timeout: float = 5.0, server_hostname: str | None = None) -> bytes:
+        def get_leaf_cert_der(host: str, port: int, timeout: float = 5.0, server_hostname: Optional[str] = None) -> bytes:
             """
             Opens a TLS connection and returns the *leaf* certificate in DER form.
             - host: what you actually connect to (IP or hostname)
@@ -3599,13 +3502,9 @@ class GraphIndex():
             """Return lowercase hex (no colons), which is what elasticsearch-py expects."""
             return hashlib.sha256(der_cert).hexdigest()
 
-        der = get_leaf_cert_der(host='127.0.0.1', port=9200, server_hostname="localhost")  # or server_hostname=host
-        fp = sha256_fingerprint_hex(der)
-        # print("SHA256 (hex, no colons):", fp)
-        # exit()
-
-        engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, 
-            ssl_assert_fingerprint=fp,
+        der = get_leaf_cert_der(host=params["host"], port=params["port"], server_hostname=params["host"])
+        engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True,
+            ssl_assert_fingerprint=sha256_fingerprint_hex(der),
             request_timeout=3600)
 
         # Return the parameters and the engine instance
@@ -6452,6 +6351,7 @@ class GraphRegistry():
             self.raw_text       = doc_json['raw_text']      if 'raw_text'      in doc_json else None
             self.custom_fields  = doc_json['custom_fields'] if 'custom_fields' in doc_json else []
             self.page_profile   = doc_json['page_profile']  if 'page_profile'  in doc_json else {}
+            self.manual_mapping = doc_json['manual_mapping']  if 'manual_mapping'  in doc_json else None
             schema = object_type_to_schema.get(self.object_type, schema_registry)
 
             # Fetch record dates (node table)
@@ -6488,34 +6388,46 @@ class GraphRegistry():
                 self.page_profile['record_created_date'] = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                 self.page_profile['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
+            # WARNING: Disabled as concepts_detection is now only filled by concept detection.
             # Fetch record dates (concept detection)
-            for k in range(len(self.concepts_detection)):
-                out = self.db.execute_query(engine_name='test', query=f"""
-                    SELECT record_created_date, record_updated_date
-                    FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
-                    WHERE (institution_id, object_type, object_id, concept_id)
-                        = ('{self.institution_id}', '{self.object_type}', '{self.object_id}', '{self.concepts_detection[k]['concept_id']}');
-                """)
-                if len(out) > 0:
-                    self.concepts_detection[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
-                        0].strftime('%Y-%m-%d %H:%M:%S')
-                    self.concepts_detection[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
-                        1].strftime('%Y-%m-%d %H:%M:%S')
+            # if self.concepts_detection is not None:
+            #     for concept in self.concepts_detection:
+            #         out = self.db.execute_query(engine_name='test', query=f"""
+            #             SELECT record_created_date, record_updated_date
+            #             FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
+            #             WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
+            #                 '{self.institution_id}', '{self.object_type}', '{self.object_id}',
+            #                 '{concept['concept_id']}', '{concept["text_source"]}');
+            #         """)
+            #         if len(out) > 0:
+            #             if type(out[0][0]) != datetime.datetime:
+            #                 concept['record_created_date'] = out[0][0]
+            #             else:
+            #                 concept['record_created_date'] = out[0][0].strftime('%Y-%m-%d %H:%M:%S')
+            #             if type(out[0][1]) != datetime.datetime:
+            #                 concept['record_updated_date'] = out[0][1]
+            #             else:
+            #                 concept['record_updated_date'] = out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
             # Fetch record dates (manual mapping)
-            for k in range(len(self.manual_mapping)):
-                out = self.db.execute_query(engine_name='test', query=f"""
-                    SELECT record_created_date, record_updated_date
-                    FROM {schema}.Edges_N_Object_N_Concept_T_ManualMapping
-                    WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
-                        '{self.institution_id}', '{self.object_type}', '{self.object_id}', 
-                        '{self.manual_mapping[k]["concept_id"]}', '{self.manual_mapping[k]["text_source"]}');
-                """)
-                if len(out) > 0:
-                    self.manual_mapping[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
-                        0].strftime('%Y-%m-%d %H:%M:%S')
-                    self.manual_mapping[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
-                        1].strftime('%Y-%m-%d %H:%M:%S')
+            if self.manual_mapping is not None:
+                for concept in self.manual_mapping:
+                    out = self.db.execute_query(engine_name='test', query=f"""
+                        SELECT record_created_date, record_updated_date
+                        FROM {schema}.Edges_N_Object_N_Concept_T_ManualMapping
+                        WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
+                            '{self.institution_id}', '{self.object_type}', '{self.object_id}', 
+                            '{concept["concept_id"]}', '{concept["text_source"]}');
+                    """)
+                    if len(out) > 0:
+                        if type(out[0][0]) != datetime.datetime:
+                            concept['record_created_date'] = out[0][0]
+                        else:
+                            concept['record_created_date'] = out[0][0].strftime('%Y-%m-%d %H:%M:%S')
+                        if type(out[0][1]) != datetime.datetime:
+                            concept['record_updated_date'] = out[0][1]
+                        else:
+                            concept['record_updated_date'] = out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
             # Re-calculate checksum
             self.update_checksum()
@@ -6619,21 +6531,17 @@ class GraphRegistry():
                 'node_object'   : self.commit_node_object(actions=actions),
                 'custom_fields' : self.commit_custom_fields(actions=actions),
                 'page_profile'  : self.commit_page_profile(actions=actions),
-                'concepts'      : self.commit_concepts(actions=actions)
             }
-            if self.raw_text and not self.concepts_detection:
-                self.detect_concepts(verbose=verbose)
+            # WARNING: already done in set_from_jon() ??
+            # if self.raw_text and self.concepts_detection is None:
+            #     self.detect_concepts()
             if self.concepts_detection:
                 eval_results.update(
-                    {'concepts_detection': self.commit_concepts(
-                        actions=actions, engine_name='test', delete_existing=True
-                    )}
+                    {'concepts_detection': self.commit_concepts(actions=actions, delete_existing=True)}
                 )
             if self.manual_mapping:
                 eval_results.update(
-                    {'manual_mapping': self.commit_manual_mapping(
-                        actions=actions, engine_name='test', delete_existing=True
-                    )}
+                    {'manual_mapping': self.commit_manual_mapping(actions=actions, delete_existing=True)}
                 )
             # Print actions info
             if verbose and 'commit' in actions:
@@ -6687,7 +6595,7 @@ class GraphRegistry():
                     schema_name=schema_name,
                     table_name='Edges_N_Object_N_Concept_T_ConceptDetection',
                     key_column_names=['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
-                    key_column_values=[self.institution_id, self.object_type, self.object_id, doc['concept_id'], doc['text_source']],
+                    key_column_values=[self.institution_id, self.object_type, self.object_id, doc['concept_id'], self.text_source],
                     upd_column_names=['score'],
                     upd_column_values=[doc['mixed_score']],
                     actions=actions,
@@ -6701,10 +6609,10 @@ class GraphRegistry():
             pass
 
         # Manually map concepts
-        def commit_manual_mapping(self,actions=('eval',), engine_name='test', delete_existing=False):
+        def commit_manual_mapping(self,actions=('eval',), delete_existing=False):
             schema_name = object_type_to_schema.get(self.object_type, 'graph_registry')
             eval_results = []
-            if delete_existing and self.db.table_exists(engine_name, schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
+            if delete_existing and self.db.table_exists('test', schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
                 eval_results += [delete_concepts_for_nodes(
                     self.db, 'Edges_N_Object_N_Concept_T_ManualMapping', self.institution_id, self.object_type,
                     [self.object_id, ], engine_name='test', actions=actions

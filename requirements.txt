@@ -14,3 +14,4 @@ tabulate
 pyyaml
 pymysql
 graphai-client@git+https://github.com/epflgraph/graphai-client.git
+flatten-dict
