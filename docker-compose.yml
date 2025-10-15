@@ -1,0 +1,36 @@
+services:
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=true # HTTPS on HTTP layer
+      - xpack.security.http.ssl.certificate=certs/http.crt
+      - xpack.security.http.ssl.key=certs/http.key
+      - xpack.security.http.ssl.certificate_authorities=certs/ca.crt
+      - xpack.security.transport.ssl.enabled=false # Transport TLS disabled for single-node (ok)
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+      - http.port=9200 # Make ES listen on 9200 to match your mapping
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+      - ./.certs:/usr/share/elasticsearch/config/certs:ro
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    environment:
+      - ELASTICSEARCH_HOSTS=https://elasticsearch:9200 # Match ES URL + port + https
+      - ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES=/usr/share/kibana/config/certs/ca.crt # CA path relative to /usr/share/kibana/config
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=${KIBANA_SERVICE_TOKEN} # Service account token tied to THIS ES cluster
+      - SERVER_PORT=5601 # Run Kibana on 5601 inside the container to match your mapping
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./.certs:/usr/share/kibana/config/certs:ro
+
+volumes:
+  es_data:
