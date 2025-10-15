@@ -20,9 +20,16 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Publication_N_Concept_T_C
                  a2c.concept_id     AS concept_id,
                  a2c.score          AS score
             FROM [[airflow]].Operations_N_Object_T_FieldsChanged tp
+
+      INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
+           USING (institution_id, object_type)
+
       INNER JOIN [[registry]].Edges_N_Object_N_Concept_T_ConceptDetection a2c
            USING (institution_id, object_type, object_id)
+
            WHERE a2c.object_type = 'Publication'
              AND a2c.text_source = 'abstract'
              AND a2c.score >= 0.1
-             AND tp.to_process = 1;
+
+             AND tp.to_process = 1
+             AND tf.to_process = 1;

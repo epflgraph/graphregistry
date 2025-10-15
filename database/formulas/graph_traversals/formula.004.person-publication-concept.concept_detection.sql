@@ -18,12 +18,24 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Person_N_Publication_N_Co
 -- ============= Graph traversal: Person-Publication-Concept score edges (REPLACE)
     REPLACE INTO [[graph_cache]].Traversal_N_Person_N_Publication_N_Concept_T_ConceptDetection
           SELECT p2a.institution_id, p2a.person_id, p2a.publication_id, a2c.concept_id, a2c.score
+
               -- Start with: (Person, Publication) tuples to process
             FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
+
+              -- Check type flags
+      INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
+              ON (tp.from_institution_id, tp.from_object_type, tp.to_institution_id, tp.to_object_type)
+               = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+
               -- Link to: Person-Publication authorship edges
       INNER JOIN [[graph_cache]].Traversal_N_Person_N_Publication_T_Authorship p2a
-              ON (tp.from_object_type, tp.from_object_id, tp.to_object_type, tp.to_object_id) = ('Publication', publication_id, 'Person', person_id)
+              ON (tp.from_object_type, tp.from_object_id, tp.to_object_type, tp.to_object_id)
+               = ('Publication', publication_id, 'Person', person_id)
+
               -- Link to: Publication-Concept detection scores
       INNER JOIN [[graph_cache]].Traversal_N_Publication_N_Concept_T_ConceptDetection a2c
-              ON p2a.institution_id = a2c.institution_id AND p2a.publication_id = a2c.publication_id
-             AND tp.to_process = 1;
+              ON p2a.institution_id = a2c.institution_id
+             AND p2a.publication_id = a2c.publication_id
+           
+           WHERE tp.to_process = 1
+             AND tf.to_process = 1;
