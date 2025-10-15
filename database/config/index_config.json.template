@@ -31,7 +31,7 @@
             "Widget"      : {
                 "include_code_in_name" : 0
             }
-        }   
+        }
     },
     "fields" : {
         "docs" : {
@@ -41,7 +41,7 @@
             "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
             "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
             "Person"      : ["is_at_epfl", "gender"],
-            "Publication" : ["year", "published_in", "publisher", "publication_id_v1"],
+            "Publication" : ["year", "published_in", "publisher"],
             "Startup"     : [],
             "Unit"        : ["is_active_unit", "is_research_unit", "subtype_rank"],
             "Widget"      : ["chapter_id", "mainly_math_notation", "mooc_id", "platform_name", "quiz_filename", "quiz_type", "sequential_id", "study_level", "vertical_id"]
@@ -167,7 +167,7 @@
         }
     },
     "data-types" : {
-        "depth"                	: "SMALLINT UNSIGNED", 
+        "depth"                	: "SMALLINT UNSIGNED",
         "latest_academic_year" 	: "VARCHAR(16)",
         "is_at_epfl"           	: "TINYINT(1)",
         "year"                 	: "YEAR",
@@ -187,7 +187,6 @@
         "srt_subtitles_fr"      : "MEDIUMTEXT",
         "gender"                : "ENUM('Male', 'Female')",
         "published_in"          : "MEDIUMTEXT",
-        "publication_id_v1"     : "VARCHAR(255)",
         "publisher"             : "MEDIUMTEXT",
         "domain"                : "ENUM('Basic Science', 'Environment', 'Life Science', 'Brain', 'Engineering', 'Urbanism', 'Computer Science', 'Business', 'Development', 'Misc', 'Water')",
         "language"              : "ENUM('English', 'French', 'German', 'Italian', 'Portuguese')",
@@ -206,16 +205,16 @@
         "detection_max_score"   : "FLOAT",
         "chapter_id"            : "SMALLINT UNSIGNED", 
         "mainly_math_notation"  : "TINYINT(1)", 
-        "mooc_id"               : "VARCHAR(128)", 
+        "mooc_id"               : "VARCHAR(128)",
         "platform_name"         : "ENUM('coursera', 'courseraod', 'courseware', 'edx', 'edx edge', 'youtube')",
-        "quiz_filename"         : "VARCHAR(128)", 
+        "quiz_filename"         : "VARCHAR(128)",
         "quiz_type"             : "ENUM('MultiSelect', 'SingleSelect')",
-        "sequential_id"         : "SMALLINT UNSIGNED", 
+        "sequential_id"         : "SMALLINT UNSIGNED",
         "study_level"           : "ENUM('Bachelor', 'Master', 'HorsProgramme', 'Preparatory', 'Propedeutic')",
         "vertical_id"           : "SMALLINT UNSIGNED"
     },
     "data-keys" : {
-        "depth"                	: "KEY", 
+        "depth"                	: "KEY",
         "latest_academic_year" 	: "KEY",
         "is_at_epfl"           	: "KEY",
         "year"                 	: "KEY",

@@ -33,3 +33,22 @@ TEST
 =======
 Example queries are available in the `resources/api_request_examples/` directory for testing the API. 
 Refer to the README.md file there for further information.
+
+
+<!--
+# set up password for es:
+
+# using the Docker DNS name
+docker compose exec elasticsearch bin/elasticsearch-reset-password -u elastic -i --url https://elasticsearch:9200
+
+curl --cacert ./.certs/ca.crt -u elastic:$NEWPASS https://127.0.0.1:9200/_cluster/health?pretty
+
+
+kibana:
+
+docker compose exec elasticsearch bin/elasticsearch-service-tokens create elastic/kibana kibana-token
+
+[copy token to .env in var KIBANA_SERVICE_TOKEN]
+
+restart: docker compose up -d kibana
+-->
