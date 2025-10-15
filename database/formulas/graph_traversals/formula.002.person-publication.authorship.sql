@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Person_N_Publication_T_Au
 
            FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
 
+     INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
+             ON (tp.from_institution_id, tp.from_object_type, tp.to_institution_id, tp.to_object_type)
+              = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+
      INNER JOIN [[registry]].Edges_N_Object_N_Object_T_ChildToParent a2p
              ON ( tp.from_institution_id,  tp.from_object_type,  tp.from_object_id,    tp.to_institution_id,    tp.to_object_type,    tp.to_object_id)
               = (a2p.from_institution_id, a2p.from_object_type, a2p.from_object_id,   a2p.to_institution_id,   a2p.to_object_type,   a2p.to_object_id)
@@ -28,4 +32,5 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Person_N_Publication_T_Au
             AND a2p.to_object_type   = 'Person'
             AND a2p.context          = 'authorship'
             
-            AND tp.to_process = 1;
+            AND tp.to_process = 1
+            AND tf.to_process = 1;
