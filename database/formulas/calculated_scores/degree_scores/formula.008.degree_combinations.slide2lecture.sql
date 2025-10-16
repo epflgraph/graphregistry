@@ -1,4 +1,4 @@
-
+SELECT 1;
 		-- 	      -- Lecture-to-concept edges
         -- REPLACE INTO [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations
         --       SELECT t.institution_id   AS from_institution_id,
