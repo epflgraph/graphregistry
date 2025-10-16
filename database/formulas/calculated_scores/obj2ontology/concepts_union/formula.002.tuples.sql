@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Concept_T_Tuples;
                USING (institution_id, object_type)
                WHERE se.to_process = 1
                  AND tf.to_process = 1;
-         
+
 -- ================= Create indices to optimise the next query
          ALTER TABLE [[graph_cache]].Edges_N_Object_N_Concept_T_Tuples
      ADD PRIMARY KEY (institution_id, object_type, object_id, concept_id),
