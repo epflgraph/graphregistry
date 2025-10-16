@@ -1647,7 +1647,7 @@ class GraphDB():
     def initiate_engine(self, server_name):
         if server_name not in global_config['mysql']:
             raise ValueError(
-                f'could not find the configuration for mysql server {server_name} in {global_config_file}.'
+                f'could not find the configuration for mysql server {server_name} in global config file.'
             )
         params = global_config['mysql'][server_name]
         engine = SQLEngine(
@@ -3540,76 +3540,35 @@ class GraphIndex():
     #---------------------------------------------#
     def initiate_engine(self, server_name):
         """
-        Initialize the ElasticSearch engine based on the server name provided.
+        Initialize the ElasticSearch engine (no SSL) based on the server name provided.
         """
 
-        # Check if the server name is provided
+        # Check if the server name is in the global configuration
         if server_name not in global_config['elasticsearch']:
             raise ValueError(
-                f'could not find the configuration for elasticsearch server {server_name} in {global_config_file}.'
+                f"Could not find configuration for Elasticsearch server '{server_name}' in global config."
             )
-        
-        # Import the ElasticSearch engine
+
+        # Load parameters
         params = global_config['elasticsearch'][server_name]
 
-        # Check if the required parameters are present
-        if "password" in params:
-            # If password is present, use it in the connection string
-            es_hosts = f'https://{params["username"]}:{quote(params["password"])}@{params["host"]}:{params["port"]}'
+        # Build connection URL (HTTP only, no SSL)
+        if "password" in params and params["password"]:
+            es_hosts = f"http://{params['username']}:{quote(params['password'])}@{params['host']}:{params['port']}"
+        elif "username" in params and params["username"]:
+            es_hosts = f"http://{params['username']}@{params['host']}:{params['port']}"
         else:
-            # If password is not present, use the username and host
-            es_hosts = f'https://{params["username"]}@{params["host"]}:{params["port"]}'
+            es_hosts = f"http://{params['host']}:{params['port']}"
 
-        # Check if the certificate file is provided
-        cert_file = params["cert_file"] if "cert_file" in params else None
+        # Initialize Elasticsearch engine (no SSL)
+        engine = ElasticSearchEngine(
+            hosts=[es_hosts],
+            http_compress=True,
+            verify_certs=False,    # no SSL verification
+            request_timeout=3600
+        )
 
-        # Create the ElasticSearch engine instance
-        # print('cert_file:', cert_file)
-        # engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, ca_certs=cert_file, verify_certs=False, request_timeout=3600)
-        # engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, verify_certs=False, request_timeout=3600)
-
-        # print(es_hosts)
-        # exit()
-
-
-        import ssl
-        import socket
-        import hashlib
-        from typing import Tuple
-
-        def get_leaf_cert_der(host: str, port: int, timeout: float = 5.0, server_hostname: str | None = None) -> bytes:
-            """
-            Opens a TLS connection and returns the *leaf* certificate in DER form.
-            - host: what you actually connect to (IP or hostname)
-            - server_hostname: what you present via SNI for the TLS handshake (defaults to host)
-            """
-            if server_hostname is None:
-                server_hostname = host
-
-            # We don't want Python to verify anything here; we just want the raw cert bytes.
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-
-            with socket.create_connection((host, port), timeout=timeout) as sock:
-                with ctx.wrap_socket(sock, server_hostname=server_hostname) as ssock:
-                    der_cert: bytes = ssock.getpeercert(binary_form=True)
-                    return der_cert
-
-        def sha256_fingerprint_hex(der_cert: bytes) -> str:
-            """Return lowercase hex (no colons), which is what elasticsearch-py expects."""
-            return hashlib.sha256(der_cert).hexdigest()
-
-        der = get_leaf_cert_der(host='127.0.0.1', port=9200, server_hostname="localhost")  # or server_hostname=host
-        fp = sha256_fingerprint_hex(der)
-        # print("SHA256 (hex, no colons):", fp)
-        # exit()
-
-        engine = ElasticSearchEngine(hosts=es_hosts, http_compress=True, 
-            ssl_assert_fingerprint=fp,
-            request_timeout=3600)
-
-        # Return the parameters and the engine instance
+        # Return parameters and engine instance
         return params, engine
     
     #---------------------------------------#
@@ -4547,7 +4506,7 @@ class GraphRegistry():
         self.indexdb.idocs[doc_type].airflow_update(verbose=verbose)
         self.indexdb.idocs[doc_type].flags_cleanup( verbose=verbose)
         self.orchestrator.fieldschanged.status()
-    
+
     # Import data from JSON data
     def import_from_json(self, json_data, skip_concept_detection=False):
         """
@@ -4602,7 +4561,7 @@ class GraphRegistry():
             self.typeflags.status()
             self.fieldschanged.status()
             self.scoresexpired.status()
-        
+
         # Reset airflow and chache flags
         # Options: ('typeflags', 'airflow', 'cache')
         def reset(self, options=(), doc_type=None, verbose=False):
@@ -5007,7 +4966,7 @@ class GraphRegistry():
                 config_json = {'nodes': [], 'edges': []}
 
                 # Define SQL query for fetching nodes config
-                sql_query = f""" 
+                sql_query = f"""
                      SELECT t1.object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
                        FROM {schema_airflow}.Operations_N_Object_T_TypeFlags t1
                  INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags t2
@@ -5038,6 +4997,37 @@ class GraphRegistry():
 
                 # Return the config JSON
                 return config_json
+
+            # Get node and edge types to process
+            def get_types_to_process(self, fields_or_scores, return_symmetric=False):
+
+                # Fetch typeflags config JSON
+                config_json = self.get_config_json()
+
+                # Processing fields?
+                if fields_or_scores=='fields':
+
+                    # Get node types to process
+                    node_types_to_process = [node_type for node_type, _, process_fields in config_json['nodes'] if process_fields]
+
+                    # Get edges to process directly from config json
+                    edge_types_to_process = [(from_node_type, to_node_type) for from_node_type, to_node_type, _, process_fields in config_json['edges'] if process_fields]
+
+                # Processing scores?
+                elif fields_or_scores=='scores':
+
+                    # Get node types to process
+                    node_types_to_process = [node_type for node_type, _, process_scores in config_json['nodes'] if process_scores]
+
+                    # Generate all unique edge types
+                    edge_types_to_process = list(combinations_with_replacement(sorted(set(node_types_to_process), key=str.casefold), 2))
+
+                # Include symmetric edges?
+                if return_symmetric:
+                    edge_types_to_process = list(set(edge_types_to_process + [(to_node_type, from_node_type) for from_node_type, to_node_type in edge_types_to_process]))
+
+                # Return results
+                return node_types_to_process, edge_types_to_process
 
         # === Fields Changed Flags ===
         class FieldsChanged():
@@ -6259,7 +6249,7 @@ class GraphRegistry():
 
                 # Print status
                 sysmsg.success("🏁 ✅ Done setting 'to_process' flags in 'ScoresExpired' airflow tables.\n")
-            
+
     #---------------------------------#
     # Subclass definition: Graph Node #
     #---------------------------------#
@@ -7196,6 +7186,7 @@ class GraphRegistry():
                 'calculated_scores/obj2ontology/concepts',
                 'calculated_scores/obj2ontology/concepts_union',
                 'calculated_scores/obj2ontology/categories',
+                'calculated_scores/obj2ontology/categories_union',
                 'calculated_scores/degree_scores'
             ]:
                 self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
@@ -7205,16 +7196,9 @@ class GraphRegistry():
 
             # Print status
             sysmsg.info(f"🧮 📝 Calculate and consolidate scores matrices.")
-            
-            # Fetch typeflags config JSON
-            typeflags = GraphRegistry.Orchestration.TypeFlags()
-            config_json = typeflags.get_config_json()
 
-            # Get node types to process
-            node_types_to_process = [node_type for node_type, _, process_scores in config_json['nodes'] if process_scores]
-
-            # Generate all unique edge types
-            edge_types_to_process = list(combinations_with_replacement(sorted(set(node_types_to_process), key=str.casefold), 2))
+            # Get edge types to process
+            _, edge_types_to_process = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='scores')
 
             # Print status
             sysmsg.trace(f"⚙️  Calculating scores matrix for object-to-object edge combinations ...")
@@ -7227,7 +7211,7 @@ class GraphRegistry():
                     pb.set_description(f"⚙️  Processing edge type: {n1} --> {n2}".ljust(PBWIDTH)[:PBWIDTH])
 
                     # Calculate scores matrix
-                    self.calculate_scores_matrix(  from_object_type=n1, to_object_type=n2, actions=actions)
+                    self.calculate_scores_matrix(from_object_type=n1, to_object_type=n2, actions=actions)
 
             # Print status
             sysmsg.trace(f"⚙️  Consolidating scores matrix (normalising scores and inserting Category/Concept edges) ...")
@@ -7913,7 +7897,7 @@ class GraphRegistry():
             from_object_type, to_object_type = sorted([from_object_type, to_object_type])
 
             # Initialise SQL queries
-            sql_eval_query, sql_commit_query = None, None              
+            sql_eval_query, sql_commit_query = None, None
 
             # Ignore edge types: Object-to-Concept/Category and Category-to-Category
             # (these are added in the consolidation method)
@@ -7948,7 +7932,7 @@ class GraphRegistry():
                 # Define 'from' and 'to' object tables
                 from_object_table = f"Nodes_N_{'Category' if from_object_type=='Category' else 'Object'}"
                 to_object_table   = f"Nodes_N_{'Category' if   to_object_type=='Category' else 'Object'}"
-                
+
                 # Generate commit query
                 sql_query_stack = []
                 for n in [1,2]:
@@ -8197,7 +8181,7 @@ class GraphRegistry():
 
             if 'commit' in actions:
                 self.db.execute_query_in_shell(engine_name='test', query=sql_query)
-        
+
     #-----------------------------------------------------------#
     # Subclass definition: GraphIndex Management (SQL Database) #
     #-----------------------------------------------------------#
@@ -8235,7 +8219,7 @@ class GraphRegistry():
             self.docs_patch_all(actions=actions)
             self.doclinks_vertical_patch_all(actions=actions)
             self.doclinks_horizontal_patch_all(actions=actions)
-            
+
         # Patch all index doc tables on graphsearch test
         def docs_patch_all(self, actions=()):
 
@@ -8251,18 +8235,14 @@ class GraphRegistry():
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Fetch typeflags config JSON
-            typeflags = GraphRegistry.Orchestration.TypeFlags()
-            config_json = typeflags.get_config_json()
+            doc_types_to_process, _ = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields')
 
             # Check if empty
-            if len(config_json['nodes'])==0:
+            if len(doc_types_to_process)==0:
                 sysmsg.warning(f"No type flags found for 'docs'. Nothing to do.")
 
             # If not empty, proceed
             else:
-
-                # Get doc types to process
-                doc_types_to_process = [r[0] for r in config_json['nodes']]
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' and '{mysql_schema_names[self.engine_name]['es_cache']}' schemas.")
@@ -8308,19 +8288,21 @@ class GraphRegistry():
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Fetch typeflags config JSON
-            typeflags = GraphRegistry.Orchestration.TypeFlags()
-            config_json = typeflags.get_config_json()
+            _, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
 
             # Check if empty
-            if len(config_json['edges'])==0:
+            if len(doclink_types_in_config)==0:
                 sysmsg.warning(f"No type flags found for 'doc-links'. Nothing to do.")
 
             # If not empty, proceed
             else:
 
-                # Get doc-link types to process
+                # Get all doc-link types available
                 list_of_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
-                doclink_types_to_process = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
+                doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
+
+                # Keep only intersection of available and to-process types
+                doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config]
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' schema.")
@@ -8379,19 +8361,21 @@ class GraphRegistry():
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Fetch typeflags config JSON
-            typeflags = GraphRegistry.Orchestration.TypeFlags()
-            config_json = typeflags.get_config_json()
+            _, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
 
             # Check if empty
-            if len(config_json['edges'])==0:
+            if len(doclink_types_in_config)==0:
                 sysmsg.warning(f"No type flags found for 'doc-links'. Nothing to do.")
 
             # If not empty, proceed
             else:
 
-                # Get doc-link types to process
+                # Get all doc-link types available
                 list_of_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
-                doclink_types_to_process = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
+                doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
+
+                # Keep only intersection of available and to-process types
+                doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config]
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' schema.")
@@ -8515,7 +8499,7 @@ class GraphRegistry():
                     self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
 
             pass
-        
+
         # Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
 
@@ -8835,12 +8819,11 @@ class GraphRegistry():
                 elif 'eval' in actions and 'commit' not in actions:
                     sysmsg.warning(f"Executing in evaluation mode only.")
 
-                # Fetch typeflags config JSON
-                typeflags = GraphRegistry.Orchestration.TypeFlags()
-                config_json = typeflags.get_config_json()
+                # Fetch doc types to process
+                doc_types_to_process, doclink_types_to_process = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields')
 
                 # Check if empty
-                if len(config_json['nodes'])==0 and len(config_json['edges'])==0:
+                if len(doc_types_to_process)==0 and len(doclink_types_to_process)==0:
                     sysmsg.warning(f"No type flags found. Nothing to do.")
 
                 # If not empty, proceed
@@ -8848,9 +8831,6 @@ class GraphRegistry():
 
                     # Print status
                     sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
-
-                    # Get doc types to process
-                    doc_types_to_process = [r[0] for r in config_json['nodes']]
 
                     # Loop over doc types
                     with tqdm(doc_types_to_process, unit='doc type') as pb:
@@ -8864,9 +8844,6 @@ class GraphRegistry():
 
                     # Print status
                     sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
-
-                    # Get doc-link types to process
-                    doclink_types_to_process = [(r[0], r[1]) for r in config_json['edges']]
 
                     # Loop over doc-link types
                     with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
@@ -8984,7 +8961,7 @@ class GraphRegistry():
 
             # Index > Page Profile > General patching > Insert new rows, update existing fields (graphsearch test)
             def patch(self, actions=()):
-                
+
                 # Print status
                 sysmsg.info(f"🚜 📝 Patch page profile table on 'graphsearch_test' [actions: {actions}].")
 
@@ -8995,6 +8972,8 @@ class GraphRegistry():
                     return
                 elif 'eval' in actions and 'commit' not in actions:
                     sysmsg.warning(f"Executing in evaluation mode only.")
+
+                    
 
                 # Generate SQL query
                 sql_query = f"""
