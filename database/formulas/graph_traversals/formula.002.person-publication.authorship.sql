@@ -31,6 +31,6 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Person_N_Publication_T_Au
           WHERE a2p.from_object_type = 'Publication'
             AND a2p.to_object_type   = 'Person'
             AND a2p.context          = 'authorship'
-            
+
             AND tp.to_process = 1
             AND tf.to_process = 1;
