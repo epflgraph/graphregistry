@@ -4860,8 +4860,7 @@ class GraphRegistry():
                                     ('from_institution_id', object_type_key[0]),
                                     ('from_object_type'   , object_type_key[1]),
                                     ('to_institution_id'  , object_type_key[2]),
-                                    ('to_object_type'     , object_type_key[3]),
-                                    ('flag_type'          , flag_type)
+                                    ('to_object_type'     , object_type_key[3])
                                   ],
                     verbose = verbose)
 
@@ -4877,7 +4876,7 @@ class GraphRegistry():
                 if flag_type is not None and flag_type not in ['fields', 'scores']:
                     sysmsg.error("Invalid flag_type. It should be either 'fields' or 'scores'.")
                     return
-                
+
                 # Get object type flags
                 output = self.db.get_cells(
                     engine_name = 'test',
@@ -4892,11 +4891,10 @@ class GraphRegistry():
                                     ('from_institution_id', object_type_key[0]),
                                     ('from_object_type'   , object_type_key[1]),
                                     ('to_institution_id'  , object_type_key[2]),
-                                    ('to_object_type'     , object_type_key[3]),
-                                    ('flag_type'          , flag_type)
+                                    ('to_object_type'     , object_type_key[3])
                                   ],
                     verbose = verbose)
-                
+
                 # Print warning if no output
                 if len(output) == 0:
                     sysmsg.warning(f"No flags found for object type key: {object_type_key} with flag type: {flag_type}.")
@@ -4924,12 +4922,12 @@ class GraphRegistry():
                     Format:
                         config_json = {
                             'nodes': [['node_type', process_fields, process_scores], ...],
-                            'edges': [['from_node_type', 'to_node_type', process_fields, process_scores], ...],
+                            'edges': [['from_node_type', 'to_node_type'], ...],
                         }
                     Example:
                         config_json = {
                             'nodes': [['Course', True, False], ['Category', True, True], ['Publication', False, True]],
-                            'edges': [['Concept', 'Lecture', True, False], ['MOOC', 'Person', True, True], ['Publication', 'Unit', False, True]]
+                            'edges': [['Concept', 'Lecture'], ['MOOC', 'Person'], ['Publication', 'Unit']]
                         }
                 """
 
@@ -4945,19 +4943,16 @@ class GraphRegistry():
                             self.set(object_type_key=(institution_id, node_type), flag_type='fields', to_process=1)
                         if process_scores:
                             self.set(object_type_key=(institution_id, node_type), flag_type='scores', to_process=1)
-                
+
                 # Edge types
                 if 'edges' in config_json:
                     for d in config_json['edges']:
-                        from_node_type, to_node_type, process_fields, process_scores = d
+                        from_node_type, to_node_type, process_fields = d
                         from_institution_id = object_type_to_institution_id[from_node_type]
                         to_institution_id   = object_type_to_institution_id[to_node_type]
                         if process_fields:
-                            self.set(object_type_key=(from_institution_id, from_node_type, to_institution_id, to_node_type), flag_type='fields', to_process=1)
-                            self.set(object_type_key=(to_institution_id, to_node_type, from_institution_id, from_node_type), flag_type='fields', to_process=1)
-                        if process_scores:
-                            self.set(object_type_key=(from_institution_id, from_node_type, to_institution_id, to_node_type), flag_type='scores', to_process=1)
-                            self.set(object_type_key=(to_institution_id, to_node_type, from_institution_id, from_node_type), flag_type='scores', to_process=1)
+                            self.set(object_type_key=(from_institution_id, from_node_type, to_institution_id, to_node_type), to_process=1)
+                            self.set(object_type_key=(to_institution_id, to_node_type, from_institution_id, from_node_type), to_process=1)
 
             # Get airflow typeflags config JSON
             def get_config_json(self):
@@ -4973,7 +4968,7 @@ class GraphRegistry():
                       USING (object_type)
                       WHERE t1.flag_type = 'fields'
                         AND t2.flag_type = 'scores'
-                        AND (t1.to_process > 0.5 OR t2.to_process > 0.5)
+                        AND (t1.to_process = 1 OR t2.to_process = 1)
                 """
 
                 # Execute the query
@@ -4981,19 +4976,14 @@ class GraphRegistry():
 
                 # Define SQL query for fetching edges config
                 sql_query = f"""
-                    SELECT DISTINCT LEAST(t1.from_object_type, t1.to_object_type) AS from_object_type,
-                                    GREATEST(t1.from_object_type, t1.to_object_type) AS to_object_type,
-                                    IF(t1.flag_type='fields', t1.to_process, t2.to_process) AS process_fields,
-                                    IF(t1.flag_type='scores', t1.to_process, t2.to_process) AS process_scores
-                               FROM {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t1
-                         INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t2
-                                 ON (t1.from_object_type, t1.to_object_type) = (t2.from_object_type, t2.to_object_type)
-                                 OR (t1.from_object_type, t1.to_object_type) = (t2.to_object_type, t2.from_object_type)
-                              WHERE (t1.to_process > 0.5 OR t2.to_process > 0.5)
+                    SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
+                                    GREATEST(from_object_type, to_object_type) AS to_object_type
+                               FROM {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                              WHERE to_process = 1
                 """
 
                 # Execute the query
-                config_json['edges'] = [[row[0], row[1], row[2]>0.5, row[3]>0.5] for row in self.db.execute_query(engine_name='test', query=sql_query)]
+                config_json['edges'] = [[row[0], row[1], True] for row in self.db.execute_query(engine_name='test', query=sql_query)]
 
                 # Return the config JSON
                 return config_json
@@ -5008,10 +4998,10 @@ class GraphRegistry():
                 if fields_or_scores=='fields':
 
                     # Get node types to process
-                    node_types_to_process = [node_type for node_type, _, process_fields in config_json['nodes'] if process_fields]
+                    node_types_to_process = [node_type for node_type, process_fields, _ in config_json['nodes'] if process_fields]
 
                     # Get edges to process directly from config json
-                    edge_types_to_process = [(from_node_type, to_node_type) for from_node_type, to_node_type, _, process_fields in config_json['edges'] if process_fields]
+                    edge_types_to_process = [(from_node_type, to_node_type) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields]
 
                 # Processing scores?
                 elif fields_or_scores=='scores':
@@ -6271,7 +6261,7 @@ class GraphRegistry():
             self.text_source = None
             self.manual_mapping = None
             self.set_from_existing()
-                
+
         # Check if object exists
         def exists(self):
             schema = object_type_to_schema.get(self.object_type, schema_registry)
@@ -7940,8 +7930,8 @@ class GraphRegistry():
                     # Append query to stack (first for from->to, then to->from)
                     sql_query_stack += [f"""
                     REPLACE INTO {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_GBC
-                                (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
-                            
+                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
+
                           SELECT e{n}.institution_id  AS from_institution_id,
                                  e{n}.object_type     AS from_object_type,
                                  e{n}.object_id       AS from_object_id,
@@ -7949,16 +7939,16 @@ class GraphRegistry():
                                  e{3-n}.object_type     AS to_object_type,
                                  e{3-n}.object_id       AS to_object_id,
                                  SUM(e1.score*e2.score) AS score, 1 AS to_process
-                            
+
                             FROM {schema_airflow}.Operations_N_Object_T_ScoresExpired s1
-                            
+
                       INNER JOIN {schema_graph_cache_test}.Edges_N_Object_N_Concept_T_FinalScores e1
                               ON (s1.institution_id, s1.object_type, s1.object_id)
                                = (e1.institution_id, e1.object_type, e1.object_id)
-                            
-                      INNER JOIN {schema_graph_cache_test}.Edges_N_Object_N_Concept_T_FinalScores e2 
+
+                      INNER JOIN {schema_graph_cache_test}.Edges_N_Object_N_Concept_T_FinalScores e2
                               ON e1.concept_id = e2.concept_id
-                            
+
                       INNER JOIN {schema_airflow}.Operations_N_Object_T_ScoresExpired s2
                               ON (s2.institution_id, s2.object_type, s2.object_id)
                                = (e2.institution_id, e2.object_type, e2.object_id)
@@ -7966,24 +7956,24 @@ class GraphRegistry():
                       INNER JOIN {object_type_to_schema[from_object_type if n==1 else to_object_type]}.{from_object_table if n==1 else to_object_table} n1
                               ON (e1.institution_id, e1.object_type, e1.object_id)
                                = (n1.institution_id, n1.object_type, n1.object_id)
-                            
+
                       INNER JOIN {object_type_to_schema[from_object_type if n==2 else to_object_type]}.{from_object_table if n==2 else to_object_table} n2
                               ON (e2.institution_id, e2.object_type, e2.object_id)
                                = (n2.institution_id, n2.object_type, n2.object_id)
-                            
+
                            WHERE ((e1.object_type = e2.object_type AND e1.object_id <{'=' if n==1 else ''} e2.object_id) OR (e1.object_type != e2.object_type))
-                            
+
                              AND e1.score >= 0.1
                              AND e2.score >= 0.1
-                            
+
                              AND s{n}.to_process = 1
 
                              AND e1.object_type = "{from_object_type if n==1 else to_object_type}"
                              AND e2.object_type = "{from_object_type if n==2 else to_object_type}"
-                            
+
                         GROUP BY e1.institution_id, e1.object_type, e1.object_id,
                                  e2.institution_id, e2.object_type, e2.object_id
-                            
+
                           HAVING COUNT(DISTINCT e1.concept_id) >= 4
                              AND SUM(e1.score*e2.score) >= 0.1
                     """]
@@ -7991,14 +7981,6 @@ class GraphRegistry():
                 # Combine all queries into single commit query
                 sql_commit_query = ';\n'.join(sql_query_stack)+';'
 
-
-                # if (from_object_type, to_object_type) != ('Category', 'Course'):
-                #     return
-                # print((from_object_type, to_object_type))
-                # print(sql_eval_query)
-                # print(sql_commit_query)
-                # exit()
-            
             # Evaluate query
             if 'eval' in actions and sql_eval_query is not None:
 
@@ -8973,8 +8955,6 @@ class GraphRegistry():
                 elif 'eval' in actions and 'commit' not in actions:
                     sysmsg.warning(f"Executing in evaluation mode only.")
 
-                    
-
                 # Generate SQL query
                 sql_query = f"""
                     \t\t     SELECT {', '.join([f'p.{k}' for k in self.key_column_names])}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
@@ -8983,8 +8963,10 @@ class GraphRegistry():
                     \t\t      USING (institution_id, object_type, object_id)
                     \t\t INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags tf
                     \t\t      USING (institution_id, object_type)
-                    \t\t      WHERE tf.flag_type = 'fields'
-                    \t\t        AND p.to_process > 0.5 AND fc.to_process > 0.5 AND tf.to_process > 0.5
+                    \t\t      WHERE tf.flag_type  = 'fields'
+                    \t\t        AND  p.to_process = 1
+                    \t\t        AND fc.to_process = 1
+                    \t\t        AND tf.to_process = 1
                 """
 
                 # Print status
