@@ -30,6 +30,10 @@ from flatten_dict import flatten
 from dictdiffer import diff
 import difflib
 from pathlib import Path
+from api.core.indexcfg import IndexConfig
+
+idxcfg = IndexConfig()
+idxcfg.print()
 
 # Enable faulthandler to dump Python tracebacks explicitly on a fault
 # faulthandler.enable()
@@ -47,7 +51,7 @@ sysmsg.add(
 )
 
 # Progress bar configuration
-PBWIDTH = 64 # Width of the progress bar
+PBWIDTH = 92 # Width of the progress bar
 
 # Get the current working directory
 # package_dir = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..'))
@@ -208,7 +212,7 @@ for source_institution_id, source_node_type in index_doc_types_list:
     for target_institution_id, target_node_type in index_doc_types_list:
         index_doc_link_types_permutations.append((source_institution_id, source_node_type, target_institution_id, target_node_type))
 
-# Object-to-object type combinations (for scores)
+# Object-to-object type combinations (scores)
 object_to_object_types_scoring_list = [
 	('Category', 'Category'),
 	('Category', 'Concept'),
@@ -1629,13 +1633,13 @@ class GraphDB():
         os.environ['MYSQL_TEST_PWD'] = self.params_test['password']
         os.environ['MYSQL_PROD_PWD'] = self.params_prod['password']
 
-        # Build base shell command (for MySQL)
+        # Build base shell command (MySQL)
         self.base_command_mysql = {
             'test': [global_config['mysql']['client_bin'], '-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port'])],
             'prod': [global_config['mysql']['client_bin'], '-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port'])]
         }
 
-        # Build base shell command (for MySQLDump)
+        # Build base shell command (MySQLDump)
         self.base_command_mysqldump = {
             'test': [global_config['mysql']['dump_bin'], '-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
             'prod': [global_config['mysql']['dump_bin'], '-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
@@ -3177,7 +3181,7 @@ class GraphDB():
         random_primary_key_set  = self.get_random_primary_key_set(engine_name=source_engine_name, schema_name=source_schema_name, table_name=source_table_name, sample_size=round(sample_size/2), partition_by='object_type', use_row_id=True)
         random_primary_key_set += self.get_random_primary_key_set(engine_name=target_engine_name, schema_name=target_schema_name, table_name=target_table_name, sample_size=round(sample_size/2), partition_by='object_type', use_row_id=True)
 
-        # Get the rows by primary key set (for source and target)
+        # Get the rows by primary key set (source and target)
         source_row_set_dict = self.get_rows_by_primary_key_set(engine_name=source_engine_name, schema_name=source_schema_name, table_name=source_table_name, primary_key_set=random_primary_key_set, return_as_dict=True)
         target_row_set_dict = self.get_rows_by_primary_key_set(engine_name=target_engine_name, schema_name=target_schema_name, table_name=target_table_name, primary_key_set=random_primary_key_set, return_as_dict=True)
 
@@ -3554,18 +3558,19 @@ class GraphIndex():
 
         # Build connection URL (HTTP only, no SSL)
         if "password" in params and params["password"]:
-            es_hosts = f"http://{params['username']}:{quote(params['password'])}@{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['host']}:{params['port']}"
         elif "username" in params and params["username"]:
-            es_hosts = f"http://{params['username']}@{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['username']}@{params['host']}:{params['port']}"
         else:
-            es_hosts = f"http://{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['host']}:{params['port']}"
 
         # Initialize Elasticsearch engine (no SSL)
         engine = ElasticSearchEngine(
-            hosts=[es_hosts],
-            http_compress=True,
-            verify_certs=False,    # no SSL verification
-            request_timeout=3600
+            hosts           = [es_hosts],
+            http_compress   = True,
+            verify_certs    = True,
+            ca_certs        = global_config['elasticsearch']['graph_engine_test']['cert_file'],
+            request_timeout = 3600
         )
 
         # Return parameters and engine instance
@@ -4085,7 +4090,7 @@ class GraphIndex():
             # Make random set unique
             unique_ids = sorted(list(set(random_doc_id_set)))
 
-            # Get the docs by id set (for source and target)
+            # Get the docs by id set (source and target)
             doc_set_old.update(self.get_docs_by_id_set(engine_name=engine_name_old, index_name=index_name_old, doc_ids=unique_ids, drop_fields=['links'], flatten_output=True))
             doc_set_new.update(self.get_docs_by_id_set(engine_name=engine_name_new, index_name=index_name_new, doc_ids=unique_ids, drop_fields=['links'], flatten_output=True))
 
@@ -4611,9 +4616,12 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Processing '{schema_graph_cache_test}' IndexBuildup Doc tables ...")
 
+                # Fetch list from index config
+                list_of_doc_types = index_config['doc-types']
+
                 # Reset flags on index buildup tables
-                with tqdm(index_doc_types_list, unit='doc type') as pb:
-                    for dummy, doc_type in pb:
+                with tqdm(list_of_doc_types, unit='doc type') as pb:
+                    for _, doc_type in pb:
                         pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
                         self.db.execute_query_in_shell(engine_name='test',
                             query = f"UPDATE {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} SET to_process = 0 WHERE to_process = 1;")
@@ -4621,8 +4629,13 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Processing '{schema_graph_cache_test}' IndexBuildup Doc-Link tables ...")
 
-                # Reset to_process flags - TODO: get list from config file / also turn config file into object
-                with tqdm([('Course', 'Person'), ('Person', 'Unit')], unit='doc-link type') as pb:
+                # Fetch list from index config
+                list_of_p2c_doclink_types = list(set([sorted([d, l])
+                    for d in index_config['fields']['links']['parent-child']
+                    for l in index_config['fields']['links']['parent-child'][d]]))
+
+                # Reset flags on index buildup tables
+                with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
                     for source_doc_type, target_doc_type in pb:
                         pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
                         self.db.execute_query_in_shell(engine_name='test',
@@ -4667,7 +4680,7 @@ class GraphRegistry():
                                        AND tf.to_process > 0.5
                                        AND  p.to_process < 0.5;
                         """)
-                
+
             # Build list for updates in edge tables
             list_of_tables = [
                 (schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ParentChildSymmetric')
@@ -4694,7 +4707,7 @@ class GraphRegistry():
                                            AND tf.to_process > 0.5
                                            AND  p.to_process < 0.5;
                             """)
-                    
+
            # Build list for updates in edge tables
             list_of_tables = [
                 (schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ScoresMatrix_AS'),
@@ -4721,15 +4734,18 @@ class GraphRegistry():
                                            AND tf.to_process > 0.5
                                            AND  p.to_process < 0.5;
                             """)
-                    
+
             # Print status
             sysmsg.trace(f"Processing '{schema_graph_cache_test}' IndexBuildup Doc tables ...")
 
+            # Fetch list from index config
+            list_of_doc_types = index_config['doc-types']
+
             # Propagate flags on index buildup tables
-            with tqdm(index_doc_types_list, unit='doc type') as pb:
+            with tqdm(list_of_doc_types, unit='doc type') as pb:
                 for dummy, doc_type in pb:
                     pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name = 'test', 
+                    self.db.execute_query_in_shell(engine_name = 'test',
                         query = f"""UPDATE {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
                                 INNER JOIN {schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                         ON (p.doc_institution, p.doc_type, p.doc_id) = (fc.institution_id, fc.object_type, fc.object_id)
@@ -4740,12 +4756,17 @@ class GraphRegistry():
                                        AND tf.to_process > 0.5
                                        AND  p.to_process < 0.5;
                         """)
-                    
+
             # Print status
             sysmsg.trace(f"Processing '{schema_graph_cache_test}' IndexBuildup Doc-Link tables ...")
 
-            # Propagate to_process flags - TODO: get list from config file / also turn config file into object
-            with tqdm([('Course', 'Person'), ('Person', 'Unit')], unit='doc-link type') as pb:
+            # Fetch list from index config
+            list_of_p2c_doclink_types = list(set([sorted([d, l])
+                for d in index_config['fields']['links']['parent-child']
+                for l in index_config['fields']['links']['parent-child'][d]]))
+
+            # Propagate flags on index buildup tables
+            with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
                 for source_doc_type, target_doc_type in pb:
                     pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
                     self.db.execute_query_in_shell(engine_name='test',
@@ -4819,12 +4840,12 @@ class GraphRegistry():
 
                 # Print object-to-object type flags
                 out = self.db.execute_query(engine_name='test', query=f"""
-                    SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type, to_process
+                    SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, to_process
                       FROM {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                      WHERE to_process = 1
-                  ORDER BY from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type;
+                  ORDER BY from_institution_id, from_object_type, to_institution_id, to_object_type;
                 """)
-                df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'flag_type', 'to_process'])
+                df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'to_process'])
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object-to-Object')
 
@@ -4965,9 +4986,11 @@ class GraphRegistry():
                      SELECT t1.object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
                        FROM {schema_airflow}.Operations_N_Object_T_TypeFlags t1
                  INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags t2
-                      USING (object_type)
-                      WHERE t1.flag_type = 'fields'
-                        AND t2.flag_type = 'scores'
+                      USING (institution_id, object_type)
+                      WHERE t1.institution_id = 'EPFL'
+                        AND t1.flag_type      = 'fields'
+                        AND t2.institution_id = 'EPFL'
+                        AND t2.flag_type      = 'scores'
                         AND (t1.to_process = 1 OR t2.to_process = 1)
                 """
 
@@ -4979,7 +5002,9 @@ class GraphRegistry():
                     SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
                                     GREATEST(from_object_type, to_object_type) AS to_object_type
                                FROM {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
-                              WHERE to_process = 1
+                              WHERE from_institution_id = 'EPFL'
+                                AND to_institution_id   = 'EPFL'
+                                AND to_process = 1
                 """
 
                 # Execute the query
@@ -7109,7 +7134,7 @@ class GraphRegistry():
                 'obj2obj: parent-child symmetric'
                 # 'obj2obj: parent-child symmetric (ontology)'
             ]
-            
+
             # Execute and commit all views
             for view_name in list_of_views:
                 self.cache_update_from_view(view_name, actions=actions)
@@ -7172,8 +7197,8 @@ class GraphRegistry():
         # Batch apply formulas: traversal and scoring
         def apply_traversal_and_scoring_formulas(self, verbose=False):
             for local_path in [
-                'graph_traversals',
-                'calculated_scores/obj2ontology/concepts',
+                # 'graph_traversals',
+                # 'calculated_scores/obj2ontology/concepts',
                 'calculated_scores/obj2ontology/concepts_union',
                 'calculated_scores/obj2ontology/categories',
                 'calculated_scores/obj2ontology/categories_union',
@@ -7189,6 +7214,19 @@ class GraphRegistry():
 
             # Get edge types to process
             _, edge_types_to_process = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='scores')
+
+            # # Fetch typeflags config JSON
+            # doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
+
+            # print('======================================')
+            # print('\ndoc_types_in_config:')
+            # for d in doc_types_in_config:
+            #     print(' - ', d)
+            # print('\ndoclink_types_in_config')
+            # for d in doclink_types_in_config:
+            #     print(' - ', d)
+            # print('======================================')
+            # exit()
 
             # Print status
             sysmsg.trace(f"⚙️  Calculating scores matrix for object-to-object edge combinations ...")
@@ -7250,7 +7288,6 @@ class GraphRegistry():
                 INNER JOIN %s.Operations_N_Object_N_Object_T_TypeFlags tf
                      USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
                      WHERE tp.to_process = 1
-                       AND tf.flag_type = 'fields'
                        AND tf.to_process = 1
 
                  UNION ALL
@@ -7268,7 +7305,6 @@ class GraphRegistry():
                 INNER JOIN %s.Operations_N_Object_N_Object_T_TypeFlags tf
                      USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
                      WHERE tp.to_process = 1
-                       AND tf.flag_type = 'fields'
                        AND tf.to_process = 1
                 """
 
@@ -7437,9 +7473,8 @@ class GraphRegistry():
                     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
                          WHERE tp.to_process = 1
-                           AND tf.flag_type = 'fields'
                            AND tf.to_process = 1
-            
+
                      UNION ALL
 
                         SELECT 'Parent-to-Child' AS edge_type,
@@ -7456,7 +7491,6 @@ class GraphRegistry():
                     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
                          WHERE tp.to_process = 1
-                           AND tf.flag_type = 'fields'
                            AND tf.to_process = 1
                     """]
 
@@ -7679,7 +7713,7 @@ class GraphRegistry():
 
             # Print status
             sysmsg.trace(f"⚙️  Applying formula: '{formula_name}' ...")
-            
+
             # Read the SQL formula
             with open(file_path, 'r') as file:
                 sql_formula = file.read()
@@ -7704,7 +7738,7 @@ class GraphRegistry():
             else:
                 sysmsg.warning(f"Could not determine type of formula (safe inserts vs direct execution).")
                 return
-            
+
             #-------------------------------#
             # Execute based on formula type #
             #-------------------------------#
@@ -7725,7 +7759,7 @@ class GraphRegistry():
                     key_column_names  = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
                     upd_column_names  = ['field_language', 'field_name', 'field_value']
                     eval_column_names = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
-                
+
                 # Execute SQL formula as safe inserts
                 self.db.execute_query_as_safe_inserts(
                     engine_name       = 'test',
@@ -8197,10 +8231,10 @@ class GraphRegistry():
 
         # Apply all patching methods
         def patch(self, actions=()):
-            self.pageprofile.patch(actions=actions)
-            self.docs_patch_all(actions=actions)
+            # self.pageprofile.patch(actions=actions)
+            # self.docs_patch_all(actions=actions)
             self.doclinks_vertical_patch_all(actions=actions)
-            self.doclinks_horizontal_patch_all(actions=actions)
+            # self.doclinks_horizontal_patch_all(actions=actions)
 
         # Patch all index doc tables on graphsearch test
         def docs_patch_all(self, actions=()):
@@ -8234,19 +8268,19 @@ class GraphRegistry():
                     for doc_type in pb:
 
                         # Print status
-                        pb.set_description(f"⚙️  [D-P-DB] Processing doc type: {doc_type} [graphsearch]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [🐬 GraphSearch DB] [D-P-DB] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc table (graphsearch tables)
                         self.idocs[doc_type].patch(actions=actions)
 
                         # Print status
-                        pb.set_description(f"⚙️  [D-P-ES] Processing doc type: {doc_type} [elasticsearch]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [⚡️ ElasticSearch] [D-P-ES] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc table (elasticsearch cache)
                         self.idocs[doc_type].patch_elasticsearch(actions=actions)
 
                         # Print status
-                        pb.set_description(f"⚙️  [D-P-AF] Processing doc type: {doc_type} [airflow]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [♻️ Airflow] [D-P-AF] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Update Airflow 'Operations_N_Object_T_FieldsChanged' table
                         if 'settle' in actions:
@@ -8270,11 +8304,11 @@ class GraphRegistry():
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Fetch typeflags config JSON
-            _, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
+            doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
 
             # Check if empty
-            if len(doclink_types_in_config)==0:
-                sysmsg.warning(f"No type flags found for 'doc-links'. Nothing to do.")
+            if len(doc_types_in_config) and len(doclink_types_in_config)==0:
+                sysmsg.warning(f"No type flags found for 'docs' nor 'doc-links'. Nothing to do.")
 
             # If not empty, proceed
             else:
@@ -8284,10 +8318,22 @@ class GraphRegistry():
                 doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
 
                 # Keep only intersection of available and to-process types
-                doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config]
+                doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config and t[2]=='ORG']
+
+                # Append doclinks for which links equal doc types to be processed
+                doclink_types_to_process += [t for t in doclink_types_available if t[1] in doc_types_in_config]
+
+                # Clean and sort list
+                doclink_types_to_process = sorted(list(set(doclink_types_to_process)))
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' schema.")
+
+                # Print list of affected tables
+                print('\n[🐬 GraphSearch DB] [DL-VP-DB] The following tables will be affected:')
+                for t in doclink_types_to_process:
+                    print(f" - {mysql_schema_names[self.engine_name]['graphsearch']}.Index_D_{t[0]}_L_{t[1]}_T_{t[2]}")
+                print('')
 
                 # Loop over doc-link types
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
@@ -8299,7 +8345,7 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  [DL-VP-DB] Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [🐬 GraphSearch DB] [DL-VP-DB] Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (mysql)
                         if link_subtype == 'SEM':
@@ -8307,20 +8353,29 @@ class GraphRegistry():
                         elif link_subtype == 'ORG':
                             self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_parentchild(actions=actions)
 
+                # Extract only ElasticSearch tuples (no distinction between SEM and ORG)
+                doclink_types_to_process_es = sorted(list(set([t[:2] for t in doclink_types_to_process])))
+
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es_cache']}' schema.")
+
+                # Print list of affected tables
+                print('\n[⚡️ ElasticSearch] [DL-VP-ES] The following tables will be affected:')
+                for t in doclink_types_to_process_es:
+                    print(f" - {mysql_schema_names[self.engine_name]['es_cache']}.Index_D_{t[0]}_L_{t[1]}")
+                print('')
 
                 # Loop over doc-link types
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
                     for doc_type, link_type, _ in pb:
-                        
+
                         # Check if table type exists (continue otherwise)
                         link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
                         if link_subtype not in self.idoclinks[doc_type][link_type]:
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  [DB-VP-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [⚡️ ElasticSearch] [DL-VP-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (elasticsearch)
                         self.idoclinks[doc_type][link_type][link_subtype].vertical_patch_elasticsearch(actions=actions)
@@ -8343,11 +8398,11 @@ class GraphRegistry():
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Fetch typeflags config JSON
-            _, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
+            doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
 
             # Check if empty
-            if len(doclink_types_in_config)==0:
-                sysmsg.warning(f"No type flags found for 'doc-links'. Nothing to do.")
+            if len(doc_types_in_config) and len(doclink_types_in_config)==0:
+                sysmsg.warning(f"No type flags found for 'docs' nor 'doc-links'. Nothing to do.")
 
             # If not empty, proceed
             else:
@@ -8357,10 +8412,22 @@ class GraphRegistry():
                 doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
 
                 # Keep only intersection of available and to-process types
-                doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config]
+                doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config and t[2]=='ORG']
+
+                # Append doclinks for which links equal doc types to be processed
+                doclink_types_to_process += [t for t in doclink_types_available if t[1] in doc_types_in_config]
+
+                # Clean and sort list
+                doclink_types_to_process = sorted(list(set(doclink_types_to_process)))
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['graphsearch']}' schema.")
+
+                # Print list of affected tables
+                print('\n[🐬 GraphSearch DB] [DL-HP-DB] The following tables will be affected:')
+                for t in doclink_types_to_process:
+                    print(f" - {mysql_schema_names[self.engine_name]['graphsearch']}.Index_D_{t[0]}_L_{t[1]}_T_{t[2]}")
+                print('')
 
                 # Loop over doc-link types
                 with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
@@ -8371,17 +8438,26 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  [DL-HP-DB] Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [🐬 GraphSearch DB] [DL-HP-DB] Processing doc-link type: {doc_type} --> {link_type} [{link_subtype}]".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch(actions=actions)
 
+                # Extract only ElasticSearch tuples (no distinction between SEM and ORG)
+                doclink_types_to_process_es = sorted(list(set([t[:2] for t in doclink_types_to_process])))
+
                 # Print status
                 sysmsg.trace(f"Patch tables in '{mysql_schema_names[self.engine_name]['es_cache']}' schema.")
 
+                # Print list of affected tables
+                print('\n[⚡️ ElasticSearch] [DL-HP-ES] The following tables will be affected:')
+                for t in doclink_types_to_process_es:
+                    print(f" - {mysql_schema_names[self.engine_name]['es_cache']}.Index_D_{t[0]}_L_{t[1]}")
+                print('')
+
                 # Loop over doc-link types
-                with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
-                    for doc_type, link_type, _ in pb:
+                with tqdm(doclink_types_to_process_es, unit='doc-link type') as pb:
+                    for doc_type, link_type in pb:
 
                         # Check if table type exists (continue otherwise)
                         link_subtype = 'SEM' if 'SEM' in self.idoclinks[doc_type][link_type] else 'ORG'
@@ -8389,7 +8465,7 @@ class GraphRegistry():
                             continue
 
                         # Print status
-                        pb.set_description(f"⚙️  [DL-HP-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        pb.set_description(f"⚙️  [⚡️ ElasticSearch] [DL-HP-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Patch index doc-link table (elasticsearch)
                         self.idoclinks[doc_type][link_type][link_subtype].horizontal_patch_elasticsearch(actions=actions)
@@ -8482,7 +8558,7 @@ class GraphRegistry():
 
             pass
 
-        # Copy patched data to production cache schema [NEEDS WORK]
+        # TODO: Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
 
             return
@@ -8512,7 +8588,7 @@ class GraphRegistry():
                     drop_table = True
                 )
 
-        # Delete loose ends in index tables [NEEDS WORK]
+        # TODO: Delete loose ends in index tables [NEEDS WORK]
         def delete_loose_ends(self):
 
             return
@@ -8628,28 +8704,108 @@ class GraphRegistry():
                 print('\nList of index buildup tables:')
                 print(' - '+'\n - '.join(sorted(list_of_tables)))
 
+            # Update index buildup tables (all)
+            def build_all(self, actions=()):
+
+                # Print status
+                sysmsg.info(f"🚜 📝 Build up and/or update index field tables on '{schema_graph_cache_test}' [actions: {actions}].")
+
+                # Print action specific status
+                if len(actions) == 0:
+                    sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
+                    sysmsg.info(f"🚜 📝 Nothing to do.")
+                    return
+                elif 'eval' in actions and 'commit' not in actions:
+                    sysmsg.warning(f"Executing in evaluation mode only.")
+
+                # Fetch doc types to process
+                doc_types_to_process, doclink_types_to_process = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields')
+
+                # Check if empty
+                if len(doc_types_to_process)==0 and len(doclink_types_to_process)==0:
+                    sysmsg.warning(f"No type flags found. Nothing to do.")
+
+                # TODO: print here which tables will be processed
+
+                # If not empty, proceed
+                else:
+
+                    # Print status
+                    sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
+
+                    # Loop over doc types
+                    with tqdm(doc_types_to_process, unit='doc type') as pb:
+                        for doc_type in pb:
+
+                            # Print status
+                            pb.set_description(f"⚙️  [🐬 GraphSearch DB] [B-BD] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                            # Build docs fields
+                            self.build_docs_fields(doc_type, actions)
+
+                    # Print status
+                    sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
+
+                    # Loop over doc-link types
+                    with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
+                        for doc_type, link_type in pb:
+
+                            # Print status
+                            pb.set_description(f"⚙️  [🐬 GraphSearch DB] [B-P2C] Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
+
+                            # Build doc-link fields
+                            self.build_links_parentchild(doc_type, link_type, actions)
+
+                # Print status
+                sysmsg.success(f"🚜 ✅ Done building up and/or updating index field tables.\n")
+
             # Update index buildup tables: doc fields
             def build_docs_fields(self, doc_type, actions=()):
-                
+
+                #---------------------------------#
+                # Fetch settings from JSON config #
+                #---------------------------------#
+
                 # Fetch doc options
-                include_code_in_name = index_config['options']['docs'][doc_type]['include_code_in_name']
+                include_code_in_name = 0
+                if doc_type in index_config['options']['docs']:
+                    if 'include_code_in_name' in index_config['options']['docs'][doc_type]:
+                        include_code_in_name   = index_config['options']['docs'][doc_type]['include_code_in_name']
 
-                # Fetch object custom fields
-                obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][doc_type]]
+                # Fetch object's list of custom fields
+                if doc_type       in index_config['fields']['docs']:
+                    list_of_fields = index_config['fields']['docs'][doc_type]
+                else:
+                    sysmsg.warning(f"No custom fields found in config JSON for doc type '{doc_type}'. Proceeding with empty list...")
+                    list_of_fields = []
 
-                # Modify according to field languages
-                obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
+                #----------------------------#
+                # Generate SQL query helpers #
+                #----------------------------#
 
-                # Generate SQL slices to replace placeholders
-                sql_slice_field_names           = ', '.join(obj_fields_with_lang)
-                sql_slice_field_values_as_names = ', '.join([f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for k, (field_language, field_name) in enumerate(obj_fields)])
-                sql_slice_joins_doc             = '\n'.join([f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_T_AllFields t{k+1} ON (t{k+1}.institution_id, t{k+1}.object_type, t{k+1}.object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', p.object_id, '{field_language}', '{field_name}')" for k, (field_language, field_name) in enumerate(obj_fields)])
-                
+                # Build (and transpose) query helper string matrix
+                query_helpers = [list(r) for r in zip(*[
+                    (
+                        f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
+                        f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
+                        f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_T_AllFields t{k+1} ON (t{k+1}.institution_id, t{k+1}.object_type, t{k+1}.object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', p.object_id, '{field_language}', '{field_name}')"
+                    )
+                    for k, (field_language, field_name) in enumerate([tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields])
+                ])]
+
+                # Assign to specific query helper SQL slices
+                cachebuildup_obj_fields         =           query_helpers[0]  if len(query_helpers)>0 else []
+                sql_slice_field_names           = ', '.join(query_helpers[0]) if len(query_helpers)>0 else ''
+                sql_slice_field_values_as_names = ', '.join(query_helpers[1]) if len(query_helpers)>0 else ''
+                sql_slice_joins_obj             = '\n'.join(query_helpers[2]) if len(query_helpers)>0 else ''
+
                 # Add trailing comma if necessary
                 if len(sql_slice_field_names) > 0:
                     sql_slice_field_names += ', '
                 if len(sql_slice_field_values_as_names) > 0:
                     sql_slice_field_values_as_names += ', '
+
+                #----------------------------#
 
                 # Generate SQL query for replacing scores and fields
                 sql_query = f"""
@@ -8658,7 +8814,7 @@ class GraphRegistry():
                            {sql_slice_field_values_as_names}
                            COALESCE(d.avg_norm_log_degree, 0.001) AS degree_score,
                            1 AS to_process
-                      FROM {schema_graph_cache_test}.Data_N_Object_T_PageProfile p\n{sql_slice_joins_doc}
+                      FROM {schema_graph_cache_test}.Data_N_Object_T_PageProfile p\n{sql_slice_joins_obj}
                  LEFT JOIN {schema_graph_cache_test}.Nodes_N_Object_T_DegreeScores d
                         ON (p.institution_id, p.object_type, p.object_id)
                          = (d.institution_id, d.object_type, d.object_id)
@@ -8682,7 +8838,7 @@ class GraphRegistry():
                 #-------------------------#
                 # Process resulting query #
                 #-------------------------#
-                
+
                 # Evaluate query
                 if 'eval' in actions:
 
@@ -8704,18 +8860,14 @@ class GraphRegistry():
                 if 'commit' in actions:
 
                     # Fetch target table column names
-                    target_table_columns = ['doc_institution', 'doc_type', 'doc_id', 'include_code_in_name'] + obj_fields_with_lang + ['degree_score', 'to_process']
+                    target_table_columns = ['doc_institution', 'doc_type', 'doc_id', 'include_code_in_name'] + cachebuildup_obj_fields + ['degree_score', 'to_process']
 
                     # Remove row_id (if exists)
                     if 'row_id' in target_table_columns:
                         target_table_columns.remove('row_id')
 
-                    # Build commit query                
+                    # Build commit query
                     sql_query_commit = f"\tREPLACE INTO {schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
-
-                    # # Print query
-                    # if 'print' in actions:
-                    #     print(sql_query_commit)
 
                     # Execute commit
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit, verbose=('print' in actions))
@@ -8723,20 +8875,54 @@ class GraphRegistry():
             # Update index buildup tables: link parent-child type
             def build_links_parentchild(self, doc_type, link_type, actions=()):
 
-                # Fetch object custom fields
-                obj2obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['links']['parent-child'][doc_type][link_type]['obj2obj']]
+                #---------------------------------#
+                # Fetch settings from JSON config #
+                #---------------------------------#
 
-                # Modify according to field languages
-                obj2obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj2obj_fields]
+                # Fetch organisational object-to-object list of custom fields
+                list_of_fields = []
+                if doc_type               in index_config['fields']['links']['parent-child']:
+                    if link_type          in index_config['fields']['links']['parent-child'][doc_type]:
+                        if 'obj2obj'      in index_config['fields']['links']['parent-child'][doc_type][link_type]:
+                            list_of_fields = index_config['fields']['links']['parent-child'][doc_type][link_type]['obj2obj']
+                if link_type              in index_config['fields']['links']['parent-child']:
+                    if doc_type           in index_config['fields']['links']['parent-child'][link_type]:
+                        if 'obj2obj'      in index_config['fields']['links']['parent-child'][link_type][doc_type]:
+                            list_of_fields = index_config['fields']['links']['parent-child'][link_type][doc_type]['obj2obj']
 
-                # Generate SQL slices to replace placeholders
-                sql_slice_field_names           = ', '.join(obj2obj_fields_with_lang)
-                sql_slice_field_values_as_names = ', '.join([f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for k, (field_language, field_name) in enumerate(obj2obj_fields)])
-                sql_slice_joins_obj2obj         = '\n'.join([f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_N_Object_T_AllFieldsSymmetric t{k+1} ON (t{k+1}.from_institution_id, t{k+1}.from_object_type, t{k+1}.from_object_id, t{k+1}.to_institution_id, t{k+1}.to_object_type, t{k+1}.to_object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', s.from_object_id, '{object_type_to_institution_id[link_type]}', '{link_type}',   s.to_object_id, '{field_language}', '{field_name}')" for k, (field_language, field_name) in enumerate(obj2obj_fields)])
+                # Return if no fields to process
+                if len(list_of_fields)==0:
+                    sysmsg.warning(f"No custom fields found in config JSON for parent-child doclink type '{doc_type} --> {link_type}'. Nothing to do.")
+                    return
+
+                # Flip doc-link direction if needed
+                doc_type, link_type = sorted([doc_type, link_type])
+
+                #----------------------------#
+                # Generate SQL query helpers #
+                #----------------------------#
+
+                # Build (and transpose) query helper string matrix
+                query_helpers = [list(r) for r in zip(*[
+                    (
+                        f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
+                        f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
+                        f"{' '*6}LEFT JOIN {schema_graph_cache_test}.Data_N_Object_N_Object_T_AllFieldsSymmetric t{k+1} ON (t{k+1}.from_institution_id, t{k+1}.from_object_type, t{k+1}.from_object_id, t{k+1}.to_institution_id, t{k+1}.to_object_type, t{k+1}.to_object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{object_type_to_institution_id[doc_type]}', '{doc_type}', s.from_object_id, '{object_type_to_institution_id[link_type]}', '{link_type}',   s.to_object_id, '{field_language}', '{field_name}')"
+                    )
+                    for k, (field_language, field_name) in enumerate([tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields])
+                ])]
+
+                # Assign to specific query helper SQL slices
+                cachebuildup_obj2obj_fields     =           query_helpers[0]  if len(query_helpers)>0 else []
+                sql_slice_field_names           = ', '.join(query_helpers[0]) if len(query_helpers)>0 else ''
+                sql_slice_field_values_as_names = ', '.join(query_helpers[1]) if len(query_helpers)>0 else ''
+                sql_slice_joins_obj2obj         = '\n'.join(query_helpers[2]) if len(query_helpers)>0 else ''
 
                 # Add trailing comma if necessary
                 if len(sql_slice_field_names) > 0:
                     sql_slice_field_names += ', '
+
+                #----------------------------#
 
                 # Generate SQL query for replacing scores and fields
                 sql_query = f"""
@@ -8775,74 +8961,17 @@ class GraphRegistry():
                 if 'commit' in actions:
 
                     # Fetch target table column names
-                    target_table_columns = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_id'] + obj2obj_fields_with_lang + ['to_process']
+                    target_table_columns = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_id'] + cachebuildup_obj2obj_fields + ['to_process']
 
                     # Remove row_id (if exists)
                     if 'row_id' in target_table_columns:
                         target_table_columns.remove('row_id')
 
-                    # Build commit query                
+                    # Build commit query
                     sql_query_commit = f"\tREPLACE INTO {schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
                     self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
-
-            # Update index buildup tables (all)
-            def build_all(self, actions=()):
-
-                # Print status
-                sysmsg.info(f"🚜 📝 Build up and/or update index field tables on '{schema_graph_cache_test}' [actions: {actions}].")
-
-                # Print action specific status
-                if len(actions) == 0:
-                    sysmsg.warning(f"No actions specified. Supported actions are: 'print', 'eval', 'commit'.")
-                    sysmsg.info(f"🚜 📝 Nothing to do.")
-                    return
-                elif 'eval' in actions and 'commit' not in actions:
-                    sysmsg.warning(f"Executing in evaluation mode only.")
-
-                # Fetch doc types to process
-                doc_types_to_process, doclink_types_to_process = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields')
-
-                # Check if empty
-                if len(doc_types_to_process)==0 and len(doclink_types_to_process)==0:
-                    sysmsg.warning(f"No type flags found. Nothing to do.")
-
-                # If not empty, proceed
-                else:
-
-                    # Print status
-                    sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
-
-                    # Loop over doc types
-                    with tqdm(doc_types_to_process, unit='doc type') as pb:
-                        for doc_type in pb:
-
-                            # Print status
-                            pb.set_description(f"⚙️  [B-BD] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-
-                            # Build docs fields
-                            self.build_docs_fields(doc_type, actions)
-
-                    # Print status
-                    sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
-
-                    # Loop over doc-link types
-                    with tqdm(doclink_types_to_process, unit='doc-link type') as pb:
-                        for doc_type, link_type in pb:
-
-                            # TODO: Get this from config
-                            if (doc_type, link_type) not in [('Course', 'Person'), ('Person', 'Unit')]:
-                                continue
-
-                            # Print status
-                            pb.set_description(f"⚙️  [B-P2C] Processing doc-link type: '{doc_type} --> {link_type}'".ljust(PBWIDTH)[:PBWIDTH])
-
-                            # Build doc-link fields
-                            self.build_links_parentchild(doc_type, link_type, actions)
-
-                # Print status
-                sysmsg.success(f"🚜 ✅ Done building up and/or updating index field tables.\n")
 
         #----------------------------------------------#
         # Sub-subclass definition: Page Profiles Table #
@@ -8889,34 +9018,35 @@ class GraphRegistry():
 
             # Index > Page Profile > Create table on selected engine
             def create_table(self, actions=()):
-                
-                return
-                sql_query_create_table = f"""
-                CREATE TABLE IF NOT EXISTS {mysql_schema_names[self.engine_name]['graphsearch']}.{self.table_name} (
-                    row_id int NOT NULL AUTO_INCREMENT,
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.key_column_names])},
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.upd_column_names])},
-                    UNIQUE KEY row_id (row_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
+                raise NotImplementedError
+                if False:
+                    pass
+                    # sql_query_create_table = f"""
+                    # CREATE TABLE IF NOT EXISTS {mysql_schema_names[self.engine_name]['graphsearch']}.{self.table_name} (
+                    #     row_id int NOT NULL AUTO_INCREMENT,
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.key_column_names])},
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.upd_column_names])},
+                    #     UNIQUE KEY row_id (row_id)
+                    # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    # """
 
-                # Get table type
-                table_type = get_table_type_from_name(self.table_name)
+                    # # Get table type
+                    # table_type = get_table_type_from_name(self.table_name)
 
-                # Get datatypes
-                datatypes_json = table_datatypes_json[table_type]
-                datatypes_json.update(index_config['data-types'])
+                    # # Get datatypes
+                    # datatypes_json = table_datatypes_json[table_type]
+                    # datatypes_json.update(index_config['data-types'])
 
-                # Get keys
-                keys_json = table_keys_json[table_type]
-                keys_json.update(index_config['data-keys'])
+                    # # Get keys
+                    # keys_json = table_keys_json[table_type]
+                    # keys_json.update(index_config['data-keys'])
 
-                if 'print' in actions:
-                    print(sql_query_create_table)
-                    rich.print_json(data=datatypes_json)
-                    rich.print_json(data=keys_json)
+                    # if 'print' in actions:
+                    #     print(sql_query_create_table)
+                    #     rich.print_json(data=datatypes_json)
+                    #     rich.print_json(data=keys_json)
 
-                if 'commit' in actions:
+                    # if 'commit' in actions:
                     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
                     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
                     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
@@ -9003,6 +9133,9 @@ class GraphRegistry():
                 # Assign DB pointer
                 self.db = GraphDB()
 
+                # Print status
+                sysmsg.info(f"📝 Initialise 'IndexDocs' object for: {doc_type}.")
+
                 # Define internal variables
                 self.engine_name        = engine_name
                 self.doc_type           = doc_type
@@ -9018,10 +9151,90 @@ class GraphRegistry():
                 )
                 self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process']]
 
-                # Fetch doc fields
-                self.obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][doc_type]]
-                self.obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in self.obj_fields]
-                
+                #---------------------------#
+                # Fetch doc general options #
+                #---------------------------#
+
+                # Option: include_code_in_name
+                # self.include_code_in_name = 0
+                # if self.doc_type in index_config['options']['docs']:
+                #     self.include_code_in_name = index_config['options']['docs'][self.doc_type]['include_code_in_name']
+                self.include_code_in_name = idxcfg.settings['options']['include_code_in_name'].get(self.doc_type, 0)
+                # if self.include_code_in_name != self.include_code_in_name_:
+                #     sysmsg.critical('if self.include_code_in_name != self.include_code_in_name_')
+                #     exit()
+
+                #----------------------------------------------#
+                # Fetch doc definitions for GraphSearch tables #
+                #----------------------------------------------#
+
+                # Fetch list of fields to display on 'doc' specific tables
+                # Start with lowest priority definitions, then override if others are available
+                # list_of_fields = []
+                # if self.doc_type  in index_config['fields']['docs']:
+                #     list_of_fields = index_config['fields']['docs'][self.doc_type]
+
+                # Assign list of fields to object's internal variable
+                # self.graphsearch_obj_fields = [
+                #     f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
+                #     for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                # ]
+                self.graphsearch_obj_fields = idxcfg.settings['graphsearch']['fields']['docs'].get(doc_type, [])
+                # if self.graphsearch_obj_fields != graphsearch_obj_fields_:
+                #     sysmsg.critical('FAIL.')
+                #     exit()
+
+                # Print out initialisation info
+                print(f"\n🎛️  Settings from config:")
+                print(f" - Option: include_code_in_name ..... {self.include_code_in_name}")
+                print(f" - GraphSearch doc fields ........... {self.graphsearch_obj_fields}")
+
+                #------------------------------------------------------#
+                # Fetch doc definitions for ElasticSearch cache tables #
+                #------------------------------------------------------#
+
+                # # Fetch list of fields to display on 'doc' specific tables
+                # # Start with lowest priority definitions, then override if others are available
+                # list_of_fields = []
+                # if self.doc_type  in index_config[   'fields']['docs']:
+                #     list_of_fields = index_config[   'fields']['docs'][self.doc_type]
+                # if self.doc_type  in index_config['es-fields']['docs']:
+                #     list_of_fields = index_config['es-fields']['docs'][self.doc_type]
+
+                # # Assign list of fields to object's internal variable
+                # self.elasticsearch_obj_fields = [
+                #     f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
+                #     for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                # ]
+
+                self.elasticsearch_obj_fields = idxcfg.settings['elasticsearch']['fields' ]['docs'].get(doc_type, [])
+                # if self.elasticsearch_obj_fields != elasticsearch_obj_fields_:
+                #     sysmsg.critical('FAIL.')
+                #     exit()
+
+
+                # # Fetch ElasticSearch filters (if available)
+                # if self.doc_type   in index_config['es-filters']['docs']:
+                #     self.elasticsearch_filters = index_config['es-filters']['docs'][self.doc_type]
+                # else:
+                #     self.elasticsearch_filters = []
+
+
+                self.elasticsearch_filters = idxcfg.settings['elasticsearch']['filters']['docs'].get(doc_type, [])
+                # if self.elasticsearch_filters != elasticsearch_filters_:
+                #     sysmsg.critical('FAIL.')
+                #     exit()
+
+                # Print out initialisation info
+                print(f" - ElasticSearch doc fields ......... {self.elasticsearch_obj_fields}")
+                print(f" - ElasticSearch filters ............ {self.elasticsearch_filters}")
+                print('')
+
+                #----------------------------------------------------------#
+
+                # Print status
+                sysmsg.success(f"✅ Done initialising 'IndexDocs' object.")
+
             # Index > Docs > Table info
             def info(self):
                 print('\nSelected table:', self.index_table_name)
@@ -9036,85 +9249,89 @@ class GraphRegistry():
             # Index > Docs > Get engine
             def get_engine(self):
                 return self.engine_name
-            
+
             # Index > Docs > Set engine
             def set_engine(self, engine_name):
                 self.engine_name = engine_name
 
             # Index > Docs > Create table on graphsearch test
             def create_table(self, actions=()):
-                
-                sql_query_create_table = f"""
-                CREATE TABLE IF NOT EXISTS {mysql_schema_names[self.engine_name]['graphsearch']}.{self.index_table_name} (
-                    row_id int NOT NULL AUTO_INCREMENT,
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.key_column_names])},
-                    include_code_in_name tinyint(1) NOT NULL,
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.obj_fields_with_lang])}{',' if len(self.obj_fields_with_lang)>0 else ''}
-                    degree_score float NOT NULL,
-                    UNIQUE KEY row_id (row_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
+                raise NotImplementedError
+                if False:
+                    pass
+                    # sql_query_create_table = f"""
+                    # CREATE TABLE IF NOT EXISTS {mysql_schema_names[self.engine_name]['graphsearch']}.{self.index_table_name} (
+                    #     row_id int NOT NULL AUTO_INCREMENT,
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.key_column_names])},
+                    #     include_code_in_name tinyint(1) NOT NULL,
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                    #     degree_score float NOT NULL,
+                    #     UNIQUE KEY row_id (row_id)
+                    # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    # """
 
-                # Get table type
-                table_type = get_table_type_from_name(self.index_table_name)
+                    # # Get table type
+                    # table_type = get_table_type_from_name(self.index_table_name)
 
-                # Get datatypes
-                datatypes_json = table_datatypes_json[table_type]
-                datatypes_json.update(index_config['data-types'])
+                    # # Get datatypes
+                    # datatypes_json = table_datatypes_json[table_type]
+                    # datatypes_json.update(index_config['data-types'])
 
-                # Get keys
-                keys_json = table_keys_json[table_type]
-                keys_json.update(index_config['data-keys'])
+                    # # Get keys
+                    # keys_json = table_keys_json[table_type]
+                    # keys_json.update(index_config['data-keys'])
 
-                if 'print' in actions:
-                    print(sql_query_create_table)
-                    rich.print_json(data=datatypes_json)
-                    rich.print_json(data=keys_json)
+                    # if 'print' in actions:
+                    #     print(sql_query_create_table)
+                    #     rich.print_json(data=datatypes_json)
+                    #     rich.print_json(data=keys_json)
 
-                # if 'commit' in actions:
-                #     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
-                #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
-                #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
+                    # if 'commit' in actions:
+                    #     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
+                    #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
+                    #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
             # Index > Docs > Create table on elasticsearch cache
             def create_table_elasticsearch(self, actions=()):
-                
-                sql_query_create_table = f"""
-                CREATE TABLE IF NOT EXISTS {schema_es_cache}.Index_D_{self.doc_type} (
-                    doc_type ENUM('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
-                    doc_id VARCHAR(255) NOT NULL,
-                    degree_score FLOAT NOT NULL,
-                    short_code VARCHAR(32)  DEFAULT NULL,
-                    subtype_en VARCHAR(255) DEFAULT NULL,
-                    subtype_fr VARCHAR(255) DEFAULT NULL,
-                    name_en MEDIUMTEXT,
-                    name_fr MEDIUMTEXT,
-                    short_description_en MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    short_description_fr MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    long_description_en  MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    long_description_fr  MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.obj_fields_with_lang])}{',' if len(self.obj_fields_with_lang)>0 else ''}
-                    PRIMARY KEY     (doc_type, doc_id),
-                    UNIQUE  KEY uid (doc_type, doc_id),
-                    KEY doc_type (doc_type),
-                    KEY doc_id   (doc_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
+                raise NotImplementedError
+                if False:
+                    pass
+                    # sql_query_create_table = f"""
+                    # CREATE TABLE IF NOT EXISTS {schema_es_cache}.Index_D_{self.doc_type} (
+                    #     doc_type ENUM('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
+                    #     doc_id VARCHAR(255) NOT NULL,
+                    #     degree_score FLOAT NOT NULL,
+                    #     short_code VARCHAR(32)  DEFAULT NULL,
+                    #     subtype_en VARCHAR(255) DEFAULT NULL,
+                    #     subtype_fr VARCHAR(255) DEFAULT NULL,
+                    #     name_en MEDIUMTEXT,
+                    #     name_fr MEDIUMTEXT,
+                    #     short_description_en MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     short_description_fr MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     long_description_en  MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     long_description_fr  MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.elasticsearch_obj_fields])}{',' if len(self.elasticsearch_obj_fields)>0 else ''}
+                    #     PRIMARY KEY     (doc_type, doc_id),
+                    #     UNIQUE  KEY uid (doc_type, doc_id),
+                    #     KEY doc_type (doc_type),
+                    #     KEY doc_id   (doc_id)
+                    # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    # """
 
-                # Get table type
-                table_type = get_table_type_from_name(f'Index_D_{self.doc_type}')
+                    # # Get table type
+                    # table_type = get_table_type_from_name(f'Index_D_{self.doc_type}')
 
-                # Get datatypes
-                datatypes_json = table_datatypes_json[table_type]
-                datatypes_json.update(index_config['data-types'])
+                    # # Get datatypes
+                    # datatypes_json = table_datatypes_json[table_type]
+                    # datatypes_json.update(index_config['data-types'])
 
-                if 'print' in actions:
-                    print(sql_query_create_table)
-                    rich.print_json(data=datatypes_json)
+                    # if 'print' in actions:
+                    #     print(sql_query_create_table)
+                    #     rich.print_json(data=datatypes_json)
 
-                # if 'commit' in actions:
-                #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
-                #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}', datatypes_json=datatypes_json)
+                    # # if 'commit' in actions:
+                    # #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
+                    # #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}', datatypes_json=datatypes_json)
 
             #==================#
             # General patching #
@@ -9122,19 +9339,21 @@ class GraphRegistry():
 
             # Index > Docs > General patching > Generate snapshot
             def snapshot(self, rollback_date=False, actions=()):
-                
-                # Generate SQL query @@@@@@@
-                SQLQuery = f"""
-                    INSERT INTO {schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type}
-                                (rollback_date, doc_institution, doc_type, doc_id, include_code_in_name, {', '.join(self.custom_column_names_with_lang)}{',' if len(self.custom_column_names_with_lang)>0 else ''} degree_score)
-                SELECT DISTINCT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.include_code_in_name, {', '.join([f'i.{c}' for c in self.custom_column_names_with_lang])}{',' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score
-                            FROM {schema_graphsearch_test}.Index_D_{self.doc_type} i
-                        INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} b
-                            USING (doc_institution, doc_type, doc_id)
-                            WHERE b.to_process > 0.5
-                            AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score)
-                ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                """
+                raise NotImplementedError
+                if False:
+                    pass
+                    # Generate SQL query @@@@@@@
+                    SQLQuery = f"""
+                        INSERT INTO {schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type}
+                                    (rollback_date, doc_institution, doc_type, doc_id, include_code_in_name, {', '.join(self.custom_column_names_with_lang)}{',' if len(self.custom_column_names_with_lang)>0 else ''} degree_score)
+                    SELECT DISTINCT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.include_code_in_name, {', '.join([f'i.{c}' for c in self.custom_column_names_with_lang])}{',' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score
+                                FROM {schema_graphsearch_test}.Index_D_{self.doc_type} i
+                            INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} b
+                                USING (doc_institution, doc_type, doc_id)
+                                WHERE b.to_process > 0.5
+                                AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score)
+                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    """
 
             # Index > Docs > General patching > Insert new rows, update existing fields (graphsearch test)
             def patch(self, actions=()):
@@ -9153,14 +9372,11 @@ class GraphRegistry():
                 ):
                     # sysmsg.warning(f"Target table '{target_schema_name}.{target_table_name}' does not exist. Nothing to do.")
                     return
-                
-                # Get object fields with language
-                obj_fields_with_lang = self.obj_fields_with_lang
 
                 # Generate evaluation query
                 upd_column_compare = [
                     ('t.degree_score', 'n.degree_score')
-                ] + [(f't.{c}', f'n.{c}') for c in obj_fields_with_lang]
+                ] + [(f't.{c}', f'n.{c}') for c in self.graphsearch_obj_fields]
 
                 # Build comparison conditions
                 compare_conditions = '    '+'\n\t\t\t\t\t OR '.join([
@@ -9190,8 +9406,9 @@ class GraphRegistry():
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
 
-                    # Execute the evaluation query
+                    # Execute and validate the evaluation query
                     out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
                     rows_to_process, rows_to_patch = out[0]
@@ -9199,7 +9416,7 @@ class GraphRegistry():
                 # Else, we assume that the evaluation query has not been executed
                 else:
                     rows_to_process, rows_to_patch = 0, 0
-                
+
                 # Evaluate the patch operation
                 if 'eval' in actions:
 
@@ -9218,13 +9435,13 @@ class GraphRegistry():
                 upd_column_names = [
                     'include_code_in_name',
                     'degree_score'
-                ] + obj_fields_with_lang
+                ] + self.graphsearch_obj_fields
 
                 # Update column values
                 upd_column_values = [
                     'n.include_code_in_name',
                     'n.degree_score',
-                ] + [f'n.{c}' for c in obj_fields_with_lang]
+                ] + [f'n.{c}' for c in self.graphsearch_obj_fields]
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -9279,28 +9496,20 @@ class GraphRegistry():
                     table_name  = target_table_name
                 ):
                     return
-                
-                # Get object fields with language
-                obj_fields_with_lang = self.obj_fields_with_lang
-
-                # TODO: Fix this using json config
-                # Remove 'srt_subtitles_en', 'srt_subtitles_fr' if doc_type = 'Lecture'
-                if self.doc_type == 'Lecture':
-                    obj_fields_with_lang = [c for c in obj_fields_with_lang if c not in ['srt_subtitles_en', 'srt_subtitles_fr']]
 
                 # Generate evaluation query
                 upd_column_compare = [
                     ('t.degree_score', 'n.degree_score'),
-                    ('t.short_code', 'p.short_code'),
-                    ('t.subtype_en', 'p.subtype_en'),
-                    ('t.subtype_fr', 'p.subtype_fr'),
+                    ('t.short_code'  , 'p.short_code'),
+                    ('t.subtype_en'  , 'p.subtype_en'),
+                    ('t.subtype_fr'  , 'p.subtype_fr'),
                     ('t.name_en', "IF(n.include_code_in_name=1, CONCAT(n.doc_id, ': ', p.name_en_value), p.name_en_value)"),
                     ('t.name_fr', "IF(n.include_code_in_name=1, CONCAT(n.doc_id, ': ', p.name_fr_value), p.name_fr_value)"),
                     ('t.short_description_en', 'p.description_short_en_value'),
                     ('t.short_description_fr', 'p.description_short_fr_value'),
-                    ('t.long_description_en', 'p.description_long_en_value'),
-                    ('t.long_description_fr', 'p.description_long_fr_value'),
-                ] + [(f't.{c}', f'n.{c}') for c in obj_fields_with_lang]
+                    ('t.long_description_en' , 'p.description_long_en_value'),
+                    ('t.long_description_fr' , 'p.description_long_fr_value'),
+                ] + [(f't.{c}', f'n.{c}') for c in self.elasticsearch_obj_fields]
 
                 # Build comparison conditions
                 compare_conditions = '    '+'\n\t\t\t\t\t OR '.join([
@@ -9330,8 +9539,9 @@ class GraphRegistry():
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
 
-                    # Execute the evaluation query
+                    # Execute and validate the evaluation query
                     out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
                     rows_to_process, rows_to_patch = out[0]
@@ -9339,7 +9549,7 @@ class GraphRegistry():
                 # Else, we assume that the evaluation query has not been executed
                 else:
                     rows_to_process, rows_to_patch = 0, 0
-                
+
                 # Evaluate the patch operation
                 if 'eval' in actions:
 
@@ -9366,7 +9576,7 @@ class GraphRegistry():
                     'short_description_fr',
                     'long_description_en',
                     'long_description_fr'
-                ] + obj_fields_with_lang
+                ] + self.elasticsearch_obj_fields
 
                 # Update column values
                 upd_column_values = [
@@ -9380,7 +9590,7 @@ class GraphRegistry():
                     'p.description_short_fr_value',
                     'p.description_long_en_value',
                     'p.description_long_fr_value'
-                ] + [f'n.{c}' for c in obj_fields_with_lang]
+                ] + [f'n.{c}' for c in self.elasticsearch_obj_fields]
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -9421,15 +9631,17 @@ class GraphRegistry():
 
             # Index > Docs > General patching > Roll back to previous state
             def rollback(self, rollback_date, actions=()):
-
-                # Generate SQL query
-                sql_query = f"""
-                        UPDATE {schema_graphsearch_test}.Index_D_{self.doc_type} i
-                    INNER JOIN {schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type} b
-                        USING (doc_institution, doc_type, doc_id)
-                            SET {', '.join([f'i.{c} = b.{c}' for c in self.obj_fields_with_lang])}, i.degree_score = b.degree_score
-                        WHERE b.rollback_date = '{rollback_date}';
-                """
+                raise NotImplementedError
+                if False:
+                    pass
+                    # # Generate SQL query
+                    # sql_query = f"""
+                    #         UPDATE {schema_graphsearch_test}.Index_D_{self.doc_type} i
+                    #     INNER JOIN {schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type} b
+                    #         USING (doc_institution, doc_type, doc_id)
+                    #             SET {', '.join([f'i.{c} = b.{c}' for c in self.graphsearch_obj_fields])}, i.degree_score = b.degree_score
+                    #         WHERE b.rollback_date = '{rollback_date}';
+                    # """
 
             #=====================================#
             # Airflow, Flag, and Checksum updates #
@@ -9488,6 +9700,9 @@ class GraphRegistry():
                 # Assign DB pointer
                 self.db = GraphDB()
 
+                # Print status
+                sysmsg.info(f"📝 Initialise 'IndexDocLinks' object for: {doc_type} --> {link_type} [{link_subtype}].")
+
                 # Define internal variables
                 self.doc_type     = doc_type
                 self.link_type    = link_type
@@ -9498,40 +9713,89 @@ class GraphRegistry():
                 self.index_table_name        = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}'
                 self.key_column_names        = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
 
-                # Fetch doc fields
-                self.obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][self.link_type]]
-                self.obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in self.obj_fields]
-                self.obj_fields_to_update = len(self.obj_fields_with_lang) > 0
-                self.obj2obj_fields, self.obj2obj_fields_with_lang = [], []
-                self.es_filters = []
+                #--------------------------------------------------#
+                # Fetch doclink definitions for GraphSearch tables #
+                #--------------------------------------------------#
 
-                # Check if there are fields to update
-                if not self.obj_fields_to_update:
-                    return
+                # Fetch list of fields to display on the 'link' side of doc-links
+                # Start with lowest priority definitions, then override if others are available
+                list_of_fields = []
+                if self.link_type     in index_config['fields']['docs' ]:
+                    list_of_fields     = index_config['fields']['docs' ][self.link_type]
+                if self.link_type     in index_config['fields']['links']['default']:
+                    if 'obj'          in index_config['fields']['links']['default'][self.link_type]:
+                        list_of_fields = index_config['fields']['links']['default'][self.link_type]['obj']
 
-                # TODO: fix this
-                if self.link_type == 'Lecture':
-                    self.obj_fields_with_lang = ["video_stream_url", "video_duration", "is_restricted"]
+                # Assign list of fields to object's internal variables
+                self.graphsearch_obj_fields = [
+                    f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
+                    for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                ]
 
-                # Fetch doc fields
+                # Initialise parent-child specific internal variable
+                self.graphsearch_obj2obj_fields = []
+
+                # If sublink type is organisational, there are additional settings to fetch
                 if link_subtype.upper() == 'ORG':
 
-                    # rich.print_json(data=index_config['fields']['links']['parent-child'])
-                    if self.doc_type in index_config['fields']['links']['parent-child']:
-                        self.obj2obj_fields = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]['obj2obj']]
-                        self.obj2obj_fields_with_lang = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in self.obj2obj_fields]
+                    # Fetch list of additional organisational-specific fields to display on the 'link' side of doc-links
+                    # There are additional fields, so there's no defaulting to other fields
+                    list_of_fields = []
+                    if self.doc_type          in index_config['fields']['links']['parent-child']:
+                        if self.link_type     in index_config['fields']['links']['parent-child'][self.doc_type]:
+                            if 'obj2obj'      in index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]:
+                                list_of_fields = index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]['obj2obj']
 
-                    # # TODO Fix this / get from config
-                    # if (self.doc_type, self.link_type) in [('Person', 'Unit'), ('Unit', 'Person')]:
-                    #     self.obj2obj_fields_with_lang += ['is_active_affiliation', 'current_position_rank']
-                        
-                    # if (self.doc_type, self.link_type) in [('Person', 'Course'), ('Course', 'Person')]:
-                    #     self.obj2obj_fields_with_lang += ['latest_teaching_assignment_year']
+                    # Assign list of fields to object's internal variables
+                    self.graphsearch_obj2obj_fields = [
+                        f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
+                        for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                    ]
 
-                # Fetch filters
-                if self.link_type in  index_config['es-filters']['links']:
-                    self.es_filters = index_config['es-filters']['links'][self.link_type]
-                    
+                # Print out initialisation info
+                print(f"\n🎛️  Settings from config:")
+                print(f" - graphsearch_obj_fields ......... {self.graphsearch_obj_fields}")
+                print(f" - graphsearch_obj2obj_fields ..... {self.graphsearch_obj2obj_fields}")
+
+                #----------------------------------------------------------#
+                # Fetch doclink definitions for ElasticSearch cache tables #
+                #----------------------------------------------------------#
+
+                # Fetch list of fields to display on the 'link' side of doc-links
+                # Start with lowest priority definitions, then override if others are available
+                list_of_fields = []
+                if self.link_type     in index_config[   'fields']['docs' ]:
+                    list_of_fields     = index_config[   'fields']['docs' ][self.link_type]
+                if self.link_type     in index_config[   'fields']['links']['default']:
+                    if 'obj'          in index_config[   'fields']['links']['default'][self.link_type]:
+                        list_of_fields = index_config[   'fields']['links']['default'][self.link_type]['obj']
+                if self.link_type     in index_config['es-fields']['docs' ]:
+                    list_of_fields     = index_config['es-fields']['docs' ][self.link_type]
+                if self.link_type     in index_config['es-fields']['links']:
+                    list_of_fields     = index_config['es-fields']['links'][self.link_type]
+
+                # Assign list of fields to object's internal variables
+                self.elasticsearch_obj_fields = [
+                    f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
+                    for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                ]
+
+                # Fetch ElasticSearch filters (if available)
+                if self.link_type  in index_config['es-filters']['links']:
+                    self.elasticsearch_filters = index_config['es-filters']['links'][self.link_type]
+                else:
+                    self.elasticsearch_filters = []
+
+                # Print out initialisation info
+                print(f" - elasticsearch_obj_fields ....... {self.elasticsearch_obj_fields}")
+                print(f" - elasticsearch_filters .......... {self.elasticsearch_filters}")
+                print('')
+
+                #----------------------------------------------------------#
+
+                # Print status
+                sysmsg.success(f"✅ Done initialising 'IndexDocLinks' object.")
+
             # Index > Doc-Links > Table info
             def info(self):
 
@@ -9547,88 +9811,92 @@ class GraphRegistry():
             # Index > Doc-Links > Get engine
             def get_engine(self):
                 return self.engine_name
-            
+
             # Index > Doc-Links > Set engine
             def set_engine(self, engine_name):
                 self.engine_name = engine_name
 
             # Index > Doc-Links > Create table on graphsearch_test
             def create_table(self, actions=()):
+                raise NotImplementedError
+                if False:
+                    pass
+                    # sql_query_create_table = f"""
+                    # CREATE TABLE IF NOT EXISTS {mysql_schema_names[self.engine_name]['graphsearch']}.{self.index_table_name} (
+                    #     row_id int NOT NULL AUTO_INCREMENT,
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.key_column_names])},
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.graphsearch_obj2obj_fields])}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''}
+                    #     {'semantic_score' if self.link_subtype.upper() == 'SEM' else 'degree_score'} FLOAT NOT NULL,
+                    #     row_score FLOAT NOT NULL,
+                    #     row_rank SMALLINT unsigned NOT NULL,
+                    #     UNIQUE KEY row_id (row_id)
+                    # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    # """
 
-                sql_query_create_table = f"""
-                CREATE TABLE IF NOT EXISTS {mysql_schema_names[self.engine_name]['graphsearch']}.{self.index_table_name} (
-                    row_id int NOT NULL AUTO_INCREMENT,
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.key_column_names])},
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.obj_fields_with_lang])}{',' if len(self.obj_fields_with_lang)>0 else ''}
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.obj2obj_fields_with_lang])}{',' if len(self.obj2obj_fields_with_lang)>0 else ''}
-                    {'semantic_score' if self.link_subtype.upper() == 'SEM' else 'degree_score'} FLOAT NOT NULL,
-                    row_score FLOAT NOT NULL,
-                    row_rank SMALLINT unsigned NOT NULL,
-                    UNIQUE KEY row_id (row_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
+                    # # Get table type
+                    # table_type = get_table_type_from_name(self.index_table_name)
 
-                # Get table type
-                table_type = get_table_type_from_name(self.index_table_name)
+                    # # Get datatypes
+                    # datatypes_json = table_datatypes_json[table_type]
+                    # datatypes_json.update(index_config['data-types'])
 
-                # Get datatypes
-                datatypes_json = table_datatypes_json[table_type]
-                datatypes_json.update(index_config['data-types'])
+                    # # Get keys
+                    # keys_json = table_keys_json[table_type]
+                    # keys_json.update(index_config['data-keys'])
 
-                # Get keys
-                keys_json = table_keys_json[table_type]
-                keys_json.update(index_config['data-keys'])
+                    # if 'print' in actions:
+                    #     print(sql_query_create_table)
+                    #     rich.print_json(data=datatypes_json)
+                    #     rich.print_json(data=keys_json)
 
-                if 'print' in actions:
-                    print(sql_query_create_table)
-                    rich.print_json(data=datatypes_json)
-                    rich.print_json(data=keys_json)
-
-                # if 'commit' in actions:
-                #     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
-                #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
-                #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
+                    # # if 'commit' in actions:
+                    # #     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
+                    # #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
+                    # #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
             # Index > Doc-Links > Create table on elasticsearch cache
             def create_table_elasticsearch(self, actions=()):
-                
-                sql_query_create_table = f"""
-                CREATE TABLE IF NOT EXISTS {schema_es_cache}.Index_D_{self.doc_type}_L_{self.link_type} (
-                    doc_type       ENUM('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
-                    doc_id         VARCHAR(255) NOT NULL,
-                    link_type      ENUM('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
-                    link_subtype   ENUM('Parent-to-Child','Child-to-Parent','Semantic') NOT NULL,
-                    link_id        VARCHAR(255) NOT NULL,
-                    link_rank      SMALLINT UNSIGNED NOT NULL,
-                    link_name_en   MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    link_name_fr   MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    link_short_description_en MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    link_short_description_fr MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-                    {', '.join([f'{c} VARCHAR(1)' for c in self.obj_fields_with_lang])}{',' if len(self.obj_fields_with_lang)>0 else ''}
-                    PRIMARY KEY      (doc_type, doc_id, link_type, link_subtype, link_id),
-                    UNIQUE  KEY uid  (doc_type, doc_id, link_type, link_subtype, link_id),
-                    KEY doc_type     (doc_type),
-                    KEY doc_id       (doc_id),
-                    KEY link_type    (link_type),
-                    KEY link_subtype (link_subtype),
-                    KEY link_id      (link_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-                """
+                raise NotImplementedError
+                if False:
+                    pass
+                    # sql_query_create_table = f"""
+                    # CREATE TABLE IF NOT EXISTS {schema_es_cache}.Index_D_{self.doc_type}_L_{self.link_type} (
+                    #     doc_type       ENUM('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
+                    #     doc_id         VARCHAR(255) NOT NULL,
+                    #     link_type      ENUM('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
+                    #     link_subtype   ENUM('Parent-to-Child','Child-to-Parent','Semantic') NOT NULL,
+                    #     link_id        VARCHAR(255) NOT NULL,
+                    #     link_rank      SMALLINT UNSIGNED NOT NULL,
+                    #     link_name_en   MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     link_name_fr   MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     link_short_description_en MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     link_short_description_fr MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+                    #     {', '.join([f'{c} VARCHAR(1)' for c in self.elasticsearch_obj_fields])}{',' if len(self.elasticsearch_obj_fields)>0 else ''}
+                    #     PRIMARY KEY      (doc_type, doc_id, link_type, link_subtype, link_id),
+                    #     UNIQUE  KEY uid  (doc_type, doc_id, link_type, link_subtype, link_id),
+                    #     KEY doc_type     (doc_type),
+                    #     KEY doc_id       (doc_id),
+                    #     KEY link_type    (link_type),
+                    #     KEY link_subtype (link_subtype),
+                    #     KEY link_id      (link_id)
+                    # ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+                    # """
 
-                # Get table type
-                table_type = get_table_type_from_name(f'{schema_es_cache}.Index_D_{self.doc_type}_L_{self.link_type}')
+                    # # Get table type
+                    # table_type = get_table_type_from_name(f'{schema_es_cache}.Index_D_{self.doc_type}_L_{self.link_type}')
 
-                # Get datatypes
-                datatypes_json = table_datatypes_json[table_type]
-                datatypes_json.update(index_config['data-types'])
+                    # # Get datatypes
+                    # datatypes_json = table_datatypes_json[table_type]
+                    # datatypes_json.update(index_config['data-types'])
 
-                if 'print' in actions:
-                    print(sql_query_create_table)
-                    rich.print_json(data=datatypes_json)
+                    # if 'print' in actions:
+                    #     print(sql_query_create_table)
+                    #     rich.print_json(data=datatypes_json)
 
-                # if 'commit' in actions:
-                #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
-                #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}_L_{self.link_type}', datatypes_json=datatypes_json)
+                    # # if 'commit' in actions:
+                    # #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
+                    # #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}_L_{self.link_type}', datatypes_json=datatypes_json)
 
             #===================#
             # Vertical patching #
@@ -9638,49 +9906,51 @@ class GraphRegistry():
 
             # Index > Doc-Links > Vertical patching > Generate snapshot
             def vertical_snapshot_parentchild(self, rollback_date=False):
+                return NotImplementedError
+                if False:
+                    pass
+                    # # Generate the SQL query  @@@@@
+                    # sql_query = f"""
+                    #     INSERT INTO {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}
+                    #                 (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_id, {', '.join(self.graphsearch_obj2obj_fields)})
 
-                # Generate the SQL query  @@@@@
-                sql_query = f"""
-                      INSERT INTO {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}
-                                (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_id, {', '.join(self.obj2obj_fields_with_lang)})
+                    #             SELECT '{rollback_date}' AS rollback_date,
+                    #                 t1.doc_institution, t1.doc_type, t1.doc_id, t1.link_institution, t1.link_type, t1.link_id,
+                    #                 {', '.join([f'COALESCE(t1.{c}, t2.{c}) AS {c}' for c in self.graphsearch_obj2obj_fields])}
 
-                            SELECT '{rollback_date}' AS rollback_date,
-                                t1.doc_institution, t1.doc_type, t1.doc_id, t1.link_institution, t1.link_type, t1.link_id,
-                                {', '.join([f'COALESCE(t1.{c}, t2.{c}) AS {c}' for c in self.obj2obj_fields_with_lang])}
-                
-                            FROM (SELECT DISTINCT i.doc_institution, i.doc_type, i.doc_id,
-                                                    i.link_institution, i.link_type, i.link_id,
-                                                    {', '.join([f'i.{c}' for c in self.obj2obj_fields_with_lang])}
-                                            FROM {schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_ORG i
-                                        INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
-                                                ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                                                = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
-                                            WHERE b.to_process > 0.5
-                                                AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.obj2obj_fields_with_lang])})
-                                ) t1
-                        INNER JOIN (SELECT DISTINCT i.link_institution AS doc_institution, i.link_type AS doc_type, i.link_id AS doc_id,
-                                                    i.doc_institution AS link_institution, i.doc_type AS link_type, i.doc_id AS link_id,
-                                                    {', '.join([f'i.{c}' for c in self.obj2obj_fields_with_lang])}
-                                            FROM {schema_graphsearch_test}.Index_D_{self.link_type}_L_{self.doc_type}_T_ORG i
-                                        INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
-                                                ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                                                = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
-                                            WHERE b.to_process > 0.5
-                                                AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.obj2obj_fields_with_lang])})
-                                ) t2
-                            USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_id)
-                ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                """
+                    #             FROM (SELECT DISTINCT i.doc_institution, i.doc_type, i.doc_id,
+                    #                                     i.link_institution, i.link_type, i.link_id,
+                    #                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj2obj_fields])}
+                    #                             FROM {schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_ORG i
+                    #                         INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
+                    #                                 ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
+                    #                                 = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
+                    #                             WHERE b.to_process > 0.5
+                    #                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
+                    #                 ) t1
+                    #         INNER JOIN (SELECT DISTINCT i.link_institution AS doc_institution, i.link_type AS doc_type, i.link_id AS doc_id,
+                    #                                     i.doc_institution AS link_institution, i.doc_type AS link_type, i.doc_id AS link_id,
+                    #                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj2obj_fields])}
+                    #                             FROM {schema_graphsearch_test}.Index_D_{self.link_type}_L_{self.doc_type}_T_ORG i
+                    #                         INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
+                    #                                 ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
+                    #                                 = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
+                    #                             WHERE b.to_process > 0.5
+                    #                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
+                    #                 ) t2
+                    #             USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_id)
+                    # ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    # """
 
             # ------- Patching ------- #
 
             # Index > Doc-Links > Vertical patching > Update custom fields (all types)
             def vertical_patch(self, actions=()):
 
-                # Check if there are fields to update
-                if len(self.obj_fields_with_lang) == 0:
-                    if 'eval' in actions:
-                        sysmsg.trace(f"No fields to update for link_type '{self.link_type}'.")
+                # Check if there are fields to patch
+                if len(self.graphsearch_obj_fields) == 0:
+                    if 'print' in actions:
+                        sysmsg.trace(f"No fields to patch for doc-link type '{self.doc_type} --> {self.link_type}'.")
                     return
 
                 # Full table paths
@@ -9697,10 +9967,10 @@ class GraphRegistry():
                 ):
                     print(f"Table {self.index_table_name} does not exist.")
                     return
-                
+
                 # Generate evaluation query
                 sql_query_eval = f"""
-                    SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj_fields_with_lang])}), 0) AS n_patch
+                    SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}), 0) AS n_patch
                       FROM {buildup_link_table_path} b
                  LEFT JOIN {target_table_path} i
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
@@ -9712,8 +9982,9 @@ class GraphRegistry():
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
 
-                    # Execute the evaluation query
+                    # Execute and validate the evaluation query
                     out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
                     rows_to_process, rows_to_patch = out[0]
@@ -9721,7 +9992,7 @@ class GraphRegistry():
                 # Else, we assume that the evaluation query has not been executed
                 else:
                     rows_to_process, rows_to_patch = 0, 0
-                
+
                 # Evaluate the patch operation
                 if 'eval' in actions:
 
@@ -9741,9 +10012,9 @@ class GraphRegistry():
                     UPDATE {target_table_path} i
                 INNER JOIN {buildup_link_table_path} b
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
-                       SET {   ', '.join([f'i.{c}  = b.{c}' for c in self.obj_fields_with_lang])}
+                       SET {   ', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}
                      WHERE b.to_process > 0.5
-                       AND ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj_fields_with_lang])});
+                       AND ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])});
                 """
 
                 # Print the commit query
@@ -9758,19 +10029,30 @@ class GraphRegistry():
                         return
                     # Else, execute the query in chunks
                     else:
-                        self.db.execute_query_in_chunks(engine_name=self.engine_name, schema_name=target_schema_name, table_name=target_table_name, query=sql_query_commit, chunk_size=10000, row_id_name='i.row_id', show_progress=False)
+                        self.db.execute_query_in_chunks(
+                            engine_name   = self.engine_name,
+                            schema_name   = target_schema_name,
+                            table_name    = target_table_name,
+                            query         = sql_query_commit,
+                            chunk_size    = 10000,
+                            row_id_name   = 'i.row_id',
+                            show_progress = False
+                        )
 
             # Index > Doc-Links > Vertical patching > Update ORG-table specific custom fields
             def vertical_patch_parentchild(self, actions=()):
-                
-                # Check if there are fields to update
-                if len(self.obj_fields_with_lang) == 0:
-                    if 'eval' in actions:
-                        sysmsg.trace(f"No fields to update for link_type '{self.link_type}'.")
+
+                # Check if there are fields to patch
+                if len(self.graphsearch_obj2obj_fields) == 0:
+                    if 'print' in actions:
+                        sysmsg.trace(f"No fields to patch for doc-link type '{self.doc_type} --> {self.link_type}'.")
                     return
-                
+
+                # Get unique link direction
+                src,trg = sorted([self.doc_type, self.link_type])
+
                 # Full table paths
-                buildup_link_table_name = f'IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}'
+                buildup_link_table_name = f'IndexBuildup_Fields_Links_ParentChild_{src}_{trg}'
                 buildup_link_table_path = f"{mysql_schema_names[self.engine_name]['graph_cache']}.{buildup_link_table_name}"
                 target_table_name_1     = f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG"
                 target_table_name_2     = f"Index_D_{self.link_type}_L_{self.doc_type}_T_ORG"
@@ -9792,7 +10074,7 @@ class GraphRegistry():
                     table_name  = target_table_name_1
                 ):
                     return
-                
+
                 # Check if target table 2 exists
                 if not self.db.table_exists(
                     engine_name = self.engine_name,
@@ -9800,10 +10082,10 @@ class GraphRegistry():
                     table_name  = target_table_name_2
                 ):
                     return
-                
+
                 # Generate evaluation query 1
                 sql_query_eval_1 = f"""
-                    SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj2obj_fields_with_lang])}), 0) AS n_patch
+                    SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}), 0) AS n_patch
                       FROM {buildup_link_table_path} b
                  LEFT JOIN {target_table_path_1} i
                         ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
@@ -9813,7 +10095,7 @@ class GraphRegistry():
 
                 # Generate evaluation query 2
                 sql_query_eval_2 = f"""
-                    SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.obj2obj_fields_with_lang])}), 0) AS n_patch
+                    SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}), 0) AS n_patch
                       FROM {buildup_link_table_path} b
                  LEFT JOIN {target_table_path_2} i
                         ON ( i.doc_institution,  i.doc_type,  i.doc_id, i.link_institution, i.link_type, i.link_id)
@@ -9830,6 +10112,10 @@ class GraphRegistry():
                     out_1 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
                     out_2 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
 
+                    # Validate the outputs
+                    out_1 = out_1 if type(out_1) is list else [[0,0]]
+                    out_2 = out_2 if type(out_2) is list else [[0,0]]
+
                     # Extract evalutation parameters
                     rows_to_process_1, rows_to_patch_1 = out_1[0]
                     rows_to_process_2, rows_to_patch_2 = out_2[0]
@@ -9838,7 +10124,7 @@ class GraphRegistry():
                 else:
                     rows_to_process_1, rows_to_patch_1 = 0, 0
                     rows_to_process_2, rows_to_patch_2 = 0, 0
-                
+
                 # Evaluate the patch operation
                 if 'eval' in actions:
 
@@ -9867,8 +10153,8 @@ class GraphRegistry():
                 INNER JOIN {buildup_link_table_path} b
                         ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
                          = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
-                       SET  {',   '.join([f'i.{c}  = b.{c}' for c in self.obj2obj_fields_with_lang])}
-                     WHERE ({' OR '.join([f'i.{c} != b.{c}' for c in self.obj2obj_fields_with_lang])})
+                       SET  {',   '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj2obj_fields])}
+                     WHERE ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
                        AND b.to_process > 0.5;
                 """
 
@@ -9878,8 +10164,8 @@ class GraphRegistry():
                 INNER JOIN {buildup_link_table_path} b
                         ON ( i.doc_institution,  i.doc_type,  i.doc_id, i.link_institution, i.link_type, i.link_id)
                          = (b.link_institution, b.link_type, b.link_id,  b.doc_institution,  b.doc_type,  b.doc_id)
-                       SET  {',   '.join([f'i.{c}  = b.{c}' for c in self.obj2obj_fields_with_lang])}
-                     WHERE ({' OR '.join([f'i.{c} != b.{c}' for c in self.obj2obj_fields_with_lang])})
+                       SET  {',   '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj2obj_fields])}
+                     WHERE ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
                        AND b.to_process > 0.5;
                 """
 
@@ -9894,7 +10180,7 @@ class GraphRegistry():
                     # Return if there are no rows to patch
                     if rows_to_patch_1 == 0 and rows_to_patch_2 == 0:
                         return
-                    
+
                     # Else, execute the query in chunks
                     else:
 
@@ -9907,7 +10193,7 @@ class GraphRegistry():
                             chunk_size  = 10000,
                             row_id_name = 'i.row_id'
                         )
-                        
+
                         # Execute the second query
                         self.db.execute_query_in_chunks(
                             engine_name = self.engine_name,
@@ -9921,26 +10207,26 @@ class GraphRegistry():
             # Index > Doc-Links > Vertical patching > Update ElasticSearch specific fields
             def vertical_patch_elasticsearch(self, actions=()):
 
-                # Check if there are fields to update
-                if len(self.obj_fields_with_lang) == 0:
-                    if 'eval' in actions:
-                        sysmsg.trace(f"No fields to update for link_type '{self.link_type}'.")
+                # Check if there are fields to patch
+                if len(self.elasticsearch_obj_fields) == 0:
+                    if 'print' in actions:
+                        sysmsg.trace(f"No fields to patch for doc-link type '{self.doc_type} --> {self.link_type}'.")
                     return
-                
+
                 # Full table paths
                 buildup_link_table_path = f"{mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Docs_{self.link_type}"
                 target_schema_name      = mysql_schema_names[self.engine_name]['es_cache']
                 target_table_name       = f"Index_D_{self.doc_type}_L_{self.link_type}"
                 target_table_path       = f"{target_schema_name}.{target_table_name}"
 
-                # Check if target table exists
-                if not self.db.table_exists(
-                    engine_name = self.engine_name,
-                    schema_name = target_schema_name,
-                    table_name  = target_table_name
-                ):
-                    return
-                
+                # # Check if target table exists
+                # if not self.db.table_exists(
+                #     engine_name = self.engine_name,
+                #     schema_name = target_schema_name,
+                #     table_name  = target_table_name
+                # ):
+                #     return
+
                 # Generate evaluation query
                 sql_query_eval = f"""
                       SELECT COUNT(*) AS n_total, COALESCE(SUM(
@@ -9948,7 +10234,7 @@ class GraphRegistry():
                                 OR COALESCE(t.link_name_fr, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value), "__null__")
                                 OR COALESCE(t.link_short_description_en, "__null__") != COALESCE(p.description_short_en_value, "__null__")
                                 OR COALESCE(t.link_short_description_fr, "__null__") != COALESCE(p.description_short_fr_value, "__null__")
-                                {'OR ' if len(self.obj_fields_with_lang)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.obj_fields_with_lang])}
+                                {'OR ' if len(self.elasticsearch_obj_fields)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.elasticsearch_obj_fields])}
                              ), 0) AS n_patch
                         FROM {schema_graph_cache_test}.Data_N_Object_T_PageProfile p
 
@@ -9967,8 +10253,9 @@ class GraphRegistry():
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
 
-                    # Execute the evaluation query
+                    # Execute and validate the evaluation query
                     out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
                     rows_to_process, rows_to_patch = out[0]
@@ -9976,7 +10263,7 @@ class GraphRegistry():
                 # Else, we assume that the evaluation query has not been executed
                 else:
                     rows_to_process, rows_to_patch = 0, 0
-                
+
                 # Evaluate the patch operation
                 if 'eval' in actions:
 
@@ -9990,12 +10277,12 @@ class GraphRegistry():
                         print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
                         if rows_to_patch == 0:
                             sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
-                    
+
                 # Generate commit query
                 sql_query_commit = f"""
                     UPDATE {target_table_path} t
 
-                INNER JOIN {schema_graph_cache_test}.Data_N_Object_T_PageProfile p 
+                INNER JOIN {schema_graph_cache_test}.Data_N_Object_T_PageProfile p
                         ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
 
                 INNER JOIN {buildup_link_table_path} l
@@ -10005,7 +10292,7 @@ class GraphRegistry():
                            t.link_name_fr = IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value),
                            t.link_short_description_en = p.description_short_en_value,
                            t.link_short_description_fr = p.description_short_fr_value
-                           {', ' if len(self.obj_fields_with_lang)>0 else ''}{', '.join([f't.{c} = l.{c}' for c in self.obj_fields_with_lang])}
+                           {', ' if len(self.elasticsearch_obj_fields)>0 else ''}{', '.join([f't.{c} = l.{c}' for c in self.elasticsearch_obj_fields])}
 
                      WHERE p.object_type = '{self.link_type}'
                        AND (p.to_process > 0.5 OR l.to_process > 0.5)
@@ -10014,7 +10301,7 @@ class GraphRegistry():
                              OR COALESCE(t.link_name_fr, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value), "__null__")
                              OR COALESCE(t.link_short_description_en, "__null__") != COALESCE(p.description_short_en_value, "__null__")
                              OR COALESCE(t.link_short_description_fr, "__null__") != COALESCE(p.description_short_fr_value, "__null__")
-                             {'OR ' if len(self.obj_fields_with_lang)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.obj_fields_with_lang])}
+                             {'OR ' if len(self.elasticsearch_obj_fields)>0 else ''}{' OR '.join([f'COALESCE(t.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.elasticsearch_obj_fields])}
                            )
                 """
 
@@ -10030,32 +10317,41 @@ class GraphRegistry():
                         return
                     # Else, execute the query in chunks
                     else:
-                        self.db.execute_query_in_chunks(engine_name=self.engine_name, schema_name=target_schema_name, table_name=target_table_name, query=sql_query_commit, chunk_size=10000, row_id_name='t.row_id')
+                        self.db.execute_query_in_chunks(
+                            engine_name = self.engine_name,
+                            schema_name = target_schema_name,
+                            table_name  = target_table_name,
+                            query       = sql_query_commit,
+                            chunk_size  = 10000,
+                            row_id_name = 't.row_id'
+                        )
 
             # ------- Rollbacks ------- #
 
             # Index > Doc-Links > Vertical patching > Roll back to previous state
             def vertical_rollback_parentchild(self, rollback_date=False, actions=()):
-                
-                # Generate SQL query
-                SQLQuery = f"""
-                        UPDATE {schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_ORG i
-                    INNER JOIN {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b
-                            ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                            = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
-                        SET {', '.join([f'i.{c} = b.{c}' for c in self.obj2obj_fields_with_lang])}
-                        WHERE b.rollback_date = '{rollback_date}';
-                """
-                
-                # Generate SQL query
-                SQLQuery = f"""
-                        UPDATE {schema_graphsearch_test}.Index_D_{self.link_type}_L_{self.doc_type}_T_ORG i
-                    INNER JOIN {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b
-                            ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                            = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
-                        SET {', '.join([f'i.{c} = b.{c}' for c in self.obj2obj_fields_with_lang])}
-                        WHERE b.rollback_date = '{rollback_date}';
-                """
+                return NotImplementedError
+                if False:
+                    pass
+                    # # Generate SQL query
+                    # SQLQuery = f"""
+                    #         UPDATE {schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_ORG i
+                    #     INNER JOIN {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b
+                    #             ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
+                    #             = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
+                    #         SET {', '.join([f'i.{c} = b.{c}' for c in self.graphsearch_obj2obj_fields])}
+                    #         WHERE b.rollback_date = '{rollback_date}';
+                    # """
+
+                    # # Generate SQL query
+                    # SQLQuery = f"""
+                    #         UPDATE {schema_graphsearch_test}.Index_D_{self.link_type}_L_{self.doc_type}_T_ORG i
+                    #     INNER JOIN {schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b
+                    #             ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
+                    #             = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
+                    #         SET {', '.join([f'i.{c} = b.{c}' for c in self.graphsearch_obj2obj_fields])}
+                    #         WHERE b.rollback_date = '{rollback_date}';
+                    # """
 
             #=====================#
             # Horizontal patching #
@@ -10065,71 +10361,73 @@ class GraphRegistry():
 
             # Index > Doc-Links > Horizontal patching > Generate snapshot
             def horizontal_snapshot(self, rollback_date, actions=()):
+                return NotImplementedError
+                if False:
+                    pass
+                    # # Check if there's something to process
+                    # if self.link_subtype.upper() == 'ORG':
+                    #     if len(self.db.execute_query(
+                    #         engine_name = 'test',
+                    #         query = f"""
+                    #             SELECT 1
+                    #             FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric 
+                    #             WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
+                    #             AND to_process > 0.5 LIMIT 1"""
+                    #         )) == 0:
+                    #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
+                    #         return
+                    # elif self.link_subtype.upper() == 'SEM':
+                    #     if len(self.db.execute_query(
+                    #         engine_name = 'test',
+                    #         query = f"""
+                    #             SELECT 1
+                    #             FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AS
+                    #             WHERE ((from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
+                    #             OR     (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}"))
+                    #             AND to_process > 0.5 LIMIT 1"""
+                    #         )) == 0:
+                    #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
+                    #         return
 
-                # Check if there's something to process
-                if self.link_subtype.upper() == 'ORG':
-                    if len(self.db.execute_query(
-                        engine_name = 'test',
-                        query = f"""
-                            SELECT 1
-                            FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric 
-                            WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                            AND to_process > 0.5 LIMIT 1"""
-                        )) == 0:
-                        # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
-                        return
-                elif self.link_subtype.upper() == 'SEM':
-                    if len(self.db.execute_query(
-                        engine_name = 'test',
-                        query = f"""
-                            SELECT 1
-                            FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AS
-                            WHERE ((from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                            OR     (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}"))
-                            AND to_process > 0.5 LIMIT 1"""
-                        )) == 0:
-                        # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
-                        return
+                    # # Check if table exists
+                    # if not self.db.table_exists(engine_name='test', schema_name=self.test_schema_name, table_name=self.index_table_name):
+                    #     return False
 
-                # Check if table exists
-                if not self.db.table_exists(engine_name='test', schema_name=self.test_schema_name, table_name=self.index_table_name):
-                    return False
+                    # # Organisational table?
+                    # if self.link_subtype.upper() == 'ORG':
 
-                # Organisational table?
-                if self.link_subtype.upper() == 'ORG':
+                    #     # Generate SQL query @@@@@
+                    #     SQLQuery = f"""
+                    #     INSERT INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
+                    #                       (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
+                    #                 SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.degree_score AS score, i.row_score, i.row_rank
+                    #                   FROM {schema_graphsearch_test}.{self.index_table_name} i
+                    #             INNER JOIN (SELECT DISTINCT from_institution_id AS doc_institution, from_object_type AS doc_type, from_object_id AS doc_id
+                    #                                    FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
+                    #                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
+                    #                                     AND to_process > 0.5) c
+                    #                  USING (doc_institution, doc_type, doc_id)
+                    #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    #     """
 
-                    # Generate SQL query @@@@@
-                    SQLQuery = f"""
-                    INSERT INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
-                                      (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
-                                SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.degree_score AS score, i.row_score, i.row_rank
-                                  FROM {schema_graphsearch_test}.{self.index_table_name} i
-                            INNER JOIN (SELECT DISTINCT from_institution_id AS doc_institution, from_object_type AS doc_type, from_object_id AS doc_id
-                                                   FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
-                                                  WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                                    AND to_process > 0.5) c
-                                 USING (doc_institution, doc_type, doc_id)
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    """
+                    # # Semantic table?
+                    # elif self.link_subtype.upper() == 'SEM':
 
-                # Semantic table?
-                elif self.link_subtype.upper() == 'SEM':
-
-                    # Generate SQL query @@@@@@
-                    SQLQuery = f"""
-                    INSERT INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
-                                      (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
-                                SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.semantic_score AS score, i.row_score, i.row_rank
-                                  FROM {schema_graphsearch_test}.{self.index_table_name} i
-                            INNER JOIN (SELECT DISTINCT s.from_institution_id AS doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id
-                                                   FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AS s
-                                             INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.link_type} i
-                                                     ON (s.from_object_type,   s.to_object_type,   s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                                                     OR (  s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                                                  WHERE s.to_process > 0.5) c
-                                 USING (doc_institution, doc_type, doc_id)
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    """
+                    #     # Generate SQL query @@@@@@
+                    #     SQLQuery = f"""
+                    #     INSERT INTO {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
+                    #                       (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
+                    #                 SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.semantic_score AS score, i.row_score, i.row_rank
+                    #                   FROM {schema_graphsearch_test}.{self.index_table_name} i
+                    #             INNER JOIN (SELECT DISTINCT s.from_institution_id AS doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id
+                    #                                    FROM {schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AS s
+                    #                              INNER JOIN {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.link_type} i
+                    #                                      ON (s.from_object_type,   s.to_object_type,   s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
+                    #                                      OR (  s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
+                    #                                   WHERE s.to_process > 0.5) c
+                    #                  USING (doc_institution, doc_type, doc_id)
+                    #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    #     """
 
             # ------- Patching ------- #
 
@@ -10173,7 +10471,7 @@ class GraphRegistry():
 
                 # Initialise the SQL queries
                 SQLQuery1, SQLQuery2, SQLQuery3 = None, None, None
-                
+
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
 
@@ -10186,10 +10484,10 @@ class GraphRegistry():
                         # Generate SQL query 1
                         SQLQuery1 = f"""
                         REPLACE INTO {target_table_path}
-                                    (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{', ' if len(self.obj_fields_with_lang)>0 else ' '}{', '.join(self.obj2obj_fields_with_lang)}{',' if len(self.obj2obj_fields_with_lang)>0 else ''} degree_score, row_score, row_rank)
+                                    (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
                               SELECT p.from_institution_id AS doc_institution, p.from_object_type AS doc_type, p.from_object_id AS doc_id,
                                      p.to_institution_id AS link_institution, p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
-                                     {', '.join([f'bd.{c}' for c in self.obj_fields_with_lang])}{', ' if len(self.obj_fields_with_lang)>0 else ' '}{', '.join([f'bl.{c}' for c in self.obj2obj_fields_with_lang])}{',' if len(self.obj2obj_fields_with_lang)>0 else ''}
+                                     {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join([f'bl.{c}' for c in self.graphsearch_obj2obj_fields])}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''}
                                      bd.degree_score, 0 AS row_score, 99 AS row_rank
                                 FROM {parentchild_table_path} p
                           INNER JOIN {buildup_link_table_path} bd
@@ -10200,17 +10498,17 @@ class GraphRegistry():
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
                                  AND p.to_process > 0.5;
                         """
-                    
+
                     # No buildup table
                     else:
 
                         # Generate SQL query 1
                         SQLQuery1 = f"""
                         REPLACE INTO {target_table_path}
-                                    (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{', ' if len(self.obj_fields_with_lang)>0 else ' '} degree_score, row_score, row_rank)
+                                    (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank)
                               SELECT p.from_institution_id AS doc_institution, p.from_object_type AS doc_type, p.from_object_id AS doc_id,
                                      p.to_institution_id AS link_institution, p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
-                                     {', '.join([f'bd.{c}' for c in self.obj_fields_with_lang])}{', ' if len(self.obj_fields_with_lang)>0 else ' '}
+                                     {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}
                                      bd.degree_score, 0 AS row_score, 99 AS row_rank
                                 FROM {parentchild_table_path} p
                           INNER JOIN {buildup_link_table_path} bd
@@ -10223,9 +10521,9 @@ class GraphRegistry():
                     # Generate SQL query 3
                     SQLQuery3 = f"""
                     REPLACE INTO {target_table_path}
-                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{', ' if len(self.obj_fields_with_lang)>0 else ' '}{', '.join(self.obj2obj_fields_with_lang)}{',' if len(self.obj2obj_fields_with_lang)>0 else ''} degree_score, row_score, row_rank)
-                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{', ' if len(self.obj_fields_with_lang)>0 else ' '}{', '.join(self.obj2obj_fields_with_lang)}{',' if len(self.obj2obj_fields_with_lang)>0 else ''} degree_score, row_score, row_rank
-                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{', ' if len(self.obj_fields_with_lang)>0 else ' '}{', '.join(self.obj2obj_fields_with_lang)}{',' if len(self.obj2obj_fields_with_lang)>0 else ''} degree_score,
+                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
+                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
+                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score,
                                         CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
                                                         row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
                                     FROM {target_table_path}
@@ -10235,7 +10533,7 @@ class GraphRegistry():
                                                       AND to_object_type   {colate_correct} = '{self.link_type}'
                                                       AND to_process > 0.5) t
                                    USING (doc_id)
-                                 ) tt 
+                                 ) tt
                            WHERE row_rank <= {row_rank_thr};
                     """
 
@@ -10245,10 +10543,10 @@ class GraphRegistry():
                     # Generate SQL query 1
                     SQLQuery1 = f"""
                     REPLACE INTO {target_table_path}
-                                (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{',' if len(self.obj_fields_with_lang)>0 else ''} semantic_score, row_score, row_rank)
+                                (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
                           SELECT s.from_institution_id AS doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id,
                                  s.to_institution_id AS link_institution, s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
-                                 {', '.join([f'i.{c}' for c in self.obj_fields_with_lang])}{',' if len(self.obj_fields_with_lang)>0 else ''}
+                                 {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                  s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
                             FROM {scoresmatrix_table_path} s
                       INNER JOIN {buildup_link_table_path} i
@@ -10259,10 +10557,10 @@ class GraphRegistry():
                     # Generate SQL query 2 (same as SQL query 1 but flipped)
                     SQLQuery2 = f"""
                     REPLACE INTO {target_table_path}
-                                (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{',' if len(self.obj_fields_with_lang)>0 else ''} semantic_score, row_score, row_rank)
+                                (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
                           SELECT s.to_institution_id AS doc_institution, s.to_object_type AS doc_type, s.to_object_id AS doc_id,
                                  s.from_institution_id AS link_institution, s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
-                                 {', '.join([f'i.{c}' for c in self.obj_fields_with_lang])}{',' if len(self.obj_fields_with_lang)>0 else ''}
+                                 {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                  s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
                             FROM {scoresmatrix_table_path} s
                       INNER JOIN {buildup_link_table_path} i
@@ -10274,9 +10572,9 @@ class GraphRegistry():
                     # TODO: Verify new query  
                     SQLQuery3 = f"""
                     REPLACE INTO {target_table_path}
-                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{',' if len(self.obj_fields_with_lang)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{',' if len(self.obj_fields_with_lang)>0 else ''} semantic_score, row_score, row_rank
-                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.obj_fields_with_lang)}{',' if len(self.obj_fields_with_lang)>0 else ''} semantic_score,
+                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
                                          CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
                                                          row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
                                     FROM {target_table_path}
@@ -10287,7 +10585,7 @@ class GraphRegistry():
                                                                 (       from_object_type {colate_correct} = "{self.doc_type}"
                                                                     AND   to_object_type {colate_correct} = "{self.link_type}"
                                                                 )
-                                                            OR  
+                                                            OR
                                                                 (
                                                                           to_object_type {colate_correct} = "{self.doc_type}"
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
@@ -10303,7 +10601,7 @@ class GraphRegistry():
                                                                 (       from_object_type {colate_correct} = "{self.doc_type}"
                                                                     AND   to_object_type {colate_correct} = "{self.link_type}"
                                                                 )
-                                                            OR  
+                                                            OR
                                                                 (
                                                                           to_object_type {colate_correct} = "{self.doc_type}"
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
@@ -10312,7 +10610,7 @@ class GraphRegistry():
                                                       AND to_process > 0.5
                                          ) t
                                    USING (doc_id)
-                                 ) tt 
+                                 ) tt
                            WHERE row_rank <= {row_rank_thr};
                     """
 
@@ -10344,7 +10642,7 @@ class GraphRegistry():
 
                     # Print the evaluation queries
                     if 'print' in actions:
-                        print(f"\n🔍 Evaluation queries for {target_table_path}:") 
+                        print(f"\n🔍 Evaluation queries for {target_table_path}:")
                         print(sql_query_eval_1)
                         print(sql_query_eval_2)
                         print(sql_query_eval_3)
@@ -10373,7 +10671,7 @@ class GraphRegistry():
                 #     if SQLQuery3:
                 #         print('')
                 #         print(SQLQuery3)
-                
+
                 # Execute SQL query
                 if 'commit' in actions:
                     if SQLQuery1:
@@ -10385,10 +10683,10 @@ class GraphRegistry():
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
-                
+
                 # Resolve table name or return if it doesn't exist
                 # Table type: MIX
-                if self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
+                if   self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX"
@@ -10461,25 +10759,25 @@ class GraphRegistry():
                 # Generate SQL query
                 sql_query_commit = f"""
                     INSERT INTO {t}
-                                (doc_type, doc_id, link_type, link_subtype, link_id, link_rank, link_name_en, link_name_fr, link_short_description_en, link_short_description_fr{', ' if len(self.obj_fields_with_lang)>0 else ''}{', '.join([f'{c}' for c in self.obj_fields_with_lang])})
+                                (doc_type, doc_id, link_type, link_subtype, link_id, link_rank, link_name_en, link_name_fr, link_short_description_en, link_short_description_fr{', ' if len(self.elasticsearch_obj_fields)>0 else ''}{', '.join([f'{c}' for c in self.elasticsearch_obj_fields])})
                          SELECT d.doc_type, d.doc_id, dl.link_type, dl.link_subtype, dl.link_id, dl.{score_column_name} AS link_rank,
                                 IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value) AS link_name_en,
                                 IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value) AS link_name_fr,
-                                p.description_short_en_value AS link_short_description_en, p.description_short_fr_value AS link_short_description_fr{',' if len(self.obj_fields_with_lang)>0 else ''}
-                                {', '.join([f'l.{c}' for c in self.obj_fields_with_lang])}
+                                p.description_short_en_value AS link_short_description_en, p.description_short_fr_value AS link_short_description_fr{',' if len(self.elasticsearch_obj_fields)>0 else ''}
+                                {', '.join([f'l.{c}' for c in self.elasticsearch_obj_fields])}
                            FROM {schema_graphsearch_test}.Index_D_{self.doc_type} d
                      INNER JOIN {schema_graphsearch_test}.{table_name} dl
                           USING (doc_type, doc_id)
                      INNER JOIN {schema_graphsearch_test}.Index_D_{self.link_type} l
                              ON (dl.link_type, dl.link_id) = (l.doc_type, l.doc_id)
-                     INNER JOIN {schema_graphsearch_test}.Data_N_Object_T_PageProfile p 
+                     INNER JOIN {schema_graphsearch_test}.Data_N_Object_T_PageProfile p
                              ON (p.object_type, p.object_id) = (l.doc_type, l.doc_id)
                      INNER JOIN (
                                 {to_process_sql_statement}
                                 ) tp
                              ON (dl.doc_type, dl.doc_id) = (tp.doc_type, tp.doc_id)
                           WHERE dl.row_rank <= {row_rank_thr}
-                                {'AND' if len(self.es_filters)>0 else ''} {' AND '.join([f'l.{f}' for f in self.es_filters])}
+                                {'AND' if len(self.elasticsearch_filters)>0 else ''} {' AND '.join([f'l.{f}' for f in self.elasticsearch_filters])}
                ON DUPLICATE KEY
                          UPDATE {t}.link_rank = IF(COALESCE({t}.link_rank, "__null__") != COALESCE(dl.{score_column_name}, "__null__"), dl.{score_column_name}, {t}.link_rank);
                 """
@@ -10495,8 +10793,9 @@ class GraphRegistry():
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
 
-                    # Execute the evaluation query
+                    # Execute and validate the evaluation query
                     out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = out if type(out) is list else [[0,0]]
 
                     # Number of rows to patch
                     rows_to_patch = out[0][0] if out else 0
@@ -10504,10 +10803,10 @@ class GraphRegistry():
                 # Else, we assume that the evaluation query has not been executed
                 else:
                     rows_to_patch = 0
-                
+
                 # Evaluate the patch operation
                 if 'eval' in actions:
-                    
+
                     # Print the evaluation query
                     if 'print' in actions:
                         print(f"\n🔍 Evaluation query for {schema_graphsearch_test}.Index_D_{self.doc_type}:") 
@@ -10519,7 +10818,7 @@ class GraphRegistry():
                     # Print the results
                     if rows_to_patch > 0:
                         df = pd.DataFrame(out, columns=['rows to insert/replace'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {schema_graphsearch_test}.Index_D_{self.doc_type}:')
+                        print_dataframe(df, title=f'\n🔍 Evaluation results for {schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}:')
 
                 # Print the commit query
                 if 'print' in actions:
@@ -10539,43 +10838,45 @@ class GraphRegistry():
 
             # Index > Doc-Links > Horizontal patching > Roll back to previous state
             def horizontal_rollback(self, source_doc_type, target_doc_type, index_type, rollback_date, test_mode=False):
+                raise NotImplementedError
+                if False:
+                    pass
+                    # # Check if there's something to process
+                    # if len(self.db.execute_query(
+                    #     engine_name = 'test',
+                    #     query = f"""
+                    #         SELECT 1
+                    #         FROM {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
+                    #         WHERE (doc_type, link_type) = ("{source_doc_type}", "{target_doc_type}")
+                    #         AND link_subtype IN ({"'Parent-to-Child', 'Child-to-Parent'" if index_type=='ORG' else "'Semantic'"})
+                    #         AND rollback_date = "{rollback_date}" LIMIT 1"""
+                    #     )) == 0:
+                    #     # print(f"Nothing to process for link types '{source_doc_type}' and '{target_doc_type}'.")
+                    #     return
 
-                # Check if there's something to process
-                if len(self.db.execute_query(
-                    engine_name = 'test',
-                    query = f"""
-                        SELECT 1
-                        FROM {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
-                        WHERE (doc_type, link_type) = ("{source_doc_type}", "{target_doc_type}")
-                        AND link_subtype IN ({"'Parent-to-Child', 'Child-to-Parent'" if index_type=='ORG' else "'Semantic'"})
-                        AND rollback_date = "{rollback_date}" LIMIT 1"""
-                    )) == 0:
-                    # print(f"Nothing to process for link types '{source_doc_type}' and '{target_doc_type}'.")
-                    return
+                    # # Generate table name
+                    # table_name = f'Index_D_{source_doc_type}_L_{target_doc_type}_T_{index_type}'
 
-                # Generate table name
-                table_name = f'Index_D_{source_doc_type}_L_{target_doc_type}_T_{index_type}'
+                    # # Check if table exists
+                    # if not self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name):
+                    #     # print(f"Table '{schema_graphsearch_test}.{table_name}' does not exist.")
+                    #     return False
 
-                # Check if table exists
-                if not self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name):
-                    # print(f"Table '{schema_graphsearch_test}.{table_name}' does not exist.")
-                    return False
-                
-                # Generate SQL query
-                SQLQuery = f"""
-                        UPDATE {schema_graphsearch_test}.{table_name} i
-                    INNER JOIN {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links b
-                         USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id)
-                           SET i.{'semantic' if index_type=='SEM' else 'degree'}_score = b.score, i.row_score = b.row_score, i.row_rank = b.row_rank
-                         WHERE (b.doc_type, b.link_type) = ("{source_doc_type}", "{target_doc_type}")
-                           AND b.rollback_date = "{rollback_date}";
-                        """
+                    # # Generate SQL query
+                    # SQLQuery = f"""
+                    #         UPDATE {schema_graphsearch_test}.{table_name} i
+                    #     INNER JOIN {schema_graph_cache_test}.IndexRollback_ScoreRanks_Links b
+                    #          USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id)
+                    #            SET i.{'semantic' if index_type=='SEM' else 'degree'}_score = b.score, i.row_score = b.row_score, i.row_rank = b.row_rank
+                    #          WHERE (b.doc_type, b.link_type) = ("{source_doc_type}", "{target_doc_type}")
+                    #            AND b.rollback_date = "{rollback_date}";
+                    #         """
 
-                # Execute SQL query
-                if test_mode:
-                    print(SQLQuery)
-                else:
-                    self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
+                    # # Execute SQL query
+                    # if test_mode:
+                    #     print(SQLQuery)
+                    # else:
+                    #     self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
 
             #=================#
             # Airflow updates #
@@ -10638,7 +10939,7 @@ class GraphRegistry():
             self.idx = GraphIndex()
 
         # Generate local JSON cache for ElasticSearch index creation
-        def generate_local_cache(self, index_date=False, ignore_warnings=True, replace_existing=False, force_replace=False):
+        def generate_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
 
             # Print status
             sysmsg.info(f"🐙 📝 Generate local JSON cache for ElasticSearch index creation (index date: {index_date}).")
@@ -10697,13 +10998,8 @@ class GraphRegistry():
                     # Initialise index dict struct
                     es_index_struct = {}
 
-                    # Fetch doc fields
-                    obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][doc_type]]
-                    custom_column_names_doc = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
-
-                    # TODO: fix this
-                    if doc_type == 'Lecture':
-                        custom_column_names_doc = ["video_stream_url", "video_duration", "is_restricted"]
+                    # Fetch doc fields from config
+                    custom_column_names_doc = idxcfg.settings['elasticsearch']['fields']['docs'].get(doc_type, [])
 
                     # Combine default and custom column names
                     column_names_doc = default_column_names_doc + custom_column_names_doc
@@ -10745,17 +11041,12 @@ class GraphRegistry():
                         # Append doc JSON to ES index
                         if d[1] not in es_index_struct[doc_type]:
                             es_index_struct[doc_type][d[1]] = doc_json
-                        
+
                     # Loop over all link doc types
                     for _, link_type in index_doc_types_list:
 
-                        # Fetch doc fields
-                        obj_fields   = [tuple(v) if type(v) is list else ('n/a', v) for v in index_config['fields']['docs'][link_type]]
-                        custom_column_names_link = [f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language] for field_language, field_name in obj_fields]
-
-                        # TODO: fix this
-                        if link_type == 'Lecture':
-                            custom_column_names_link = ["video_stream_url", "video_duration", "is_restricted"]
+                        # Fetch link fields from config
+                        custom_column_names_link = idxcfg.settings['elasticsearch']['fields' ]['links'].get(link_type, [])
 
                         # Combine default and custom column names
                         column_names_link = default_column_names_link + custom_column_names_link
@@ -10772,6 +11063,7 @@ class GraphRegistry():
                                 FROM {schema_es_cache}.Index_D_{doc_type}_L_{link_type}
                             ORDER BY doc_id ASC, link_rank ASC
                         """)
+                        list_of_links = list_of_links if type(list_of_links) is list else []
 
                         # Loop over list of links
                         for l in list_of_links:
@@ -10809,7 +11101,7 @@ class GraphRegistry():
             sysmsg.success(f"🐙 ✅ Done generating local JSON cache.\n")
 
         # Generate ElasticSearch index from local JSON cache
-        def generate_index_from_local_cache(self, index_date=False, ignore_warnings=True, replace_existing=False, force_replace=False):
+        def generate_index_from_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
 
             # Print status
             sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
@@ -10905,7 +11197,7 @@ class GraphRegistry():
 
         # # Copy ElasticSearch index from test to production environment
         # def copy_index_from_test_to_prod(self, index_name, rename_to=None, chunk_size=1000):
-            
+
         #     # Print status
         #     sysmsg.info(f"➡️ 📝 Copy ElasticSearch index '{index_name}' from test to prod environment (rename to: {rename_to}).")
 
