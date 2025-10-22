@@ -104,9 +104,7 @@ INDEX_CONFIG_FILE = resolve_repo_path(
 with INDEX_CONFIG_FILE.open("r", encoding="utf-8") as f:
     index_config = json.load(f)
 
-# # Load Table configuration
-# with open(INDEX_CONFIG_FILE, 'r') as f:
-#     index_config = json.load(f)
+
 
 # # Index configuration file path
 # config_es_index_config_file = global_config['elasticsearch']['index_configuration_file']
@@ -116,9 +114,6 @@ with INDEX_CONFIG_FILE.open("r", encoding="utf-8") as f:
 #     INDEX_CONFIG_FILE = os.path.join(package_dir, config_es_index_config_file)
 
 
-# # Load Index configuration
-# with open(INDEX_CONFIG_FILE, 'r') as f:
-#     index_config = json.load(f)
 
 # Load GraphAI client
 # config_graphai_client_config_file = global_config['graphai']['client_config_file']
@@ -4617,7 +4612,7 @@ class GraphRegistry():
                 sysmsg.trace(f"Processing '{schema_graph_cache_test}' IndexBuildup Doc tables ...")
 
                 # Fetch list from index config
-                list_of_doc_types = index_config['doc-types']
+                list_of_doc_types = idxcfg.settings['doc_types']
 
                 # Reset flags on index buildup tables
                 with tqdm(list_of_doc_types, unit='doc type') as pb:
@@ -4631,8 +4626,8 @@ class GraphRegistry():
 
                 # Fetch list from index config
                 list_of_p2c_doclink_types = list(set([sorted([d, l])
-                    for d in index_config['fields']['links']['parent-child']
-                    for l in index_config['fields']['links']['parent-child'][d]]))
+                    for d in idxcfg.settings['graphsearch']['fields']['links']['parent_child']
+                    for l in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][d]]))
 
                 # Reset flags on index buildup tables
                 with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
@@ -4739,7 +4734,7 @@ class GraphRegistry():
             sysmsg.trace(f"Processing '{schema_graph_cache_test}' IndexBuildup Doc tables ...")
 
             # Fetch list from index config
-            list_of_doc_types = index_config['doc-types']
+            list_of_doc_types = idxcfg.settings['doc_types']
 
             # Propagate flags on index buildup tables
             with tqdm(list_of_doc_types, unit='doc type') as pb:
@@ -4762,8 +4757,8 @@ class GraphRegistry():
 
             # Fetch list from index config
             list_of_p2c_doclink_types = list(set([sorted([d, l])
-                for d in index_config['fields']['links']['parent-child']
-                for l in index_config['fields']['links']['parent-child'][d]]))
+                for d in idxcfg.settings['graphsearch']['fields']['links']['parent_child']
+                for l in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][d]]))
 
             # Propagate flags on index buildup tables
             with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
@@ -8767,17 +8762,10 @@ class GraphRegistry():
                 #---------------------------------#
 
                 # Fetch doc options
-                include_code_in_name = 0
-                if doc_type in index_config['options']['docs']:
-                    if 'include_code_in_name' in index_config['options']['docs'][doc_type]:
-                        include_code_in_name   = index_config['options']['docs'][doc_type]['include_code_in_name']
+                include_code_in_name = idxcfg.settings['options']['include_code_in_name'].get(doc_type, 0)
 
                 # Fetch object's list of custom fields
-                if doc_type       in index_config['fields']['docs']:
-                    list_of_fields = index_config['fields']['docs'][doc_type]
-                else:
-                    sysmsg.warning(f"No custom fields found in config JSON for doc type '{doc_type}'. Proceeding with empty list...")
-                    list_of_fields = []
+                list_of_fields = idxcfg.settings['graphsearch']['fields' ]['docs'].get(doc_type, [])
 
                 #----------------------------#
                 # Generate SQL query helpers #
@@ -8880,15 +8868,7 @@ class GraphRegistry():
                 #---------------------------------#
 
                 # Fetch organisational object-to-object list of custom fields
-                list_of_fields = []
-                if doc_type               in index_config['fields']['links']['parent-child']:
-                    if link_type          in index_config['fields']['links']['parent-child'][doc_type]:
-                        if 'obj2obj'      in index_config['fields']['links']['parent-child'][doc_type][link_type]:
-                            list_of_fields = index_config['fields']['links']['parent-child'][doc_type][link_type]['obj2obj']
-                if link_type              in index_config['fields']['links']['parent-child']:
-                    if doc_type           in index_config['fields']['links']['parent-child'][link_type]:
-                        if 'obj2obj'      in index_config['fields']['links']['parent-child'][link_type][doc_type]:
-                            list_of_fields = index_config['fields']['links']['parent-child'][link_type][doc_type]['obj2obj']
+                list_of_fields = idxcfg.settings['graphsearch']['fields' ]['links']['parent_child'].get(doc_type, {}).get(link_type, [])
 
                 # Return if no fields to process
                 if len(list_of_fields)==0:
@@ -9035,11 +9015,11 @@ class GraphRegistry():
 
                     # # Get datatypes
                     # datatypes_json = table_datatypes_json[table_type]
-                    # datatypes_json.update(index_config['data-types'])
+                    # datatypes_json.update(...idx...['data-types'])
 
                     # # Get keys
                     # keys_json = table_keys_json[table_type]
-                    # keys_json.update(index_config['data-keys'])
+                    # keys_json.update(...idx...['data-keys'])
 
                     # if 'print' in actions:
                     #     print(sql_query_create_table)
@@ -9133,9 +9113,6 @@ class GraphRegistry():
                 # Assign DB pointer
                 self.db = GraphDB()
 
-                # Print status
-                sysmsg.info(f"📝 Initialise 'IndexDocs' object for: {doc_type}.")
-
                 # Define internal variables
                 self.engine_name        = engine_name
                 self.doc_type           = doc_type
@@ -9151,89 +9128,11 @@ class GraphRegistry():
                 )
                 self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process']]
 
-                #---------------------------#
-                # Fetch doc general options #
-                #---------------------------#
-
-                # Option: include_code_in_name
-                # self.include_code_in_name = 0
-                # if self.doc_type in index_config['options']['docs']:
-                #     self.include_code_in_name = index_config['options']['docs'][self.doc_type]['include_code_in_name']
-                self.include_code_in_name = idxcfg.settings['options']['include_code_in_name'].get(self.doc_type, 0)
-                # if self.include_code_in_name != self.include_code_in_name_:
-                #     sysmsg.critical('if self.include_code_in_name != self.include_code_in_name_')
-                #     exit()
-
-                #----------------------------------------------#
-                # Fetch doc definitions for GraphSearch tables #
-                #----------------------------------------------#
-
-                # Fetch list of fields to display on 'doc' specific tables
-                # Start with lowest priority definitions, then override if others are available
-                # list_of_fields = []
-                # if self.doc_type  in index_config['fields']['docs']:
-                #     list_of_fields = index_config['fields']['docs'][self.doc_type]
-
-                # Assign list of fields to object's internal variable
-                # self.graphsearch_obj_fields = [
-                #     f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                #     for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
-                # ]
-                self.graphsearch_obj_fields = idxcfg.settings['graphsearch']['fields']['docs'].get(doc_type, [])
-                # if self.graphsearch_obj_fields != graphsearch_obj_fields_:
-                #     sysmsg.critical('FAIL.')
-                #     exit()
-
-                # Print out initialisation info
-                print(f"\n🎛️  Settings from config:")
-                print(f" - Option: include_code_in_name ..... {self.include_code_in_name}")
-                print(f" - GraphSearch doc fields ........... {self.graphsearch_obj_fields}")
-
-                #------------------------------------------------------#
-                # Fetch doc definitions for ElasticSearch cache tables #
-                #------------------------------------------------------#
-
-                # # Fetch list of fields to display on 'doc' specific tables
-                # # Start with lowest priority definitions, then override if others are available
-                # list_of_fields = []
-                # if self.doc_type  in index_config[   'fields']['docs']:
-                #     list_of_fields = index_config[   'fields']['docs'][self.doc_type]
-                # if self.doc_type  in index_config['es-fields']['docs']:
-                #     list_of_fields = index_config['es-fields']['docs'][self.doc_type]
-
-                # # Assign list of fields to object's internal variable
-                # self.elasticsearch_obj_fields = [
-                #     f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                #     for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
-                # ]
-
-                self.elasticsearch_obj_fields = idxcfg.settings['elasticsearch']['fields' ]['docs'].get(doc_type, [])
-                # if self.elasticsearch_obj_fields != elasticsearch_obj_fields_:
-                #     sysmsg.critical('FAIL.')
-                #     exit()
-
-
-                # # Fetch ElasticSearch filters (if available)
-                # if self.doc_type   in index_config['es-filters']['docs']:
-                #     self.elasticsearch_filters = index_config['es-filters']['docs'][self.doc_type]
-                # else:
-                #     self.elasticsearch_filters = []
-
-
-                self.elasticsearch_filters = idxcfg.settings['elasticsearch']['filters']['docs'].get(doc_type, [])
-                # if self.elasticsearch_filters != elasticsearch_filters_:
-                #     sysmsg.critical('FAIL.')
-                #     exit()
-
-                # Print out initialisation info
-                print(f" - ElasticSearch doc fields ......... {self.elasticsearch_obj_fields}")
-                print(f" - ElasticSearch filters ............ {self.elasticsearch_filters}")
-                print('')
-
-                #----------------------------------------------------------#
-
-                # Print status
-                sysmsg.success(f"✅ Done initialising 'IndexDocs' object.")
+                # Fetch object fields and options from index config
+                self.include_code_in_name     = idxcfg.settings['options' ]['include_code_in_name'].get(self.doc_type, 0)
+                self.graphsearch_obj_fields   = idxcfg.settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, [])
+                self.elasticsearch_obj_fields = idxcfg.settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, [])
+                self.elasticsearch_filters    = idxcfg.settings['elasticsearch']['filters']['docs'].get(self.doc_type, [])
 
             # Index > Docs > Table info
             def info(self):
@@ -9275,11 +9174,11 @@ class GraphRegistry():
 
                     # # Get datatypes
                     # datatypes_json = table_datatypes_json[table_type]
-                    # datatypes_json.update(index_config['data-types'])
+                    # datatypes_json.update(...idx...['data-types'])
 
                     # # Get keys
                     # keys_json = table_keys_json[table_type]
-                    # keys_json.update(index_config['data-keys'])
+                    # keys_json.update(...idx...['data-keys'])
 
                     # if 'print' in actions:
                     #     print(sql_query_create_table)
@@ -9323,7 +9222,7 @@ class GraphRegistry():
 
                     # # Get datatypes
                     # datatypes_json = table_datatypes_json[table_type]
-                    # datatypes_json.update(index_config['data-types'])
+                    # datatypes_json.update(...idx...['data-types'])
 
                     # if 'print' in actions:
                     #     print(sql_query_create_table)
@@ -9700,9 +9599,6 @@ class GraphRegistry():
                 # Assign DB pointer
                 self.db = GraphDB()
 
-                # Print status
-                sysmsg.info(f"📝 Initialise 'IndexDocLinks' object for: {doc_type} --> {link_type} [{link_subtype}].")
-
                 # Define internal variables
                 self.doc_type     = doc_type
                 self.link_type    = link_type
@@ -9713,88 +9609,11 @@ class GraphRegistry():
                 self.index_table_name        = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}'
                 self.key_column_names        = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
 
-                #--------------------------------------------------#
-                # Fetch doclink definitions for GraphSearch tables #
-                #--------------------------------------------------#
-
-                # Fetch list of fields to display on the 'link' side of doc-links
-                # Start with lowest priority definitions, then override if others are available
-                list_of_fields = []
-                if self.link_type     in index_config['fields']['docs' ]:
-                    list_of_fields     = index_config['fields']['docs' ][self.link_type]
-                if self.link_type     in index_config['fields']['links']['default']:
-                    if 'obj'          in index_config['fields']['links']['default'][self.link_type]:
-                        list_of_fields = index_config['fields']['links']['default'][self.link_type]['obj']
-
-                # Assign list of fields to object's internal variables
-                self.graphsearch_obj_fields = [
-                    f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                    for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
-                ]
-
-                # Initialise parent-child specific internal variable
-                self.graphsearch_obj2obj_fields = []
-
-                # If sublink type is organisational, there are additional settings to fetch
-                if link_subtype.upper() == 'ORG':
-
-                    # Fetch list of additional organisational-specific fields to display on the 'link' side of doc-links
-                    # There are additional fields, so there's no defaulting to other fields
-                    list_of_fields = []
-                    if self.doc_type          in index_config['fields']['links']['parent-child']:
-                        if self.link_type     in index_config['fields']['links']['parent-child'][self.doc_type]:
-                            if 'obj2obj'      in index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]:
-                                list_of_fields = index_config['fields']['links']['parent-child'][self.doc_type][self.link_type]['obj2obj']
-
-                    # Assign list of fields to object's internal variables
-                    self.graphsearch_obj2obj_fields = [
-                        f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                        for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
-                    ]
-
-                # Print out initialisation info
-                print(f"\n🎛️  Settings from config:")
-                print(f" - graphsearch_obj_fields ......... {self.graphsearch_obj_fields}")
-                print(f" - graphsearch_obj2obj_fields ..... {self.graphsearch_obj2obj_fields}")
-
-                #----------------------------------------------------------#
-                # Fetch doclink definitions for ElasticSearch cache tables #
-                #----------------------------------------------------------#
-
-                # Fetch list of fields to display on the 'link' side of doc-links
-                # Start with lowest priority definitions, then override if others are available
-                list_of_fields = []
-                if self.link_type     in index_config[   'fields']['docs' ]:
-                    list_of_fields     = index_config[   'fields']['docs' ][self.link_type]
-                if self.link_type     in index_config[   'fields']['links']['default']:
-                    if 'obj'          in index_config[   'fields']['links']['default'][self.link_type]:
-                        list_of_fields = index_config[   'fields']['links']['default'][self.link_type]['obj']
-                if self.link_type     in index_config['es-fields']['docs' ]:
-                    list_of_fields     = index_config['es-fields']['docs' ][self.link_type]
-                if self.link_type     in index_config['es-fields']['links']:
-                    list_of_fields     = index_config['es-fields']['links'][self.link_type]
-
-                # Assign list of fields to object's internal variables
-                self.elasticsearch_obj_fields = [
-                    f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                    for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
-                ]
-
-                # Fetch ElasticSearch filters (if available)
-                if self.link_type  in index_config['es-filters']['links']:
-                    self.elasticsearch_filters = index_config['es-filters']['links'][self.link_type]
-                else:
-                    self.elasticsearch_filters = []
-
-                # Print out initialisation info
-                print(f" - elasticsearch_obj_fields ....... {self.elasticsearch_obj_fields}")
-                print(f" - elasticsearch_filters .......... {self.elasticsearch_filters}")
-                print('')
-
-                #----------------------------------------------------------#
-
-                # Print status
-                sysmsg.success(f"✅ Done initialising 'IndexDocLinks' object.")
+                # Fetch doclink settings from index config
+                self.graphsearch_obj_fields     = idxcfg.settings['graphsearch'  ]['fields' ]['links']['default'].get(self.link_type, [])
+                self.graphsearch_obj2obj_fields = idxcfg.settings['graphsearch'  ]['fields' ]['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, []) if link_subtype.upper() == 'ORG' else []
+                self.elasticsearch_obj_fields   = idxcfg.settings['elasticsearch']['fields' ]['links'].get(self.link_type, [])
+                self.elasticsearch_filters      = idxcfg.settings['elasticsearch']['filters']['links'].get(self.link_type, [])
 
             # Index > Doc-Links > Table info
             def info(self):
@@ -9839,11 +9658,11 @@ class GraphRegistry():
 
                     # # Get datatypes
                     # datatypes_json = table_datatypes_json[table_type]
-                    # datatypes_json.update(index_config['data-types'])
+                    # datatypes_json.update(...idx...['data-types'])
 
                     # # Get keys
                     # keys_json = table_keys_json[table_type]
-                    # keys_json.update(index_config['data-keys'])
+                    # keys_json.update(...idx...['data-keys'])
 
                     # if 'print' in actions:
                     #     print(sql_query_create_table)
@@ -9888,7 +9707,7 @@ class GraphRegistry():
 
                     # # Get datatypes
                     # datatypes_json = table_datatypes_json[table_type]
-                    # datatypes_json.update(index_config['data-types'])
+                    # datatypes_json.update(...idx...['data-types'])
 
                     # if 'print' in actions:
                     #     print(sql_query_create_table)
