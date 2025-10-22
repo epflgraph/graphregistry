@@ -22,25 +22,35 @@
 
                WHERE (d.from_object_type, d.to_object_type) IN
                      (
-                       ('Category', 'Course'),
-                       ('Category', 'Lecture'),
-                       ('Category', 'Person'),
-                       ('Category', 'Publication'),
-                       ('Concept', 'Course'),
-                       ('Concept', 'Lecture'),
-                       ('Concept', 'Publication'),
-                       ('Course', 'Concept'),
-                       ('Course', 'Lecture'),
-                       ('Lecture', 'Concept'),
-                       ('Lecture', 'Slide'),
-                       ('MOOC', 'Concept'),
-                       ('MOOC', 'Lecture'),
-                       ('Person', 'Publication'),
-                       ('Publication', 'Concept'),
-                       ('Startup', 'Concept'),
-                       ('Unit', 'Concept'),
-                       ('Unit', 'Person'),
-                       ('Widget', 'Concept')
+                       -- ======= Category ======= --
+                       (   'Category' , 'Course'     ),
+                       (   'Category' , 'Lecture'    ),
+                       (   'Category' , 'Person'     ),
+                       (   'Category' , 'Publication'),
+                       -- ======== Concept ======== --
+                       (    'Concept' , 'Course'     ),
+                       (    'Concept' , 'Lecture'    ),
+                       (    'Concept' , 'Publication'),
+                       -- ======== Course ======== --
+                       (     'Course' , 'Concept'    ),
+                       (     'Course' , 'Lecture'    ),
+                       -- ======== Lecture ======== --
+                       (    'Lecture' , 'Concept'    ),
+                       (    'Lecture' , 'Slide'      ),
+                       -- ========= MOOC ========= --
+                       (       'MOOC' , 'Concept'    ),
+                       (       'MOOC' , 'Lecture'    ),
+                       -- ======== Person ======== --
+                       (     'Person' , 'Publication'),
+                       -- ====== Publication ====== --
+                       ('Publication' , 'Concept'    ),
+                       -- ======== Startup ======== --
+                       (    'Startup' , 'Concept'    ),
+                       -- ========= Unit ========= --
+                       (       'Unit' , 'Concept'    ),
+                       (       'Unit' , 'Person'     ),
+                       -- ======== Widget ======== --
+                       (     'Widget' , 'Concept'    )
                      )
 
                  AND se.to_process = 1

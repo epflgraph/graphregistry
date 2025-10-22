@@ -6,13 +6,13 @@
         -- Check object flags
 INNER JOIN [[airflow]].Operations_N_Object_T_FieldsChanged tp
      USING (institution_id, object_type, object_id)
-         
+
         -- Check type flags
 INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
      USING (institution_id, object_type)
-         
+
      WHERE p.object_type = 'Unit'
- 
+
        AND tp.to_process = 1
        AND tf.to_process = 1
        AND tf.flag_type = 'fields'
