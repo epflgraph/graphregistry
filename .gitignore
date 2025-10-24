@@ -243,3 +243,6 @@ database/tests/
 
 config/global_cfg.yaml
 config/index_cfg.json
+global_cfg.yaml
+index_cfg.json
+
