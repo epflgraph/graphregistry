@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import GraphDB, GraphIndex
+from graphregistry.clients.mysql import GraphDB
+from graphregistry.clients.elasticsearch import GraphES
+from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text
 from loguru import logger as sysmsg
 from yaml import safe_load
 import os, rich, glob, re
 
-# Load global config file
-with open('config.yaml', 'r') as fp:
-    global_config = safe_load(fp)
+# Initialize global config
+glbcfg = GlobalConfig()
 
 # Initialize the GraphDB instance
 db = GraphDB()
 
 # Initialize the ElasticSearch instance
-es = GraphIndex()
+es = GraphES()
 
 #==================================================#
 # Step 1: Test MySQL and ElasticSearch connections #
@@ -89,7 +90,7 @@ if True:
     for schema_key in schemas_to_process:
 
         # Get the schema name from config
-        schema_name = global_config['mysql']['db_schema_names'][schema_key]
+        schema_name = glbcfg.settings['mysql']['db_schema_names'][schema_key]
 
         # Check if the database exists, create it otherwise
         if db.database_exists(engine_name='test', schema_name=schema_name):
@@ -120,7 +121,7 @@ if True:
     for schema_key in schemas_to_process:
 
         # Get the schema name from config
-        schema_name = global_config['mysql']['db_schema_names'][schema_key]
+        schema_name = glbcfg.settings['mysql']['db_schema_names'][schema_key]
 
         # Print info message
         sysmsg.trace(f"Processing database '{schema_name}' ...")
@@ -200,7 +201,7 @@ if True:
         schema_key = match.group(1)
 
         # Execute SQL file
-        db.execute_query_from_file(engine_name='test', file_path=sql_file, database=global_config['mysql']['db_schema_names'][schema_key])
+        db.execute_query_from_file(engine_name='test', file_path=sql_file, database=glbcfg.settings['mysql']['db_schema_names'][schema_key])
 
     # Print success message
     sysmsg.success("➡️ ✅ Done inserting default data.\n")

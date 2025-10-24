@@ -323,6 +323,15 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_CalculatedScores (
   KEY to_process (to_process)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_CalculatedScores_AVG (
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
+  avg_score float NOT NULL,
+  PRIMARY KEY (institution_id,object_type),
+  KEY institution_id (institution_id),
+  KEY object_type (object_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_FinalScores (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -363,34 +372,40 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_FinalScores (
   concept_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   score float NOT NULL,
   to_process tinyint DEFAULT '0',
-  PRIMARY KEY (institution_id,object_type,object_id,concept_id),
+  row_id int NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY unique_key (institution_id,object_type,object_id,concept_id),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
   KEY to_process (to_process)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ScoringMatrix (
-  institution_id varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_type varchar(17) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   concept_id bigint NOT NULL DEFAULT '0',
   score_1 float DEFAULT NULL,
   score_2 float DEFAULT NULL,
   score_3 float DEFAULT '0',
-  PRIMARY KEY (institution_id,object_type,object_id,concept_id),
+  to_process tinyint NOT NULL DEFAULT '0',
+  row_id int NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY obj_cpt_key (institution_id,object_type,object_id,concept_id),
   KEY join_id (object_id,concept_id),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
-  KEY concept_id (concept_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY concept_id (concept_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_Tuples (
-  institution_id varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_type varchar(17) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   concept_id bigint NOT NULL DEFAULT '0',
   PRIMARY KEY (institution_id,object_type,object_id,concept_id),
   KEY join_id (object_id,concept_id),
@@ -401,21 +416,26 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_Tuples (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_UnionAllScores (
-  institution_id varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_type varchar(17) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  concept_id bigint NOT NULL DEFAULT '0',
-  calculation_type varchar(44) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  score float NOT NULL DEFAULT '0',
-  UNIQUE KEY uid (institution_id,object_type,object_id,concept_id,calculation_type),
-  KEY join_id (object_id,concept_id),
-  KEY filter_id (institution_id,object_type,calculation_type),
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
+  object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  concept_id bigint NOT NULL,
+  calculation_type varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  score float NOT NULL,
+  to_process tinyint NOT NULL,
+  row_id int NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY obj_cpt_cal_tp_key (institution_id,object_type,object_id,concept_id,calculation_type,to_process),
+  UNIQUE KEY obj_cpt_cal_key (institution_id,object_type,object_id,concept_id,calculation_type),
+  KEY obj_cpt_key (institution_id,object_type,object_id,concept_id),
+  KEY object_key (institution_id,object_type,object_id),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
-  KEY calculation_type (calculation_type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY calculation_type (calculation_type),
+  KEY to_process (to_process)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_CalculatedScores (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,

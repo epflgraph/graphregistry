@@ -1,0 +1,25 @@
+{
+    "scored-edge-tuples" : {
+        "education" : [
+            ["Course", "Course"],
+            ["Course", "Lecture"],
+            ["Course", "MOOC"],
+            ["Lecture", "Lecture"],
+            ["Lecture", "MOOC"],
+            ["MOOC", "MOOC"],
+            ["Widget", "Widget"]
+        ],
+        "research" : [
+            ["Person", "Person"],
+            ["Person", "Publication"],
+            ["Person", "Startup"],
+            ["Person", "Unit"],
+            ["Publication", "Publication"],
+            ["Publication", "Startup"],
+            ["Publication", "Unit"],
+            ["Startup", "Startup"],
+            ["Startup", "Unit"],
+            ["Unit", "Unit"]
+        ]
+    }
+}

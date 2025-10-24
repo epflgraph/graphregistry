@@ -4,10 +4,10 @@
 # - Create object to category tables (some are still missing)
 # - delete all local variables in functions
 # - add concept-concept to typeflags table
-from api.core.common import print_dataframe
-from api.core.config import GlobalConfig, IndexConfig, ScoresConfig
-from api.db.graphdb import GraphDB
-from api.db.graphindex import GraphIndex, es_degree_score_factors
+from graphregistry.common.auxfcn import print_dataframe
+from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from graphregistry.clients.mysql import GraphDB
+from graphregistry.clients.elasticsearch import GraphES, es_degree_score_factors
 from graphai_client.client import login as graphai_login
 from graphai_client.client_api.text import extract_concepts_from_text
 from tqdm import tqdm
@@ -23,12 +23,14 @@ import numpy as np
 import pandas as pd
 import re, sys, json, datetime, requests, itertools, gzip, time, subprocess, os, glob, rich, hashlib
 
-# Initialise all required objects
+# Initialise config objects
 glbcfg = GlobalConfig()
 idxcfg = IndexConfig()
 scrcfg = ScoresConfig()
-db     = GraphDB()
-idx    = GraphIndex()
+
+# Initialise clients
+db = GraphDB()
+es = GraphES()
 
 # Print configurations
 idxcfg.print()
@@ -1093,8 +1095,8 @@ class GraphRegistry():
             print(f"GraphRegistry initialized with name: {self.name}")
 
         # Initialize all children objects
-        self.db = GraphDB()
-        self.idx = GraphIndex()
+        # db = GraphDB()
+        # self.idx = GraphIndex()
         self.orchestrator = self.Orchestration()
         self.cachemanager = self.CacheManagement()
         self.indexdb = self.IndexDB()
@@ -1231,7 +1233,7 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self):
-            self.db = GraphDB()
+            # db = GraphDB()
             self.typeflags = self.TypeFlags()
             self.fieldschanged = self.FieldsChanged()
             self.scoresexpired = self.ScoresExpired()
@@ -1285,7 +1287,7 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        self.db.execute_query_in_shell(engine_name = 'test', 
+                        db.execute_query_in_shell(engine_name = 'test', 
                             query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;")
 
                 # Print status
@@ -1298,7 +1300,7 @@ class GraphRegistry():
                 with tqdm(list_of_doc_types, unit='doc type') as pb:
                     for _, doc_type in pb:
                         pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                        self.db.execute_query_in_shell(engine_name='test',
+                        db.execute_query_in_shell(engine_name='test',
                             query = f"UPDATE {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} SET to_process = 0 WHERE to_process = 1;")
 
                 # Print status
@@ -1313,14 +1315,14 @@ class GraphRegistry():
                 with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
                     for source_doc_type, target_doc_type in pb:
                         pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                        self.db.execute_query_in_shell(engine_name='test',
+                        db.execute_query_in_shell(engine_name='test',
                             query = f"UPDATE {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} SET to_process = 0 WHERE to_process = 1;")
 
                 # # Print status
                 # sysmsg.trace("Processing 'Operations_N_Object_T_ToProcess' table ...")
 
                 # # Truncate table: objects to process
-                # self.db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE {schema_graph_cache_test}.Operations_N_Object_T_ToProcess;")
+                # db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE {schema_graph_cache_test}.Operations_N_Object_T_ToProcess;")
 
             # Print status
             sysmsg.success("🧹 ✅ Done resetting flags.\n")
@@ -1344,7 +1346,7 @@ class GraphRegistry():
             with tqdm(list_of_tables, unit='table') as pb:
                 for schema_name, table_name in pb:
                     pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name = 'test', 
+                    db.execute_query_in_shell(engine_name = 'test', 
                         query = f"""UPDATE {schema_name}.{table_name} p
                                 INNER JOIN {schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                      USING (institution_id, object_type, object_id)
@@ -1369,7 +1371,7 @@ class GraphRegistry():
                 for schema_name, table_name in pb:
                     pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
                     for d1,d2 in [('from', 'to'), ('to', 'from')]:
-                        self.db.execute_query_in_shell(engine_name = 'test', 
+                        db.execute_query_in_shell(engine_name = 'test', 
                             query = f"""UPDATE {schema_name}.{table_name} p
                                     INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                             ON ( p.{d1}_institution_id,  p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_institution_id, p.{d2}_object_type, p.{d2}_object_id)
@@ -1397,7 +1399,7 @@ class GraphRegistry():
                 for schema_name, table_name in pb:
                     pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
                     for d in ['from', 'to']:
-                        self.db.execute_query_in_shell(engine_name = 'test', 
+                        db.execute_query_in_shell(engine_name = 'test', 
                             query = f"""UPDATE {schema_name}.{table_name} p
                                     INNER JOIN {schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
                                             ON (p.{d}_institution_id, p.{d}_object_type, p.{d}_object_id) = (se.institution_id, se.object_type, se.object_id)
@@ -1420,7 +1422,7 @@ class GraphRegistry():
             with tqdm(list_of_doc_types, unit='doc type') as pb:
                 for dummy, doc_type in pb:
                     pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name = 'test',
+                    db.execute_query_in_shell(engine_name = 'test',
                         query = f"""UPDATE {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
                                 INNER JOIN {schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                         ON (p.doc_institution, p.doc_type, p.doc_id) = (fc.institution_id, fc.object_type, fc.object_id)
@@ -1444,7 +1446,7 @@ class GraphRegistry():
             with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
                 for source_doc_type, target_doc_type in pb:
                     pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    self.db.execute_query_in_shell(engine_name='test',
+                    db.execute_query_in_shell(engine_name='test',
                         query = f"""UPDATE {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
                                 INNER JOIN {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                         ON ( p.doc_institution,  p.doc_type,  p.doc_id, p.link_institution, p.link_type, p.link_id)
@@ -1459,7 +1461,7 @@ class GraphRegistry():
                         """)
 
             # # Truncate table: Operations/ Object / ToProcess
-            # self.db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE {schema_graph_cache_test}.Operations_N_Object_T_ToProcess;")
+            # db.execute_query_in_shell(engine_name='test', query=f"TRUNCATE TABLE {schema_graph_cache_test}.Operations_N_Object_T_ToProcess;")
 
             # Print status
             sysmsg.success("⛳️ ✅ All 'to_process' flags have been propagated throughout cache.\n")
@@ -1497,13 +1499,14 @@ class GraphRegistry():
 
             # Class constructor
             def __init__(self):
-                self.db = GraphDB()
+                pass
+                # db = GraphDB()
 
             # Print type flags
             def status(self):
 
                 # Print object type flags
-                out = self.db.execute_query(engine_name='test', query=f"""
+                out = db.execute_query(engine_name='test', query=f"""
                     SELECT institution_id, object_type, flag_type, to_process
                       FROM {schema_airflow}.Operations_N_Object_T_TypeFlags
                      WHERE to_process = 1
@@ -1514,7 +1517,7 @@ class GraphRegistry():
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
 
                 # Print object-to-object type flags
-                out = self.db.execute_query(engine_name='test', query=f"""
+                out = db.execute_query(engine_name='test', query=f"""
                     SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, to_process
                       FROM {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                      WHERE to_process = 1
@@ -1543,7 +1546,7 @@ class GraphRegistry():
                     return
 
                 # Set object type flags
-                self.db.set_cells(
+                db.set_cells(
                     engine_name = 'test',
                     schema_name = schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==4 else ''}_T_TypeFlags",
@@ -1574,7 +1577,7 @@ class GraphRegistry():
                     return
 
                 # Get object type flags
-                output = self.db.get_cells(
+                output = db.get_cells(
                     engine_name = 'test',
                     schema_name = schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==4 else ''}_T_TypeFlags",
@@ -1606,7 +1609,7 @@ class GraphRegistry():
                 for table_name in ['Operations_N_Object_T_TypeFlags', 'Operations_N_Object_N_Object_T_TypeFlags']:
 
                     # Execute query to reset to_process flags
-                    self.db.execute_query_in_shell(engine_name='test', query=f"""
+                    db.execute_query_in_shell(engine_name='test', query=f"""
                         UPDATE {schema_airflow}.{table_name}
                            SET to_process = 0
                          WHERE to_process > 0.5
@@ -1670,7 +1673,7 @@ class GraphRegistry():
                 """
 
                 # Execute the query
-                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in self.db.execute_query(engine_name='test', query=sql_query)]
+                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in db.execute_query(engine_name='test', query=sql_query)]
 
                 # Define SQL query for fetching edges config
                 sql_query = f"""
@@ -1683,7 +1686,7 @@ class GraphRegistry():
                 """
 
                 # Execute the query
-                config_json['edges'] = [[row[0], row[1], True] for row in self.db.execute_query(engine_name='test', query=sql_query)]
+                config_json['edges'] = [[row[0], row[1], True] for row in db.execute_query(engine_name='test', query=sql_query)]
 
                 # Return the config JSON
                 return config_json
@@ -1724,7 +1727,8 @@ class GraphRegistry():
 
             # Class constructor
             def __init__(self):
-                self.db = GraphDB()
+                pass
+                # db = GraphDB()
 
             # Print current settings
             def status(self, object_key=None):
@@ -1767,14 +1771,14 @@ class GraphRegistry():
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
                     
-                    out = self.db.execute_query(engine_name='test', query=sql_query)
+                    out = db.execute_query(engine_name='test', query=sql_query)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [by type or key]')
 
                 else:
 
-                    out = self.db.execute_query(engine_name='test', query=f"""
+                    out = db.execute_query(engine_name='test', query=f"""
                         SELECT institution_id, object_type, COUNT(*) AS n_to_process
                           FROM {schema_airflow}.Operations_N_Object_T_FieldsChanged
                          WHERE to_process = 1
@@ -1784,7 +1788,7 @@ class GraphRegistry():
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [stats]')
 
-                    out = self.db.execute_query(engine_name='test', query=f"""
+                    out = db.execute_query(engine_name='test', query=f"""
                         SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, COUNT(*) AS n_to_process
                           FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                          WHERE to_process = 1
@@ -1846,7 +1850,7 @@ class GraphRegistry():
                 set_clause_list = [(k, v) for k, v in {'checksum_current': checksum_current, 'checksum_previous': checksum_previous, 'has_changed': has_changed, 'last_date_cached': last_date_cached, 'has_expired': has_expired, 'to_process': to_process}.items() if v is not None]
 
                 # Set object type flags
-                self.db.set_cells(
+                db.set_cells(
                     engine_name = 'test',
                     schema_name = schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [4,6] else ''}_T_FieldsChanged",
@@ -1913,7 +1917,7 @@ class GraphRegistry():
                     ]
 
                 # Get object type flags
-                output = self.db.get_cells(
+                output = db.get_cells(
                     engine_name = 'test',
                     schema_name = schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [4,6] else ''}_T_FieldsChanged",
@@ -1947,7 +1951,7 @@ class GraphRegistry():
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                             GROUP BY cp.object_type
                     """
-                    out = self.db.execute_query(engine_name='test', query=sql_query)
+                    out = db.execute_query(engine_name='test', query=sql_query)
 
                     # Execute object sync
                     sql_query = f"""
@@ -1961,7 +1965,7 @@ class GraphRegistry():
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
@@ -1977,7 +1981,7 @@ class GraphRegistry():
                                        FROM {schema_airflow}.Operations_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing edges on schema '{schema_name}' ...")
@@ -1994,7 +1998,7 @@ class GraphRegistry():
                              AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                             GROUP BY cp.from_object_type, cp.to_object_type
                     """
-                    out = self.db.execute_query(engine_name='test', query=sql_query)
+                    out = db.execute_query(engine_name='test', query=sql_query)
                     
                     # Execute object sync
                     sql_query = f"""
@@ -2010,7 +2014,7 @@ class GraphRegistry():
                              AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                     
                     # Print status
                     sysmsg.trace(f"Done. New object tuples synched: {out}'")
@@ -2026,7 +2030,7 @@ class GraphRegistry():
                                        FROM {schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'FieldsChanged' airflow tables.\n")
@@ -2073,7 +2077,7 @@ class GraphRegistry():
                         """
 
                         # Execute query to reset to_process flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'FieldsChanged' airflow tables.\n")
@@ -2123,7 +2127,7 @@ class GraphRegistry():
                             print(f"\nExecuting query:\n{sql_query}\n")
 
                         # Set random date for "last_date_cached" column
-                        self.db.execute_query_in_chunks(
+                        db.execute_query_in_chunks(
                             engine_name = 'test',
                             schema_name = schema_airflow,
                             table_name  = table_name,
@@ -2178,7 +2182,7 @@ class GraphRegistry():
                         """
 
                         # Reset all expiration flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                         
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' - setting 'has_expired' flags to 1 ...")
@@ -2204,7 +2208,7 @@ class GraphRegistry():
                             """
                         
                         # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'FieldsChanged' airflow tables.\n")
@@ -2368,7 +2372,7 @@ class GraphRegistry():
                         """
 
                         # Reset to_process flags for all nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                         # Generate SQL query
                         sql_query = f"""
@@ -2379,7 +2383,7 @@ class GraphRegistry():
                         """
 
                         # Update to_process flags for nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                     #--------------------------------#
                     # Fetch stats on what to process #
@@ -2404,7 +2408,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                        out = db.execute_query(engine_name='test', query=sql_query_eval)
                         df = pd.DataFrame(out, columns=[['object_type'] if u=='n' else ['from_object_type', 'to_object_type']][0]+['new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
@@ -2419,7 +2423,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                        out = db.execute_query(engine_name='test', query=sql_query_eval)
                         df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
@@ -2471,7 +2475,7 @@ class GraphRegistry():
                         """
 
                         # Reset all expiration flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("⬅️  ✅ Done rolling over checksums.\n")
@@ -2481,7 +2485,8 @@ class GraphRegistry():
 
             # Class constructor
             def __init__(self):
-                self.db = GraphDB()
+                pass
+                # db = GraphDB()
 
             # Print current settings
             def status(self, object_key=None):
@@ -2498,12 +2503,12 @@ class GraphRegistry():
                         msg = 'Invalid key length.'
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
-                    out = self.db.execute_query(engine_name='test', query=sql_query)
+                    out = db.execute_query(engine_name='test', query=sql_query)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [by key or id]')
                 else:
-                    out = self.db.execute_query(engine_name='test', query=f"""
+                    out = db.execute_query(engine_name='test', query=f"""
                         SELECT institution_id, object_type, COUNT(*) AS n_to_process
                         FROM {schema_airflow}.Operations_N_Object_T_ScoresExpired
                         WHERE to_process = 1
@@ -2546,7 +2551,7 @@ class GraphRegistry():
                 set_clause_list = [(k, v) for k, v in {'last_date_cached': last_date_cached, 'has_expired': has_expired, 'to_process': to_process}.items() if v is not None]
 
                 # Set object type flags
-                self.db.set_cells(
+                db.set_cells(
                     engine_name = 'test',
                     schema_name = schema_airflow,
                     table_name  = 'Operations_N_Object_T_ScoresExpired',
@@ -2593,7 +2598,7 @@ class GraphRegistry():
                     ]
 
                 # Get object type flags
-                output = self.db.get_cells(
+                output = db.get_cells(
                     engine_name = 'test',
                     schema_name = schema_airflow,
                     table_name  = 'Operations_N_Object_T_ScoresExpired',
@@ -2627,7 +2632,7 @@ class GraphRegistry():
                                  AND n.object_type != 'Slide'
                             GROUP BY n.object_type
                     """
-                    out = self.db.execute_query(engine_name='test', query=sql_query)
+                    out = db.execute_query(engine_name='test', query=sql_query)
                     
                     # Execute object sync
                     sql_query = f"""
@@ -2641,7 +2646,7 @@ class GraphRegistry():
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                     
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
@@ -2657,7 +2662,7 @@ class GraphRegistry():
                                        FROM {schema_airflow}.Operations_N_Object_T_ScoresExpired
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'ScoresExpired' airflow tables.\n")
@@ -2704,7 +2709,7 @@ class GraphRegistry():
                         """
 
                         # Execute query to reset to_process flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'ScoresExpired' airflow table.\n")
@@ -2754,7 +2759,7 @@ class GraphRegistry():
                             print(f"\nExecuting query:\n{sql_query}\n")
 
                         # Set random date for "last_date_cached" column
-                        self.db.execute_query_in_chunks(
+                        db.execute_query_in_chunks(
                             engine_name = 'test',
                             schema_name = schema_airflow,
                             table_name  = 'Operations_N_Object_T_ScoresExpired',
@@ -2809,7 +2814,7 @@ class GraphRegistry():
                         """
 
                         # Reset all expiration flags
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
                         
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - setting 'has_expired' flags to 1 ...")
@@ -2835,7 +2840,7 @@ class GraphRegistry():
                         """
 
                         # Set has_expired=1 for dates older than time_period
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                 # Print status
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'ScoresExpired' airflow table.\n")
@@ -2889,7 +2894,7 @@ class GraphRegistry():
                         """
 
                         # Reset to_process flags for all nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                         # Generate SQL query
                         sql_query = f"""
@@ -2900,7 +2905,7 @@ class GraphRegistry():
                         """
 
                         # Update to_process flags for nodes
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
                         #--------------------------------#
                         # Fetch stats on what to process #
@@ -2920,7 +2925,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                        out = db.execute_query(engine_name='test', query=sql_query_eval)
                         df = pd.DataFrame(out, columns=['object_type', 'new_or_never_cached', 'cache_expired'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
@@ -2933,7 +2938,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                        out = db.execute_query(engine_name='test', query=sql_query_eval)
                         df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'cache_expired'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
@@ -2947,7 +2952,7 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self, object_key=(None, None, None)):
-            self.db = GraphDB()
+            # db = GraphDB()
             self.object_key = object_key
             self.institution_id, self.object_type, self.object_id = object_key
             self.object_title = None
@@ -2965,7 +2970,7 @@ class GraphRegistry():
         # Check if object exists
         def exists(self):
             schema = object_type_to_schema.get(self.object_type, schema_registry)
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT COUNT(*)
                 FROM {schema}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
@@ -3071,7 +3076,7 @@ class GraphRegistry():
             schema_name = object_type_to_schema.get(self.object_type, schema_registry)
             
             # Get basic object info
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT object_title, text_source, raw_text, record_created_date, record_updated_date
                 FROM {schema_name}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
@@ -3088,7 +3093,7 @@ class GraphRegistry():
 
             # Get custom fields
             list_of_columns = ['field_language', 'field_name', 'field_value', 'record_created_date', 'record_updated_date']
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT {', '.join(list_of_columns)}
                 FROM {schema_name}.Data_N_Object_T_CustomFields
                 WHERE (institution_id, object_type, object_id)
@@ -3104,7 +3109,7 @@ class GraphRegistry():
 
             # Get page profile
             list_of_columns = ['numeric_id_en', 'numeric_id_fr', 'numeric_id_de', 'numeric_id_it', 'short_code', 'subtype_en', 'subtype_fr', 'subtype_de', 'subtype_it', 'name_en_is_auto_generated', 'name_en_is_auto_corrected', 'name_en_is_auto_translated', 'name_en_translated_from', 'name_en_value', 'name_fr_is_auto_generated', 'name_fr_is_auto_corrected', 'name_fr_is_auto_translated', 'name_fr_translated_from', 'name_fr_value', 'name_de_is_auto_generated', 'name_de_is_auto_corrected', 'name_de_is_auto_translated', 'name_de_translated_from', 'name_de_value', 'name_it_is_auto_generated', 'name_it_is_auto_corrected', 'name_it_is_auto_translated', 'name_it_translated_from', 'name_it_value', 'description_short_en_is_auto_generated', 'description_short_en_is_auto_corrected', 'description_short_en_is_auto_translated', 'description_short_en_translated_from', 'description_short_en_value', 'description_short_fr_is_auto_generated', 'description_short_fr_is_auto_corrected', 'description_short_fr_is_auto_translated', 'description_short_fr_translated_from', 'description_short_fr_value', 'description_short_de_is_auto_generated', 'description_short_de_is_auto_corrected', 'description_short_de_is_auto_translated', 'description_short_de_translated_from', 'description_short_de_value', 'description_short_it_is_auto_generated', 'description_short_it_is_auto_corrected', 'description_short_it_is_auto_translated', 'description_short_it_translated_from', 'description_short_it_value', 'description_medium_en_is_auto_generated', 'description_medium_en_is_auto_corrected', 'description_medium_en_is_auto_translated', 'description_medium_en_translated_from', 'description_medium_en_value', 'description_medium_fr_is_auto_generated', 'description_medium_fr_is_auto_corrected', 'description_medium_fr_is_auto_translated', 'description_medium_fr_translated_from', 'description_medium_fr_value', 'description_medium_de_is_auto_generated', 'description_medium_de_is_auto_corrected', 'description_medium_de_is_auto_translated', 'description_medium_de_translated_from', 'description_medium_de_value', 'description_medium_it_is_auto_generated', 'description_medium_it_is_auto_corrected', 'description_medium_it_is_auto_translated', 'description_medium_it_translated_from', 'description_medium_it_value', 'description_long_en_is_auto_generated', 'description_long_en_is_auto_corrected', 'description_long_en_is_auto_translated', 'description_long_en_translated_from', 'description_long_en_value', 'description_long_fr_is_auto_generated', 'description_long_fr_is_auto_corrected', 'description_long_fr_is_auto_translated', 'description_long_fr_translated_from', 'description_long_fr_value', 'description_long_de_is_auto_generated', 'description_long_de_is_auto_corrected', 'description_long_de_is_auto_translated', 'description_long_de_translated_from', 'description_long_de_value', 'description_long_it_is_auto_generated', 'description_long_it_is_auto_corrected', 'description_long_it_is_auto_translated', 'description_long_it_translated_from', 'description_long_it_value', 'external_key_en', 'external_key_fr', 'external_key_de', 'external_key_it', 'external_url_en', 'external_url_fr', 'external_url_de', 'external_url_it', 'is_visible', 'record_created_date', 'record_updated_date']
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT {', '.join(list_of_columns)}
                 FROM {schema_name}.Data_N_Object_T_PageProfile
                 WHERE (institution_id, object_type, object_id)
@@ -3136,7 +3141,7 @@ class GraphRegistry():
             schema = object_type_to_schema.get(self.object_type, schema_registry)
 
             # Fetch record dates (node table)
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT record_created_date, record_updated_date
                 FROM {schema}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
@@ -3148,7 +3153,7 @@ class GraphRegistry():
 
             # Fetch record dates (custom fields table)
             for k in range(len(self.custom_fields)):
-                out = self.db.execute_query(engine_name='test', query=f"""
+                out = db.execute_query(engine_name='test', query=f"""
                     SELECT record_created_date, record_updated_date
                     FROM {schema}.Data_N_Object_T_CustomFields
                     WHERE (institution_id, object_type, object_id, field_language, field_name)
@@ -3159,7 +3164,7 @@ class GraphRegistry():
                     self.custom_fields[k]['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
             # Fetch record dates (page profile table)
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT record_created_date, record_updated_date
                 FROM {schema}.Data_N_Object_T_PageProfile
                 WHERE (institution_id, object_type, object_id)
@@ -3172,7 +3177,7 @@ class GraphRegistry():
             # Fetch record dates (concept detection)
             if self.concepts_detection is not None:
                 for k in range(len(self.concepts_detection)):
-                    out = self.db.execute_query(engine_name='test', query=f"""
+                    out = db.execute_query(engine_name='test', query=f"""
                         SELECT record_created_date, record_updated_date
                         FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
                         WHERE (institution_id, object_type, object_id, concept_id)
@@ -3187,7 +3192,7 @@ class GraphRegistry():
             # Fetch record dates (manual mapping)
             if self.manual_mapping is not None:
                 for k in range(len(self.manual_mapping)):
-                    out = self.db.execute_query(engine_name='test', query=f"""
+                    out = db.execute_query(engine_name='test', query=f"""
                         SELECT record_created_date, record_updated_date
                         FROM {schema}.Edges_N_Object_N_Concept_T_ManualMapping
                         WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
@@ -3230,7 +3235,7 @@ class GraphRegistry():
 
             # Compute 32 char MD5 hash
             self.checksum = hashlib.md5(serialized.encode()).hexdigest()
-    
+
         # Commit basic node data to database
         def commit_node_object(self, actions=('eval',)):
             schema = object_type_to_schema.get(self.object_type, schema_registry)
@@ -3242,7 +3247,7 @@ class GraphRegistry():
                 upd_column_names=['object_title', 'text_source', 'raw_text'],
                 upd_column_values=[self.object_title, self.text_source, self.raw_text],
                 actions=actions,
-                db_connector=self.db,
+                db_connector=db,
                 engine_name='test'
             )
             return eval_results
@@ -3261,7 +3266,7 @@ class GraphRegistry():
                     upd_column_names=['field_value'],
                     upd_column_values=[doc['field_value']],
                     actions=actions,
-                    db_connector=self.db,
+                    db_connector=db,
                     engine_name='test'
                 )]
             return eval_results
@@ -3286,7 +3291,7 @@ class GraphRegistry():
                 upd_column_names=upd_column_names,
                 upd_column_values=upd_column_values,
                 actions=actions,
-                db_connector=self.db,
+                db_connector=db,
                 engine_name='test'
             )
             return eval_results
@@ -3369,7 +3374,7 @@ class GraphRegistry():
 
             if delete_existing:
                 eval_results += [delete_concepts_for_nodes(
-                    self.db, 'Edges_N_Object_N_Concept_T_ConceptDetection', self.institution_id, self.object_type,
+                    db, 'Edges_N_Object_N_Concept_T_ConceptDetection', self.institution_id, self.object_type,
                     [self.object_id,], engine_name='test', actions=actions
                 )]
 
@@ -3382,7 +3387,7 @@ class GraphRegistry():
                     upd_column_names  = ['score'],
                     upd_column_values = [doc['mixed_score']],
                     actions           = actions,
-                    db_connector      = self.db,
+                    db_connector      = db,
                     engine_name       = 'test'
                 )]
             return eval_results
@@ -3395,9 +3400,9 @@ class GraphRegistry():
         def commit_manual_mapping(self,actions=('eval',), engine_name='test', delete_existing=False):
             schema_name = object_type_to_schema.get(self.object_type, 'graph_registry')
             eval_results = []
-            if delete_existing and self.db.table_exists(engine_name, schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
+            if delete_existing and db.table_exists(engine_name, schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
                 eval_results += [delete_concepts_for_nodes(
-                    self.db, 'Edges_N_Object_N_Concept_T_ManualMapping', self.institution_id, self.object_type,
+                    db, 'Edges_N_Object_N_Concept_T_ManualMapping', self.institution_id, self.object_type,
                     [self.object_id, ], engine_name='test', actions=actions
                 )]
             for doc in self.manual_mapping:
@@ -3411,7 +3416,7 @@ class GraphRegistry():
                     upd_column_names=['concept_name', 'score'],
                     upd_column_values=[doc.get('concept_name', None), doc.get('score', 1)],
                     actions=actions,
-                    db_connector=self.db,
+                    db_connector=db,
                     engine_name='test'
                 )]
             return eval_results
@@ -3423,7 +3428,7 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self, object_key_list=()):
-            self.db = GraphDB()
+            # db = GraphDB()
             self.object_list = [GraphRegistry.Node(object_key) for object_key in object_key_list]
 
         # Check if objects in list exist
@@ -3468,7 +3473,7 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self, object_key=(None, None, None, None, None, None, None)):
-            self.db = GraphDB()
+            # db = GraphDB()
             self.from_institution_id, self.from_object_type, self.from_object_id, self.to_institution_id, self.to_object_type, self.to_object_id, self.context = object_key
             self.record_created_date, self.record_updated_date, self.custom_fields = None, None, []
             self.set_from_existing()
@@ -3491,7 +3496,7 @@ class GraphRegistry():
         # Check if object exists
         def exists(self):
             schema = self._get_schema()
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT COUNT(*)
                 FROM {schema}.Edges_N_Object_N_Object_T_ChildToParent
                 WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
@@ -3546,7 +3551,7 @@ class GraphRegistry():
             schema = self._get_schema()
             # Get custom fields
             list_of_columns = ['field_language', 'field_name', 'field_value', 'record_created_date', 'record_updated_date']
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT {', '.join(list_of_columns)}
                 FROM {schema}.Data_N_Object_N_Object_T_CustomFields
                 WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
@@ -3578,7 +3583,7 @@ class GraphRegistry():
             schema = self._get_schema()
 
             # Fetch record dates (node table)
-            out = self.db.execute_query(engine_name='test', query=f"""
+            out = db.execute_query(engine_name='test', query=f"""
                 SELECT record_created_date, record_updated_date
                 FROM {schema}.Edges_N_Object_N_Object_T_ChildToParent
                 WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
@@ -3590,7 +3595,7 @@ class GraphRegistry():
 
             # Fetch record dates (custom fields table)
             for k in range(len(self.custom_fields)):
-                out = self.db.execute_query(engine_name='test', query=f"""
+                out = db.execute_query(engine_name='test', query=f"""
                     SELECT record_created_date, record_updated_date
                     FROM {schema}.Data_N_Object_N_Object_T_CustomFields
                     WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, field_language, field_name)
@@ -3635,7 +3640,7 @@ class GraphRegistry():
                 upd_column_names=[],
                 upd_column_values=[],
                 actions=actions,
-                db_connector=self.db
+                db_connector=db
             )
             return eval_results
 
@@ -3655,7 +3660,7 @@ class GraphRegistry():
                     upd_column_names=['field_value'],
                     upd_column_values=[doc['field_value']],
                     actions=actions,
-                    db_connector=self.db
+                    db_connector=db
                 )]
             return eval_results
 
@@ -3698,7 +3703,7 @@ class GraphRegistry():
         #     if test_mode:
         #         print(sql_query)
         #     else:
-        #         self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+        #         db.execute_query_in_shell(engine_name='test', query=sql_query)
 
         #     # Update custom fields table
         #     t = f'{schema_registry}.Data_N_Object_N_Object_T_CustomFields'
@@ -3731,7 +3736,7 @@ class GraphRegistry():
         #         if test_mode:
         #             print(sql_query)
         #         else:
-        #             self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+        #             db.execute_query_in_shell(engine_name='test', query=sql_query)
 
     #-------------------------------------#
     # Subclass definition: Graph EdgeList #
@@ -3740,7 +3745,7 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self, object_key_list=[]):
-            self.db = GraphDB()
+            # db = GraphDB()
             self.object_list = [GraphRegistry.Edge(object_key) for object_key in object_key_list]
 
         # Check if objects in list exist
@@ -3785,7 +3790,8 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self):
-            self.db = GraphDB()
+            pass
+            # db = GraphDB()
 
         # Commit for all views [calls 'cache_update_from_view']
         def materialize_views(self, actions=()):
@@ -4325,7 +4331,7 @@ class GraphRegistry():
                     print(sql_query_eval)
 
                 # Execute evaluation query
-                out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                out = db.execute_query(engine_name='test', query=sql_query_eval)
                 df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                 if len(df) > 0:
                     print_dataframe(df, title=f'\n🔍 Evaluation results for view: "{view_name}"')
@@ -4337,7 +4343,7 @@ class GraphRegistry():
                 sysmsg.trace(f"⚙️  Processing view: '{view_name}' ...")
 
                 # Fetch target table column names
-                target_table_columns = self.db.get_column_names(engine_name='test', schema_name=schema_graph_cache_test, table_name=target_table)
+                target_table_columns = db.get_column_names(engine_name='test', schema_name=schema_graph_cache_test, table_name=target_table)
 
                 # Remove row_id (if exists)
                 if 'row_id' in target_table_columns:
@@ -4351,7 +4357,7 @@ class GraphRegistry():
                     print(sql_query_commit)
 
                 # Execute commit --> this doesn't work with UNIONs
-                # self.db.execute_query_in_chunks(
+                # db.execute_query_in_chunks(
                 #     engine_name   = 'test',
                 #     schema_name   = schema_graph_cache_test,
                 #     table_name    = target_table,
@@ -4362,7 +4368,7 @@ class GraphRegistry():
                 # )
 
                 # Execute commit query in shell
-                self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit, verbose=False)
+                db.execute_query_in_shell(engine_name='test', query=sql_query_commit, verbose=False)
 
         # Apply formula from SQL file
         def apply_formulas_from_folder(self, local_path, verbose=False):
@@ -4439,7 +4445,7 @@ class GraphRegistry():
                     eval_column_names = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
 
                 # Execute SQL formula as safe inserts
-                self.db.execute_query_as_safe_inserts(
+                db.execute_query_as_safe_inserts(
                     engine_name       = 'test',
                     schema_name       = schema_graph_cache_test,
                     table_name        = target_table,
@@ -4454,7 +4460,7 @@ class GraphRegistry():
             elif execution_type == 'direct execution':
 
                 # Execute the SQL formula
-                self.db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
+                db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
 
             # Unknown execution type
             else:
@@ -4476,7 +4482,7 @@ class GraphRegistry():
                 sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', mysql_schema_names['test'][db_schema_name])
 
             # Execute the SQL formula
-            self.db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
+            db.execute_query_in_shell(engine_name='test', query=sql_formula, verbose=verbose)
 
         # Update cache table from SQL calculated field formula
         def cache_update_from_calculated_field(self, object_type_key, field_name, verbose=False):
@@ -4525,7 +4531,7 @@ class GraphRegistry():
                 sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', mysql_schema_names['test'][db_schema_name])
 
             # Execute SQL formula as safe inserts
-            self.db.execute_query_as_safe_inserts(
+            db.execute_query_as_safe_inserts(
                 engine_name       = 'test',
                 schema_name       = schema_graph_cache_test,
                 table_name        = target_table,
@@ -4706,7 +4712,7 @@ class GraphRegistry():
                         print(sql_eval_query)
 
                     # Execute evaluation query
-                    out = self.db.execute_query(engine_name='test', query=sql_eval_query)
+                    out = db.execute_query(engine_name='test', query=sql_eval_query)
                     df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for ({from_object_type}, {to_object_type})')
@@ -4720,7 +4726,7 @@ class GraphRegistry():
                     print(sql_commit_query)
 
                 # Execute commit query
-                self.db.execute_query_in_shell(engine_name='test', query=sql_commit_query)
+                db.execute_query_in_shell(engine_name='test', query=sql_commit_query)
 
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
         def consolidate_scores_matrix(self, from_object_type, to_object_type, update_averages=False, score_thr=0.1, actions=()):
@@ -4789,7 +4795,7 @@ class GraphRegistry():
                 """
 
                 # This is a slow query; execute in chunks
-                self.db.execute_query_as_safe_inserts_in_chunks(
+                db.execute_query_as_safe_inserts_in_chunks(
                     engine_name       = 'test',
                     schema_name       = schema_graph_cache_test,
                     table_name        = 'Edges_N_Object_N_Object_T_ScoresMatrix_AS',
@@ -4831,7 +4837,7 @@ class GraphRegistry():
                     
                     # Execute average score calculation
                     if 'commit' in actions:
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query_avg, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query_avg, verbose='print' in actions)
 
                 # Check first if an average score is available, return otherwise
                 sql_query_check = f"""
@@ -4839,7 +4845,7 @@ class GraphRegistry():
                      WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
                          = ('{object_type_to_institution_id[from_object_type]}', '{from_object_type}', '{object_type_to_institution_id[to_object_type]}', '{to_object_type}');
                 """
-                out = self.db.execute_query(engine_name='test', query=sql_query_check)
+                out = db.execute_query(engine_name='test', query=sql_query_check)
                 if len(out) == 0:
                     print(f'No average score calculation available for ({from_object_type}, {to_object_type})')
                     return
@@ -4874,7 +4880,7 @@ class GraphRegistry():
                 print(sql_query)
 
             if 'commit' in actions:
-                self.db.execute_query_in_shell(engine_name='test', query=sql_query)
+                db.execute_query_in_shell(engine_name='test', query=sql_query)
 
     #-----------------------------------------------------------#
     # Subclass definition: GraphIndex Management (SQL Database) #
@@ -4883,13 +4889,13 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self, engine_name='test'):
-            self.db = GraphDB()
+            # db = GraphDB()
             self.engine_name = engine_name
             self.cachebuilder = self.CacheBuildup()
             self.pageprofile = self.PageProfile()
             self.idocs = {}
             self.idoclinks = {}
-            self.list_of_index_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'])
+            self.list_of_index_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'])
 
             # Initialize IndexDoc objects for all doc types
             for doc_type in [t[0] for t in [re.findall(r'Index_D_([^_]*)$', table_name) for table_name in self.list_of_index_tables] if len(t)>0]:
@@ -4992,7 +4998,7 @@ class GraphRegistry():
             else:
 
                 # Get all doc-link types available
-                list_of_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
+                list_of_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
                 doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
 
                 # Keep only intersection of available and to-process types
@@ -5086,7 +5092,7 @@ class GraphRegistry():
             else:
 
                 # Get all doc-link types available
-                list_of_tables = self.db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
+                list_of_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
                 doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
 
                 # Keep only intersection of available and to-process types
@@ -5155,7 +5161,7 @@ class GraphRegistry():
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
             # Get the list of tables in graphsearch test
-            list_of_tables = self.db.get_tables_in_schema(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], use_regex=[r'.*_ORG'], include_views=False)
+            list_of_tables = db.get_tables_in_schema(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], use_regex=[r'.*_ORG'], include_views=False)
 
             # Loop over all tables
             for table_name_org in tqdm(list_of_tables):
@@ -5169,14 +5175,14 @@ class GraphRegistry():
                     continue
 
                 # Check if view already exists
-                if self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_mix) and not drop_existing:
+                if db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_mix) and not drop_existing:
                     continue
 
                 # Check if SEM table exists
-                if self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_sem):
+                if db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_sem):
 
                     # Get list of columns for SEM table
-                    list_of_columns_sem = self.db.get_column_names(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_sem)
+                    list_of_columns_sem = db.get_column_names(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_sem)
 
                     # Remove row_id
                     list_of_columns_sem.remove('row_id')
@@ -5212,7 +5218,7 @@ class GraphRegistry():
                 else:
 
                     # Get list of columns for ORG table
-                    list_of_columns_org = self.db.get_column_names(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_org)
+                    list_of_columns_org = db.get_column_names(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name_org)
 
                     # Remove row_id
                     list_of_columns_org.remove('row_id')
@@ -5232,7 +5238,7 @@ class GraphRegistry():
                 if test_mode:
                     print(SQLQuery)
                 else:
-                    self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
+                    db.execute_query_in_shell(engine_name='test', query=SQLQuery)
 
             pass
 
@@ -5241,7 +5247,7 @@ class GraphRegistry():
 
             return
 
-            list_of_table = self.db.get_tables_in_schema(
+            list_of_table = db.get_tables_in_schema(
                 engine_name   = 'test',
                 schema_name   = schema_graph_cache_test,
                 include_views = False,
@@ -5254,7 +5260,7 @@ class GraphRegistry():
 
                 table_type = get_table_type_from_name(table_name)
                 
-                self.db.copy_table_across_engines(
+                db.copy_table_across_engines(
                     source_engine_name = 'test',
                     source_schema_name = schema_graph_cache_test,
                     source_table_name  = table_name,
@@ -5295,7 +5301,7 @@ class GraphRegistry():
 
                     for link_subtype in ['SEM','ORG']:
 
-                        if not self.db.table_exists(
+                        if not db.table_exists(
                             engine_name   = 'test',
                             schema_name   = 'graphsearch_test',
                             table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
@@ -5342,7 +5348,7 @@ class GraphRegistry():
 
                     for link_subtype in ['SEM','ORG']:
 
-                        if not self.db.table_exists(
+                        if not db.table_exists(
                             engine_name   = 'test',
                             schema_name   = 'graphsearch_test',
                             table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
@@ -5368,11 +5374,12 @@ class GraphRegistry():
 
             # Class constructor
             def __init__(self):
-                self.db = GraphDB()
+                pass
+                # db = GraphDB()
 
             # info
             def info(self):
-                list_of_tables = self.db.get_tables_in_schema(
+                list_of_tables = db.get_tables_in_schema(
                     engine_name   = 'test',
                     schema_name   = schema_graph_cache_test,
                     include_views = False,
@@ -5522,7 +5529,7 @@ class GraphRegistry():
                         print(sql_query_eval, '\n')
 
                     # Execute evaluation query
-                    out = self.db.execute_query(engine_name='test', query=sql_query_eval) # TODO: add verbose
+                    out = db.execute_query(engine_name='test', query=sql_query_eval) # TODO: add verbose
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc type: "{doc_type}"')
@@ -5541,7 +5548,7 @@ class GraphRegistry():
                     sql_query_commit = f"\tREPLACE INTO {schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit, verbose=('print' in actions))
+                    db.execute_query_in_shell(engine_name='test', query=sql_query_commit, verbose=('print' in actions))
 
             # Update index buildup tables: link parent-child type
             def build_links_parentchild(self, doc_type, link_type, actions=()):
@@ -5615,7 +5622,7 @@ class GraphRegistry():
                 # Evaluate query
                 if 'eval' in actions:
                     sql_query_eval = f"SELECT {', '.join(eval_columns)}, COUNT(*) AS n_to_process FROM ({sql_query}) t GROUP BY {', '.join(eval_columns)}"
-                    out = self.db.execute_query(engine_name='test', query=sql_query_eval)
+                    out = db.execute_query(engine_name='test', query=sql_query_eval)
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"')
@@ -5634,7 +5641,7 @@ class GraphRegistry():
                     sql_query_commit = f"\tREPLACE INTO {schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
-                    self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
+                    db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
 
         #----------------------------------------------#
         # Sub-subclass definition: Page Profiles Table #
@@ -5645,7 +5652,7 @@ class GraphRegistry():
             def __init__(self, engine_name='test'):
 
                 # Assign DB pointer
-                self.db = GraphDB()
+                # db = GraphDB()
 
                 # Define internal variables
                 self.engine_name      = engine_name
@@ -5653,7 +5660,7 @@ class GraphRegistry():
                 self.key_column_names = ['institution_id', 'object_type', 'object_id']
 
                 # Fetch column names to update
-                out = self.db.get_column_names(
+                out = db.get_column_names(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graph_cache'],
                     table_name  = self.table_name
@@ -5662,7 +5669,7 @@ class GraphRegistry():
 
             # ...
             def info(self):
-                out = self.db.execute_query(engine_name='test', query=f"""
+                out = db.execute_query(engine_name='test', query=f"""
                     SELECT institution_id, object_type, COUNT(*) AS n_to_process
                     FROM {schema_graph_cache_test}.{self.table_name}
                     WHERE to_process > 0.5
@@ -5710,9 +5717,9 @@ class GraphRegistry():
                     #     rich.print_json(data=keys_json)
 
                     # if 'commit' in actions:
-                    self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
-                    self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
-                    self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
+                    db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
+                    db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
             #==================#
             # General patching #
@@ -5767,7 +5774,7 @@ class GraphRegistry():
                     sysmsg.trace(f"⚙️  Processing page profile ...")
 
                 # Execute query
-                self.db.execute_query_as_safe_inserts(
+                db.execute_query_as_safe_inserts(
                     engine_name       = self.engine_name,
                     schema_name       = mysql_schema_names[self.engine_name]['graphsearch'],
                     table_name        = self.table_name,
@@ -5794,7 +5801,7 @@ class GraphRegistry():
             def __init__(self, doc_type, engine_name='test'):
 
                 # Assign DB pointer
-                self.db = GraphDB()
+                # db = GraphDB()
 
                 # Define internal variables
                 self.engine_name        = engine_name
@@ -5804,7 +5811,7 @@ class GraphRegistry():
                 self.key_column_names   = ['doc_institution', 'doc_type', 'doc_id']
 
                 # Fetch column names to update
-                out = self.db.get_column_names(
+                out = db.get_column_names(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graph_cache'],
                     table_name  = self.buildup_table_name
@@ -5820,7 +5827,7 @@ class GraphRegistry():
             # Index > Docs > Table info
             def info(self):
                 print('\nSelected table:', self.index_table_name)
-                out = self.db.get_column_names(
+                out = db.get_column_names(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graphsearch'],
                     table_name  = self.index_table_name
@@ -5869,9 +5876,9 @@ class GraphRegistry():
                     #     rich.print_json(data=keys_json)
 
                     # if 'commit' in actions:
-                    #     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
-                    #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
-                    #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
+                    #     db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
+                    #     db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
+                    #     db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
             # Index > Docs > Create table on elasticsearch cache
             def create_table_elasticsearch(self, actions=()):
@@ -5912,8 +5919,8 @@ class GraphRegistry():
                     #     rich.print_json(data=datatypes_json)
 
                     # # if 'commit' in actions:
-                    # #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
-                    # #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}', datatypes_json=datatypes_json)
+                    # #     db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
+                    # #     db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}', datatypes_json=datatypes_json)
 
             #==================#
             # General patching #
@@ -5947,7 +5954,7 @@ class GraphRegistry():
                 target_table_name  = f"Index_D_{self.doc_type}"
 
                 # Check if target table exists
-                if not self.db.table_exists(
+                if not db.table_exists(
                     engine_name = self.engine_name,
                     schema_name = target_schema_name,
                     table_name  = target_table_name
@@ -5989,7 +5996,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6047,7 +6054,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query as safe inserts
                     else:
-                        self.db.execute_query_as_safe_inserts_in_chunks(
+                        db.execute_query_as_safe_inserts_in_chunks(
                             engine_name       = self.engine_name,
                             schema_name       = target_schema_name,
                             table_name        = target_table_name,
@@ -6072,7 +6079,7 @@ class GraphRegistry():
                 target_table_name       = f"Index_D_{self.doc_type}"
 
                 # Check if target table exists
-                if not self.db.table_exists(
+                if not db.table_exists(
                     engine_name = self.engine_name,
                     schema_name = target_schema_name,
                     table_name  = target_table_name
@@ -6122,7 +6129,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6196,7 +6203,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query as safe inserts
                     else:
-                        self.db.execute_query_as_safe_inserts_in_chunks(
+                        db.execute_query_as_safe_inserts_in_chunks(
                             engine_name       = self.engine_name,
                             schema_name       = target_schema_name,
                             table_name        = target_table_name,
@@ -6245,7 +6252,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
             # Index > Docs > Flags cleanup > Update 'Data_N_Object_T_PageProfile' and 'IndexBuildup_Fields_Docs_*' [to_process=0]
             def flags_cleanup(self, verbose=False):
@@ -6259,7 +6266,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -6269,7 +6276,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
         #------------------------------------------------#
         # Sub-subclass definition: Index Doc-Links Table #
@@ -6280,7 +6287,7 @@ class GraphRegistry():
             def __init__(self, doc_type, link_type, link_subtype, engine_name='test'):
 
                 # Assign DB pointer
-                self.db = GraphDB()
+                # db = GraphDB()
 
                 # Define internal variables
                 self.doc_type     = doc_type
@@ -6302,7 +6309,7 @@ class GraphRegistry():
             def info(self):
 
                 print('\nSelected table:', self.index_table_name)
-                out = self.db.get_column_names(
+                out = db.get_column_names(
                     engine_name = 'test',
                     schema_name = f'graphsearch_{self.engine_name}',
                     table_name  = self.index_table_name
@@ -6353,9 +6360,9 @@ class GraphRegistry():
                     #     rich.print_json(data=keys_json)
 
                     # # if 'commit' in actions:
-                    # #     self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
-                    # #     self.db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
-                    # #     self.db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
+                    # #     db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
+                    # #     db.apply_datatypes(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
+                    # #     db.apply_keys(     engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
             # Index > Doc-Links > Create table on elasticsearch cache
             def create_table_elasticsearch(self, actions=()):
@@ -6397,8 +6404,8 @@ class GraphRegistry():
                     #     rich.print_json(data=datatypes_json)
 
                     # # if 'commit' in actions:
-                    # #     self.db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
-                    # #     self.db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}_L_{self.link_type}', datatypes_json=datatypes_json)
+                    # #     db.execute_query_in_shell(engine_name='test', query=sql_query_create_table)
+                    # #     db.apply_datatypes(engine_name='test', schema_name=schema_es_cache, table_name=f'Index_D_{self.doc_type}_L_{self.link_type}', datatypes_json=datatypes_json)
 
             #===================#
             # Vertical patching #
@@ -6462,7 +6469,7 @@ class GraphRegistry():
                 target_table_path       = f"{target_schema_name}.{target_table_name}"
 
                 # Check if target table exists
-                if not self.db.table_exists(
+                if not db.table_exists(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graphsearch'],
                     table_name  = self.index_table_name
@@ -6485,7 +6492,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6531,7 +6538,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query in chunks
                     else:
-                        self.db.execute_query_in_chunks(
+                        db.execute_query_in_chunks(
                             engine_name   = self.engine_name,
                             schema_name   = target_schema_name,
                             table_name    = target_table_name,
@@ -6562,7 +6569,7 @@ class GraphRegistry():
                 target_table_path_2     = f"{mysql_schema_names[self.engine_name]['graphsearch']}.{target_table_name_2}"
 
                 # Check if source table exists
-                if not self.db.table_exists(
+                if not db.table_exists(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graph_cache'],
                     table_name  = buildup_link_table_name
@@ -6570,7 +6577,7 @@ class GraphRegistry():
                     return
 
                 # Check if target table 1 exists
-                if not self.db.table_exists(
+                if not db.table_exists(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graphsearch'],
                     table_name  = target_table_name_1
@@ -6578,7 +6585,7 @@ class GraphRegistry():
                     return
 
                 # Check if target table 2 exists
-                if not self.db.table_exists(
+                if not db.table_exists(
                     engine_name = self.engine_name,
                     schema_name = mysql_schema_names[self.engine_name]['graphsearch'],
                     table_name  = target_table_name_2
@@ -6611,8 +6618,8 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute the evaluation queries
-                    out_1 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
-                    out_2 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
+                    out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
+                    out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
 
                     # Validate the outputs
                     out_1 = out_1 if type(out_1) is list else [[0,0]]
@@ -6687,7 +6694,7 @@ class GraphRegistry():
                     else:
 
                         # Execute the first query
-                        self.db.execute_query_in_chunks(
+                        db.execute_query_in_chunks(
                             engine_name = self.engine_name,
                             schema_name = mysql_schema_names[self.engine_name]['graphsearch'],
                             table_name  = target_table_name_1,
@@ -6697,7 +6704,7 @@ class GraphRegistry():
                         )
 
                         # Execute the second query
-                        self.db.execute_query_in_chunks(
+                        db.execute_query_in_chunks(
                             engine_name = self.engine_name,
                             schema_name = mysql_schema_names[self.engine_name]['graphsearch'],
                             table_name  = target_table_name_2,
@@ -6722,7 +6729,7 @@ class GraphRegistry():
                 target_table_path       = f"{target_schema_name}.{target_table_name}"
 
                 # # Check if target table exists
-                # if not self.db.table_exists(
+                # if not db.table_exists(
                 #     engine_name = self.engine_name,
                 #     schema_name = target_schema_name,
                 #     table_name  = target_table_name
@@ -6756,7 +6763,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6819,7 +6826,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query in chunks
                     else:
-                        self.db.execute_query_in_chunks(
+                        db.execute_query_in_chunks(
                             engine_name = self.engine_name,
                             schema_name = target_schema_name,
                             table_name  = target_table_name,
@@ -6868,7 +6875,7 @@ class GraphRegistry():
                     pass
                     # # Check if there's something to process
                     # if self.link_subtype.upper() == 'ORG':
-                    #     if len(self.db.execute_query(
+                    #     if len(db.execute_query(
                     #         engine_name = 'test',
                     #         query = f"""
                     #             SELECT 1
@@ -6879,7 +6886,7 @@ class GraphRegistry():
                     #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
                     #         return
                     # elif self.link_subtype.upper() == 'SEM':
-                    #     if len(self.db.execute_query(
+                    #     if len(db.execute_query(
                     #         engine_name = 'test',
                     #         query = f"""
                     #             SELECT 1
@@ -6892,7 +6899,7 @@ class GraphRegistry():
                     #         return
 
                     # # Check if table exists
-                    # if not self.db.table_exists(engine_name='test', schema_name=self.test_schema_name, table_name=self.index_table_name):
+                    # if not db.table_exists(engine_name='test', schema_name=self.test_schema_name, table_name=self.index_table_name):
                     #     return False
 
                     # # Organisational table?
@@ -6970,8 +6977,8 @@ class GraphRegistry():
                 target_table_path       = f"{mysql_schema_names[self.engine_name]['graphsearch']}.{self.index_table_name}"
 
                 # Does the buildup table exist?
-                buildup_table_exists_direct  = self.db.table_exists(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graph_cache'], table_name=f'IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}')
-                buildup_table_exists_flipped = self.db.table_exists(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graph_cache'], table_name=f'IndexBuildup_Fields_Links_ParentChild_{self.link_type}_{self.doc_type}')
+                buildup_table_exists_direct  = db.table_exists(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graph_cache'], table_name=f'IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}')
+                buildup_table_exists_flipped = db.table_exists(engine_name=self.engine_name, schema_name=mysql_schema_names[self.engine_name]['graph_cache'], table_name=f'IndexBuildup_Fields_Links_ParentChild_{self.link_type}_{self.doc_type}')
                 buildup_table_exists = buildup_table_exists_direct or buildup_table_exists_flipped
 
                 # Cross-engine collate correction
@@ -7156,9 +7163,9 @@ class GraphRegistry():
                         print(sql_query_eval_3)
 
                     # Execute the evaluation queries
-                    out_1 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
-                    out_2 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
-                    out_3 = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval_3)
+                    out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
+                    out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
+                    out_3 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_3)
 
                     # Sum up the results
                     out = [[out_1[0][0] + out_2[0][0], out_3[0][0]]]
@@ -7183,18 +7190,18 @@ class GraphRegistry():
                 # Execute SQL query
                 if 'commit' in actions:
                     if SQLQuery1:
-                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions)
                     if SQLQuery2:
-                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2, verbose='print' in actions)
                     if SQLQuery3:
-                        self.db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions)
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
 
                 # Resolve table name or return if it doesn't exist
                 # Table type: MIX
-                if   self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
+                if   db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX"
@@ -7221,7 +7228,7 @@ class GraphRegistry():
                     """
 
                 # Table type: ORG
-                elif self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
+                elif db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG"
@@ -7238,7 +7245,7 @@ class GraphRegistry():
                     """
 
                 # Table type: SEM
-                elif self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
+                elif db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
                     
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM"
@@ -7302,7 +7309,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
                     out = out if type(out) is list else [[0,0]]
 
                     # Number of rows to patch
@@ -7321,7 +7328,7 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Execute the evaluation query
-                    out = self.db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
 
                     # Print the results
                     if rows_to_patch > 0:
@@ -7340,7 +7347,7 @@ class GraphRegistry():
                         return
                     # Else, execute the query in chunks
                     else:
-                        self.db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
+                        db.execute_query_in_shell(engine_name='test', query=sql_query_commit)
 
             # ------- Rollbacks ------- #
 
@@ -7350,7 +7357,7 @@ class GraphRegistry():
                 if False:
                     pass
                     # # Check if there's something to process
-                    # if len(self.db.execute_query(
+                    # if len(db.execute_query(
                     #     engine_name = 'test',
                     #     query = f"""
                     #         SELECT 1
@@ -7366,7 +7373,7 @@ class GraphRegistry():
                     # table_name = f'Index_D_{source_doc_type}_L_{target_doc_type}_T_{index_type}'
 
                     # # Check if table exists
-                    # if not self.db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name):
+                    # if not db.table_exists(engine_name='test', schema_name=mysql_schema_names['test']['graphsearch'], table_name=table_name):
                     #     # print(f"Table '{schema_graphsearch_test}.{table_name}' does not exist.")
                     #     return False
 
@@ -7384,7 +7391,7 @@ class GraphRegistry():
                     # if test_mode:
                     #     print(SQLQuery)
                     # else:
-                    #     self.db.execute_query_in_shell(engine_name='test', query=SQLQuery)
+                    #     db.execute_query_in_shell(engine_name='test', query=SQLQuery)
 
             #=================#
             # Airflow updates #
@@ -7405,7 +7412,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
                 # Execute semantic related quries if the link type is 'Semantic'
                 if self.link_subtype == 'SEM':
@@ -7421,7 +7428,7 @@ class GraphRegistry():
                     """
 
                     # Execute the commit query
-                    self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
                     # Generate commit query
                     sql_query_commit = f"""
@@ -7434,7 +7441,7 @@ class GraphRegistry():
                     """
 
                     # Execute the commit query
-                    self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
 
     #------------------------------------------------------------#
     # Subclass definition: GraphIndex Management (ElasticSearch) #
@@ -7443,8 +7450,9 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self):
-            self.db = GraphDB()
-            self.idx = GraphIndex()
+            pass
+            # db = GraphDB()
+            # self.es = GraphIndex()
 
         # Generate local JSON cache for ElasticSearch index creation
         def generate_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
@@ -7513,7 +7521,7 @@ class GraphRegistry():
                     column_names_doc = default_column_names_doc + custom_column_names_doc
 
                     # Fetch list of docs for doc_type
-                    list_of_docs = self.db.execute_query(engine_name='test', query=f"""
+                    list_of_docs = db.execute_query(engine_name='test', query=f"""
                         SELECT {', '.join(column_names_doc)}
                             FROM {schema_es_cache}.Index_D_{doc_type}
                         ORDER BY doc_id ASC
@@ -7560,13 +7568,13 @@ class GraphRegistry():
                         column_names_link = default_column_names_link + custom_column_names_link
 
                         # Check if link table exists
-                        if not self.db.table_exists(engine_name='test', schema_name=schema_es_cache, table_name=f"Index_D_{doc_type}_L_{link_type}"):
+                        if not db.table_exists(engine_name='test', schema_name=schema_es_cache, table_name=f"Index_D_{doc_type}_L_{link_type}"):
                             if not ignore_warnings:
                                 sysmsg.warning(f"Table does not exist: Index_D_{doc_type}_L_{link_type}.")
                             continue
 
                         # Fetch list of links for doc_type and link_type
-                        list_of_links = self.db.execute_query(engine_name='test', query=f"""
+                        list_of_links = db.execute_query(engine_name='test', query=f"""
                             SELECT {', '.join(column_names_link)}
                                 FROM {schema_es_cache}.Index_D_{doc_type}_L_{link_type}
                             ORDER BY doc_id ASC, link_rank ASC
@@ -7689,7 +7697,7 @@ class GraphRegistry():
                 raise ValueError("Either both 'index_file' and 'index_name' parameters must be provided, or neither of them (in which case 'index_date' must be provided).")                
 
             # Import index from file
-            self.idx.import_index_from_file(
+            es.import_index_from_file(
                 engine_name = engine_name,
                 index_name  = index_name,
                 index_file  = index_file,
@@ -7716,9 +7724,9 @@ class GraphRegistry():
         #         index_name_prod = rename_to
 
         #     # Define the parameters for the ElasticDump command
-        #     params_server_test = f"https://{self.idx.params_test['username']}:{quote(self.idx.params_test['password'])}@{self.idx.params_test['host']}:{self.idx.params_test['port']}/{index_name_test}"
-        #     params_server_prod = f"https://{self.idx.params_prod['username']}:{quote(self.idx.params_prod['password'])}@{self.idx.params_prod['host']}:{self.idx.params_prod['port']}/{index_name_prod}"
-        #     base_command = [glbcfg.settings['elasticsearch']['dump_bin'], f"--input={params_server_test}", f"--output={params_server_prod}", f"--input-ca={self.idx.params_test['cert_file']}", f"--output-ca={self.idx.params_prod['cert_file']}", f"--limit={chunk_size}"]
+        #     params_server_test = f"https://{es.params_test['username']}:{quote(es.params_test['password'])}@{es.params_test['host']}:{es.params_test['port']}/{index_name_test}"
+        #     params_server_prod = f"https://{es.params_prod['username']}:{quote(es.params_prod['password'])}@{es.params_prod['host']}:{es.params_prod['port']}/{index_name_prod}"
+        #     base_command = [glbcfg.settings['elasticsearch']['dump_bin'], f"--input={params_server_test}", f"--output={params_server_prod}", f"--input-ca={es.params_test['cert_file']}", f"--output-ca={es.params_prod['cert_file']}", f"--limit={chunk_size}"]
             
         #     # Copy the index from test to prod
         #     sysmsg.trace(f"⚙️  Dumping and transferring index ...")

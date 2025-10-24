@@ -5,7 +5,7 @@ from graphai_client import client as graphai
 from graphai_client.client_api.text import extract_concepts_from_text
 import rich, json
 
-# Streamable ML4 video URL
+# Streamable MP4 video URL
 video_url = 'http://raw.githubusercontent.com/epflgraph/graphregistry/master/database/init/sample_sets/MATH-132_Lecture_01.mp4'
 
 # Output file base path

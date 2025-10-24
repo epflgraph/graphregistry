@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.core.config import GlobalConfig
+from graphregistry.common.config import GlobalConfig
 from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers, ElasticsearchWarning
 from loguru import logger as sysmsg
 from urllib.parse import quote
@@ -391,7 +391,7 @@ logger.setLevel(logging.DEBUG)
 #-------------------------------------------------#
 # Class definition for Graph ElasticSearch engine #
 #-------------------------------------------------#
-class GraphIndex():
+class GraphES():
 
     # Class variable to hold the single instance
     _instance = None
