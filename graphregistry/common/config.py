@@ -18,7 +18,7 @@ class GlobalConfig:
     def __init__(self):
 
         # Load index configuration in to JSON
-        with open(f"{REPO_ROOT}/config/global_cfg.yaml", "r", encoding="utf-8") as f:
+        with open(f"{REPO_ROOT}/config/config_global.yaml", "r", encoding="utf-8") as f:
             global_config = safe_load(f)
 
         # Initialise settings
@@ -38,7 +38,7 @@ class IndexConfig:
     def __init__(self):
 
         # Load index configuration in to JSON
-        with open(f"{REPO_ROOT}/config/index_cfg.json", "r", encoding="utf-8") as f:
+        with open(f"{REPO_ROOT}/config/config_index.json", "r", encoding="utf-8") as f:
             index_config = json.load(f)
 
         # Initialise parsed options dictionary
@@ -275,7 +275,7 @@ class ScoresConfig:
     def __init__(self):
 
         # Load index configuration in to JSON
-        with open(f"{REPO_ROOT}/config/scores_cfg.json", "r", encoding="utf-8") as f:
+        with open(f"{REPO_ROOT}/config/config_scores.json", "r", encoding="utf-8") as f:
             scores_config = json.load(f)
 
         # Initialise settings

@@ -23,9 +23,13 @@ import numpy as np
 import pandas as pd
 import re, sys, json, datetime, requests, itertools, gzip, time, subprocess, os, glob, rich, hashlib
 
+#------------------------------#
+# Class objects initialisation #
+#------------------------------#
+
 # Initialise config objects
 glbcfg = GlobalConfig()
-idxcfg = IndexConfig()
+idxcfg =  IndexConfig()
 scrcfg = ScoresConfig()
 
 # Initialise clients
@@ -35,6 +39,13 @@ es = GraphES()
 # Print configurations
 idxcfg.print()
 scrcfg.print()
+
+#------------------------------------------------#
+# Progress bar and system messages configuration #
+#------------------------------------------------#
+
+# Width of the progress bar
+PBWIDTH = 92
 
 # Set up system message handler to display TRACE messages
 sysmsg.remove()
@@ -47,8 +58,9 @@ sysmsg.add(
     level="TRACE"
 )
 
-# Progress bar configuration
-PBWIDTH = 92 # Width of the progress bar
+#---------------------------------------#
+# Resolve paths from global config file #
+#---------------------------------------#
 
 # graphregistry.py lives at: api/registry/graphregistry.py
 # repo root is two directories above this file
@@ -60,16 +72,15 @@ def resolve_repo_path(p: str | Path) -> Path:
     p = Path(p)
     return p if p.is_absolute() else (REPO_ROOT / p)
 
-# Resolve Elasticsearch export path
-ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_path"]["export"])
+# Resolve SQL Formulas folder path
 SQL_FORMULAS_PATH = resolve_repo_path('database/formulas')
 
-# Resolve index config file, then load it (only once)
+# Resolve Elasticsearch export path
+ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_path"]["export"])
+
+# Get GraphAI login info
 GRAPHAI_CLIENT_CONFIG_FILE = resolve_repo_path(glbcfg.settings["graphai"]["client_config_file"])
 graphai_login_info = graphai_login(graph_api_json=GRAPHAI_CLIENT_CONFIG_FILE)
-
-# Resolve GraphAI client config path
-GRAPHAI_CLIENT_CONFIG_FILE = resolve_repo_path(glbcfg.settings["graphai"]["client_config_file"])
 
 #-----------------------------------------#
 #-----------------------------------------#
@@ -85,6 +96,8 @@ with INDEX_CONFIG_FILE.open("r", encoding="utf-8") as f:
 #-----------------------------------------#
 # Get MySQL schema names from config file #
 #-----------------------------------------#
+
+# Fetch schema names from config file
 mysql_schema_names = {
     'test' : {
         'ontology'    : glbcfg.settings['mysql']['db_schema_names']['ontology'],
@@ -100,6 +113,8 @@ mysql_schema_names = {
         'graphsearch' : glbcfg.settings['mysql']['db_schema_names']['graphsearch_prod']
     }
 }
+
+# Assign to local variables (to act as aliases)
 schema_ontology = mysql_schema_names['test']['ontology']
 schema_registry = mysql_schema_names['test']['registry']
 schema_lectures = mysql_schema_names['test']['lectures']
@@ -109,97 +124,6 @@ schema_graph_cache_test = mysql_schema_names['test']['graph_cache']
 schema_graph_cache_prod = mysql_schema_names['prod']['graph_cache']
 schema_graphsearch_test = mysql_schema_names['test']['graphsearch']
 schema_graphsearch_prod = mysql_schema_names['prod']['graphsearch']
-
-# Term colours
-term_colors = {
-    'Unit'        : 'blue',
-    'Lecture'     : 'green',
-    'MOOC'        : 'yellow',
-    'Person'      : 'magenta',
-    'Publication' : 'cyan',
-    'Concept'     : 'red'
-}
-
-# Index doc combinations
-index_doc_types_list = [
-    ('EPFL', 'Course'     ),
-    ('EPFL', 'Lecture'    ),
-    ('EPFL', 'MOOC'       ),
-    ('EPFL', 'Person'     ),
-    ('EPFL', 'Publication'),
-    ('EPFL', 'Startup'    ),
-    ('EPFL', 'Unit'       ),
-    ('EPFL', 'Widget'     ),
-    ('Ont' , 'Category'   ),
-    ('Ont' , 'Concept'    )
-]
-
-# Index doc-link combinations (build from index doc combinations)
-index_doc_link_types_permutations = []
-for source_institution_id, source_node_type in index_doc_types_list:
-    for target_institution_id, target_node_type in index_doc_types_list:
-        index_doc_link_types_permutations.append((source_institution_id, source_node_type, target_institution_id, target_node_type))
-
-# Object-to-object type combinations (scores)
-object_to_object_types_scoring_list = [
-	('Category', 'Category'),
-	('Category', 'Concept'),
-	('Concept', 'Concept'),
-	('Course', 'Category'),
-	('Course', 'Concept'),
-	('Course', 'Course'),
-	('Course', 'Lecture'),
-	('Course', 'MOOC'),
-	('Course', 'Person'),
-	('Course', 'Publication'),
-	('Course', 'Startup'),
-	('Course', 'Unit'),
-	('Lecture', 'Category'),
-	('Lecture', 'Concept'),
-	('Lecture', 'Lecture'),
-	('Lecture', 'MOOC'),
-	('Lecture', 'Person'),
-	('Lecture', 'Publication'),
-	('Lecture', 'Startup'),
-	('Lecture', 'Unit'),
-	('MOOC', 'Category'),
-	('MOOC', 'Concept'),
-	('MOOC', 'MOOC'),
-	('MOOC', 'Person'),
-	('MOOC', 'Publication'),
-	('MOOC', 'Startup'),
-	('MOOC', 'Unit'),
-	('Person', 'Category'),
-	('Person', 'Concept'),
-	('Person', 'Person'),
-	('Person', 'Publication'),
-	('Person', 'Startup'),
-	('Person', 'Unit'),
-	('Publication', 'Category'),
-	('Publication', 'Concept'),
-	('Publication', 'Publication'),
-	('Publication', 'Startup'),
-	('Publication', 'Unit'),
-	('Startup', 'Category'),
-	('Startup', 'Concept'),
-	('Startup', 'Startup'),
-	('Startup', 'Unit'),
-	('Unit', 'Category'),
-	('Unit', 'Concept'),
-	('Unit', 'Unit'),
-	('Widget', 'Category'),
-	('Widget', 'Concept'),
-	('Widget', 'Widget')
-]
-
-# Define function for playing system sounds
-def play_system_sound(msg_type, sound_strength):
-    sound_file = f"{msg_type}_{sound_strength}.aiff"
-    subprocess.run([glbcfg.settings['sound']['player_bin'], f'{glbcfg.settings["sound"]["data_path"]}/{sound_file}'])
-
-#-----------------------------#
-# Column datatype definitions #
-#-----------------------------#
 
 # Object type to schema mapping
 object_type_to_schema = {
@@ -237,349 +161,9 @@ object_type_to_institution_id = {
     'Widget'         : 'EPFL',
 }
 
-# List of possible values for institution_id and object_type
-institution_ids = ['Ont', 'EPFL', 'ETHZ', 'PSI', 'Empa', 'Eawag', 'WSL']
-object_types = ['Category', 'Chart', 'Concept', 'Course', 'Dashboard', 'Exercise', 'External person', 'Hardware', 'Historical figure', 'Lecture', 'Learning module', 'MOOC', 'News', 'Notebook', 'Person', 'Publication', 'Specialisation', 'Startup', 'Strategic area', 'Slide', 'StudyPlan', 'Transcript', 'Unit', 'Widget']
-
-# SQL Enum definitions
-institution_ids_enum = f"""ENUM('{"', '".join(institution_ids)}')"""
-object_types_enum = f"""ENUM('{"', '".join(object_types)}')"""
-
-# Datatypes JSON
-table_datatypes_json = {
-    "from_to_edges" : {
-        "from_id" : "VARCHAR(255) NOT NULL",
-        "to_id"   : "VARCHAR(255) NOT NULL"
-    },
-    "object" : {
-        "institution_id" : f"{institution_ids_enum} NOT NULL",
-        "object_type"    : f"{object_types_enum} NOT NULL",
-        "object_id"      : "VARCHAR(255) NOT NULL",
-        "field_language" : "ENUM('en', 'fr', 'de', 'it') NOT NULL",
-        "field_name"     : "VARCHAR(32) NOT NULL",
-    },
-    "object_to_object" : {
-        "from_institution_id" : f"{institution_ids_enum} NOT NULL",
-        "from_object_type"    : f"{object_types_enum} NOT NULL",
-        "from_object_id"      : "VARCHAR(255) NOT NULL",
-        "to_institution_id"   : f"{institution_ids_enum} NOT NULL",
-        "to_object_type"      : f"{object_types_enum} NOT NULL",
-        "to_object_subtype"   : "ENUM('Parent-to-Child', 'Child-to-Parent', 'Semantic') NOT NULL",
-        "to_object_id"        : "VARCHAR(255) NOT NULL",
-        "field_language"      : "ENUM('en', 'fr', 'de', 'it') NOT NULL",
-        "field_name"          : "VARCHAR(32) NOT NULL",
-        "context"             : "VARCHAR(64) NOT NULL"
-    },
-    "object_to_concept" : {
-        "institution_id" : f"{institution_ids_enum} NOT NULL",
-        "object_type"    : f"{object_types_enum} NOT NULL",
-        "object_id"      : "VARCHAR(255) NOT NULL",
-        "concept_id"     : "VARCHAR(255) NOT NULL"
-    },
-    "doc_profile" : {
-        "institution_id"         : f"{institution_ids_enum} NOT NULL",
-        "object_type"            : f"{object_types_enum} NOT NULL",
-        "object_id"              : "VARCHAR(255) NOT NULL",
-        "numeric_id_en"          : "INT UNSIGNED",
-        "numeric_id_fr"          : "INT UNSIGNED",
-        "numeric_id_de"          : "INT UNSIGNED",
-        "numeric_id_it"          : "INT UNSIGNED",
-        "short_code"             : "VARCHAR(32)",
-        "subtype_en"             : "VARCHAR(255)",
-        "subtype_fr"             : "VARCHAR(255)",
-        "subtype_de"             : "VARCHAR(255)",
-        "subtype_it"             : "VARCHAR(255)",
-        "name_en_is_auto_generated"  : "TINYINT",
-        "name_en_is_auto_corrected"  : "TINYINT",
-        "name_en_is_auto_translated" : "TINYINT",
-        "name_en_translated_from"    : "CHAR(6)",
-        "name_en_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "name_fr_is_auto_generated"  : "TINYINT",
-        "name_fr_is_auto_corrected"  : "TINYINT",
-        "name_fr_is_auto_translated" : "TINYINT",
-        "name_fr_translated_from"    : "CHAR(6)",
-        "name_fr_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "name_de_is_auto_generated"  : "TINYINT",
-        "name_de_is_auto_corrected"  : "TINYINT",
-        "name_de_is_auto_translated" : "TINYINT",
-        "name_de_translated_from"    : "CHAR(6)",
-        "name_de_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "name_it_is_auto_generated"  : "TINYINT",
-        "name_it_is_auto_corrected"  : "TINYINT",
-        "name_it_is_auto_translated" : "TINYINT",
-        "name_it_translated_from"    : "CHAR(6)",
-        "name_it_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_short_en_is_auto_generated"   : "TINYINT",
-        "description_short_en_is_auto_corrected"   : "TINYINT",
-        "description_short_en_is_auto_translated"  : "TINYINT",
-        "description_short_en_translated_from"     : "CHAR(6)",
-        "description_short_en_value"               : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_short_fr_is_auto_generated"   : "TINYINT",
-        "description_short_fr_is_auto_corrected"   : "TINYINT",
-        "description_short_fr_is_auto_translated"  : "TINYINT",
-        "description_short_fr_translated_from"     : "CHAR(6)",
-        "description_short_fr_value"               : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_short_de_is_auto_generated"   : "TINYINT",
-        "description_short_de_is_auto_corrected"   : "TINYINT",
-        "description_short_de_is_auto_translated"  : "TINYINT",
-        "description_short_de_translated_from"     : "CHAR(6)",
-        "description_short_de_value"               : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_short_it_is_auto_generated"   : "TINYINT",
-        "description_short_it_is_auto_corrected"   : "TINYINT",
-        "description_short_it_is_auto_translated"  : "TINYINT",
-        "description_short_it_translated_from"     : "CHAR(6)",
-        "description_short_it_value"               : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_medium_en_is_auto_generated"  : "TINYINT",
-        "description_medium_en_is_auto_corrected"  : "TINYINT",
-        "description_medium_en_is_auto_translated" : "TINYINT",
-        "description_medium_en_translated_from"    : "CHAR(6)",
-        "description_medium_en_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_medium_fr_is_auto_generated"  : "TINYINT",
-        "description_medium_fr_is_auto_corrected"  : "TINYINT",
-        "description_medium_fr_is_auto_translated" : "TINYINT",
-        "description_medium_fr_translated_from"    : "CHAR(6)",
-        "description_medium_fr_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_medium_de_is_auto_generated"  : "TINYINT",
-        "description_medium_de_is_auto_corrected"  : "TINYINT",
-        "description_medium_de_is_auto_translated" : "TINYINT",
-        "description_medium_de_translated_from"    : "CHAR(6)",
-        "description_medium_de_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_medium_it_is_auto_generated"  : "TINYINT",
-        "description_medium_it_is_auto_corrected"  : "TINYINT",
-        "description_medium_it_is_auto_translated" : "TINYINT",
-        "description_medium_it_translated_from"    : "CHAR(6)",
-        "description_medium_it_value"              : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_long_en_is_auto_generated"    : "TINYINT",
-        "description_long_en_is_auto_corrected"    : "TINYINT",
-        "description_long_en_is_auto_translated"   : "TINYINT",
-        "description_long_en_translated_from"      : "CHAR(6)",
-        "description_long_en_value"                : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_long_fr_is_auto_generated"    : "TINYINT",
-        "description_long_fr_is_auto_corrected"    : "TINYINT",
-        "description_long_fr_is_auto_translated"   : "TINYINT",
-        "description_long_fr_translated_from"      : "CHAR(6)",
-        "description_long_fr_value"                : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_long_de_is_auto_generated"    : "TINYINT",
-        "description_long_de_is_auto_corrected"    : "TINYINT",
-        "description_long_de_is_auto_translated"   : "TINYINT",
-        "description_long_de_translated_from"      : "CHAR(6)",
-        "description_long_de_value"                : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "description_long_it_is_auto_generated"    : "TINYINT",
-        "description_long_it_is_auto_corrected"    : "TINYINT",
-        "description_long_it_is_auto_translated"   : "TINYINT",
-        "description_long_it_translated_from"      : "CHAR(6)",
-        "description_long_it_value"                : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci",
-        "external_key_en" : "VARCHAR(255)",
-        "external_key_fr" : "VARCHAR(255)",
-        "external_key_de" : "VARCHAR(255)",
-        "external_key_it" : "VARCHAR(255)",
-        "external_url_en" : "VARCHAR(255)",
-        "external_url_fr" : "VARCHAR(255)",
-        "external_url_de" : "VARCHAR(255)",
-        "external_url_it" : "VARCHAR(255)",
-        "is_visible" : "TINYINT NOT NULL DEFAULT 0",
-        "object_created" : "DATETIME DEFAULT CURRENT_TIMESTAMP",
-        "object_updated" : "DATETIME DEFAULT NULL"
-    },
-    "doc_index" : {
-        "doc_institution"      : f"{institution_ids_enum} NOT NULL",
-        "doc_type"             : f"{object_types_enum} NOT NULL",
-        "doc_id"               : "VARCHAR(255) NOT NULL",
-        "include_code_in_name" : "TINYINT(1) NOT NULL",
-        "degree_score"         : "FLOAT NOT NULL",
-    },
-    "link_index" : {
-        "doc_institution"  : f"{institution_ids_enum} NOT NULL",
-        "doc_type"         : f"{object_types_enum} NOT NULL",
-        "doc_id"           : "VARCHAR(255) NOT NULL",
-        "link_institution" : f"{institution_ids_enum} NOT NULL",
-        "link_type"        : f"{object_types_enum} NOT NULL",
-        "link_subtype"     : "ENUM('Parent-to-Child', 'Child-to-Parent', 'Semantic') NOT NULL",
-        "link_id"          : "VARCHAR(255) NOT NULL",
-        "semantic_score"   : "FLOAT NOT NULL",
-        "degree_score"     : "FLOAT NOT NULL",
-        "row_score"        : "FLOAT NOT NULL",
-        "row_rank"         : "SMALLINT UNSIGNED NOT NULL"
-    },
-    "index_vars" : {
-        "depth"                 : "SMALLINT UNSIGNED",
-        "latest_academic_year"  : "VARCHAR(16)",
-        "latest_teaching_assignment_year" : "VARCHAR(16)",
-        "is_at_epfl"            : "TINYINT(1)",
-        "year"                  : "YEAR",
-        "is_active_unit"        : "TINYINT(1)",
-        "is_research_unit"      : "TINYINT(1)",
-        "subtype_rank"          : "SMALLINT UNSIGNED",
-        "sort_number"           : "SMALLINT UNSIGNED",
-        "is_active_affiliation" : "TINYINT(1)",
-        "current_position_rank" : "SMALLINT UNSIGNED",
-        "video_stream_url"      : "MEDIUMTEXT",
-        "video_duration"        : "FLOAT",
-        "creation_time"         : "DATETIME",
-        "update_time"           : "DATETIME",
-        "is_restricted"         : "TINYINT(1)",
-        "available_start_date"  : "DATETIME",
-        "available_end_date"    : "DATETIME",
-        "srt_subtitles_en"      : "MEDIUMTEXT",
-        "srt_subtitles_fr"      : "MEDIUMTEXT",
-        "gender"                : "ENUM('Male', 'Female')",
-        "published_in"          : "MEDIUMTEXT",
-        "publisher"             : "MEDIUMTEXT",
-        "domain"                : "ENUM('Basic Science', 'Environment', 'Life Science', 'Brain', 'Engineering', 'Urbanism', 'Computer Science', 'Business', 'Development', 'Misc', 'Water')",
-        "language"              : "ENUM('English', 'French', 'German', 'Italian', 'Portuguese')",
-        "level"                 : "ENUM('Bachelor', 'Hors Programme', 'Master', 'Preparatory', 'Propedeutic')",
-        "platform"              : "ENUM('coursera', 'courseraod', 'courseware', 'edx', 'edx edge', 'youtube')",
-        "thumbnail_image_url"   : "VARCHAR(255)",
-        "lecture_source"        : "ENUM('Course', 'MOOC')",
-        "teaching_formats"      : "ENUM('Course', 'MOOC', 'Course,MOOC')",
-        "name_en"               : "VARCHAR(255)",
-        "name_fr"               : "VARCHAR(255)",
-        "timestamps"            : "MEDIUMTEXT",
-        "timestamps_md5"        : "CHAR(32)",
-        "n_timestamps"          : "SMALLINT UNSIGNED",
-        "detection_sum_score"   : "FLOAT",
-        "detection_avg_score"   : "FLOAT",
-        "detection_max_score"   : "FLOAT"
-    },
-    None : {}
-}
-
-#-------------------------#
-# Column keys definitions #
-#-------------------------#
-
-# Column keys JSON
-table_keys_json = {
-    "from_to_edges" : {
-        "from_id" : "PRIMARY KEY",
-        "to_id"   : "PRIMARY KEY"
-    },
-    "object" : {
-        "institution_id" : "PRIMARY KEY",
-        "object_type"    : "PRIMARY KEY",
-        "object_id"      : "PRIMARY KEY",
-        "field_language" : "PRIMARY KEY",
-        "field_name"     : "PRIMARY KEY"
-    },
-    "object_to_object" : {
-        "from_institution_id" : "PRIMARY KEY",
-        "from_object_type"    : "PRIMARY KEY",
-        "from_object_id"      : "PRIMARY KEY",
-        "to_institution_id"   : "PRIMARY KEY",
-        "to_object_type"      : "PRIMARY KEY",
-        "to_object_subtype"   : "PRIMARY KEY",
-        "to_object_id"        : "PRIMARY KEY",
-        "field_language"      : "PRIMARY KEY",
-        "field_name"          : "PRIMARY KEY",
-        "context"             : "PRIMARY KEY"
-    },
-    "object_to_concept" : {
-        "institution_id"     : "PRIMARY KEY",
-        "object_type"        : "PRIMARY KEY",
-        "object_id"          : "PRIMARY KEY",
-        "concept_id"         : "PRIMARY KEY",
-        "detection_time_hms" : "PRIMARY KEY",
-    },
-    "doc_profile" : {
-        "institution_id" : "PRIMARY KEY",
-        "object_type"    : "PRIMARY KEY",
-        "object_id"      : "PRIMARY KEY",
-        "is_visible"     : "KEY"
-    },
-    "doc_index" : {
-        "doc_institution"      : "PRIMARY KEY",
-        "doc_type"             : "PRIMARY KEY",
-        "doc_id"               : "PRIMARY KEY"
-    },
-    "link_index" : {
-        "doc_institution"  : "PRIMARY KEY",
-        "doc_type"         : "PRIMARY KEY",
-        "doc_id"           : "PRIMARY KEY",
-        "link_institution" : "PRIMARY KEY",
-        "link_type"        : "PRIMARY KEY",
-        "link_subtype"     : "PRIMARY KEY",
-        "link_id"          : "PRIMARY KEY"
-    },
-    "index_vars" : {
-        "depth"                	: "KEY", 
-        "latest_academic_year" 	: "KEY",
-        "is_at_epfl"           	: "KEY",
-        "year"                 	: "KEY",
-        "is_active_unit"       	: "KEY",
-        "is_research_unit"		: "KEY",
-        "subtype_rank"			: "KEY",
-        "is_active_affiliation" : "KEY",
-        "current_position_rank" : "KEY",
-        "gender"                : "KEY",
-        "domain"                : "KEY",
-        "language"              : "KEY",
-        "level"                 : "KEY",
-        "platform"              : "KEY",
-        "lecture_source"        : "KEY",
-        "name_en"               : "KEY",
-        "name_fr"               : "KEY",
-        "timestamps_md5"        : "KEY",
-        "n_timestamps"          : "KEY"
-    },
-    None : {}
-}
-
-# Function to get the table type from the table name
-def get_table_type_from_name(table_name):
-    
-    match_gen_from_to_edges    = re.findall(r"Edges_N_[^_]*_[^_]*_N_[^_]*_[^_]*_T_(GBC|AS)$", table_name)
-    match_obj_to_obj_edges     = re.findall(r"Edges_N_[^_]*_N_(?!Concept)[^_]*_T_[^_]*$", table_name)
-    match_obj_to_concept_edges = re.findall(r"Edges_N_[^_]*_N_Concept_T_[^_]*$", table_name)
-    match_data_object          = re.findall(r"Data_N_Object_T_[^_]*(_COPY)?$", table_name)
-    match_data_obj_to_obj      = re.findall(r"Data_N_Object_N_Object_T_[^_]*$", table_name)
-    match_doc_index            = re.findall(r"Index_D_[^_]*(_COPY)?$", table_name)
-    match_link_index           = re.findall(r"Index_D_[^_]*_L_[^_]*_T_[^_]*(_Search)?(_COPY)?$", table_name)
-    match_stats_object         = re.findall(r"Stats_N_Object_T_[^_]*$", table_name)
-    match_stats_obj_to_obj     = re.findall(r"Stats_N_Object_N_Object_T_[^_]*$", table_name)
-    match_buildup_docs         = re.findall(r'^IndexBuildup_Fields_Docs_[^_]*', table_name)
-    match_buildup_links        = re.findall(r'^IndexBuildup_Fields_Links_ParentChild_[^_]*_[^_]*', table_name)
-    match_scores_matrix        = re.findall(r"Edges_N_Object_N_Object_T_ScoresMatrix_AS$", table_name)
-
-    if match_gen_from_to_edges:
-        return 'from_to_edges'
-    elif match_obj_to_obj_edges:
-        return 'object_to_object'
-    elif match_obj_to_concept_edges:
-        return 'object_to_concept'
-    elif match_data_object:
-        if 'PageProfile' in table_name:
-            return 'doc_profile'
-        else:
-            return 'object'
-    elif match_data_obj_to_obj:
-        return 'object_to_object'
-    elif match_doc_index:
-        return 'doc_index'
-    elif match_link_index:
-        return 'link_index'
-    elif match_stats_object:
-        return 'object'
-    elif match_stats_obj_to_obj:
-        return 'object_to_object'
-    elif match_buildup_docs:
-        return 'doc_index'
-    elif match_buildup_links:
-        return 'link_index'
-    elif match_scores_matrix:
-        return 'object_to_object'
-    else:
-        return None
-
 #----------------------#
 # Temporary parameters #
 #----------------------#
-
-# Estimated processing time per row
-processing_times_per_row = {
-    'materialise_view' : 30*60/15908574,
-    'apply_datatypes'  : 115.27/15908574,
-    'apply_keys'       : 404.88/15908574
-}
 
 # Local cache
 local_cache = {
@@ -650,9 +234,9 @@ local_cache = {
     }
 }
 
-#---------------------#
-# Auxiliary functions #
-#---------------------#
+#-------------------------------#
+# GraphAI interaction functions #
+#-------------------------------#
 
 # Function to get access token from GraphAI
 def graphai_get_access_token(username, password):
@@ -752,6 +336,10 @@ def graphai_text_endpoint(object_id, input, endpoint='wikify', headers=None):
 
     # Return the response
     return output_json
+
+#-----------------------------------------#
+#-----------------------------------------#
+#-----------------------------------------#
 
 # Function to execute an INSERT operation in the registry
 def registry_insert(
@@ -890,9 +478,8 @@ def registry_insert(
     # Return the test results
     return eval_results
 
-def delete_concepts_for_nodes(
-        db_connector, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()
-):
+# Function to delete input list of concepts
+def delete_concepts_for_nodes(db_connector, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
     schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
     query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
     eval_results = None
@@ -913,7 +500,7 @@ def delete_concepts_for_nodes(
         )
     return eval_results
 
-
+# Function to delete input list of nodes by id
 def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
     schema_objects = object_type_to_schema.get(object_type, schema_registry)
     query_where_per_table = {}
@@ -970,6 +557,7 @@ def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: Lis
         )
     return eval_results if 'eval' in actions else None
 
+# Function to delete input list of edges by id
 def delete_edges_by_ids(
         db_connector, from_institution_id, from_object_type, to_institution_id, to_object_type,
         edges_id: List[Tuple[str, str]], engine_name='test', actions=()
@@ -1017,10 +605,8 @@ def get_existing_nodes_id(db_connector, institution_id: str, object_type: str, e
     )
     return [object_id for object_id, in existing_nodes_id]
 
-def get_existing_edges_id(
-        db_connector, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str,
-        engine_name='test'
-):
+# Get the list of ids from the existing edges in the database
+def get_existing_edges_id(db_connector, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str, engine_name='test'):
     schema_name = GraphRegistry.Edge.get_schema(from_object_type, to_object_type)
     existing_edges_id = db_connector.execute_query(
         engine_name=engine_name,
@@ -3845,7 +3431,7 @@ class GraphRegistry():
 
                     # Extract list of object type keys and field names
                     list_of_calcfield_formulas += [tuple(f.split('.')) if d=='obj' else (tuple(f.split('.')[:2]), f.split('.')[2]) for f in list_of_unparsed_names]
-                
+
                 # Execute and commit all formulas
                 for object_type_key, field_name in list_of_calcfield_formulas:
                     self.cache_update_from_calculated_field(object_type_key=object_type_key, field_name=field_name, verbose=verbose)
@@ -3863,7 +3449,7 @@ class GraphRegistry():
                 # Execute and commit all formulas
                 for formula_name in list_of_batch_formulas:
                     self.cache_update_from_batch_formula(formula_name, verbose=verbose)
-                
+
             # Print status
             sysmsg.success(f"🚀 ✅ Done applying formulas and committing updated data to '{schema_graph_cache_test}'.\n")
 
@@ -5244,128 +4830,126 @@ class GraphRegistry():
 
         # TODO: Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
-
             return
 
-            list_of_table = db.get_tables_in_schema(
-                engine_name   = 'test',
-                schema_name   = schema_graph_cache_test,
-                include_views = False,
-                use_regex     = [r'^IndexBuildup_Fields_Docs_[^_]*', r'^IndexBuildup_Fields_Links_ParentChild_[^_]*_[^_]*']
-            )
+            # list_of_table = db.get_tables_in_schema(
+            #     engine_name   = 'test',
+            #     schema_name   = schema_graph_cache_test,
+            #     include_views = False,
+            #     use_regex     = [r'^IndexBuildup_Fields_Docs_[^_]*', r'^IndexBuildup_Fields_Links_ParentChild_[^_]*_[^_]*']
+            # )
 
-            list_of_table += ['Data_N_Object_T_PageProfile', 'Edges_N_Object_N_Object_T_ParentChildSymmetric', 'Edges_N_Object_N_Object_T_ScoresMatrix_AS']
+            # list_of_table += ['Data_N_Object_T_PageProfile', 'Edges_N_Object_N_Object_T_ParentChildSymmetric', 'Edges_N_Object_N_Object_T_ScoresMatrix_AS']
 
-            for table_name in list_of_table:
+            # for table_name in list_of_table:
 
-                table_type = get_table_type_from_name(table_name)
+            #     table_type = get_table_type_from_name(table_name)
                 
-                db.copy_table_across_engines(
-                    source_engine_name = 'test',
-                    source_schema_name = schema_graph_cache_test,
-                    source_table_name  = table_name,
-                    target_engine_name = 'prod',
-                    target_schema_name = schema_graph_cache_prod,
-                    keys_json  = table_keys_json[table_type],
-                    filter_by  = 'to_process > 0.5',
-                    chunk_size = 100000,
-                    drop_table = True
-                )
+            #     db.copy_table_across_engines(
+            #         source_engine_name = 'test',
+            #         source_schema_name = schema_graph_cache_test,
+            #         source_table_name  = table_name,
+            #         target_engine_name = 'prod',
+            #         target_schema_name = schema_graph_cache_prod,
+            #         keys_json  = table_keys_json[table_type],
+            #         filter_by  = 'to_process > 0.5',
+            #         chunk_size = 100000,
+            #         drop_table = True
+            #     )
 
         # TODO: Delete loose ends in index tables [NEEDS WORK]
         def delete_loose_ends(self):
-
             return
 
-            sql_template_docs = """
-              %s
-              FROM {schema_graphsearch_test}.Index_D_%s;
-            """
+            # sql_template_docs = """
+            #   %s
+            #   FROM {schema_graphsearch_test}.Index_D_%s;
+            # """
 
-            sql_template_doclinks = """
-              %s
-              FROM {schema_graphsearch_test}.Index_D_%s_L_%s_T_%s;
-            """
+            # sql_template_doclinks = """
+            #   %s
+            #   FROM {schema_graphsearch_test}.Index_D_%s_L_%s_T_%s;
+            # """
             
-            for dmy,doc_type in index_doc_types_list:
+            # for dmy,doc_type in list_of_doc_types:
 
-                # Delete loose ends in doc fields
-                sql_query = sql_template_docs % (
-                    f'SELECT "{doc_type}", COUNT(*) AS n_total',
-                    doc_type
-                )
-                print(sql_query)
+            #     # Delete loose ends in doc fields
+            #     sql_query = sql_template_docs % (
+            #         f'SELECT "{doc_type}", COUNT(*) AS n_total',
+            #         doc_type
+            #     )
+            #     print(sql_query)
                 
 
-                for dmy,link_type in index_doc_types_list:
+            #     for dmy,link_type in list_of_doc_types:
 
-                    for link_subtype in ['SEM','ORG']:
+            #         for link_subtype in ['SEM','ORG']:
 
-                        if not db.table_exists(
-                            engine_name   = 'test',
-                            schema_name   = 'graphsearch_test',
-                            table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
-                        ):
-                            continue
+            #             if not db.table_exists(
+            #                 engine_name   = 'test',
+            #                 schema_name   = 'graphsearch_test',
+            #                 table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
+            #             ):
+            #                 continue
 
-                        sql_query = sql_template_doclinks % (
-                            f'SELECT "{doc_type}-{link_type}", COUNT(*) AS n_total',
-                            doc_type,
-                            link_type,
-                            link_subtype
-                        )
-                        print(sql_query)
-
-
-            return
+            #             sql_query = sql_template_doclinks % (
+            #                 f'SELECT "{doc_type}-{link_type}", COUNT(*) AS n_total',
+            #                 doc_type,
+            #                 link_type,
+            #                 link_subtype
+            #             )
+            #             print(sql_query)
 
 
-            sql_template_docs = """
-              %s
-              FROM {schema_graphsearch_test}.Index_D_%s
-             WHERE doc_id NOT IN (SELECT object_id FROM {schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
-            """
+            # return
 
-            sql_template_doclinks = """
-              %s
-              FROM {schema_graphsearch_test}.Index_D_%s_L_%s_T_%s
-             WHERE doc_id  NOT IN (SELECT object_id FROM {schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s')
-                OR link_id NOT IN (SELECT object_id FROM {schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
-            """
+
+            # sql_template_docs = """
+            #   %s
+            #   FROM {schema_graphsearch_test}.Index_D_%s
+            #  WHERE doc_id NOT IN (SELECT object_id FROM {schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
+            # """
+
+            # sql_template_doclinks = """
+            #   %s
+            #   FROM {schema_graphsearch_test}.Index_D_%s_L_%s_T_%s
+            #  WHERE doc_id  NOT IN (SELECT object_id FROM {schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s')
+            #     OR link_id NOT IN (SELECT object_id FROM {schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
+            # """
             
-            for dmy,doc_type in index_doc_types_list:
+            # for dmy,doc_type in list_of_doc_types:
 
-                # Delete loose ends in doc fields
-                sql_query = sql_template_docs % (
-                    f'SELECT "{doc_type}", COUNT(*) AS n_to_delete',
-                    doc_type,
-                    doc_type
-                )
-                print(sql_query)
+            #     # Delete loose ends in doc fields
+            #     sql_query = sql_template_docs % (
+            #         f'SELECT "{doc_type}", COUNT(*) AS n_to_delete',
+            #         doc_type,
+            #         doc_type
+            #     )
+            #     print(sql_query)
                 
 
-                for dmy,link_type in index_doc_types_list:
+            #     for dmy,link_type in list_of_doc_types:
 
-                    for link_subtype in ['SEM','ORG']:
+            #         for link_subtype in ['SEM','ORG']:
 
-                        if not db.table_exists(
-                            engine_name   = 'test',
-                            schema_name   = 'graphsearch_test',
-                            table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
-                        ):
-                            continue
+            #             if not db.table_exists(
+            #                 engine_name   = 'test',
+            #                 schema_name   = 'graphsearch_test',
+            #                 table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
+            #             ):
+            #                 continue
 
-                        sql_query = sql_template_doclinks % (
-                            f'SELECT "{doc_type}-{link_type}", COUNT(*) AS n_to_delete',
-                            doc_type,
-                            link_type,
-                            link_subtype,
-                            doc_type,
-                            link_type
-                        )
-                        print(sql_query)
+            #             sql_query = sql_template_doclinks % (
+            #                 f'SELECT "{doc_type}-{link_type}", COUNT(*) AS n_to_delete',
+            #                 doc_type,
+            #                 link_type,
+            #                 link_subtype,
+            #                 doc_type,
+            #                 link_type
+            #             )
+            #             print(sql_query)
 
-            pass
+            # pass
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
@@ -7468,12 +7052,15 @@ class GraphRegistry():
             # Loop over all doc types #
             #-------------------------#
 
+            # Get list of doc types from index config
+            list_of_doc_types = idxcfg.settings['doc_types']
+
             # Initialise overwrite flag
             overwrite_flag = False
 
             # Loop over all doc types
-            with tqdm(index_doc_types_list, unit='doc type') as pb:
-                for _, doc_type in pb:
+            with tqdm(list_of_doc_types, unit='doc type') as pb:
+                for doc_type in pb:
 
                     # Print status
                     pb.set_description(f"⚙️ [GLC-ES] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
@@ -7559,7 +7146,7 @@ class GraphRegistry():
                             es_index_struct[doc_type][d[1]] = doc_json
 
                     # Loop over all link doc types
-                    for _, link_type in index_doc_types_list:
+                    for link_type in list_of_doc_types:
 
                         # Fetch link fields from config
                         custom_column_names_link = idxcfg.settings['elasticsearch']['fields' ]['links'].get(link_type, [])
@@ -7647,12 +7234,15 @@ class GraphRegistry():
                     os.remove(target_output_path)
             #-------------------------------------------#
 
+            # Fetch list of doc type from config
+            list_of_doc_types = idxcfg.settings['doc_types']
+
             # Initialize index doc types list
             es_index = []
 
             # Loop over all doc types
-            with tqdm(index_doc_types_list, unit='doc type') as pb:
-                for _, doc_type in pb:
+            with tqdm(list_of_doc_types, unit='doc type') as pb:
+                for doc_type in pb:
 
                     # Print status
                     pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])

@@ -4,6 +4,7 @@ from graphregistry.common.auxfcn import print_dataframe
 from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text, event
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
+from loguru import logger as sysmsg
 import pandas as pd
 import os, re, subprocess
 
