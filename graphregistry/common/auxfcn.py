@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from tabulate import tabulate
-import sys, termios, tty, Levenshtein
+import sys, re, termios, tty, Levenshtein
 
 # Print in colour
 def print_colour(msg, colour='white', background='black', style='normal', display_method=False):
@@ -91,3 +91,54 @@ def get_keypress():
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
     return key
+
+# # Define function for playing system sounds
+# def play_system_sound(msg_type, sound_strength):
+#     sound_file = f"{msg_type}_{sound_strength}.aiff"
+#     subprocess.run([glbcfg.settings['sound']['player_bin'], f'{glbcfg.settings["sound"]["data_path"]}/{sound_file}'])
+
+# Function to get the table type from the table name
+def get_table_type_from_name(table_name):
+
+    match_gen_from_to_edges    = re.findall(r"Edges_N_[^_]*_[^_]*_N_[^_]*_[^_]*_T_(GBC|AS)$", table_name)
+    match_obj_to_obj_edges     = re.findall(r"Edges_N_[^_]*_N_(?!Concept)[^_]*_T_[^_]*$", table_name)
+    match_obj_to_concept_edges = re.findall(r"Edges_N_[^_]*_N_Concept_T_[^_]*$", table_name)
+    match_data_object          = re.findall(r"Data_N_Object_T_[^_]*(_COPY)?$", table_name)
+    match_data_obj_to_obj      = re.findall(r"Data_N_Object_N_Object_T_[^_]*$", table_name)
+    match_doc_index            = re.findall(r"Index_D_[^_]*(_COPY)?$", table_name)
+    match_link_index           = re.findall(r"Index_D_[^_]*_L_[^_]*_T_[^_]*(_Search)?(_COPY)?$", table_name)
+    match_stats_object         = re.findall(r"Stats_N_Object_T_[^_]*$", table_name)
+    match_stats_obj_to_obj     = re.findall(r"Stats_N_Object_N_Object_T_[^_]*$", table_name)
+    match_buildup_docs         = re.findall(r'^IndexBuildup_Fields_Docs_[^_]*', table_name)
+    match_buildup_links        = re.findall(r'^IndexBuildup_Fields_Links_ParentChild_[^_]*_[^_]*', table_name)
+    match_scores_matrix        = re.findall(r"Edges_N_Object_N_Object_T_ScoresMatrix_AS$", table_name)
+
+    if match_gen_from_to_edges:
+        return 'from_to_edges'
+    elif match_obj_to_obj_edges:
+        return 'object_to_object'
+    elif match_obj_to_concept_edges:
+        return 'object_to_concept'
+    elif match_data_object:
+        if 'PageProfile' in table_name:
+            return 'doc_profile'
+        else:
+            return 'object'
+    elif match_data_obj_to_obj:
+        return 'object_to_object'
+    elif match_doc_index:
+        return 'doc_index'
+    elif match_link_index:
+        return 'link_index'
+    elif match_stats_object:
+        return 'object'
+    elif match_stats_obj_to_obj:
+        return 'object_to_object'
+    elif match_buildup_docs:
+        return 'doc_index'
+    elif match_buildup_links:
+        return 'link_index'
+    elif match_scores_matrix:
+        return 'object_to_object'
+    else:
+        return None

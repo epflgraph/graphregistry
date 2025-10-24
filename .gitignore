@@ -241,12 +241,12 @@ database/tests/
 
 .python_version
 
-config/global_cfg.yaml
-config/index_cfg.json
-config/scores_cfg.json
-global_cfg.yaml
-index_cfg.json
-scores_cfg.json
+config/config_global.yaml
+config/config_index.json
+config/config_scores.json
+config_global.yaml
+config_index.json
+config_scores.json
 
 # Exclude symlinks
 *.lnk
