@@ -246,3 +246,5 @@ config/index_cfg.json
 global_cfg.yaml
 index_cfg.json
 
+# Exclude symlinks
+*.lnk
