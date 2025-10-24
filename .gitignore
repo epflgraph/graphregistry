@@ -243,8 +243,10 @@ database/tests/
 
 config/global_cfg.yaml
 config/index_cfg.json
+config/scores_cfg.json
 global_cfg.yaml
 index_cfg.json
+scores_cfg.json
 
 # Exclude symlinks
 *.lnk
