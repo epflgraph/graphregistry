@@ -240,3 +240,6 @@ database/init/data_patches/
 database/tests/
 
 .python_version
+
+config/global_cfg.yaml
+config/index_cfg.json
