@@ -1,0 +1,1300 @@
+{
+    "url": "http://raw.githubusercontent.com/epflgraph/graphregistry/master/database/init/sample_sets/MATH-132_Lecture_01.mp4",
+    "video_size": 12580387,
+    "video_token": "176046001623783704455458.mp4",
+    "slides": [
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000062.png",
+            "timestamp": 62,
+            "fingerprint": "62187d807ca0600861006cc86b306d4866886698644864086408640864086408",
+            "en": "",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000128.png",
+            "timestamp": 128,
+            "fingerprint": "60086008600866907928799076306628791063d0724870886408650865086508",
+            "en": "Slide 1 \u2014 Introduction to Probability\n\nProbability provides the mathematical framework to quantify uncertainty, which is central to machine learning.\nThe sample space 2 = {w, 2, -..} contains all possible outcomes. An event A \u00a9 \u00b0 is a subset of outcomes, anda\nprobability measure \u201d: 2 - [0, 1) assigns likelihoods to events.\n\nFor example, in binary classification, the sample space might be \u00a9 = {spam, not spam}. jf P(spam) = 0.7, then the\nmodel predicts a seventy percent chance of spam. Random variables formalize outcomes: a discrete random\nvariable X takes values 712) --- with /\\X = 2), while a continuous random variable has a probability density\nfunction /x(2) such that\n\nMas x<t= [i fe(ade\n",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000204.png",
+            "timestamp": 204,
+            "fingerprint": "60086008660871086a4874887008604861186008733062006908680868086808",
+            "en": "Slide 2 \u2014 Probability Axioms\n\nKolmogorov's axioms define the basis of probability:\n\n1. Non-negativity: (4) = 9 for any event A.\n\n2. Normalization: (2) = 1,\n\n3. Additivity: If AN B = 0, then PAU B) = P(A) + PB),\n\nFrom these, we can derive properties such as the probability of a complement:\n\nP(A\u2019) = 1\u2014 P(A).\n\nIn machine learning, these axioms ensure that predicted probabilities, for example in a Naive Bayes classifier,\nsatisfy normalization:\n\n> Pyle) =1.\nvey\n",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000253.png",
+            "timestamp": 253,
+            "fingerprint": "60086008600866087908710871c87330720869c868b064806008600860086008",
+            "en": "",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000270.png",
+            "timestamp": 270,
+            "fingerprint": "6008600864986018760879c871087208725871807b2070886008602860086808",
+            "en": "Slide 4 - Independence and Conditional Independence\n\nEvents A and B are independent if\nPLAN B) = P(A) - P{B).\n\nIf they are not independent, then knowing A changes the likelihood of B.\n\nConditional independence of A and B given C means:\n\nPAN BIC) = PA|C) - (BIC).\nIn Naive Bayes classifiers, features 71,72; ---: %, are assumed conditionally independent given the class \u00a5:\n\ni\nPC, 23) ql) = [] Pezily)-\ni=l\n\nThis assumption drastically simplifies inference, even though it is an approximation.\n",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000335.png",
+            "timestamp": 335,
+            "fingerprint": "60086008600860087608794871087208724871807b2070886008682864486448",
+            "en": "Slide 4 - Independence and Conditional Independence\n\nEvents A and B are independent if\nPLAN B) = P(A) - P(B).\n\nIf they are not independent, then knowing A changes the likelihood of B.\n\nConditional independence of A and B given C means:\n\nPLAN BIC) = P{A|C) - (BIC).\nIn Naive Bayes classifiers, features 1, \u201c2: ---: Zn are assumed conditionally independent given the class \u00a5:\n\nPC, 25) alu) = [] Plzily)-\ni=l\n\nThis assumption drastically simplifies inference, even though it is an approximation.\n",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000398.png",
+            "timestamp": 398,
+            "fingerprint": "600860086c0872087008715872a07c20725872a872487328792860c860086008",
+            "en": "",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000459.png",
+            "timestamp": 459,
+            "fingerprint": "600861086c8874087448708862086488700870486408618864487a4864b86288",
+            "en": "Slide 6 \u2014 Random Variables and Distributions\nA random variable X is associated with a distribution:\n+ Discrete case: P(X =2;) =p, >; Pi =1.\n\n\u00ab Continuous case: por /(@) 20 SZ, flz)dz =1.\n\nKey statistics:\nE[X] =o 2(X=2), Var(X) = E[X*]\u2014(E[X))?.\n\nImportant distributions in ML:\n+ Bernoulli: ?(.X = 1) =p, AX =0)=1\u2014p.\n+ Gaussian: /(*) = gagexr(- Ta ) :\n\n+ Categorical: (X = 4) =, Lym = 1.\n\nThese are used in logistic regression, Gaussian Mixture Models, and neural networks.\n",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000642.png",
+            "timestamp": 642,
+            "fingerprint": "6008600866087908700864c8712865087808700874887008722860d060286808",
+            "en": "",
+            "concepts": []
+        },
+        {
+            "token": "176046001623783704455458.mp4_slides/frame-000710.png",
+            "timestamp": 710,
+            "fingerprint": "6008630874887c08664861887808725071087008620879306488648868086008",
+            "en": "Slide 10 \u2014 Applications in Machine Learning\n\nProbabilistic reasoning is central to many ML methods:\n+ Naive Bayes:\nPlylay, -.-.2q) \u00ab Ply) [J Plaily)-\n\n1\n\n+ Hidden Markov Models (HMMs): sequences modeled with transition probabilities P(%\\2-1) and emission\nprobabilities \u201c(x\u00ab|%).\n\n+ Gaussian Mixture Models (GMMs):\n\nK\nP(x) = vn N(x|Hp, 2x).\nk=1\n\nEven in deep learning, dropout can be seen as approximate Bayesian inference, and variational autoencoders\n(VAEs) optimize an evidence lower bound:\n\nlog P(x) > Ex). [log P(zx|z)] \u2014 KL(q(z|2)||p(z)).\n",
+            "concepts": []
+        }
+    ],
+    "slides_language": "en",
+    "subtitles": [
+        {
+            "id": 0,
+            "start": 0.0,
+            "end": 3.84,
+            "en": "These subtitles have been generated automatically\nWelcome to our first lecture in probability and linear algebra"
+        },
+        {
+            "id": 1,
+            "start": 3.84,
+            "end": 5.6000000000000005,
+            "en": "for machine learning."
+        },
+        {
+            "id": 2,
+            "start": 5.6000000000000005,
+            "end": 8.6,
+            "en": "Today, we're going to dive into probability theory,"
+        },
+        {
+            "id": 3,
+            "start": 8.6,
+            "end": 11.120000000000001,
+            "en": "which is the mathematical language we use"
+        },
+        {
+            "id": 4,
+            "start": 11.120000000000001,
+            "end": 13.44,
+            "en": "to talk about uncertainty."
+        },
+        {
+            "id": 5,
+            "start": 13.44,
+            "end": 17.080000000000002,
+            "en": "Machine learning systems almost never deal with perfect,"
+        },
+        {
+            "id": 6,
+            "start": 17.080000000000002,
+            "end": 18.88,
+            "en": "noise-free data."
+        },
+        {
+            "id": 7,
+            "start": 18.88,
+            "end": 21.28,
+            "en": "Instead, they work with incomplete evidence"
+        },
+        {
+            "id": 8,
+            "start": 21.28,
+            "end": 24.72,
+            "en": "and have to make predictions under uncertainty."
+        },
+        {
+            "id": 9,
+            "start": 24.72,
+            "end": 26.8,
+            "en": "Throughout this lecture, we'll explore"
+        },
+        {
+            "id": 10,
+            "start": 26.8,
+            "end": 29.36,
+            "en": "the fundamental concepts of probability,"
+        },
+        {
+            "id": 11,
+            "start": 29.36,
+            "end": 33.48,
+            "en": "things like random variables, conditional probability,"
+        },
+        {
+            "id": 12,
+            "start": 33.48,
+            "end": 38.8,
+            "en": "independence, base theorem, and the law of total probability."
+        },
+        {
+            "id": 13,
+            "start": 38.8,
+            "end": 41.64,
+            "en": "We'll also look at how these concepts actually"
+        },
+        {
+            "id": 14,
+            "start": 41.64,
+            "end": 44.28,
+            "en": "appear inside machine learning models"
+        },
+        {
+            "id": 15,
+            "start": 44.28,
+            "end": 48.2,
+            "en": "like naive Bayes classifiers, Gaussian mixture models,"
+        },
+        {
+            "id": 16,
+            "start": 48.2,
+            "end": 50.480000000000004,
+            "en": "and hidden Markov models."
+        },
+        {
+            "id": 17,
+            "start": 50.480000000000004,
+            "end": 52.879999999999995,
+            "en": "The goal today is to build intuition"
+        },
+        {
+            "id": 18,
+            "start": 52.879999999999995,
+            "end": 56.44,
+            "en": "for how probability helps us reason, predict,"
+        },
+        {
+            "id": 19,
+            "start": 56.44,
+            "end": 59.199999999999996,
+            "en": "and ultimately make better decisions with data."
+        },
+        {
+            "id": 20,
+            "start": 61.8,
+            "end": 63.68,
+            "en": "Let's begin with the basics."
+        },
+        {
+            "id": 21,
+            "start": 63.68,
+            "end": 66.52,
+            "en": "Probability gives us a way to assign numbers"
+        },
+        {
+            "id": 22,
+            "start": 66.52,
+            "end": 68.4,
+            "en": "to uncertain events."
+        },
+        {
+            "id": 23,
+            "start": 68.4,
+            "end": 70.4,
+            "en": "Think about flipping a coin."
+        },
+        {
+            "id": 24,
+            "start": 70.4,
+            "end": 75.47999999999999,
+            "en": "The sample space consists of two outcomes, heads or tails,"
+        },
+        {
+            "id": 25,
+            "start": 75.47999999999999,
+            "end": 78.56,
+            "en": "and we can assign a probability of one half"
+        },
+        {
+            "id": 26,
+            "start": 78.56,
+            "end": 81.75999999999999,
+            "en": "to each outcome if the coin is fair."
+        },
+        {
+            "id": 27,
+            "start": 81.75999999999999,
+            "end": 84.16,
+            "en": "Events are subsets of this space,"
+        },
+        {
+            "id": 28,
+            "start": 84.16,
+            "end": 87.39999999999999,
+            "en": "like the event heads shows up."
+        },
+        {
+            "id": 29,
+            "start": 87.39999999999999,
+            "end": 91.08,
+            "en": "Now, in machine learning, we rarely flip coins,"
+        },
+        {
+            "id": 30,
+            "start": 91.08,
+            "end": 94.03999999999999,
+            "en": "but we do work with uncertain predictions."
+        },
+        {
+            "id": 31,
+            "start": 94.03999999999999,
+            "end": 97.12,
+            "en": "For example, when a model looks at an email,"
+        },
+        {
+            "id": 32,
+            "start": 97.12,
+            "end": 101.96,
+            "en": "it might estimate a 70% chance that the message is spam"
+        },
+        {
+            "id": 33,
+            "start": 101.96,
+            "end": 105.36,
+            "en": "and a 30% chance that it isn't."
+        },
+        {
+            "id": 34,
+            "start": 105.36,
+            "end": 108.4,
+            "en": "Those numbers are probabilities grounded"
+        },
+        {
+            "id": 35,
+            "start": 108.4,
+            "end": 111.44,
+            "en": "in the same mathematical framework."
+        },
+        {
+            "id": 36,
+            "start": 111.44,
+            "end": 114.44,
+            "en": "By defining random variables, whether they're"
+        },
+        {
+            "id": 37,
+            "start": 114.44,
+            "end": 118.39999999999999,
+            "en": "discrete like a dice roll or continuous like a temperature"
+        },
+        {
+            "id": 38,
+            "start": 118.39999999999999,
+            "end": 121.44,
+            "en": "reading, we create a foundation for building"
+        },
+        {
+            "id": 39,
+            "start": 121.44,
+            "end": 124.48,
+            "en": "predictive models that can handle uncertainty."
+        },
+        {
+            "id": 40,
+            "start": 128.32,
+            "end": 131.72,
+            "en": "To reason consistently, probability theory"
+        },
+        {
+            "id": 41,
+            "start": 131.72,
+            "end": 135.36,
+            "en": "rests on a few simple but powerful axioms,"
+        },
+        {
+            "id": 42,
+            "start": 135.36,
+            "end": 138.44,
+            "en": "originally formalized by Kolmogorov."
+        },
+        {
+            "id": 43,
+            "start": 138.44,
+            "end": 141.44,
+            "en": "First, probabilities can't be negative."
+        },
+        {
+            "id": 44,
+            "start": 141.44,
+            "end": 146.44,
+            "en": "Every event has a probability greater than or equal to zero."
+        },
+        {
+            "id": 45,
+            "start": 146.44,
+            "end": 150.44,
+            "en": "Second, the total probability of the entire sample space"
+        },
+        {
+            "id": 46,
+            "start": 150.44,
+            "end": 154.72,
+            "en": "is exactly one, meaning something must happen."
+        },
+        {
+            "id": 47,
+            "start": 154.72,
+            "end": 158.84,
+            "en": "And third, if two events can't happen at the same time,"
+        },
+        {
+            "id": 48,
+            "start": 158.84,
+            "end": 164.12,
+            "en": "say rolling a three and rolling a five on the same dice throw,"
+        },
+        {
+            "id": 49,
+            "start": 164.12,
+            "end": 167.92,
+            "en": "then the probability of one or the other occurring"
+        },
+        {
+            "id": 50,
+            "start": 167.92,
+            "end": 171.92,
+            "en": "is just the sum of their individual probabilities."
+        },
+        {
+            "id": 51,
+            "start": 171.92,
+            "end": 174.92,
+            "en": "These axioms might seem abstract,"
+        },
+        {
+            "id": 52,
+            "start": 174.92,
+            "end": 179.04,
+            "en": "but they ensure consistency in every model we build."
+        },
+        {
+            "id": 53,
+            "start": 179.04,
+            "end": 182.6,
+            "en": "For instance, in a naive Bayes classifier,"
+        },
+        {
+            "id": 54,
+            "start": 182.6,
+            "end": 185.76,
+            "en": "we compute probabilities for different classes,"
+        },
+        {
+            "id": 55,
+            "start": 185.76,
+            "end": 188.35999999999999,
+            "en": "like spam or not spam."
+        },
+        {
+            "id": 56,
+            "start": 188.35999999999999,
+            "end": 191.16,
+            "en": "And we need them to add up to one."
+        },
+        {
+            "id": 57,
+            "start": 191.16,
+            "end": 194.64,
+            "en": "Without these axioms, the outputs of our models"
+        },
+        {
+            "id": 58,
+            "start": 194.64,
+            "end": 198.04,
+            "en": "wouldn't really be interpretable as probabilities,"
+        },
+        {
+            "id": 59,
+            "start": 198.04,
+            "end": 201.04,
+            "en": "and we couldn't make principled predictions."
+        },
+        {
+            "id": 60,
+            "start": 204.35999999999999,
+            "end": 206.88,
+            "en": "Now let's move to conditional probability,"
+        },
+        {
+            "id": 61,
+            "start": 206.88,
+            "end": 209.2,
+            "en": "which is at the heart of machine learning."
+        },
+        {
+            "id": 62,
+            "start": 209.2,
+            "end": 213.95999999999998,
+            "en": "Conditional probability asks, given that some event has occurred,"
+        },
+        {
+            "id": 63,
+            "start": 213.95999999999998,
+            "end": 218.0,
+            "en": "how does that affect the likelihood of another event?"
+        },
+        {
+            "id": 64,
+            "start": 218.0,
+            "end": 222.2,
+            "en": "Mathematically, we say, the probability of A given B"
+        },
+        {
+            "id": 65,
+            "start": 222.2,
+            "end": 226.04,
+            "en": "equals the probability of A and B happening together,"
+        },
+        {
+            "id": 66,
+            "start": 226.04,
+            "end": 228.67999999999998,
+            "en": "divided by the probability of B."
+        },
+        {
+            "id": 67,
+            "start": 228.67999999999998,
+            "end": 231.32,
+            "en": "Take the case of spam detection again."
+        },
+        {
+            "id": 68,
+            "start": 231.32,
+            "end": 235.56,
+            "en": "Suppose we want to know the probability that an email is spam."
+        },
+        {
+            "id": 69,
+            "start": 235.56,
+            "end": 238.92,
+            "en": "Given that it contains the word lottery,"
+        },
+        {
+            "id": 70,
+            "start": 238.92,
+            "end": 243.04,
+            "en": "the raw probability that an email is spam is useful,"
+        },
+        {
+            "id": 71,
+            "start": 243.04,
+            "end": 246.2,
+            "en": "but the conditional probability that it's spam,"
+        },
+        {
+            "id": 72,
+            "start": 246.2,
+            "end": 249.16,
+            "en": "once we know this specific word appears,"
+        },
+        {
+            "id": 73,
+            "start": 249.16,
+            "end": 251.28,
+            "en": "is much more informative."
+        },
+        {
+            "id": 74,
+            "start": 251.28,
+            "end": 255.72,
+            "en": "Conditional probability is what lets models learn from features."
+        },
+        {
+            "id": 75,
+            "start": 255.72,
+            "end": 258.6,
+            "en": "It's how evidence in our data influences"
+        },
+        {
+            "id": 76,
+            "start": 258.6,
+            "end": 263.0,
+            "en": "the probability of different outcomes."
+        },
+        {
+            "id": 77,
+            "start": 263.0,
+            "end": 266.44,
+            "en": "Another key concept is independence."
+        },
+        {
+            "id": 78,
+            "start": 266.44,
+            "end": 270.44,
+            "en": "Two events are independent if knowing that one occurred"
+        },
+        {
+            "id": 79,
+            "start": 270.44,
+            "end": 273.08,
+            "en": "tells us nothing about the other."
+        },
+        {
+            "id": 80,
+            "start": 273.08,
+            "end": 276.68,
+            "en": "For example, flipping two separate coins,"
+        },
+        {
+            "id": 81,
+            "start": 276.68,
+            "end": 279.56,
+            "en": "the outcome of the first coin doesn't change"
+        },
+        {
+            "id": 82,
+            "start": 279.56,
+            "end": 282.0,
+            "en": "the probability of the second."
+        },
+        {
+            "id": 83,
+            "start": 282.0,
+            "end": 286.08,
+            "en": "Formally, we say that the probability of A and B"
+        },
+        {
+            "id": 84,
+            "start": 286.08,
+            "end": 291.08,
+            "en": "equals the probability of A multiplied by the probability of B."
+        },
+        {
+            "id": 85,
+            "start": 291.08,
+            "end": 294.4,
+            "en": "But in machine learning, the stronger concept"
+        },
+        {
+            "id": 86,
+            "start": 294.4,
+            "end": 296.52,
+            "en": "is conditional independence."
+        },
+        {
+            "id": 87,
+            "start": 296.52,
+            "end": 300.2,
+            "en": "Two features might not be independent in general,"
+        },
+        {
+            "id": 88,
+            "start": 300.2,
+            "end": 305.12,
+            "en": "but once you know the class label, they might behave independently."
+        },
+        {
+            "id": 89,
+            "start": 305.12,
+            "end": 309.32,
+            "en": "Naive Bayes relies on exactly this assumption."
+        },
+        {
+            "id": 90,
+            "start": 309.32,
+            "end": 312.4,
+            "en": "Given that we know the category of an email,"
+        },
+        {
+            "id": 91,
+            "start": 312.4,
+            "end": 315.24,
+            "en": "the presence or absence of each word"
+        },
+        {
+            "id": 92,
+            "start": 315.24,
+            "end": 318.36,
+            "en": "is assumed to be independent of the others."
+        },
+        {
+            "id": 93,
+            "start": 318.36,
+            "end": 322.68,
+            "en": "This isn't strictly true, but it makes calculations tractable"
+        },
+        {
+            "id": 94,
+            "start": 322.68,
+            "end": 326.12,
+            "en": "and often works surprisingly well in practice."
+        },
+        {
+            "id": 95,
+            "start": 326.12,
+            "end": 330.8,
+            "en": "Conditional independence is what makes large probabilistic models"
+        },
+        {
+            "id": 96,
+            "start": 330.8,
+            "end": 334.88,
+            "en": "computationally manageable."
+        },
+        {
+            "id": 97,
+            "start": 334.88,
+            "end": 338.48,
+            "en": "Bayes' theorem is perhaps the most famous equation"
+        },
+        {
+            "id": 98,
+            "start": 338.48,
+            "end": 342.96,
+            "en": "in probability and it's essential in machine learning."
+        },
+        {
+            "id": 99,
+            "start": 342.96,
+            "end": 346.12,
+            "en": "The theorem tells us how to update our beliefs"
+        },
+        {
+            "id": 100,
+            "start": 346.12,
+            "end": 348.36,
+            "en": "in light of new evidence."
+        },
+        {
+            "id": 101,
+            "start": 348.36,
+            "end": 353.96,
+            "en": "In words, it says the probability of A given G equals"
+        },
+        {
+            "id": 102,
+            "start": 353.96,
+            "end": 360.24,
+            "en": "the probability of B given A multiplied by the probability of A"
+        },
+        {
+            "id": 103,
+            "start": 360.24,
+            "end": 364.15999999999997,
+            "en": "and then divided by the probability of B."
+        },
+        {
+            "id": 104,
+            "start": 364.16,
+            "end": 367.44,
+            "en": "For example, imagine our prior belief"
+        },
+        {
+            "id": 105,
+            "start": 367.44,
+            "end": 371.04,
+            "en": "is that 20% of emails are spam."
+        },
+        {
+            "id": 106,
+            "start": 371.04,
+            "end": 374.64000000000004,
+            "en": "If we then see an email containing the word lottery"
+        },
+        {
+            "id": 107,
+            "start": 374.64000000000004,
+            "end": 378.72,
+            "en": "and we know spam emails often contain this word,"
+        },
+        {
+            "id": 108,
+            "start": 378.72,
+            "end": 381.88,
+            "en": "Bayes' theorem lets us update that prior"
+        },
+        {
+            "id": 109,
+            "start": 381.88,
+            "end": 384.8,
+            "en": "into a posterior probability."
+        },
+        {
+            "id": 110,
+            "start": 384.8,
+            "end": 388.24,
+            "en": "This principle underlies Bayesian inference"
+        },
+        {
+            "id": 111,
+            "start": 388.24,
+            "end": 390.44000000000005,
+            "en": "and Bayesian machine learning,"
+        },
+        {
+            "id": 112,
+            "start": 390.44000000000005,
+            "end": 393.44000000000005,
+            "en": "where we're constantly revising probabilities"
+        },
+        {
+            "id": 113,
+            "start": 393.44,
+            "end": 397.64,
+            "en": "as new data arrives."
+        },
+        {
+            "id": 114,
+            "start": 397.64,
+            "end": 400.92,
+            "en": "A random variable formalizes uncertainty"
+        },
+        {
+            "id": 115,
+            "start": 400.92,
+            "end": 404.32,
+            "en": "by assigning numerical values to outcomes"
+        },
+        {
+            "id": 116,
+            "start": 404.32,
+            "end": 407.92,
+            "en": "and each random variable has an associated probability"
+        },
+        {
+            "id": 117,
+            "start": 407.92,
+            "end": 409.68,
+            "en": "distribution."
+        },
+        {
+            "id": 118,
+            "start": 409.68,
+            "end": 412.84,
+            "en": "For discrete random variables, we use something"
+        },
+        {
+            "id": 119,
+            "start": 412.84,
+            "end": 415.56,
+            "en": "called a probability mass function."
+        },
+        {
+            "id": 120,
+            "start": 415.56,
+            "end": 420.48,
+            "en": "For continuous variables, we use a probability density function."
+        },
+        {
+            "id": 121,
+            "start": 420.48,
+            "end": 424.36,
+            "en": "Consider the Gaussian or normal distribution"
+        },
+        {
+            "id": 122,
+            "start": 424.36,
+            "end": 427.12,
+            "en": "that familiar bell-shaped curve."
+        },
+        {
+            "id": 123,
+            "start": 427.12,
+            "end": 431.12,
+            "en": "Many algorithms assume data is approximately Gaussian"
+        },
+        {
+            "id": 124,
+            "start": 431.12,
+            "end": 434.04,
+            "en": "because of the central limit theorem."
+        },
+        {
+            "id": 125,
+            "start": 434.04,
+            "end": 438.52000000000004,
+            "en": "For binary outcomes, we use the Bernoulli distribution"
+        },
+        {
+            "id": 126,
+            "start": 438.52000000000004,
+            "end": 443.56,
+            "en": "and for multiclass problems, we use the categorical distribution."
+        },
+        {
+            "id": 127,
+            "start": 443.56,
+            "end": 447.36,
+            "en": "These distributions form the building blocks for models"
+        },
+        {
+            "id": 128,
+            "start": 447.36,
+            "end": 451.24,
+            "en": "like logistic regression, Gaussian mixture models,"
+        },
+        {
+            "id": 129,
+            "start": 451.24,
+            "end": 455.36,
+            "en": "and even neural networks when we interpret their outputs"
+        },
+        {
+            "id": 130,
+            "start": 455.36,
+            "end": 456.56,
+            "en": "probabilistically."
+        },
+        {
+            "id": 131,
+            "start": 459.16,
+            "end": 463.76,
+            "en": "Often we're interested in more than one variable at a time."
+        },
+        {
+            "id": 132,
+            "start": 463.76,
+            "end": 466.56,
+            "en": "A joint distribution gives us probabilities"
+        },
+        {
+            "id": 133,
+            "start": 466.56,
+            "end": 470.6,
+            "en": "over combinations of random variables."
+        },
+        {
+            "id": 134,
+            "start": 470.6,
+            "end": 473.16,
+            "en": "For instance, the joint probability"
+        },
+        {
+            "id": 135,
+            "start": 473.16,
+            "end": 477.08000000000004,
+            "en": "of a word appearing in an email and that email"
+        },
+        {
+            "id": 136,
+            "start": 477.08,
+            "end": 482.28,
+            "en": "being spam captures how these two variables interact."
+        },
+        {
+            "id": 137,
+            "start": 482.28,
+            "end": 486.52,
+            "en": "From a joint distribution, we can obtain marginal distributions"
+        },
+        {
+            "id": 138,
+            "start": 486.52,
+            "end": 491.44,
+            "en": "by summing or integrating out the variables we don't care about."
+        },
+        {
+            "id": 139,
+            "start": 491.44,
+            "end": 495.24,
+            "en": "This process is called marginalization"
+        },
+        {
+            "id": 140,
+            "start": 495.24,
+            "end": 498.64,
+            "en": "and it shows up constantly in machine learning."
+        },
+        {
+            "id": 141,
+            "start": 498.64,
+            "end": 501.24,
+            "en": "In mixture models, we don't directly"
+        },
+        {
+            "id": 142,
+            "start": 501.24,
+            "end": 503.96,
+            "en": "observe the hidden component labels."
+        },
+        {
+            "id": 143,
+            "start": 503.96,
+            "end": 507.44,
+            "en": "So we marginalize them out to compute the likelihood"
+        },
+        {
+            "id": 144,
+            "start": 507.44,
+            "end": 509.47999999999996,
+            "en": "of the observed data."
+        },
+        {
+            "id": 145,
+            "start": 509.47999999999996,
+            "end": 513.68,
+            "en": "Marginal probabilities are also central to inference"
+        },
+        {
+            "id": 146,
+            "start": 513.68,
+            "end": 516.92,
+            "en": "in Bayesian networks and hidden Markov models."
+        },
+        {
+            "id": 147,
+            "start": 519.8,
+            "end": 523.4,
+            "en": "The law of total probability is a powerful identity"
+        },
+        {
+            "id": 148,
+            "start": 523.4,
+            "end": 527.04,
+            "en": "that connects priors, conditionals, and marginals."
+        },
+        {
+            "id": 149,
+            "start": 527.04,
+            "end": 529.64,
+            "en": "It says that if we partition the sample space"
+        },
+        {
+            "id": 150,
+            "start": 529.64,
+            "end": 532.92,
+            "en": "into a set of events, then the probability"
+        },
+        {
+            "id": 151,
+            "start": 532.92,
+            "end": 536.8,
+            "en": "of some event A is equal to the sum of the probability"
+        },
+        {
+            "id": 152,
+            "start": 536.8,
+            "end": 540.16,
+            "en": "of A given each partition multiplied"
+        },
+        {
+            "id": 153,
+            "start": 540.16,
+            "end": 542.88,
+            "en": "by the probability of that partition."
+        },
+        {
+            "id": 154,
+            "start": 542.88,
+            "end": 545.0799999999999,
+            "en": "In machine learning, this principle"
+        },
+        {
+            "id": 155,
+            "start": 545.0799999999999,
+            "end": 548.16,
+            "en": "underlies how we compute overall probabilities"
+        },
+        {
+            "id": 156,
+            "start": 548.16,
+            "end": 550.28,
+            "en": "across multiple cases."
+        },
+        {
+            "id": 157,
+            "start": 550.28,
+            "end": 552.5999999999999,
+            "en": "Imagine spam detection again."
+        },
+        {
+            "id": 158,
+            "start": 552.5999999999999,
+            "end": 556.68,
+            "en": "The probability that an email is spam can be broken down"
+        },
+        {
+            "id": 159,
+            "start": 556.68,
+            "end": 559.88,
+            "en": "into contributions from different features."
+        },
+        {
+            "id": 160,
+            "start": 559.88,
+            "end": 562.64,
+            "en": "Like whether it contains the word lottery"
+        },
+        {
+            "id": 161,
+            "start": 562.64,
+            "end": 566.0,
+            "en": "or the word prize, the law ensures"
+        },
+        {
+            "id": 162,
+            "start": 566.0,
+            "end": 569.4,
+            "en": "that when we account for all possible conditions,"
+        },
+        {
+            "id": 163,
+            "start": 569.4,
+            "end": 573.12,
+            "en": "our total probability assignment remains consistent."
+        },
+        {
+            "id": 164,
+            "start": 575.36,
+            "end": 579.24,
+            "en": "It's very important to distinguish between probability"
+        },
+        {
+            "id": 165,
+            "start": 579.24,
+            "end": 580.84,
+            "en": "and likelihood."
+        },
+        {
+            "id": 166,
+            "start": 580.84,
+            "end": 585.72,
+            "en": "Probability is about predicting data given fixed parameters."
+        },
+        {
+            "id": 167,
+            "start": 585.72,
+            "end": 589.0,
+            "en": "For example, the probability of flipping heads"
+        },
+        {
+            "id": 168,
+            "start": 589.0,
+            "end": 590.92,
+            "en": "given a fair coin."
+        },
+        {
+            "id": 169,
+            "start": 590.92,
+            "end": 593.88,
+            "en": "Likelihood flips the perspective."
+        },
+        {
+            "id": 170,
+            "start": 593.88,
+            "end": 598.0,
+            "en": "We treat the data as fixed and ask how plausible"
+        },
+        {
+            "id": 171,
+            "start": 598.0,
+            "end": 600.68,
+            "en": "different parameter values are."
+        },
+        {
+            "id": 172,
+            "start": 600.68,
+            "end": 604.4,
+            "en": "In machine learning, maximum likelihood estimation,"
+        },
+        {
+            "id": 173,
+            "start": 604.4,
+            "end": 609.8,
+            "en": "or MLE, is one of the most common methods for parameter learning."
+        },
+        {
+            "id": 174,
+            "start": 609.8,
+            "end": 614.36,
+            "en": "For instance, in linear regression with Gaussian errors,"
+        },
+        {
+            "id": 175,
+            "start": 614.36,
+            "end": 618.24,
+            "en": "we maximize the likelihood of the observed data"
+        },
+        {
+            "id": 176,
+            "start": 618.24,
+            "end": 621.08,
+            "en": "to find the best fitting line."
+        },
+        {
+            "id": 177,
+            "start": 621.08,
+            "end": 625.84,
+            "en": "Bayesian approaches extend this by combining the likelihood"
+        },
+        {
+            "id": 178,
+            "start": 625.84,
+            "end": 630.4,
+            "en": "with priors to form posterior distributions."
+        },
+        {
+            "id": 179,
+            "start": 630.4,
+            "end": 634.48,
+            "en": "Understanding the difference between probability and likelihood"
+        },
+        {
+            "id": 180,
+            "start": 634.48,
+            "end": 638.08,
+            "en": "is critical for grasping both frequentist"
+        },
+        {
+            "id": 181,
+            "start": 638.08,
+            "end": 639.88,
+            "en": "and Bayesian learning methods."
+        },
+        {
+            "id": 182,
+            "start": 642.4,
+            "end": 645.6,
+            "en": "By now, you can see that probability"
+        },
+        {
+            "id": 183,
+            "start": 645.6,
+            "end": 648.32,
+            "en": "is not just a theoretical construct."
+        },
+        {
+            "id": 184,
+            "start": 648.32,
+            "end": 652.44,
+            "en": "It's deeply embedded in machine learning practice."
+        },
+        {
+            "id": 185,
+            "start": 652.44,
+            "end": 656.52,
+            "en": "Naive Bay's classifiers, hidden Markov models"
+        },
+        {
+            "id": 186,
+            "start": 656.52,
+            "end": 661.96,
+            "en": "and Gaussian mixture models all rely on probability theory."
+        },
+        {
+            "id": 187,
+            "start": 661.96,
+            "end": 666.64,
+            "en": "Even in modern deep learning, probability plays a role."
+        },
+        {
+            "id": 188,
+            "start": 666.64,
+            "end": 671.1600000000001,
+            "en": "Dropout can be seen as approximate Bayesian inference"
+        },
+        {
+            "id": 189,
+            "start": 671.1600000000001,
+            "end": 674.64,
+            "en": "and variational autoencoders explicitly"
+        },
+        {
+            "id": 190,
+            "start": 674.64,
+            "end": 678.48,
+            "en": "model distributions over latent variables."
+        },
+        {
+            "id": 191,
+            "start": 678.48,
+            "end": 681.76,
+            "en": "The bigger picture is that probability gives us"
+        },
+        {
+            "id": 192,
+            "start": 681.76,
+            "end": 685.08,
+            "en": "a principled way to handle uncertainty."
+        },
+        {
+            "id": 193,
+            "start": 685.08,
+            "end": 689.84,
+            "en": "It allows models to make predictions, quantify confidence,"
+        },
+        {
+            "id": 194,
+            "start": 689.84,
+            "end": 693.04,
+            "en": "and adapt as new data comes in."
+        },
+        {
+            "id": 195,
+            "start": 693.04,
+            "end": 695.4,
+            "en": "As we continue through this course,"
+        },
+        {
+            "id": 196,
+            "start": 695.4,
+            "end": 698.72,
+            "en": "we'll see probability theory linking directly"
+        },
+        {
+            "id": 197,
+            "start": 698.72,
+            "end": 702.16,
+            "en": "into optimization and linear algebra,"
+        },
+        {
+            "id": 198,
+            "start": 702.16,
+            "end": 705.92,
+            "en": "providing the mathematical glue that holds machine learning"
+        },
+        {
+            "id": 199,
+            "start": 705.92,
+            "end": 707.6,
+            "en": "together."
+        }
+    ],
+    "audio_language": "en",
+    "audio_fingerprint": "10020c0a0802060600081e060202000604022000060812040604060a16040610_50_25",
+    "streams": [
+        {
+            "codec_type": "video",
+            "codec_name": "h264",
+            "duration": 710.0,
+            "bit_rate": 68766,
+            "sample_rate": null,
+            "resolution": "1920*1080"
+        },
+        {
+            "codec_type": "audio",
+            "codec_name": "aac",
+            "duration": 710.01,
+            "bit_rate": 68337,
+            "sample_rate": 16000,
+            "resolution": null
+        }
+    ]
+}

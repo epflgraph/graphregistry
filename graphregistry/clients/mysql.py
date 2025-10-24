@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.core.common import print_dataframe
-from api.core.config import GlobalConfig
+from graphregistry.common.auxfcn import print_dataframe
+from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text, event
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
-from sqlalchemy.dialects import mysql
 import pandas as pd
 import os, re, subprocess
 

@@ -1,19 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import GraphRegistry
-from api.core.config import GlobalConfig
+from graphregistry.clients.mysql import GraphDB
+from graphregistry.clients.elasticsearch import GraphES
+from graphregistry.core.registry import GraphRegistry
+from graphregistry.common.config import GlobalConfig
 from loguru import logger as sysmsg
 import rich, json
 
 # Initialize global config
 glbcfg = GlobalConfig()
 
+# Initialize the GraphDB instance
+db = GraphDB()
+
+# Initialize the ElasticSearch instance
+es = GraphES()
+
 # Initialize the GraphRegistry instance
 gr = GraphRegistry()
 print('\n')
 
 # Open JSON sample set
-with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
+with open('scripts/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
     sample_set = json.load(fp)
 
 # Print sample set content
@@ -130,8 +138,8 @@ if True:
     gr.cachemanager.update_scores(score_thr=0.01, actions=('commit'))
     gr.indexdb.build(actions=('commit'))
     gr.indexdb.patch(actions=('commit'))
-    gr.db.print_database_stats(engine_name='test', schema_name='test_graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
-    gr.db.print_database_stats(engine_name='test', schema_name='test_elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
+    db.print_database_stats(engine_name='test', schema_name='test_graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
+    db.print_database_stats(engine_name='test', schema_name='test_elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
 
 #======================================#
 # Step 5: Generate ElasticSearch index #
@@ -166,8 +174,8 @@ if True:
     #-------------------------------------------------------------#
 
     # List indexes and aliases in ElasticSearch engine
-    gr.indexes.idx.index_list(engine_name='test')
-    gr.indexes.idx.alias_list(engine_name='test')
+    es.index_list(engine_name='test')
+    es.alias_list(engine_name='test')
 
     # Direct link to Kibana
     print(f"\nList of indexes in Kibana:\n - http://localhost:5601/app/enterprise_search/content/search_indices/\n")
