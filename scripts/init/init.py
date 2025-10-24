@@ -127,7 +127,7 @@ if True:
         sysmsg.trace(f"Processing database '{schema_name}' ...")
 
         # Get SQL file path
-        sql_file_path = f'database/init/create_tables/schema_{schema_key}.sql'
+        sql_file_path = f'database/schemas/schema_{schema_key}.sql'
 
         # Open SQL file and get all table names that should be created
         with open(sql_file_path, 'r') as sql_file:
