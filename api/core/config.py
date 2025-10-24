@@ -3,9 +3,30 @@
 import json, rich
 from collections import defaultdict
 from pathlib import Path
+from yaml import safe_load
 
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#================================#
+# Class definition: GlobalConfig #
+#================================#
+class GlobalConfig:
+    """Class to handle global configuration."""
+
+    # Initialization method
+    def __init__(self):
+
+        # Load index configuration in to JSON
+        with open(f"{REPO_ROOT}/config/global_cfg.yaml", "r", encoding="utf-8") as f:
+            global_config = safe_load(f)
+
+        # Initialise settings
+        self.settings = json.loads(json.dumps(global_config, default=str))
+
+    # Print method
+    def print(self):
+        rich.print_json(data=self.settings)
 
 #===============================#
 # Class definition: IndexConfig #
@@ -244,7 +265,55 @@ class IndexConfig:
         # End of print method
         print('')
 
-# Main execution
+#===============================#
+# Class definition: IndexConfig #
+#===============================#
+class ScoresConfig:
+    """Class to handle index configuration."""
+
+    # Initialization method
+    def __init__(self):
+
+        # Load index configuration in to JSON
+        with open(f"{REPO_ROOT}/config/scores_cfg.json", "r", encoding="utf-8") as f:
+            scores_config = json.load(f)
+
+        # Initialise settings
+        self.settings = {}
+
+        # Fetch score edge tuples
+        self.settings['scored_edge_tuples'] = scores_config['scored-edge-tuples']
+
+    # Print method
+    def print(self):
+
+        # Print head
+        print('')
+        print("================================")
+        print("🧮 List of edges to be scored 🧮")
+        print("================================")
+
+        # Print all education tuples
+        print('\n🔗 Education related edges:')
+        for t in self.settings['scored_edge_tuples']['education']:
+            print(f" - {t[0]} --> {t[1]}")
+
+        # Print all research tuples
+        print('\n🔗 Research related edges:')
+        for t in self.settings['scored_edge_tuples']['research']:
+            print(f" - {t[0]} --> {t[1]}")
+
+        # Print footer
+        print('')
+
+#================#
+# Main execution #
+#================#
 if __name__ == "__main__":
+    glbcfg = GlobalConfig()
+    glbcfg.print()
+    exit()
     idxcfg = IndexConfig()
     idxcfg.print()
+    scrcfg = ScoresConfig()
+    scrcfg.print()

@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import GraphRegistry, global_config
+from api.registry.graphregistry import GraphRegistry
+from api.core.config import GlobalConfig
 from loguru import logger as sysmsg
 import rich, json
+
+# Initialize global config
+glbcfg = GlobalConfig()
 
 # Initialize the GraphRegistry instance
 gr = GraphRegistry()
 print('\n')
-
-# gr.indexes.idx.index_list(engine_name='test')
-# gr.indexes.idx.drop_index(engine_name='test', index_name='graphsearch_test_2025_09_20')
-# gr.indexes.idx.index_list(engine_name='test')
-# exit()
 
 # Open JSON sample set
 with open('database/init/sample_sets/synthetic_ML_sample_set.json', 'r') as fp:
     sample_set = json.load(fp)
 
 # Print sample set content
-if True:
+if False:
     print('Input JSON sample set:')
     rich.print_json(data=sample_set)
 
@@ -27,7 +26,7 @@ if True:
 #=============================================#
 
 # Detect/update concepts? [disable for faster imports]
-detect_concepts = True
+detect_concepts = False
 
 # Choose import method (object or list)
 import_method = 'object'
@@ -43,7 +42,7 @@ if True:
             node = gr.Node()
             node.set_from_json(doc_json=node_json, detect_concepts=detect_concepts)
             node.commit(actions=('commit'))
-        
+
         # Process edges
         for edge_json in sample_set['edges']:
             edge = gr.Edge()
@@ -68,7 +67,7 @@ if True:
 #===============================================#
 
 # Execute step?
-if True:
+if False:
 
     # Fetch light ontology schema name from config
     ontology_light_schema_name = global_config['mysql']['db_schema_names']['ontology_light']
@@ -90,7 +89,7 @@ if True:
 
 # Execute step?
 if True:
-    
+
     # Sync new objects from Registry with Airflow
     gr.orchestrator.sync()
 
@@ -106,13 +105,13 @@ if True:
             ['Unit'       , True, True]
         ],
         'edges': [
-            ['Category'   , 'Category', True, True],
-            ['Concept'    , 'Category', True, True],
-            ['Course'     , 'Person'  , True, True],
-            ['Person'     , 'Unit'    , True, True],
-            ['Publication', 'Person'  , True, True],
-            ['Startup'    , 'Person'  , True, True],
-            ['Unit'       , 'Unit'    , True, True]
+            ['Category'   , 'Category', True],
+            ['Concept'    , 'Category', True],
+            ['Course'     , 'Person'  , True],
+            ['Person'     , 'Unit'    , True],
+            ['Publication', 'Person'  , True],
+            ['Startup'    , 'Person'  , True],
+            ['Unit'       , 'Unit'    , True]
         ]
     })
 
@@ -142,9 +141,9 @@ if True:
 if True:
 
     # Fetch index parameters from config
-    index_date = str(global_config['elasticsearch']['index_date'])
-    index_file = global_config['elasticsearch']['index_file']
-    index_name = global_config['elasticsearch']['index_names']['graphsearch_test']
+    index_date = str(glbcfg.settings['elasticsearch']['index_date'])
+    index_file = glbcfg.settings['elasticsearch']['index_file']
+    index_name = glbcfg.settings['elasticsearch']['index_names']['graphsearch_test']
 
     # Generate local ES cache from MySQL
     gr.indexes.generate_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
@@ -155,7 +154,7 @@ if True:
     #-------------------------------------------------------------#
     # Two methods to import index file into ElasticSearch engine: #
     #-------------------------------------------------------------#
-    
+
     # With index date (index name generated automatically)
     print(f"\nMETHOD 1: Importing index date '{index_date}' into ElasticSearch engine...\n")
     gr.indexes.import_index(engine_name='test', index_date=index_date, replace_existing=True, force_replace=True)
@@ -163,9 +162,12 @@ if True:
     # With explicit index file and name
     # print(f"\nMETHOD 2: Importing index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
     # gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, replace_existing=True, force_replace=True)
-    
+
     #-------------------------------------------------------------#
 
     # List indexes and aliases in ElasticSearch engine
     gr.indexes.idx.index_list(engine_name='test')
     gr.indexes.idx.alias_list(engine_name='test')
+
+    # Direct link to Kibana
+    print(f"\nList of indexes in Kibana:\n - http://localhost:5601/app/enterprise_search/content/search_indices/\n")
