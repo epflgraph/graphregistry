@@ -9,7 +9,7 @@ import rich, json
 video_url = 'http://raw.githubusercontent.com/epflgraph/graphregistry/master/database/init/sample_sets/MATH-132_Lecture_01.mp4'
 
 # Output file base path
-output_file_base_path = 'database/init/sample_sets/MATH-132_Lecture_01'
+output_file_base_path = 'scripts/init/sample_sets/MATH-132_Lecture_01'
 
 # Initialize global config
 glbcfg = GlobalConfig()
