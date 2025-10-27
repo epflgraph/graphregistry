@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import global_config
+from graphregistry.common.config import GlobalConfig
 from graphai_client import client as graphai
 from graphai_client.client_api.text import extract_concepts_from_text
 import rich, json
@@ -11,8 +11,11 @@ video_url = 'http://raw.githubusercontent.com/epflgraph/graphregistry/master/dat
 # Output file base path
 output_file_base_path = 'database/init/sample_sets/MATH-132_Lecture_01'
 
+# Initialize global config
+glbcfg = GlobalConfig()
+
 # GraphAI API config file
-graph_api_json = global_config['graphai']['client_config_file']
+graph_api_json = glbcfg.settings['graphai']['client_config_file']
 
 #=============#
 # Main method #
@@ -47,7 +50,7 @@ def main():
     # Method 2: Execute steps separately #
     #------------------------------------#
     else:
-    
+
         # Fetch video by URL
         video_token, video_size, streams = graphai.download_url(
             video_url  = video_url,
