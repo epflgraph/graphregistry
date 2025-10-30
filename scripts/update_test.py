@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from api.registry.graphregistry import GraphRegistry, global_config
+from graphregistry.clients.mysql import GraphDB
+from graphregistry.clients.elasticsearch import GraphES
+from graphregistry.core.registry import GraphRegistry
+from graphregistry.common.config import GlobalConfig
 from loguru import logger as sysmsg
 import rich, json
 
+# Initialize global config
+glbcfg = GlobalConfig()
+
+# Initialize the GraphDB instance
+db = GraphDB()
+
+# Initialize the ElasticSearch instance
+es = GraphES()
+
 # Initialize the GraphRegistry instance
 gr = GraphRegistry()
-# print('\n')
-# exit()
+print('\n')
+
 #=============================================#
 # Step 1: Import data from JSON into Registry #
 #=============================================#
@@ -66,16 +78,18 @@ if False:
             ['Concept'    , False, False],
             ['Course'     , False, False],
             ['Person'     , False, False],
-            ['Publication', True , True ],
+            ['Publication', False, False],
             ['Startup'    , False, False],
-            ['Unit'       , False, False]
+            ['Unit'       , False, False],
+            ['Widget'     , True , False]
         ],
         'edges': [
             ['Category'   , 'Category', False],
             ['Concept'    , 'Category', False],
             ['Course'     , 'Person'  , False],
+            ['Lecture'    , 'Widget'  , True ],
             ['Person'     , 'Unit'    , False],
-            ['Publication', 'Person'  , True ],
+            ['Publication', 'Person'  , False],
             ['Startup'    , 'Person'  , False],
             ['Unit'       , 'Unit'    , False]
         ]
@@ -94,11 +108,12 @@ rich.print_json(data=gr.orchestrator.typeflags.get_config_json())
 
 # Execute step?
 if True:
+    gr.orchestrator.typeflags.status()
     # gr.cachemanager.apply_calculated_field_formulas(verbose=False)
     # gr.cachemanager.materialize_views(actions=('commit'))
     # gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
-    gr.cachemanager.update_scores(score_thr=0.1, actions=('eval', 'commit'))
-    # gr.indexdb.build(actions=('print', 'eval', 'commit'))
+    # gr.cachemanager.update_scores(score_thr=0.1, actions=('eval', 'commit'))
+    gr.indexdb.build(actions=('print', 'eval', 'commit'))
     # gr.indexdb.patch(actions=('eval', 'commit'))
     # gr.db.print_database_stats(engine_name='test', schema_name='graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
     # gr.db.print_database_stats(engine_name='test', schema_name='elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
@@ -111,9 +126,9 @@ if True:
 if False:
 
     # Fetch index parameters from config
-    index_date = str(global_config['elasticsearch']['index_date'])
-    index_file = global_config['elasticsearch']['index_file']
-    index_name = global_config['elasticsearch']['index_names']['graphsearch_test']
+    index_date = str(glbcfg.settings['elasticsearch']['index_date'])
+    index_file = glbcfg.settings['elasticsearch']['index_file']
+    index_name = glbcfg.settings['elasticsearch']['index_names']['graphsearch_test']
 
     # Generate local ES cache from MySQL
     gr.indexes.generate_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)

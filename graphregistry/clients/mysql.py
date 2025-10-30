@@ -5,6 +5,7 @@ from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text, event
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 from loguru import logger as sysmsg
+from tqdm import tqdm
 import pandas as pd
 import os, re, subprocess
 
