@@ -186,7 +186,7 @@ if True:
     sysmsg.info("➡️ 📝 Insert default data into MySQL tables.")
 
     # Get list of SQL files with default data
-    list_of_sql_files = sorted(glob.glob('database/init/default_data/*.sql'))
+    list_of_sql_files = sorted(glob.glob('scripts/init/default_data/*.sql'))
     
     # Loop over SQL files and execute them
     for sql_file in list_of_sql_files:

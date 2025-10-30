@@ -312,7 +312,6 @@ class ScoresConfig:
 if __name__ == "__main__":
     glbcfg = GlobalConfig()
     glbcfg.print()
-    exit()
     idxcfg = IndexConfig()
     idxcfg.print()
     scrcfg = ScoresConfig()

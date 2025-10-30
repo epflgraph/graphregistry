@@ -1145,6 +1145,7 @@ CREATE TABLE IF NOT EXISTS Index_D_Lecture_L_Course_T_ORG (
   link_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   academic_year varchar(10) COLLATE utf8mb4_unicode_ci,
   latest_academic_year varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  sort_number smallint DEFAULT NULL,
   degree_score float NOT NULL,
   row_score float NOT NULL,
   row_rank smallint unsigned NOT NULL,

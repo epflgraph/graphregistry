@@ -93,6 +93,14 @@ INDEX_CONFIG_FILE = resolve_repo_path(
 with INDEX_CONFIG_FILE.open("r", encoding="utf-8") as f:
     index_config = json.load(f)
 
+# Resolve data types file, then load it (only once)
+DATATYPES_CONFIG_FILE = resolve_repo_path(
+    'database/init/config/config_datatypes.json'
+)
+with DATATYPES_CONFIG_FILE.open("r", encoding="utf-8") as f:
+    datatypes_config = json.load(f)
+
+
 #-----------------------------------------#
 # Get MySQL schema names from config file #
 #-----------------------------------------#
@@ -1251,10 +1259,10 @@ class GraphRegistry():
                        FROM {schema_airflow}.Operations_N_Object_T_TypeFlags t1
                  INNER JOIN {schema_airflow}.Operations_N_Object_T_TypeFlags t2
                       USING (institution_id, object_type)
-                      WHERE t1.institution_id = 'EPFL'
-                        AND t1.flag_type      = 'fields'
-                        AND t2.institution_id = 'EPFL'
-                        AND t2.flag_type      = 'scores'
+                      WHERE t1.institution_id IN ('Ont', 'EPFL')
+                        AND t1.flag_type = 'fields'
+                        AND t2.institution_id IN ('Ont', 'EPFL')
+                        AND t2.flag_type = 'scores'
                         AND (t1.to_process = 1 OR t2.to_process = 1)
                 """
 
@@ -1266,8 +1274,8 @@ class GraphRegistry():
                     SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
                                     GREATEST(from_object_type, to_object_type) AS to_object_type
                                FROM {schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
-                              WHERE from_institution_id = 'EPFL'
-                                AND to_institution_id   = 'EPFL'
+                              WHERE from_institution_id IN ('Ont', 'EPFL')
+                                AND to_institution_id   IN ('Ont', 'EPFL')
                                 AND to_process = 1
                 """
 
@@ -1290,7 +1298,17 @@ class GraphRegistry():
                     node_types_to_process = [node_type for node_type, process_fields, _ in config_json['nodes'] if process_fields]
 
                     # Get edges to process directly from config json
-                    edge_types_to_process = [(from_node_type, to_node_type) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields]
+                    edge_types_to_process = set([tuple(sorted([from_node_type, to_node_type])) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields is True])
+
+                    # Filter by available edge types in index config
+                    edge_types_available = set([
+                        tuple(sorted([d,l]))
+                        for d in idxcfg.settings['graphsearch']['fields' ]['links']['parent_child']
+                        for l in idxcfg.settings['graphsearch']['fields' ]['links']['parent_child'][d]
+                    ])
+
+                    # Calculate set intersection
+                    edge_types_to_process = edge_types_to_process.intersection(edge_types_available)
 
                 # Processing scores?
                 elif fields_or_scores=='scores':
@@ -1303,7 +1321,7 @@ class GraphRegistry():
 
                 # Include symmetric edges?
                 if return_symmetric:
-                    edge_types_to_process = list(set(edge_types_to_process + [(to_node_type, from_node_type) for from_node_type, to_node_type in edge_types_to_process]))
+                    edge_types_to_process = list(set(list(edge_types_to_process) + [(to_node_type, from_node_type) for from_node_type, to_node_type in edge_types_to_process]))
 
                 # Return results
                 return node_types_to_process, edge_types_to_process
@@ -3479,18 +3497,13 @@ class GraphRegistry():
             # Print status
             sysmsg.info(f"🧮 📝 Calculate and consolidate scores matrices.")
 
-            # Get edge types to process
-            _, edge_types_to_process = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='scores')
-
-            # Fetch typeflags config JSON
-            node_types_in_config, _ = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
+            # Get ontology-related edges to process
+            _, tmp_list = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='scores')
+            ontology_edges = [[d,l] for d,l in tmp_list if d in ('Category', 'Concept') or l in ('Category', 'Concept')]
 
             # Build list of edge types to process
-            edge_types_to_process = sorted(list(set([
-                (s,t)
-                for s in node_types_in_config
-                for t in idxcfg.settings['doc_types']
-            ])))
+            edge_types_to_process = scrcfg.settings['scored_edge_tuples']['education'] + scrcfg.settings['scored_edge_tuples']['research'] + ontology_edges
+            edge_types_to_process = sorted([(d,l) for d,l in edge_types_to_process])
 
             # Print status
             sysmsg.trace(f"⚙️  Calculating scores matrix for object-to-object edge combinations ...")
@@ -4501,10 +4514,10 @@ class GraphRegistry():
 
         # Apply all patching methods
         def patch(self, actions=()):
-            # self.pageprofile.patch(actions=actions)
-            # self.docs_patch_all(actions=actions)
+            self.pageprofile.patch(actions=actions)
+            self.docs_patch_all(actions=actions)
             self.doclinks_vertical_patch_all(actions=actions)
-            # self.doclinks_horizontal_patch_all(actions=actions)
+            self.doclinks_horizontal_patch_all(actions=actions)
 
         # Patch all index doc tables on graphsearch test
         def docs_patch_all(self, actions=()):
@@ -4994,13 +5007,19 @@ class GraphRegistry():
                 if len(doc_types_to_process)==0 and len(doclink_types_to_process)==0:
                     sysmsg.warning(f"No type flags found. Nothing to do.")
 
-                # TODO: print here which tables will be processed
-
                 # If not empty, proceed
                 else:
 
                     # Print status
                     sysmsg.trace(f"Build tables of type: 'IndexBuildup_Fields_Docs_*'")
+
+                    # Print list of affected tables
+                    print('\n[🐬 GraphSearch DB] [B-BD] The following tables will be affected:')
+                    for t in doc_types_to_process:
+                        print(f" - {schema_graph_cache_test}.IndexBuildup_Fields_Docs_{t}")
+                    for t,l in doclink_types_to_process:
+                        print(f" - {schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{t}_{l}")
+                    print('')
 
                     # Loop over doc types
                     with tqdm(doc_types_to_process, unit='doc type') as pb:
@@ -6544,7 +6563,7 @@ class GraphRegistry():
                         "VARCHAR(16)"       : "CAST(%s AS CHAR)"
                     }
                     if len(ord)>0:
-                        order_by = ', '.join([cast_mapping[index_config['data-types'][o]]%o+' '+d for o,d in ord]) + f', {index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
+                        order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_vars'][o]]%o+' '+d for o,d in ord]) + f', {index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
                     else:
                         order_by = f'{index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
                 #---------------------------#
