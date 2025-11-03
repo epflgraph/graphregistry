@@ -14,14 +14,10 @@ from tqdm import tqdm
 from loguru import logger as sysmsg
 from copy import deepcopy
 from itertools import combinations_with_replacement
-from typing import List, Tuple
-from collections import defaultdict
-from tkinter import ttk
 from pathlib import Path
-import tkinter as tk
 import numpy as np
 import pandas as pd
-import re, sys, json, datetime, requests, itertools, gzip, time, subprocess, os, glob, rich, hashlib
+import re, sys, json, datetime, requests, itertools, gzip, time, os, glob, rich, hashlib
 
 #------------------------------#
 # Class objects initialisation #
@@ -67,6 +63,7 @@ sysmsg.add(
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Function to resolve paths
+from typing import Union
 def resolve_repo_path(p: Union[str, Path]) -> Path:
     """Return an absolute path. If 'p' is relative, resolve it against the repo root."""
     p = Path(p)
@@ -344,288 +341,6 @@ def graphai_text_endpoint(object_id, input, endpoint='wikify', headers=None):
 
     # Return the response
     return output_json
-
-#-----------------------------------------#
-#-----------------------------------------#
-#-----------------------------------------#
-
-# Function to execute an INSERT operation in the registry
-def registry_insert(
-        schema_name, table_name, key_column_names, key_column_values, upd_column_names, upd_column_values, actions=(),
-        db_connector=None, engine_name='test'
-):
-    """
-    Possible actions: 'print', 'eval', 'commit'
-    """
-
-    # Generate the full table name
-    t = f'{schema_name}.{table_name}'
-
-    # Get the number of columns to update and create the dictionary with values
-    num_upd_columns = len(upd_column_names)
-    num_key_columns = len(key_column_names)
-    sql_params = {key_column_names[k]: key_column_values[k] for k in range(num_key_columns)}
-    sql_params.update({upd_column_names[u]: upd_column_values[u] for u in range(num_upd_columns)})
-
-    # Initialise test results dictionary
-    eval_results = None
-
-    # Evaluate changes to be made
-    if 'eval' in actions:
-
-        # Define the colour map
-        colour_map = {
-            'no change'     : 'green',
-            'new value'     : 'cyan',
-            'set to null'   : 'red',
-            'key exists'    : 'green',
-            'key is new'    : 'cyan'
-        }
-
-        # Generate SELECT statement
-        if num_upd_columns > 0:
-            if_statements = []
-            for k in range(num_upd_columns):
-                if isinstance(upd_column_values[k], float):
-                    if_statements.append(
-                        f'IF('
-                            f'ABS({upd_column_names[k]} - :{upd_column_names[k]})<1e-6 '
-                                f'OR (:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NULL), '
-                            f'"no change", '
-                            f'IF(:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NOT NULL, "set to null", "new value")'
-                        f') AS TEST_{upd_column_names[k]}'
-                    )
-                else:
-                    if_statements.append(
-                        f'IF('
-                            f'({upd_column_names[k]} = :{upd_column_names[k]}) '
-                                f'OR (:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NULL), '
-                            f'"no change", '
-                            f'IF(:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NOT NULL, "set to null", "new value")'
-                        f') AS TEST_{upd_column_names[k]}'
-                    )
-            sql_select_statement = ', '.join(if_statements)
-        else:
-            sql_select_statement = '*'
-
-        # Generate the SQL query for evaluation
-        sql_query_eval = f"""
-            SELECT {sql_select_statement}
-            FROM {t}
-            WHERE ({', '.join(key_column_names)}) = (:{', :'.join(key_column_names)});
-        """
-
-        # Print the SQL query
-        if 'print' in actions:
-            print(sql_query_eval)
-        
-        # Execute the query
-        out = db_connector.execute_query(engine_name=engine_name, query=sql_query_eval, params=sql_params)
-
-        # Build up the test results dictionary
-        print_colour(f'\nChanges on table {t}:', style='bold')
-        eval_result = 'key exists' if len(out) > 0 else 'key is new'
-        eval_results = [{'column': 'primary_key', 'result': eval_result}]
-        print(f"primary_key {'.'*(32-len('primary_key'))} ", end="", flush=True)
-        print_colour(eval_result, colour=colour_map[eval_result])
-        if len(out) > 0:
-            for k in range(num_upd_columns):
-                eval_result = out[0][k]
-                eval_results.append({'column': upd_column_names[k], 'result': eval_result})
-                print(f"{upd_column_names[k]} {'.'*(32-len(upd_column_names[k]))} ", end="", flush=True)
-                print_colour(eval_result, colour=colour_map[eval_result])
-        
-    # Generate the SQL query for commit
-    if num_upd_columns > 0:
-        sql_query_commit = f"""
-            INSERT INTO {t}
-                ({', '.join(key_column_names)}, {', '.join(upd_column_names)})
-            SELECT {', '.join(key_column_names)}, {', '.join(upd_column_names)}
-            FROM (
-                SELECT 
-                    {', '.join([f':{key_column_names[k]} AS {key_column_names[k]}' for k in range(num_key_columns)])},
-                    {', '.join([f':{upd_column_names[u]} AS {upd_column_names[u]}' for u in range(num_upd_columns)])}
-            ) AS d
-            ON DUPLICATE KEY UPDATE 
-                record_updated_date = IF(
-                    {' OR '.join([f"COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__')" for c in upd_column_names])},
-                    CURRENT_TIMESTAMP, 
-                    {t}.record_updated_date
-                ),
-                {', '.join(
-                    [f"{c} = IF(COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__'), d.{c}, {t}.{c})" for c in upd_column_names]
-                )};"""
-    else:
-        sql_query_commit = f"""
-            INSERT INTO {t}
-                ({', '.join(key_column_names)})
-            SELECT 
-                {', '.join([f':{key_column_names[k]} AS {key_column_names[k]}' for k in range(num_key_columns)])};"""
-
-    # Print the SQL query
-    if 'print' in actions:
-        stmt = text(sql_query_commit).bindparams(**sql_params)
-        print(stmt.compile(
-            dialect=mysql.dialect(),
-            compile_kwargs={"literal_binds": True}
-        ))
-
-    # Execute commit
-    if 'commit' in actions:
-        out = db_connector.execute_query(engine_name='test', query=sql_query_commit, params=sql_params, commit=True, return_exception=True)
-        if not type(out) is list:
-            error_type, error_msg, dbapi_code = out
-            if dbapi_code==1062: # Duplicate entry
-                sysmsg.warning(f'Duplicate entry error when inserting into {t} with keys {sql_params}. Continuing ...')
-            else:
-                sysmsg.critical(f'Error when inserting into {t} with keys {sql_params}. Exiting ...')
-                print('Error details:')
-                print(f'{error_type}: {error_msg} (DBAPI code: {dbapi_code})')
-                exit()
-
-    # Return the test results
-    return eval_results
-
-# Function to delete input list of concepts
-def delete_concepts_for_nodes(db_connector, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
-    schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
-    query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
-    eval_results = None
-    if 'eval' in actions:
-        query_eval = f'SELECT COUNT(*) FROM {schema_objects}.{table} WHERE {query_where};'
-        if 'print' in actions:
-            print(query_eval)
-        out = db_connector.execute_query(query=query_eval, params={'object_id': nodes_id}, engine_name=engine_name)
-        eval_results = {'delete concept': out[0][0]}
-        if eval_results['delete concept'] > 0:
-            print(eval_results)
-    queries_remove = f'DELETE FROM {schema_objects}.{table} WHERE {query_where};'
-    if 'print' in actions:
-        print(queries_remove)
-    if 'commit' in actions:
-        db_connector.execute_query(
-            query=queries_remove, params={'object_id': nodes_id}, engine_name=engine_name, commit=True
-        )
-    return eval_results
-
-# Function to delete input list of nodes by id
-def delete_nodes_by_ids(db_connector, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
-    schema_objects = object_type_to_schema.get(object_type, schema_registry)
-    query_where_per_table = {}
-    for table in (
-            'Nodes_N_Object', 'Data_N_Object_T_PageProfile', 'Data_N_Object_T_CustomFields',
-    ):
-        query_where_per_table[f'{schema_objects}.{table}'] = \
-            f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
-
-    for schema in (schema_registry, schema_lectures):
-        for table in (
-                'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields',
-        ):
-            query_where_per_table[f'{schema}.{table}'] = f'''
-                (
-                    from_institution_id='{institution_id}' 
-                    AND from_object_type='{object_type}' 
-                    AND from_object_id IN :object_id
-                ) OR (
-                    to_institution_id='{institution_id}' 
-                    AND to_object_type='{object_type}' 
-                    AND to_object_id IN :object_id
-                )'''
-    eval_results = {}
-    queries_remove = []
-    for table, query_where in query_where_per_table.items():
-        if 'eval' in actions:
-            query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
-            if 'print' in actions:
-                print(query_eval)
-            out = db_connector.execute_query(query=query_eval, params={'object_id': nodes_id}, engine_name=engine_name)
-            eval_results[table] = out[0][0]
-            if eval_results[table] > 0:
-                print(table, eval_results[table])
-        queries_remove.append(f'DELETE FROM {table} WHERE {query_where};\n')
-    if len(queries_remove) > 1:
-        queries_remove.insert(0, 'BEGIN;')
-        queries_remove.append('COMMIT;')
-    if 'print' in actions:
-        for q in queries_remove:
-            print(q)
-    if 'commit' in actions:
-        for q in queries_remove:
-            db_connector.execute_query(query=q, params={'object_id': nodes_id}, engine_name=engine_name, commit=True)
-    if db_connector.table_exists(engine_name, schema_objects, 'Edges_N_Object_N_Concept_T_ConceptDetection'):
-        eval_results['Edges_N_Object_N_Concept_T_ConceptDetection'] = delete_concepts_for_nodes(
-            db_connector, 'Edges_N_Object_N_Concept_T_ConceptDetection', institution_id, object_type, nodes_id,
-            engine_name=engine_name, actions=actions
-        )
-    if db_connector.table_exists(engine_name, schema_objects, 'Edges_N_Object_N_Concept_T_ManualMapping'):
-        eval_results['Edges_N_Object_N_Concept_T_ManualMapping'] = delete_concepts_for_nodes(
-            db_connector, 'Edges_N_Object_N_Concept_T_ManualMapping', institution_id, object_type, nodes_id,
-            engine_name=engine_name, actions=actions
-        )
-    return eval_results if 'eval' in actions else None
-
-# Function to delete input list of edges by id
-def delete_edges_by_ids(
-        db_connector, from_institution_id, from_object_type, to_institution_id, to_object_type,
-        edges_id: List[Tuple[str, str]], engine_name='test', actions=()
-):
-    schema_edges = GraphRegistry.Edge.get_schema(from_object_type, to_object_type)
-    query_where_per_table = {}
-    for table in (
-            'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields'
-    ):
-        query_where_per_table[f'{schema_edges}.{table}'] = f'''
-            from_institution_id="{from_institution_id}" 
-            AND from_object_type="{from_object_type}" 
-            AND to_institution_id="{to_institution_id}" 
-            AND to_object_type="{to_object_type}" 
-            AND (from_object_id, to_object_id) IN :edges_id'''
-    eval_results = {} if 'eval' in actions else None
-    query_remove = ''
-    for table, query_where in query_where_per_table.items():
-        if 'eval' in actions:
-            query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
-            if 'print' in actions:
-                print(query_eval)
-            out = db_connector.execute_query(query=query_eval, params={'edges_id': edges_id}, engine_name=engine_name)
-            eval_results[table] = out[0][0]
-            if eval_results[table] > 0:
-                print(table, eval_results[table])
-        query_remove += f'DELETE FROM {table} WHERE {query_where};\n'
-    if 'print' in actions:
-        print(query_remove)
-    if 'commit' in actions:
-        db_connector.execute_query(
-            query=query_remove, params={'edges_id': edges_id}, engine_name=engine_name, commit=True
-        )
-    return eval_results
-
-# Get the list of object_id from the existing nodes in the database
-def get_existing_nodes_id(db_connector, institution_id: str, object_type: str, engine_name='test'):
-    schema_name = object_type_to_schema.get(object_type, schema_registry)
-    existing_nodes_id = db_connector.execute_query(
-        engine_name=engine_name,
-        query=f"""
-            SELECT object_id 
-            FROM {schema_name}.Nodes_N_Object
-            WHERE institution_id='{institution_id}' AND object_type='{object_type}';"""
-    )
-    return [object_id for object_id, in existing_nodes_id]
-
-# Get the list of ids from the existing edges in the database
-def get_existing_edges_id(db_connector, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str, engine_name='test'):
-    schema_name = GraphRegistry.Edge.get_schema(from_object_type, to_object_type)
-    existing_edges_id = db_connector.execute_query(
-        engine_name=engine_name,
-        query=f"""
-            SELECT from_object_id, to_object_id
-            FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent
-            WHERE 
-                from_institution_id='{from_institution_id}' AND from_object_type='{from_object_type}'
-                AND to_institution_id='{to_institution_id}' AND to_object_type='{to_object_type}';"""
-    )
-    return existing_edges_id
 
 #---------------------------------------#
 # Auxiliary functions for GraphRegistry #
@@ -2845,7 +2560,7 @@ class GraphRegistry():
         # Commit basic node data to database
         def commit_node_object(self, actions=('eval',)):
             schema = object_type_to_schema.get(self.object_type, schema_registry)
-            eval_results = registry_insert(
+            eval_results = db.registry_insert(
                 schema_name=schema,
                 table_name='Nodes_N_Object',
                 key_column_names=['institution_id', 'object_type', 'object_id'],
@@ -2853,7 +2568,6 @@ class GraphRegistry():
                 upd_column_names=['object_title', 'text_source', 'raw_text'],
                 upd_column_values=[self.object_title, self.text_source, self.raw_text],
                 actions=actions,
-                db_connector=db,
                 engine_name='test'
             )
             return eval_results
@@ -2863,7 +2577,7 @@ class GraphRegistry():
             schema = object_type_to_schema.get(self.object_type, schema_registry)
             eval_results = []
             for doc in self.custom_fields:
-                eval_results += [registry_insert(
+                eval_results += [db.registry_insert(
                     schema_name=schema,
                     table_name='Data_N_Object_T_CustomFields',
                     key_column_names=['institution_id', 'object_type', 'object_id', 'field_language', 'field_name'],
@@ -2872,7 +2586,6 @@ class GraphRegistry():
                     upd_column_names=['field_value'],
                     upd_column_values=[doc['field_value']],
                     actions=actions,
-                    db_connector=db,
                     engine_name='test'
                 )]
             return eval_results
@@ -2889,7 +2602,7 @@ class GraphRegistry():
                     upd_column_values.append(v)
 
             # Execute actions
-            eval_results = registry_insert(
+            eval_results = db.registry_insert(
                 schema_name=schema,
                 table_name='Data_N_Object_T_PageProfile',
                 key_column_names=['institution_id', 'object_type', 'object_id'],
@@ -2897,7 +2610,6 @@ class GraphRegistry():
                 upd_column_names=upd_column_names,
                 upd_column_values=upd_column_values,
                 actions=actions,
-                db_connector=db,
                 engine_name='test'
             )
             return eval_results
@@ -2984,7 +2696,7 @@ class GraphRegistry():
                 )]
 
             for doc in self.concepts_detection:
-                eval_results += [registry_insert(
+                eval_results += [db.registry_insert(
                     schema_name       = schema_name,
                     table_name        = 'Edges_N_Object_N_Concept_T_ConceptDetection',
                     key_column_names  = ['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
@@ -2992,7 +2704,6 @@ class GraphRegistry():
                     upd_column_names  = ['score'],
                     upd_column_values = [doc['mixed_score']],
                     actions           = actions,
-                    db_connector      = db,
                     engine_name       = 'test'
                 )]
             return eval_results
@@ -3005,13 +2716,13 @@ class GraphRegistry():
         def commit_manual_mapping(self,actions=('eval',), delete_existing=False):
             schema_name = object_type_to_schema.get(self.object_type, 'graph_registry')
             eval_results = []
-            if delete_existing and db.table_exists(engine_name, schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
-                eval_results += [delete_concepts_for_nodes(
-                    db, 'Edges_N_Object_N_Concept_T_ManualMapping', self.institution_id, self.object_type,
+            if delete_existing and db.table_exists(engine_name='test', schema_name=schema_name, table_name='Edges_N_Object_N_Concept_T_ManualMapping'):
+                eval_results += [db.delete_concepts_for_nodes(
+                    'Edges_N_Object_N_Concept_T_ManualMapping', self.institution_id, self.object_type,
                     [self.object_id, ], engine_name='test', actions=actions
                 )]
             for doc in self.manual_mapping:
-                eval_results += [registry_insert(
+                eval_results += [db.registry_insert(
                     schema_name=schema_name,
                     table_name='Edges_N_Object_N_Concept_T_ManualMapping',
                     key_column_names=['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
@@ -3021,7 +2732,6 @@ class GraphRegistry():
                     upd_column_names=['concept_name', 'score'],
                     upd_column_values=[doc.get('concept_name', None), doc.get('score', 1)],
                     actions=actions,
-                    db_connector=db,
                     engine_name='test'
                 )]
             return eval_results
@@ -3235,7 +2945,7 @@ class GraphRegistry():
         # Commit basic edge data to database
         def commit_edge_object(self, actions=('eval',)):
             schema = self._get_schema()
-            eval_results = registry_insert(
+            eval_results = db.registry_insert(
                 schema_name=schema,
                 table_name='Edges_N_Object_N_Object_T_ChildToParent',
                 key_column_names=['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id',
@@ -3244,8 +2954,7 @@ class GraphRegistry():
                                    self.to_institution_id, self.to_object_type, self.to_object_id, self.context],
                 upd_column_names=[],
                 upd_column_values=[],
-                actions=actions,
-                db_connector=db
+                actions=actions
             )
             return eval_results
 
@@ -3254,7 +2963,7 @@ class GraphRegistry():
             schema = self._get_schema()
             eval_results = []
             for doc in self.custom_fields:
-                eval_results += [registry_insert(
+                eval_results += [db.registry_insert(
                     schema_name=schema,
                     table_name='Data_N_Object_N_Object_T_CustomFields',
                     key_column_names=['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id',
@@ -3264,8 +2973,7 @@ class GraphRegistry():
                                        doc['field_language'], doc['field_name'], self.context],
                     upd_column_names=['field_value'],
                     upd_column_values=[doc['field_value']],
-                    actions=actions,
-                    db_connector=db
+                    actions=actions
                 )]
             return eval_results
 
@@ -7353,609 +7061,6 @@ class GraphRegistry():
         # es.copy_index_from_test_to_prod(index_name='2025-03-27', rename_to='graphsearch_prod_2025_03_27', chunk_size=10000)
 
         # es.set_alias(engine_name='prod', alias_name='graphsearch_prod', index_name='graphsearch_prod_2025_03_27')
-
-#=======================================================#
-# Function definition: Tkinter Graphical User Interface #
-#=======================================================#
-def LaunchGUI(gr):
-
-    # Initialize the main window
-    root = tk.Tk()
-    root.title("GraphRegistry GUI")
-    root.geometry("1020x1020")
-
-    # Configure grid weights for resizing behavior
-    root.grid_rowconfigure(0, weight=1)     # Allow row 0 to expand vertically
-    root.grid_columnconfigure(0, weight=0)  # Column 0 doesn't need to stretch horizontally
-    root.grid_columnconfigure(1, weight=0)
-
-    # Node types
-    list_of_node_types = ['Category', 'Concept', 'Course', 'Lecture', 'MOOC', 'Person', 'Publication', 'Startup', 'Unit', 'Widget']
-
-    # Initialise GUI elements dict
-    gui = {
-        'orchestration' : {
-            'subframe' : None,
-            'description' : None,
-            'node_types' : {
-                'subframe' : None,
-                'description' : None,
-                'list' : [],
-                'button_add_new' : None,
-            },
-            'edge_types' : {
-                'subframe' : None,
-                'description' : None,
-                'list' : [],
-                'button_add_new' : None,
-            },            
-        },
-        'processing' : {
-            'subframe' : None,
-            'description' : None,
-            'cachemanage' : {
-                'subframe' : None,
-                'description' : None,
-                'actions' : {'print':False, 'eval':False, 'commit':False},
-            },
-            'indexdb' : {
-                'subframe' : None,
-                'description' : None,
-                'actions' : {'print':False, 'eval':False, 'commit':False},
-                'engine' : False,
-                'cache_buildup' : {'subframe' : None},
-                'page_profile' : {'subframe' : None},
-                'index_docs' : {'subframe' : None},
-                'index_doc_links' : {'subframe' : None},
-                'index_docs_es' : {'subframe' : None},
-                'index_doc_links_es' : {'subframe' : None},
-            },
-            'elasticsearch' : {
-                'subframe' : None,
-                'description' : None,
-                'actions' : {'print':False, 'eval':False, 'commit':False},
-            },
-        }
-    }
-
-    #================================================#
-    # Functions handling button creation and actions #
-    #================================================#
-    if True:
-
-        #--------------------------------------------#
-        checkbox_rows_stack = []
-        def create_action_checkboxes_row(frame_pointer, var_pointer, include_engine=False):
-
-            # Create now checkbox row in stack
-            checkbox_row = tk.Frame(frame_pointer)
-            checkbox_row.pack(anchor='w', expand=False)
-
-            # Create checkboxes for each action
-            for action in ['print', 'eval', 'commit']:
-                var_pointer[action] = tk.BooleanVar()
-                tk.Checkbutton(checkbox_row, variable=var_pointer[action]).pack(side='left')
-                tk.Label(checkbox_row, text=action).pack(side="left", padx=(0,4))
-
-            # Add engine dropdown if required
-            if include_engine:
-                var_pointer['engine'] = tk.StringVar(value='test')
-                tk.OptionMenu(checkbox_row, var_pointer['engine'], 'test', 'prod').pack(padx=(80,0))
-
-            # Add checkbox row to stack
-            checkbox_rows_stack.append(checkbox_row)
-
-        #--------------------------------------------#
-        button_rows_stack = []
-        def create_buttons_row(frame_pointer, actions_matrix, function_subspace):
-            
-            # Create now button row in stack
-            button_row = tk.Frame(root)
-
-            # Container frame to hold buttons in a grid
-            button_row = tk.Frame(frame_pointer)
-            button_row.pack(pady=(0,0), anchor='w')
-
-            # Buttons packed horizontally
-            for row, col, wid, action in actions_matrix:
-                tk.Button(button_row, width=wid, text=action, command=lambda a=action: on_button_click(f'{function_subspace} {a}')).grid(row=row, column=col, padx=(0,0), pady=(0,0), sticky='w')
-
-            # Add button row to stack
-            button_rows_stack.append(button_row)
-
-        #----------------------------#
-        # 🛎️ 🖥️ Button click handlers #
-        #----------------------------#
-        def on_button_click(button_input_action):
-
-            # Print action
-            print(f"\n🛎️  Button clicked: {button_input_action}")
-
-            #---------------------#
-            # Orchestration panel #
-            #---------------------#
-            if 'orchestration' in button_input_action:
-
-                # Assemble configuration JSON from GUI inputs
-                config_json = {'nodes':[], 'edges':[]} 
-                for d in gui['orchestration']['node_types']['list']:
-                    config_json['nodes'] += [(d['dropdowns'][0].get(), d['process_fields'].get(), d['process_scores'].get())]
-                for d in gui['orchestration']['edge_types']['list']:
-                    config_json['edges'] += [(d['dropdowns'][0].get(), d['dropdowns'][1].get(), d['process_fields'].get(), d['process_scores'].get())]
-
-                # Orchestration reset
-                if button_input_action == 'orchestration reset config':
-
-                    # Print and execute method
-                    print("\n🖥️  ~ gr.orchestrator.reset()")
-                    gr.orchestrator.reset()
-
-                # Orchestration config
-                elif button_input_action == 'orchestration apply config':
-
-                    # Print configuration JSON extracted from GUI
-                    print('\nconfig_json =')
-                    rich.print_json(data=config_json)
-
-                    # Print and execute method
-                    print("\n🖥️  ~ gr.orchestrator.typeflags.config(config_json)")
-                    gr.orchestrator.typeflags.config(config_json)
-
-                    # Print and execute method
-                    print("\n🖥️  ~ gr.orchestrator.status()")
-                    gr.orchestrator.status()
-
-                # Orchestration reset
-                elif button_input_action == 'orchestration sync data':
-
-                    # Print and execute method
-                    print("\n🖥️  ~ gr.orchestrator.sync()")
-                    gr.orchestrator.sync()
-
-                # Orchestration: refresh tp=1 flags
-                elif button_input_action == 'orchestration refresh flags':
-
-                    # Print and execute method
-                    print("\n🖥️  ~ gr.orchestrator.refresh()")
-                    gr.orchestrator.refresh()
-
-            #------------------------#
-            # Cache Management panel #
-            #------------------------#
-            elif 'cachemanage' in button_input_action:
-
-                # Fetch action flags
-                method_actions = ()
-                for method_action_name in ['print', 'eval', 'commit']:
-                    if gui['processing']['cachemanage']['actions'][method_action_name].get():
-                        method_actions += (method_action_name,)
-
-                # Cache management apply views
-                if button_input_action == 'cachemanage apply views':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.cachemanager.apply_views(actions={method_actions})")
-                    gr.cachemanager.apply_views(actions=method_actions)
-
-                # Cache management apply formulas
-                elif button_input_action == 'cachemanage apply formulas':
-
-                    # Use verbose mode if 'print' action is selected
-                    verbose = False
-                    if 'print' in method_actions:
-                        verbose = True
-
-                    # Reject eval action
-                    if 'eval' in method_actions:
-                        sysmsg.warning("The method 'apply_formulas' does not support an 'eval' action. Nothing to do.")
-                        return
-                    
-                    # Require commit action
-                    if 'commit' not in method_actions:
-                        sysmsg.warning("The method 'apply_formulas' requires a 'commit' action. Nothing to do.")
-                        return
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.cachemanager.apply_formulas(verbose={verbose})")
-                    gr.cachemanager.apply_formulas(verbose=verbose)
-
-                # Cache management calculate scores matrix
-                elif button_input_action == 'cachemanage calculate scores matrix':
-                    
-                    # Fetch types to process
-                    types_to_process = gr.orchestrator.typeflags.status(types_only=True)
-
-                    # Loop over all edges and calculate scores matrix
-                    for from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type in types_to_process['edges']:
-
-                        # Skip if not scores type
-                        if flag_type == 'scores':
-
-                            # Print and execute method
-                            print(f"\n🖥️  ~ gr.cachemanager.calculate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}, actions={method_actions})")
-                            gr.cachemanager.calculate_scores_matrix(from_object_type=from_object_type, to_object_type=to_object_type, actions=method_actions)
-
-                # Cache management consolidate scores matrix
-                elif button_input_action == 'cachemanage consolidate scores matrix':
-                    types_to_process = gr.orchestrator.typeflags.status(types_only=True)
-                    for from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type in types_to_process['edges']:
-                        if flag_type == 'scores':
-                            print(f"""gr.cachemanager.consolidate_scores_matrix(from_object_type='{from_object_type}', to_object_type='{to_object_type}')""")
-                            gr.cachemanager.consolidate_scores_matrix(from_object_type=from_object_type, to_object_type=to_object_type)
-
-            #-----------------------------#
-            # GraphIndex Management panel #
-            #-----------------------------#
-            elif 'indexdb' in button_input_action:
-
-                # Fetch action flags
-                method_actions = ()
-                for method_action_name in ['print', 'eval', 'commit']:
-                    if gui['processing']['indexdb']['actions'][method_action_name].get():
-                        method_actions += (method_action_name,)
-
-                # IndexDB cache buildup info
-                if button_input_action == 'indexdb cache_buildup info':
-                    pass
-
-                # IndexDB cache buildup build all docs and link fields
-                elif button_input_action == 'indexdb cache_buildup build all':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.cachebuilder.build_all(actions={method_actions})")
-                    gr.indexdb.cachebuilder.build_all(actions=method_actions)
-
-                # IndexDB page profile info
-                elif button_input_action == 'indexdb page_profile info':
-                    pass
-
-                # IndexDB page profile create table
-                elif button_input_action == 'indexdb page_profile create table':
-                    pass
-
-                # IndexDB page profile patch
-                elif button_input_action == 'indexdb page_profile patch':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.pageprofile.patch(actions={method_actions})")
-                    gr.indexdb.pageprofile.patch(actions=method_actions)
-
-                # IndexDB index docs info
-                elif button_input_action == 'indexdb index_docs info':
-                    pass
-
-                # IndexDB index docs create table
-                elif button_input_action == 'indexdb index_docs create table':
-                    pass
-
-                # IndexDB index docs patch
-                elif button_input_action == 'indexdb index_docs patch':
-                    
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.docs_patch_all(actions={method_actions})")
-                    gr.indexdb.docs_patch_all(actions=method_actions)
-
-                # IndexDB index doc-links info
-                elif button_input_action == 'indexdb index_doc_links info':
-                    pass
-
-                # IndexDB index doc-links create table
-                elif button_input_action == 'indexdb index_doc_links create table':
-                    pass
-                
-                # IndexDB index doc-links horizontal patch
-                elif button_input_action == 'indexdb index_doc_links horizontal patch':
-
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.doclinks_horizontal_patch_all(actions={method_actions})")
-                    gr.indexdb.doclinks_horizontal_patch_all(actions=method_actions)
-
-                # IndexDB index doc-links vertical patch
-                elif button_input_action == 'indexdb index_doc_links vertical patch':
-                    
-                    # Print and execute method
-                    print(f"\n🖥️  ~ gr.indexdb.doclinks_vertical_patch_all(actions={method_actions})")
-                    gr.indexdb.doclinks_vertical_patch_all(actions=method_actions)
-
-                # IndexDB create mixed views
-                elif button_input_action == 'indexdb create mixed views':
-                    pass
-
-                # IndexDB copy patches to prod
-                elif button_input_action == 'indexdb copy patches to prod':
-                    pass
-
-    #--------------------------------#
-    # Subframe (left): Orchestration #
-    #--------------------------------#
-    if True:
-
-        # Labeled subframe
-        gui['orchestration']['subframe'] = tk.LabelFrame(root, text="Orchestration", width=500, padx=10, pady=10)
-        gui['orchestration']['subframe'].grid_propagate(False)
-        gui['orchestration']['subframe'].grid(row=0, column=0, sticky='ns', padx=(16,8), pady=(16,16))
-
-        # Description inside subframe
-        gui['orchestration']['description'] = tk.Label(gui['orchestration']['subframe'],
-            text = "Select which type of objects to process, whether to process fields and/or scores, to sync new inserted or deleted data, and to reset or propagate \"to_process\" flags over all cache dependencies.",
-            justify='left', anchor='w', fg='gray', wraplength=400
-        ).pack(pady=(0,0), anchor='w', fill='x')
-
-        #--------------------------------------------#
-        def add_type_to_process(unit, pre_selection=None):
-
-            # Extract pre-selection if provided
-            if pre_selection is not None:
-                source_node_type, target_node_type, process_fields, process_scores = pre_selection[0], pre_selection[1], 'fields' in pre_selection[2], 'scores' in pre_selection[2]
-            else:
-                source_node_type, target_node_type, process_fields, process_scores = False, False, False, False
-
-            # Create a new row frame
-            row_frame = tk.Frame(gui['orchestration'][f'{unit}_types']['subframe'])
-            row_frame.pack(fill='x', pady=0)
-
-            # Dropdown: Source node types
-            source_node_type_var = tk.StringVar()
-            source_node_dropdown = ttk.Combobox(row_frame, values=list_of_node_types, textvariable=source_node_type_var, width=8)
-            source_node_dropdown.grid(row=0, column=0, padx=(0, 0))
-            if pre_selection:
-                source_node_dropdown.after_idle(lambda: source_node_dropdown.set(source_node_type))
-            
-            # Dropdown: Target node types (if edge)
-            target_node_dropdown = None
-            if unit == 'edge':
-                target_node_type_var = tk.StringVar(value=target_node_type if pre_selection else list_of_node_types[0])
-                target_node_dropdown = ttk.Combobox(row_frame, values=list_of_node_types, textvariable=target_node_type_var, width=8)
-                target_node_dropdown.grid(row=0, column=1, padx=(0, 0))
-                if pre_selection:
-                    target_node_dropdown.after_idle(lambda: target_node_dropdown.set(target_node_type))
-
-            # Checkbox: Process fields 
-            pf_var = tk.BooleanVar()
-            pf_var.set(bool(process_fields))
-            pf_label = tk.Label(row_frame, text="Fields")
-            pf_label.grid(row=0, column=2, padx=(0, 0))
-            pf_checkbox = tk.Checkbutton(row_frame, variable=pf_var)
-            # pf_checkbox.select() if process_fields else pf_checkbox.deselect()
-            pf_checkbox.grid(row=0, column=3, padx=(0, 0))
-
-            # Checkbox: Process scores
-            ps_var = tk.BooleanVar()
-            ps_var.set(bool(process_scores))
-            ps_label = tk.Label(row_frame, text="Scores")
-            ps_label.grid(row=0, column=4, padx=(0, 0))
-            ps_checkbox = tk.Checkbutton(row_frame, variable=ps_var)
-            # ps_checkbox.select() if process_scores else ps_checkbox.deselect()
-            ps_checkbox.grid(row=0, column=5, padx=(0, 0))
-
-            # Remove button
-            def remove_this_row():
-                row_frame.destroy()
-                gui['orchestration'][f'{unit}_types']['list'].remove(row_data)
-
-            remove_button = tk.Button(row_frame, text="Remove", command=remove_this_row)
-            remove_button.grid(row=0, column=6, padx=(0, 0))
-
-            # Optionally store widget references if needed later
-            # Store row data
-            row_data = {
-                'frame': row_frame,
-                'dropdowns': [source_node_dropdown, target_node_dropdown],
-                'process_fields': pf_var,
-                'process_scores': ps_var,
-            }
-            gui['orchestration'][f'{unit}_types']['list'].append(row_data)
-
-        # Sub-subframe: Node types to process
-        if True:
-
-            # Labeled subframe
-            gui['orchestration']['node_types']['subframe'] = tk.LabelFrame(gui['orchestration']['subframe'], text="Node types to process", width=480, padx=10, pady=10)
-            gui['orchestration']['node_types']['subframe'].pack_propagate(False)
-            gui['orchestration']['node_types']['subframe'].pack(padx=10, pady=(10,6), fill='y', expand=True)
-            
-            # Description inside subframe
-            gui['orchestration']['node_types']['description'] = tk.Label(gui['orchestration']['node_types']['subframe'],
-                text = f"Add and remove node types to process.",
-                justify='left', anchor='w', fg='gray', wraplength=380
-            ).pack(pady=(0,0), anchor='w', fill='x')
-
-            # Buttons to add/remove dropdowns
-            gui['orchestration']['node_types']['button_add_new'] = tk.Button(gui['orchestration']['node_types']['subframe'],
-                text = "Add node type",
-                command = (lambda: add_type_to_process('node'))
-            ).pack(pady=(10, 5), anchor='w')
-
-        # Sub-subframe: Edge types to process
-        if True:
-
-            # Labeled subframe
-            gui['orchestration']['edge_types']['subframe'] = tk.LabelFrame(gui['orchestration']['subframe'], text=f"Edge types to process", width=480, padx=10, pady=10)
-            gui['orchestration']['edge_types']['subframe'].pack_propagate(False)
-            gui['orchestration']['edge_types']['subframe'].pack(padx=10, pady=(6,12), fill='y', expand=True)
-
-            # Description inside subframe
-            gui['orchestration']['edge_types']['description'] = tk.Label(gui['orchestration']['edge_types']['subframe'],
-                text = f"Add and remove edge types to process.",
-                justify='left', anchor='w', fg='gray', wraplength=380
-            ).pack(pady=(0,0), anchor='w', fill='x')
-
-            # Buttons to add/remove dropdowns
-            gui['orchestration']['edge_types']['button_add_new'] = tk.Button(gui['orchestration']['edge_types']['subframe'],
-                text = "Add edge type",
-                command = (lambda: add_type_to_process('edge'))
-            ).pack(pady=(10, 5), anchor='w')
-
-        # Create buttons row for cache management actions
-        create_buttons_row(
-            frame_pointer  = gui['orchestration']['subframe'],
-            actions_matrix = [
-                (0, 0, 7, 'reset config'), (0, 1, 7, 'apply config'), (0, 2, 6, 'sync data'), (0, 3, 7, 'refresh flags'),
-            ],
-            function_subspace = 'orchestration'
-        )
-
-        # Function for group concat
-        def group_concat(tuples):
-            grouped = defaultdict(list)
-            for t in tuples:
-                prefix, last = t[:-1], t[-1]
-                grouped[prefix].append(last)
-            return [(*k, tuple(v)) for k, v in grouped.items()]
-        
-        # Initialise typeflags from current saved settings
-        config_json = gr.orchestrator.typeflags.get_config_json()
-        flags_to_options = {(False,False):(), (True,False):('fields',), (False,True):('scores',), (True,True):('fields','scores')}
-        typeflags_settings = {
-            'nodes' : [(e[0],       flags_to_options[(e[1],e[2])]) for e in config_json['nodes']],
-            'edges' : [(e[0], e[1], flags_to_options[(e[2],e[3])]) for e in config_json['edges']],
-        }
-        # print(typeflags_settings)
-        # typeflags_settings = {
-        #     k: group_concat(v) for k, v in gr.orchestrator.typeflags.status(types_only=True).items()
-        # }
-        # print(typeflags_settings)
-
-        # Add node and edge types to process based on typeflags settings
-        for tfs in typeflags_settings['nodes']:
-            add_type_to_process('node', pre_selection=(tfs[0], None  , tfs[1]))
-        for tfs in typeflags_settings['edges']:
-            add_type_to_process('edge', pre_selection=(tfs[0], tfs[1], tfs[2]))
-
-    #------------------------------#
-    # Subframe (right): Processing #
-    #------------------------------#
-    if True:
-
-        # Labeled subframe
-        gui['processing']['subframe'] = tk.LabelFrame(root, text="Processing", width=440, padx=10, pady=10)
-        gui['processing']['subframe'].grid_propagate(False)
-        gui['processing']['subframe'].grid(row=0, column=1, sticky='ns', padx=(8,16), pady=(16,16))
-
-        #----------------------------#
-        # Subframe: Cache Management #
-        #----------------------------#
-        if True:
-
-            # Create labeled subframe
-            gui['processing']['cachemanage']['subframe'] = tk.LabelFrame(gui['processing']['subframe'], text="Cache management", width=400, height=122, padx=10, pady=10)
-            gui['processing']['cachemanage']['subframe'].pack_propagate(False)
-            gui['processing']['cachemanage']['subframe'].pack(padx=10, pady=10)
-
-            # Create checkboxes row for cache management actions
-            create_action_checkboxes_row(
-                frame_pointer = gui['processing']['cachemanage']['subframe'],
-                var_pointer   = gui['processing']['cachemanage']['actions']
-            )
-
-            # Create buttons row for cache management actions
-            create_buttons_row(
-                frame_pointer  = gui['processing']['cachemanage']['subframe'],
-                actions_matrix = [
-                    (0, 0, 9, 'apply views'   ), (0, 1, 16, 'calculate scores matrix'  ),
-                    (1, 0, 9, 'apply formulas'), (1, 1, 16, 'consolidate scores matrix')
-                ],
-                function_subspace = 'cachemanage'
-            )
-
-        #------------------------------------------------#
-        # Subframe: GraphIndex Management (SQL Database) #
-        #------------------------------------------------#
-        if True:
-
-            # Labeled subframe
-            gui['processing']['indexdb']['subframe'] = tk.LabelFrame(gui['processing']['subframe'], text="GraphIndex management (MySQL)", width=400, height=550, padx=10, pady=10)
-            gui['processing']['indexdb']['subframe'].pack_propagate(False)
-            gui['processing']['indexdb']['subframe'].pack(padx=10, pady=(10,0))
-
-            # Create checkboxes row for cache management actions
-            create_action_checkboxes_row(
-                frame_pointer  = gui['processing']['indexdb']['subframe'],
-                var_pointer    = gui['processing']['indexdb']['actions'],
-                include_engine = True
-            )
-
-            # Sub-subframes
-            if True:
-                            
-                # Labeled subframe
-                gui['processing']['indexdb']['cache_buildup']['subframe'] = tk.LabelFrame(gui['processing']['indexdb']['subframe'], text="Cache build up", width=380, height=60, padx=4, pady=4)
-                gui['processing']['indexdb']['cache_buildup']['subframe'].pack_propagate(False)
-                gui['processing']['indexdb']['cache_buildup']['subframe'].pack(padx=10, pady=(10,2))
-
-                # Create buttons row for cache management actions
-                create_buttons_row(
-                    frame_pointer  = gui['processing']['indexdb']['cache_buildup']['subframe'],
-                    actions_matrix = [
-                        (0, 0, 2, 'info'), (0, 1, 5, 'build all'),
-                    ],
-                    function_subspace = 'indexdb cache_buildup'
-                )
-
-                # Labeled subframe
-                gui['processing']['indexdb']['page_profile']['subframe'] = tk.LabelFrame(gui['processing']['indexdb']['subframe'], text="Page profiles", width=380, height=60, padx=4, pady=4)
-                gui['processing']['indexdb']['page_profile']['subframe'].pack_propagate(False)
-                gui['processing']['indexdb']['page_profile']['subframe'].pack(padx=10, pady=(2,2))
-
-                # Create buttons row for cache management actions
-                create_buttons_row(
-                    frame_pointer  = gui['processing']['indexdb']['page_profile']['subframe'],
-                    actions_matrix = [
-                        (0, 0, 2, 'info'), (0, 1, 7, 'create table'), (0, 2, 3, 'patch'),
-                    ],
-                    function_subspace = 'indexdb page_profile'
-                )
-
-                # Labeled subframe
-                gui['processing']['indexdb']['index_docs']['subframe'] = tk.LabelFrame(gui['processing']['indexdb']['subframe'], text="Index docs", width=380, height=60, padx=4, pady=4)
-                gui['processing']['indexdb']['index_docs']['subframe'].pack_propagate(False)
-                gui['processing']['indexdb']['index_docs']['subframe'].pack(padx=10, pady=(2,2))
-
-                # Create buttons row for cache management actions
-                create_buttons_row(
-                    frame_pointer  = gui['processing']['indexdb']['index_docs']['subframe'],
-                    actions_matrix = [
-                        (0, 0, 2, 'info'), (0, 1, 7, 'create table'), (0, 2, 3, 'patch'),
-                    ],
-                    function_subspace = 'indexdb index_docs'
-                )
-
-                # Labeled subframe
-                gui['processing']['indexdb']['index_doc_links']['subframe'] = tk.LabelFrame(gui['processing']['indexdb']['subframe'], text="Index doc-links", width=380, height=88, padx=4, pady=4)
-                gui['processing']['indexdb']['index_doc_links']['subframe'].pack_propagate(False)
-                gui['processing']['indexdb']['index_doc_links']['subframe'].pack(padx=10, pady=(2,2))
-
-                # Create buttons row for cache management actions
-                create_buttons_row(
-                    frame_pointer  = gui['processing']['indexdb']['index_doc_links']['subframe'],
-                    actions_matrix = [
-                        (0, 0, 7, 'info'        ), (0, 1, 10, 'vertical patch'  ),
-                        (1, 0, 7, 'create table'), (1, 1, 10, 'horizontal patch'),
-                    ],
-                    function_subspace = 'indexdb index_doc_links'
-                )
-
-            # Create buttons row for cache management actions
-            create_buttons_row(
-                frame_pointer  = gui['processing']['indexdb']['subframe'],
-                actions_matrix = [
-                    (0, 0, 12, 'create mixed views'), (0, 1, 13, 'copy patches to prod'),
-                ],
-                function_subspace = 'indexdb'
-            )
-
-        #--------------------------------------------------#
-        # Subframe: Graph Index Management (ElasticSearch) #
-        #--------------------------------------------------#
-        if True:
-
-            # Labeled subframe
-            gui['processing']['elasticsearch']['subframe'] = tk.LabelFrame(gui['processing']['subframe'], text="GraphIndex management (ElasticSearch)", width=400, height=330, padx=10, pady=10)
-            gui['processing']['elasticsearch']['subframe'].pack_propagate(False)
-            gui['processing']['elasticsearch']['subframe'].pack(padx=10, pady=10)
-    
-    # Launch GUI
-    root.mainloop()
 
 #==================================#
 # Main: >> python graphregistry.py #
