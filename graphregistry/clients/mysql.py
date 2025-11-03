@@ -8,9 +8,93 @@ from loguru import logger as sysmsg
 from tqdm import tqdm
 import pandas as pd
 import os, re, subprocess
+from typing import List, Tuple
 
 # Initialize global config
 glbcfg = GlobalConfig()
+
+#-----------------------------------------#
+# Get MySQL schema names from config file #
+#-----------------------------------------#
+# TODO: This part is replicated in registry.py; refactor to avoid duplication
+
+# Fetch schema names from config file
+mysql_schema_names = {
+    'test' : {
+        'ontology'    : glbcfg.settings['mysql']['db_schema_names']['ontology'],
+        'registry'    : glbcfg.settings['mysql']['db_schema_names']['registry'],
+        'lectures'    : glbcfg.settings['mysql']['db_schema_names']['lectures'],
+        'airflow'     : glbcfg.settings['mysql']['db_schema_names']['airflow'],
+        'es_cache'    : glbcfg.settings['mysql']['db_schema_names']['elasticsearch_cache'],
+        'graph_cache' : glbcfg.settings['mysql']['db_schema_names']['graph_cache_test'],
+        'graphsearch' : glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']
+    },
+    'prod' : {
+        'graph_cache' : glbcfg.settings['mysql']['db_schema_names']['graph_cache_prod'],
+        'graphsearch' : glbcfg.settings['mysql']['db_schema_names']['graphsearch_prod']
+    }
+}
+
+# Assign to local variables (to act as aliases)
+schema_ontology = mysql_schema_names['test']['ontology']
+schema_registry = mysql_schema_names['test']['registry']
+schema_lectures = mysql_schema_names['test']['lectures']
+schema_airflow  = mysql_schema_names['test']['airflow']
+schema_es_cache = mysql_schema_names['test']['es_cache']
+schema_graph_cache_test = mysql_schema_names['test']['graph_cache']
+schema_graph_cache_prod = mysql_schema_names['prod']['graph_cache']
+schema_graphsearch_test = mysql_schema_names['test']['graphsearch']
+schema_graphsearch_prod = mysql_schema_names['prod']['graphsearch']
+
+# Object type to schema mapping
+object_type_to_schema = {
+    'Category'       : schema_ontology,
+    'Concept'        : schema_ontology,
+    'Course'         : schema_registry,
+    'Lecture'        : schema_lectures,
+    'MOOC'           : schema_registry,
+    'Person'         : schema_registry,
+    'Publication'    : schema_registry,
+    'Slide'          : schema_lectures,
+    'Specialisation' : schema_registry,
+    'Startup'        : schema_registry,
+    'Transcript'     : schema_lectures,
+    'StudyPlan'      : schema_registry,
+    'Unit'           : schema_registry,
+    'Widget'         : schema_registry,
+}
+
+# Object type to institution id mapping
+object_type_to_institution_id = {
+    'Category'       : 'Ont',
+    'Concept'        : 'Ont',
+    'Course'         : 'EPFL',
+    'Lecture'        : 'EPFL',
+    'MOOC'           : 'EPFL',
+    'Person'         : 'EPFL',
+    'Publication'    : 'EPFL',
+    'Slide'          : 'EPFL',
+    'Specialisation' : 'EPFL',
+    'Startup'        : 'EPFL',
+    'Transcript'     : 'EPFL',
+    'StudyPlan'      : 'EPFL',
+    'Unit'           : 'EPFL',
+    'Widget'         : 'EPFL',
+}
+
+#-----------------------------------------#
+# TEMPORARY FIX:
+def get_schema(from_object_type, to_object_type):
+    schema_from = object_type_to_schema.get(from_object_type, schema_registry)
+    schema_to = object_type_to_schema.get(to_object_type, schema_registry)
+    if schema_from == schema_lectures or schema_to == schema_lectures:
+        return schema_lectures
+    elif schema_from == schema_to:
+        return schema_from
+    else:
+        return schema_registry
+#-----------------------------------------#
+
 
 #-----------------------------------------#
 # Class definition for Graph MySQL engine #
@@ -87,6 +171,8 @@ class GraphDB():
             connection = self.engine[engine_name].connect()
             result = connection.execute(text("SELECT 1")).fetchone()
             connection.close()
+            if result is None:
+                return False
             return result[0] == 1
         except Exception as e:
             print(f"Error connecting to MySQL {engine_name}: {e}")
@@ -98,7 +184,7 @@ class GraphDB():
     def database_exists(self, engine_name, schema_name):
         query = f"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{schema_name}'"
         return len(self.execute_query(engine_name=engine_name, query=query)) > 0
-    
+
     #-------------------------------#
     # Method: Check if table exists #
     #-------------------------------#
@@ -196,8 +282,10 @@ class GraphDB():
         # Execute the query
         column_names = []
         for r in self.execute_query(engine_name=engine_name, query=query):
+            if r is None:
+                continue
             column_names.append(r[0])
-        
+
         # Return the column names
         return column_names
 
@@ -205,15 +293,17 @@ class GraphDB():
     # Method: Get column datatypes of a table #
     #-----------------------------------------#
     def get_column_datatypes(self, engine_name, schema_name, table_name):
-            
+
             # Define the query
             query = f"SHOW COLUMNS FROM {schema_name}.{table_name}"
-    
+
             # Execute the query
             column_datatypes = {}
             for r in self.execute_query(engine_name=engine_name, query=query):
+                if r is None:
+                    continue
                 column_datatypes[r[0]] = r[1]
-            
+
             # Return the column datatypes
             return column_datatypes
 
@@ -231,6 +321,8 @@ class GraphDB():
         query = f"SHOW KEYS FROM {schema_name}.{table_name} WHERE Key_name = 'PRIMARY'"
         primary_keys = []
         for r in self.execute_query(engine_name=engine_name, query=query):
+            if r is None:
+                continue
             primary_keys.append(r[4])
         return primary_keys
 
@@ -241,6 +333,8 @@ class GraphDB():
         query = f"SHOW KEYS FROM {schema_name}.{table_name}"
         keys = {}
         for r in self.execute_query(engine_name=engine_name, query=query):
+            if r is None:
+                continue
             key_name = r[2]
             if key_name not in keys:
                 keys[key_name] = []
@@ -277,7 +371,7 @@ class GraphDB():
         finally:
             connection.close()
         return rows
-        
+
     #------------------------------------------------------------------#
     # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE #
     #------------------------------------------------------------------#
@@ -285,7 +379,7 @@ class GraphDB():
 
         # Target table path
         t = target_table_path = f'{schema_name}.{table_name}'
-        
+
         # Evaluate the patch operation
         if 'eval' in actions:
 
@@ -1662,10 +1756,10 @@ class GraphDB():
 
             # Check if the tuple is in both source and target (existing row)
             if t in source_row_set_dict and t in target_row_set_dict:
-                    
+
                 # Add to existing rows
                 stats['existing_rows'] += 1
-                
+
                 # Check if the values fully match
                 if source_row_set_dict[t] == target_row_set_dict[t]:
                     stats['match'] += 1
@@ -1916,6 +2010,288 @@ class GraphDB():
 
         # Print line break
         print('')
+
+
+
+
+
+    # Function to execute an INSERT operation in the registry
+    def registry_insert(self,
+            schema_name, table_name, key_column_names, key_column_values, upd_column_names, upd_column_values, actions=(),
+            engine_name='test'
+    ):
+        """
+        Possible actions: 'print', 'eval', 'commit'
+        """
+
+        # Generate the full table name
+        t = f'{schema_name}.{table_name}'
+
+        # Get the number of columns to update and create the dictionary with values
+        num_upd_columns = len(upd_column_names)
+        num_key_columns = len(key_column_names)
+        sql_params = {key_column_names[k]: key_column_values[k] for k in range(num_key_columns)}
+        sql_params.update({upd_column_names[u]: upd_column_values[u] for u in range(num_upd_columns)})
+
+        # Initialise test results dictionary
+        eval_results = None
+
+        # Evaluate changes to be made
+        if 'eval' in actions:
+
+            # Define the colour map
+            colour_map = {
+                'no change'     : 'green',
+                'new value'     : 'cyan',
+                'set to null'   : 'red',
+                'key exists'    : 'green',
+                'key is new'    : 'cyan'
+            }
+
+            # Generate SELECT statement
+            if num_upd_columns > 0:
+                if_statements = []
+                for k in range(num_upd_columns):
+                    if isinstance(upd_column_values[k], float):
+                        if_statements.append(
+                            f'IF('
+                                f'ABS({upd_column_names[k]} - :{upd_column_names[k]})<1e-6 '
+                                    f'OR (:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NULL), '
+                                f'"no change", '
+                                f'IF(:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NOT NULL, "set to null", "new value")'
+                            f') AS TEST_{upd_column_names[k]}'
+                        )
+                    else:
+                        if_statements.append(
+                            f'IF('
+                                f'({upd_column_names[k]} = :{upd_column_names[k]}) '
+                                    f'OR (:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NULL), '
+                                f'"no change", '
+                                f'IF(:{upd_column_names[k]} IS NULL AND {upd_column_names[k]} IS NOT NULL, "set to null", "new value")'
+                            f') AS TEST_{upd_column_names[k]}'
+                        )
+                sql_select_statement = ', '.join(if_statements)
+            else:
+                sql_select_statement = '*'
+
+            # Generate the SQL query for evaluation
+            sql_query_eval = f"""
+                SELECT {sql_select_statement}
+                FROM {t}
+                WHERE ({', '.join(key_column_names)}) = (:{', :'.join(key_column_names)});
+            """
+
+            # Print the SQL query
+            if 'print' in actions:
+                print(sql_query_eval)
+            
+            # Execute the query
+            out = self.execute_query(engine_name=engine_name, query=sql_query_eval, params=sql_params)
+
+            # Build up the test results dictionary
+            print_colour(f'\nChanges on table {t}:', style='bold')
+            eval_result = 'key exists' if len(out) > 0 else 'key is new'
+            eval_results = [{'column': 'primary_key', 'result': eval_result}]
+            print(f"primary_key {'.'*(32-len('primary_key'))} ", end="", flush=True)
+            print_colour(eval_result, colour=colour_map[eval_result])
+            if len(out) > 0:
+                for k in range(num_upd_columns):
+                    eval_result = out[0][k]
+                    eval_results.append({'column': upd_column_names[k], 'result': eval_result})
+                    print(f"{upd_column_names[k]} {'.'*(32-len(upd_column_names[k]))} ", end="", flush=True)
+                    print_colour(eval_result, colour=colour_map[eval_result])
+            
+        # Generate the SQL query for commit
+        if num_upd_columns > 0:
+            sql_query_commit = f"""
+                INSERT INTO {t}
+                    ({', '.join(key_column_names)}, {', '.join(upd_column_names)})
+                SELECT {', '.join(key_column_names)}, {', '.join(upd_column_names)}
+                FROM (
+                    SELECT 
+                        {', '.join([f':{key_column_names[k]} AS {key_column_names[k]}' for k in range(num_key_columns)])},
+                        {', '.join([f':{upd_column_names[u]} AS {upd_column_names[u]}' for u in range(num_upd_columns)])}
+                ) AS d
+                ON DUPLICATE KEY UPDATE 
+                    record_updated_date = IF(
+                        {' OR '.join([f"COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__')" for c in upd_column_names])},
+                        CURRENT_TIMESTAMP, 
+                        {t}.record_updated_date
+                    ),
+                    {', '.join(
+                        [f"{c} = IF(COALESCE({t}.{c}, '__null__') != COALESCE(d.{c}, '__null__'), d.{c}, {t}.{c})" for c in upd_column_names]
+                    )};"""
+        else:
+            sql_query_commit = f"""
+                INSERT INTO {t}
+                    ({', '.join(key_column_names)})
+                SELECT 
+                    {', '.join([f':{key_column_names[k]} AS {key_column_names[k]}' for k in range(num_key_columns)])};"""
+
+        # Print the SQL query
+        if 'print' in actions:
+            stmt = text(sql_query_commit).bindparams(**sql_params)
+            print(stmt.compile(
+                dialect=mysql.dialect(),
+                compile_kwargs={"literal_binds": True}
+            ))
+
+        # Execute commit
+        if 'commit' in actions:
+            out = self.execute_query(engine_name='test', query=sql_query_commit, params=sql_params, commit=True, return_exception=True)
+            if not type(out) is list:
+                error_type, error_msg, dbapi_code = out
+                if dbapi_code==1062: # Duplicate entry
+                    sysmsg.warning(f'Duplicate entry error when inserting into {t} with keys {sql_params}. Continuing ...')
+                else:
+                    sysmsg.critical(f'Error when inserting into {t} with keys {sql_params}. Exiting ...')
+                    print('Error details:')
+                    print(f'{error_type}: {error_msg} (DBAPI code: {dbapi_code})')
+                    exit()
+
+        # Return the test results
+        return eval_results
+
+    # Function to delete input list of concepts
+    def delete_concepts_for_nodes(self, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
+        schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
+        query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
+        eval_results = None
+        if 'eval' in actions:
+            query_eval = f'SELECT COUNT(*) FROM {schema_objects}.{table} WHERE {query_where};'
+            if 'print' in actions:
+                print(query_eval)
+            out = self.execute_query(query=query_eval, params={'object_id': nodes_id}, engine_name=engine_name)
+            eval_results = {'delete concept': out[0][0]}
+            if eval_results['delete concept'] > 0:
+                print(eval_results)
+        queries_remove = f'DELETE FROM {schema_objects}.{table} WHERE {query_where};'
+        if 'print' in actions:
+            print(queries_remove)
+        if 'commit' in actions:
+            self.execute_query(
+                query=queries_remove, params={'object_id': nodes_id}, engine_name=engine_name, commit=True
+            )
+        return eval_results
+
+    # Function to delete input list of nodes by id
+    def delete_nodes_by_ids(self, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
+        schema_objects = object_type_to_schema.get(object_type, schema_registry)
+        query_where_per_table = {}
+        for table in (
+                'Nodes_N_Object', 'Data_N_Object_T_PageProfile', 'Data_N_Object_T_CustomFields',
+        ):
+            query_where_per_table[f'{schema_objects}.{table}'] = \
+                f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
+
+        for schema in (schema_registry, schema_lectures):
+            for table in (
+                    'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields',
+            ):
+                query_where_per_table[f'{schema}.{table}'] = f'''
+                    (
+                        from_institution_id='{institution_id}' 
+                        AND from_object_type='{object_type}' 
+                        AND from_object_id IN :object_id
+                    ) OR (
+                        to_institution_id='{institution_id}' 
+                        AND to_object_type='{object_type}' 
+                        AND to_object_id IN :object_id
+                    )'''
+        eval_results = {}
+        queries_remove = []
+        for table, query_where in query_where_per_table.items():
+            if 'eval' in actions:
+                query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
+                if 'print' in actions:
+                    print(query_eval)
+                out = self.execute_query(query=query_eval, params={'object_id': nodes_id}, engine_name=engine_name)
+                eval_results[table] = out[0][0]
+                if eval_results[table] > 0:
+                    print(table, eval_results[table])
+            queries_remove.append(f'DELETE FROM {table} WHERE {query_where};\n')
+        if len(queries_remove) > 1:
+            queries_remove.insert(0, 'BEGIN;')
+            queries_remove.append('COMMIT;')
+        if 'print' in actions:
+            for q in queries_remove:
+                print(q)
+        if 'commit' in actions:
+            for q in queries_remove:
+                self.execute_query(query=q, params={'object_id': nodes_id}, engine_name=engine_name, commit=True)
+        if self.table_exists(engine_name, schema_objects, 'Edges_N_Object_N_Concept_T_ConceptDetection'):
+            eval_results['Edges_N_Object_N_Concept_T_ConceptDetection'] = self.delete_concepts_for_nodes(
+                'Edges_N_Object_N_Concept_T_ConceptDetection', institution_id, object_type, nodes_id,
+                engine_name=engine_name, actions=actions
+            )
+        if self.table_exists(engine_name, schema_objects, 'Edges_N_Object_N_Concept_T_ManualMapping'):
+            eval_results['Edges_N_Object_N_Concept_T_ManualMapping'] = self.delete_concepts_for_nodes(
+                'Edges_N_Object_N_Concept_T_ManualMapping', institution_id, object_type, nodes_id,
+                engine_name=engine_name, actions=actions
+            )
+        return eval_results if 'eval' in actions else None
+
+    # Function to delete input list of edges by id
+    def delete_edges_by_ids(self, from_institution_id, from_object_type, to_institution_id, to_object_type,
+            edges_id: List[Tuple[str, str]], engine_name='test', actions=()
+    ):
+        schema_edges = get_schema(from_object_type, to_object_type)
+        query_where_per_table = {}
+        for table in (
+                'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields'
+        ):
+            query_where_per_table[f'{schema_edges}.{table}'] = f'''
+                from_institution_id="{from_institution_id}" 
+                AND from_object_type="{from_object_type}" 
+                AND to_institution_id="{to_institution_id}" 
+                AND to_object_type="{to_object_type}" 
+                AND (from_object_id, to_object_id) IN :edges_id'''
+        eval_results = {} if 'eval' in actions else None
+        query_remove = ''
+        for table, query_where in query_where_per_table.items():
+            if 'eval' in actions:
+                query_eval = f'SELECT COUNT(*) FROM {table} WHERE {query_where};'
+                if 'print' in actions:
+                    print(query_eval)
+                out = self.execute_query(query=query_eval, params={'edges_id': edges_id}, engine_name=engine_name)
+                eval_results[table] = out[0][0]
+                if eval_results[table] > 0:
+                    print(table, eval_results[table])
+            query_remove += f'DELETE FROM {table} WHERE {query_where};\n'
+        if 'print' in actions:
+            print(query_remove)
+        if 'commit' in actions:
+            self.execute_query(
+                query=query_remove, params={'edges_id': edges_id}, engine_name=engine_name, commit=True
+            )
+        return eval_results
+
+    # Get the list of object_id from the existing nodes in the database
+    def get_existing_nodes_id(self, institution_id: str, object_type: str, engine_name='test'):
+        schema_name = object_type_to_schema.get(object_type, schema_registry)
+        existing_nodes_id = self.execute_query(
+            engine_name=engine_name,
+            query=f"""
+                SELECT object_id 
+                FROM {schema_name}.Nodes_N_Object
+                WHERE institution_id='{institution_id}' AND object_type='{object_type}';"""
+        )
+        return [object_id for object_id, in existing_nodes_id]
+
+    # Get the list of ids from the existing edges in the database
+    def get_existing_edges_id(self, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str, engine_name='test'):
+        schema_name = get_schema(from_object_type, to_object_type)
+        existing_edges_id = self.execute_query(
+            engine_name=engine_name,
+            query=f"""
+                SELECT from_object_id, to_object_id
+                FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent
+                WHERE 
+                    from_institution_id='{from_institution_id}' AND from_object_type='{from_object_type}'
+                    AND to_institution_id='{to_institution_id}' AND to_object_type='{to_object_type}';"""
+        )
+        return existing_edges_id
+
 
 #================#
 # Main execution #
