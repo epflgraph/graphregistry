@@ -67,7 +67,7 @@ sysmsg.add(
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Function to resolve paths
-def resolve_repo_path(p: str | Path) -> Path:
+def resolve_repo_path(p: Union[str, Path]) -> Path:
     """Return an absolute path. If 'p' is relative, resolve it against the repo root."""
     p = Path(p)
     return p if p.is_absolute() else (REPO_ROOT / p)
@@ -2742,6 +2742,7 @@ class GraphRegistry():
             self.raw_text       = doc_json['raw_text']      if 'raw_text'      in doc_json else None
             self.custom_fields  = doc_json['custom_fields'] if 'custom_fields' in doc_json else []
             self.page_profile   = doc_json['page_profile']  if 'page_profile'  in doc_json else {}
+            self.manual_mapping = doc_json['manual_mapping']  if 'manual_mapping'  in doc_json else None
             schema = object_type_to_schema.get(self.object_type, schema_registry)
 
             # Fetch record dates (node table)
@@ -2778,6 +2779,7 @@ class GraphRegistry():
                 self.page_profile['record_created_date'] = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                 self.page_profile['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
+            # WARNING: Disabled as concepts_detection is now only filled by concept detection.
             # Fetch record dates (concept detection)
             if self.concepts_detection is not None:
                 for k in range(len(self.concepts_detection)):
@@ -2912,7 +2914,6 @@ class GraphRegistry():
                 'node_object'   : self.commit_node_object(actions=actions),
                 'custom_fields' : self.commit_custom_fields(actions=actions),
                 'page_profile'  : self.commit_page_profile(actions=actions),
-                'concepts'      : self.commit_concepts(actions=actions)
             }
 
             # This was here before PR. Not sure what it was meant to do.
@@ -3001,7 +3002,7 @@ class GraphRegistry():
             pass
 
         # Manually map concepts
-        def commit_manual_mapping(self,actions=('eval',), engine_name='test', delete_existing=False):
+        def commit_manual_mapping(self,actions=('eval',), delete_existing=False):
             schema_name = object_type_to_schema.get(self.object_type, 'graph_registry')
             eval_results = []
             if delete_existing and db.table_exists(engine_name, schema_name, 'Edges_N_Object_N_Concept_T_ManualMapping'):
