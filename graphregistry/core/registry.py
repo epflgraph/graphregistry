@@ -4414,7 +4414,7 @@ class GraphRegistry():
 
             # All other edge types (to fetch from GBC table)
             else:
-                
+
                 # Check if update averages is requested
                 if update_averages:
 
@@ -4446,7 +4446,7 @@ class GraphRegistry():
                 """
                 out = db.execute_query(engine_name='test', query=sql_query_check)
                 if len(out) == 0:
-                    print(f'No average score calculation available for ({from_object_type}, {to_object_type})')
+                    sysmsg.warning(f'\nNo average score calculation available for ({from_object_type}, {to_object_type})')
                     return
 
                 # Generate SQL query for adjusted scores calculation

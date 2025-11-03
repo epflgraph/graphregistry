@@ -16,16 +16,18 @@ case "$env_name" in
     echo "Running local environment setup..."
     # Put your local-specific commands here
     # e.g., start local server, load .env.local, etc.
-    ln -sf ../config/graphregistry/config-local.yaml config.yaml
-    ln -sf ../../../config/graphregistry/index_config-local.json database/config/index_config.json
+    cd config
+    ln -sf ../../config/graphregistry/global_cfg.local.yaml config_global.yaml
+    ln -sf ../../config/graphregistry/index_cfg.local.json  config_index.json
     ;;
 
   test)
     echo "Running test environment setup..."
     # Put your test-specific commands here
     # e.g., run unit tests, set environment variables, etc.
-    ln -sf ../config/graphregistry/config-graphtest.yaml config.yaml
-    ln -sf ../../../config/graphregistry/index_config-graphtest.json database/config/index_config.json
+    cd config
+    ln -sf ../../config/graphregistry/global_cfg.graphsearch.yaml config_global.yaml
+    ln -sf ../../config/graphregistry/index_cfg.graphsearch.json  config_index.json
     ;;
 
   *)
