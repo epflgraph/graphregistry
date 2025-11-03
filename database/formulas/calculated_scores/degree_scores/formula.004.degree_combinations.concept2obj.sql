@@ -1,5 +1,6 @@
                   -- Concept-to-Object edges [checked]
         REPLACE INTO [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations
+                     (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, degree, log_degree)
               SELECT 'Ont'              AS from_institution_id,
                      'Concept'          AS from_object_type,
                      e.concept_id       AS from_object_id,
@@ -13,5 +14,6 @@
           INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
                USING (institution_id, object_type)
                WHERE se.to_process = 1
+                 AND tf.flag_type  = 'scores'
                  AND tf.to_process = 1
             GROUP BY e.concept_id, e.institution_id, e.object_type;

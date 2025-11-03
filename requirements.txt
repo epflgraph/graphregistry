@@ -4,7 +4,7 @@ sqlalchemy
 tqdm
 loguru
 rich
-elasticsearch
+elasticsearch==8.15.1
 Levenshtein
 requests
 termcolor
@@ -13,5 +13,6 @@ pandas
 tabulate
 pyyaml
 pymysql
+flatten_dict
+dictdiffer
 graphai-client@git+https://github.com/epflgraph/graphai-client.git
-flatten-dict

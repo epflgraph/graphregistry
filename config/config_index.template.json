@@ -1,0 +1,105 @@
+{
+    "doc-types" : ["Category", "Concept", "Course", "Lecture", "MOOC", "Person", "Publication", "Unit", "Widget"],
+    "options" : {
+        "docs" : {
+            "Course" : {"include_code_in_name" : 1},
+            "Unit"   : {"include_code_in_name" : 1}
+        }
+    },
+    "fields" : {
+        "docs" : {
+            "Category"    : ["depth"],
+            "Course"      : ["latest_academic_year"],
+            "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
+            "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
+            "Person"      : ["is_at_epfl", "gender"],
+            "Publication" : ["year", "published_in", "publisher"],
+            "Unit"        : ["is_active_unit", "is_research_unit", "subtype_rank"],
+            "Widget"      : ["chapter_id", "mainly_math_notation", "mooc_id", "platform_name", "quiz_filename", "quiz_type", "sequential_id", "study_level", "vertical_id"]
+        },
+        "links" : {
+            "default" : {
+                "Category"    : {
+                    "order" : [["depth", "DESC"]]
+                },
+                "Course"      : {
+                    "order" : [["latest_academic_year", "DESC"]]
+                },
+                "Lecture"     : {
+                    "obj"   : ["video_stream_url", "video_duration", "is_restricted"],
+                    "order" : [["is_restricted", "DESC"]]
+                },
+                "Person"      : {
+                    "order" : [["is_at_epfl", "DESC"]]
+                },
+                "Publication" : {
+                    "obj"   : ["year", "published_in", "publisher"],
+                    "order" : [["year", "DESC"]]
+                },
+                "Unit"        : {
+                    "order" : [["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
+                }
+            },
+            "parent-child" : {
+                "Course" : {
+                    "Lecture" : {
+                        "obj2obj" : ["academic_year", "sort_number"],
+                        "order"   : [["is_restricted", "DESC"]]
+                    },
+                    "Person" : {
+                        "obj2obj" : ["latest_teaching_assignment_year"],
+                        "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
+                    }
+                },
+                "Lecture" : {
+                    "Course" : {
+                        "obj2obj" : ["academic_year", "sort_number"],
+                        "order"   : [["latest_teaching_assignment_year", "DESC"]]
+                    }
+                },
+                "Person" : {
+                    "Course" : {
+                        "obj2obj" : ["latest_teaching_assignment_year"],
+                        "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
+                    },
+                    "Unit" : {
+                        "obj2obj" : ["is_active_affiliation", "current_position_rank"],
+                        "order"   : [["is_active_affiliation", "DESC"], ["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
+                    }
+                },
+                "Unit"        : {
+                    "Person" : {
+                        "obj2obj" : ["is_active_affiliation", "current_position_rank"],
+                        "order"   : [["is_at_epfl", "DESC"], ["is_active_affiliation", "DESC"], ["current_position_rank", "ASC"]]
+                    }
+                }
+            }
+        }
+    },
+    "es-fields" : {
+        "docs" : {
+            "Lecture"     : [],
+            "MOOC"        : ["domain", "language", "level", "platform"],
+            "Publication" : ["year", "published_in", "publisher"],
+            "Unit"        : ["is_active_unit", "is_research_unit"],
+            "Widget"      : ["mainly_math_notation", "platform_name", "quiz_type", "study_level"]
+        },
+        "links" : {
+            "Category"    : [],
+            "Person"      : [],
+            "Publication" : [],
+            "Unit"        : []
+        }
+    },
+    "es-filters" : {
+        "docs"  : {
+            "Lecture"     : ["is_restricted = 0"]
+        },
+        "links" : {
+            "Category"    : ["depth = 4"],
+            "Lecture"     : ["is_restricted = 0"],
+            "Person"      : ["is_at_epfl = 1"],
+            "Unit"        : ["is_active_unit = 1", "is_research_unit = 1"]
+        }
+    }
+}
