@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 from fastapi import FastAPI
-from api.registry.router import router  # Corrected import path
+from graphregistry.api.router import router  # Corrected import path
 
 app = FastAPI()
 
@@ -9,7 +11,6 @@ app.include_router(router)
 @app.get("/")
 def read_root():
     return {"message": "FastAPI is running!"}
-
 
 if __name__ == "__main__":
     import uvicorn

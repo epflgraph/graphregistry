@@ -87,6 +87,8 @@ class GraphDB():
             connection = self.engine[engine_name].connect()
             result = connection.execute(text("SELECT 1")).fetchone()
             connection.close()
+            if result is None:
+                return False
             return result[0] == 1
         except Exception as e:
             print(f"Error connecting to MySQL {engine_name}: {e}")
@@ -98,7 +100,7 @@ class GraphDB():
     def database_exists(self, engine_name, schema_name):
         query = f"SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '{schema_name}'"
         return len(self.execute_query(engine_name=engine_name, query=query)) > 0
-    
+
     #-------------------------------#
     # Method: Check if table exists #
     #-------------------------------#
@@ -196,8 +198,10 @@ class GraphDB():
         # Execute the query
         column_names = []
         for r in self.execute_query(engine_name=engine_name, query=query):
+            if r is None:
+                continue
             column_names.append(r[0])
-        
+
         # Return the column names
         return column_names
 
@@ -205,15 +209,17 @@ class GraphDB():
     # Method: Get column datatypes of a table #
     #-----------------------------------------#
     def get_column_datatypes(self, engine_name, schema_name, table_name):
-            
+
             # Define the query
             query = f"SHOW COLUMNS FROM {schema_name}.{table_name}"
-    
+
             # Execute the query
             column_datatypes = {}
             for r in self.execute_query(engine_name=engine_name, query=query):
+                if r is None:
+                    continue
                 column_datatypes[r[0]] = r[1]
-            
+
             # Return the column datatypes
             return column_datatypes
 
@@ -231,6 +237,8 @@ class GraphDB():
         query = f"SHOW KEYS FROM {schema_name}.{table_name} WHERE Key_name = 'PRIMARY'"
         primary_keys = []
         for r in self.execute_query(engine_name=engine_name, query=query):
+            if r is None:
+                continue
             primary_keys.append(r[4])
         return primary_keys
 
@@ -241,6 +249,8 @@ class GraphDB():
         query = f"SHOW KEYS FROM {schema_name}.{table_name}"
         keys = {}
         for r in self.execute_query(engine_name=engine_name, query=query):
+            if r is None:
+                continue
             key_name = r[2]
             if key_name not in keys:
                 keys[key_name] = []
@@ -277,7 +287,7 @@ class GraphDB():
         finally:
             connection.close()
         return rows
-        
+
     #------------------------------------------------------------------#
     # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE #
     #------------------------------------------------------------------#
@@ -285,7 +295,7 @@ class GraphDB():
 
         # Target table path
         t = target_table_path = f'{schema_name}.{table_name}'
-        
+
         # Evaluate the patch operation
         if 'eval' in actions:
 
@@ -753,7 +763,7 @@ class GraphDB():
             # Break if not processed in chunks
             if row_id_name is None:
                 break
-    
+
     #---------------------------------------------#
     # Method: Copies a view from source to target #
     #---------------------------------------------#
@@ -780,7 +790,7 @@ class GraphDB():
         print(f"List of schemas in {engine_name}:")
         for r in self.execute_query(engine_name=engine_name, query='SHOW DATABASES'):
             print(' - ', r[0])
-    
+
     #----------------------------------------#
     # Method: Get list of tables in a schema #
     #----------------------------------------#
@@ -806,7 +816,7 @@ class GraphDB():
         
         # Execute the query and return the result
         return list_of_tables
-    
+
     #-------------------------------#
     # Method: Get views in a schema #
     #-------------------------------#
@@ -825,13 +835,13 @@ class GraphDB():
         print(f"Tables in schema {schema_name}:")
         for r in self.execute_query(engine_name=engine_name, query=f'SHOW TABLES IN {schema_name}'):
             print(' - ', r[0])
-    
+
     #----------------------------------------------#
     # Method: Print list of tables in the cache    #
     #----------------------------------------------#
     def print_tables_in_cache(self):
         self.print_tables_in_schema(engine_name='test', schema_name=glbcfg.settings['mysql']['schema_cache'])
-    
+
     #----------------------------------------------#
     # Method: Print list of tables in the test     #
     #----------------------------------------------#
@@ -1187,7 +1197,7 @@ class GraphDB():
         
         # Display status
         sysmsg.success(f"✅ Done exporting databases from '{schema_name}'.\n")
-    
+
     #-------------------------------------#
     # Method: Import database from folder #
     #-------------------------------------#
@@ -1662,10 +1672,10 @@ class GraphDB():
 
             # Check if the tuple is in both source and target (existing row)
             if t in source_row_set_dict and t in target_row_set_dict:
-                    
+
                 # Add to existing rows
                 stats['existing_rows'] += 1
-                
+
                 # Check if the values fully match
                 if source_row_set_dict[t] == target_row_set_dict[t]:
                     stats['match'] += 1
