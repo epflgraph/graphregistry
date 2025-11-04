@@ -197,9 +197,9 @@ class IndexConfig:
         for doc_type in doc_types:
             for link_type in doc_types:
 
-                #--------------------------------------------------#
-                # Fetch doclink definitions for GraphSearch tables #
-                #--------------------------------------------------#
+                #-----------------------------------------------------------------------------#
+                # Fetch doclink definitions for GraphSearch tables (default / semantic links) #
+                #-----------------------------------------------------------------------------#
 
                 # Fetch list of fields to display on the 'link' side of doc-links
                 # Start with lowest priority definitions, then override if others are available
@@ -219,6 +219,24 @@ class IndexConfig:
                 # Assign to parsed options dictionary
                 if len(graphsearch_obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['default'][link_type] = graphsearch_obj_fields
+
+                #--------------------------------------------------------------------------#
+                # Fetch doclink ORDER BY rules for link ranking (default / semantic links) #
+                #--------------------------------------------------------------------------#
+
+                # Fetch ORDER BY rules to rank the links in doc-link tables
+                graphsearch_obj_order_by = []
+                if link_type                    in index_config['fields']['links']['default']:
+                    if 'order'                  in index_config['fields']['links']['default'][link_type]:
+                        graphsearch_obj_order_by = index_config['fields']['links']['default'][link_type]['order']
+
+                # Assign to parsed options dictionary
+                if len(graphsearch_obj_order_by)>0:
+                    self.settings['graphsearch']['order_by']['links']['default'][link_type] = graphsearch_obj_order_by
+
+                #-----------------------------------------------------------------------#
+                # Fetch doclink definitions for GraphSearch tables (parent-child links) #
+                #-----------------------------------------------------------------------#
 
                 # Initialise parent-child specific internal variable
                 graphsearch_obj2obj_fields = []
@@ -240,6 +258,21 @@ class IndexConfig:
                 # Assign to parsed options dictionary
                 if len(graphsearch_obj2obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_fields
+
+                #--------------------------------------------------------------------#
+                # Fetch doclink ORDER BY rules for link ranking (parent-child links) #
+                #--------------------------------------------------------------------#
+
+                # Fetch ORDER BY rules to rank the links in doc-link tables
+                graphsearch_obj2obj_order_by = []
+                if doc_type                             in index_config['fields']['links']['parent-child']:
+                    if link_type                        in index_config['fields']['links']['parent-child'][doc_type]:
+                        if 'obj2obj'                    in index_config['fields']['links']['parent-child'][doc_type][link_type]:
+                            graphsearch_obj2obj_order_by = index_config['fields']['links']['parent-child'][doc_type][link_type]['order']
+
+                # Assign to parsed options dictionary
+                if len(graphsearch_obj2obj_order_by)>0:
+                    self.settings['graphsearch']['order_by']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_order_by
 
                 #----------------------------------------------------------#
                 # Fetch doclink definitions for ElasticSearch cache tables #
@@ -282,7 +315,7 @@ class IndexConfig:
         self.settings = json.loads(json.dumps(self.settings))
 
     # Print method
-    def print(self):
+    def print(self, compact=False):
 
         # Emoji dictionary
         type_emojis = {
@@ -297,6 +330,44 @@ class IndexConfig:
             "Startup":     "🚀",
             "Widget":      "🧩",
         }
+
+        #----------------------------------------------#
+        # Build printable structure (for compact=True) #
+        #----------------------------------------------#
+
+        # Initialise printable struct
+        printable_struct = {}
+
+        # Loop over each doc type to build printable sets
+        for doc_type in self.settings['doc_types']:
+
+            # Rename variable for better comprehension
+            doc_type_as_link = doc_type
+
+            # Loop over each doc-link type to print its specific options and field definitions
+            for other_doc_type in self.settings['doc_types']:
+
+                # Build index m-tuple
+                idx_tuple = [
+                    self.settings['graphsearch'  ]['fields'  ]['links']['default'     ].get(doc_type_as_link, []),
+                    self.settings['graphsearch'  ]['order_by']['links']['default'     ].get(doc_type_as_link, []),
+                    self.settings['graphsearch'  ]['fields'  ]['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, []),
+                    self.settings['graphsearch'  ]['order_by']['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, []),
+                    self.settings['elasticsearch']['fields'  ]['links'].get(doc_type_as_link, []),
+                    self.settings['elasticsearch']['filters' ]['links'].get(doc_type_as_link, [])
+                ]
+
+                # Append to printable struct
+                if str(idx_tuple) not in printable_struct:
+                    printable_struct[str(idx_tuple)] = {
+                        'doc_type(s)' : [other_doc_type],
+                        'link_type'   : doc_type_as_link,
+                        'idx_tuple'   : idx_tuple
+                    }
+                else:
+                    printable_struct[str(idx_tuple)]['doc_type(s)'] += [other_doc_type]
+
+        #----------------------------------------------#
 
         # Loop over each doc type to print its specific options and field definitions
         for doc_type in self.settings['doc_types']:
@@ -313,22 +384,53 @@ class IndexConfig:
             # Print out initialisation info
             print(f"\n📄 Document type settings:\n")
             print(f" ☑️  Option: include_code_in_name ...... {self.settings['options' ]['include_code_in_name'].get(doc_type, 0)}")
-            print(f" 🐬 GraphSearch doc fields ............ {self.settings['graphsearch'  ]['fields' ]['docs'].get(doc_type, '')}")
-            print(f" ⚡️ ElasticSearch doc fields .......... {self.settings['elasticsearch']['fields' ]['docs'].get(doc_type, '')}")
-            print(f" ⚡️ ElasticSearch filters ............. {self.settings['elasticsearch']['filters']['docs'].get(doc_type, '')}")
+            print(f" 🐬 GraphSearch > Fields .............. {self.settings['graphsearch'  ]['fields' ]['docs'].get(doc_type, '')}")
+            print(f" ⚡️ ElasticSearch > Fields ............ {self.settings['elasticsearch']['fields' ]['docs'].get(doc_type, '')}")
+            print(f" ⚡️ ElasticSearch > Filters ........... {self.settings['elasticsearch']['filters']['docs'].get(doc_type, '')}")
 
-
+            # Rename variable for better comprehension
             doc_type_as_link = doc_type
 
-            # Loop over each doc-link type to print its specific options and field definitions
-            for other_doc_type in self.settings['doc_types']:
+            #-----------------------#
+            # Print in compact form #
+            #-----------------------#
+            if compact:
 
-                # Print out initialisation info
-                print(f"\n🔗 Doc-Link type: {other_doc_type} --> {doc_type_as_link}\n")
-                print(f" 🐬 GraphSearch link fields (default) .......... {self.settings['graphsearch'  ]['fields' ]['links']['default'     ].get(doc_type_as_link, '')}")
-                print(f" 🐬 GraphSearch link fields (parent-child) ..... {self.settings['graphsearch'  ]['fields' ]['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, '')}")
-                print(f" ⚡️ ElasticSearch link fields .................. {self.settings['elasticsearch']['fields' ]['links'].get(doc_type_as_link, '')}")
-                print(f" ⚡️ ElasticSearch filters ...................... {self.settings['elasticsearch']['filters']['links'].get(doc_type_as_link, '')}")
+                # Loop over all printable tuples
+                for str_idx_tuple in printable_struct:
+
+                    # Look for current link in structure
+                    if printable_struct[str_idx_tuple]['link_type'] != doc_type_as_link:
+                        continue
+
+                    # Get doc types to display
+                    dt = printable_struct[str_idx_tuple]['doc_type(s)']
+
+                    # Print out initialisation info
+                    print(f"\n🔗 Doc-Link type(s): {'{' if len(dt)>1 else ''}{','.join(dt)}{'}' if len(dt)>1 else ''} --> {printable_struct[str_idx_tuple]['link_type']}\n")
+                    print(f" 🐬 GraphSearch > Default > Fields .......... {printable_struct[str_idx_tuple]['idx_tuple'][0]}")
+                    print(f" 🐬 GraphSearch > Default > Order ........... {printable_struct[str_idx_tuple]['idx_tuple'][1]}")
+                    print(f" 🐬 GraphSearch > Parent-Child > Fields ..... {printable_struct[str_idx_tuple]['idx_tuple'][2]}")
+                    print(f" 🐬 GraphSearch > Parent-Child > Order ...... {printable_struct[str_idx_tuple]['idx_tuple'][3]}")
+                    print(f" ⚡️ ElasticSearch > Fields .................. {printable_struct[str_idx_tuple]['idx_tuple'][4]}")
+                    print(f" ⚡️ ElasticSearch > Filters ................. {printable_struct[str_idx_tuple]['idx_tuple'][5]}")
+
+            #---------------------------------------#
+            # Print all doc-link options explicitly #
+            #---------------------------------------#
+            else:
+
+                # Loop over each doc-link type to print its specific options and field definitions
+                for other_doc_type in self.settings['doc_types']:
+
+                    # Print out initialisation info
+                    print(f"\n🔗 Doc-Link type: {other_doc_type} --> {doc_type_as_link}\n")
+                    print(f" 🐬 GraphSearch > Default > Fields .......... {self.settings['graphsearch'  ]['fields'  ]['links']['default'     ].get(doc_type_as_link, '')}")
+                    print(f" 🐬 GraphSearch > Default > Order ........... {self.settings['graphsearch'  ]['order_by']['links']['default'     ].get(doc_type_as_link, '')}")
+                    print(f" 🐬 GraphSearch > Parent-Child > Fields ..... {self.settings['graphsearch'  ]['fields'  ]['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, '')}")
+                    print(f" 🐬 GraphSearch > Parent-Child > Order ...... {self.settings['graphsearch'  ]['order_by']['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, '')}")
+                    print(f" ⚡️ ElasticSearch > Fields .................. {self.settings['elasticsearch']['fields'  ]['links'].get(doc_type_as_link, '')}")
+                    print(f" ⚡️ ElasticSearch > Filters ................. {self.settings['elasticsearch']['filters' ]['links'].get(doc_type_as_link, '')}")
 
         # End of print method
         print('')
@@ -378,9 +480,9 @@ class ScoresConfig:
 # Main execution #
 #================#
 if __name__ == "__main__":
-    self = GlobalConfig()
-    self.print()
+    # self = GlobalConfig()
+    # self.print()
     idxcfg = IndexConfig()
-    idxcfg.print()
+    idxcfg.print(compact=True)
     scrcfg = ScoresConfig()
     scrcfg.print()

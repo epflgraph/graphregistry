@@ -155,7 +155,7 @@
             "row_score"        : "FLOAT NOT NULL",
             "row_rank"         : "SMALLINT UNSIGNED NOT NULL"
         },
-        "index_vars" : {
+        "index_fields" : {
             "depth"                 : "SMALLINT UNSIGNED",
             "latest_academic_year"  : "VARCHAR(16)",
             "latest_teaching_assignment_year" : "VARCHAR(16)",
