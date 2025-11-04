@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 from graphregistry.clients.mysql import GraphDB
 from graphregistry.core.registry import GraphRegistry
+from graphregistry.core.dbbridge import RegistryDB
 import graphregistry.api.schemas as schemas
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 
-# Initialise clients
-db = GraphDB()
+# Initalise Registry db bridge
+rbridge = RegistryDB()
 
 # Initialize the GraphRegistry instance
 gr = GraphRegistry()
@@ -68,7 +69,7 @@ def method_delete_nodes(request: schemas.DeleteNodesRequest):
         f"Actions: {', '.join(request.actions)}"
     )
     try:
-        r = db.delete_nodes_by_ids(
+        r = rbridge.delete_nodes_by_ids(
             institution_id=request.institution_id, object_type=request.object_type, nodes_id=request.nodes_id,
             engine_name=request.engine_name, actions=request.actions,
         )
@@ -90,7 +91,7 @@ def method_delete_edges(request: schemas.DeleteEdgesRequest):
         f"Deleting {len(request.items_id)} edges - Type: {request.type}, Actions: {', '.join(request.actions)}"
     )
     try:
-        r = db.delete_edges_by_ids(
+        r = rbridge.delete_edges_by_ids(
             from_institution_id=request.from_institution_id, from_object_type=request.from_object_type,
             to_institution_id=request.to_institution_id, to_object_type=request.to_object_type,
             edges_id=request.edges_id, engine_name=request.engine_name, actions=request.actions,
@@ -110,7 +111,7 @@ def method_list_nodes(request: schemas.ListNodesRequest):
     List nodes existing in the registry.
     """
     try:
-        objects_id = db.get_existing_nodes_id(
+        objects_id = rbridge.get_existing_nodes_id(
             institution_id=request.institution_id, object_type=request.object_type,
             engine_name=request.engine_name
         )
@@ -125,12 +126,12 @@ def method_list_nodes(request: schemas.ListNodesRequest):
 
 
 @router.post("/list_edges")
-def method_list_nodes(request: schemas.ListEdgesRequest):
+def method_list_edges(request: schemas.ListEdgesRequest):
     """
     List edges existing in the registry.
     """
     try:
-        objects_id = db.get_existing_edges_id(
+        objects_id = rbridge.get_existing_edges_id(
             from_institution_id=request.from_institution_id, from_object_type=request.from_object_type,
             to_institution_id=request.to_institution_id, to_object_type=request.to_object_type,
             engine_name=request.engine_name
@@ -163,6 +164,4 @@ def method_list(request: schemas.InsertItemRequest):
     """
     Returns a list of all items in the registry.
     """
-
-
     return "true"

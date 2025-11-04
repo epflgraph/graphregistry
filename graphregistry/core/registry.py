@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from graphregistry.common.auxfcn import print_dataframe
+from graphregistry.common.auxfcn import print_dataframe, print_colour
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.clients.mysql import GraphDB
 from graphregistry.clients.elasticsearch import GraphES, es_degree_score_factors
+from graphregistry.core.dbbridge import RegistryDB
 from graphai_client.client import login as graphai_login
 from graphai_client.client_api.text import extract_concepts_from_text
 from tqdm import tqdm
@@ -28,8 +29,11 @@ scrcfg = ScoresConfig()
 db = GraphDB()
 es = GraphES()
 
+# Initalise Registry db bridge
+rbridge = RegistryDB()
+
 # Print configurations
-idxcfg.print()
+idxcfg.print(compact=True)
 scrcfg.print()
 
 #------------------------------------------------#
@@ -288,36 +292,6 @@ class GraphRegistry():
         """
         print(instructions)
         pass
-
-    # Test run function
-    def test_run(self, doc_type=False, add_new=False, randomize=False, refresh_checksums=False, verbose=False):
-
-        # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-        # TODO: check if doc_type should be processed based on config json (in all methods)
-        # --> Pick up from here after the holidays
-        # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-
-        config_json = {
-            'nodes': [[doc_type, True, False]]
-        }
-        self.orchestrator.typeflags.config(config_json=config_json)
-        self.orchestrator.typeflags.status()
-
-        if add_new:
-            self.orchestrator.fieldschanged.reset(doc_type=doc_type, verbose=verbose)
-            if randomize:
-                self.orchestrator.fieldschanged.randomize(doc_type=doc_type, verbose=verbose)
-            self.orchestrator.fieldschanged.expire(doc_type=doc_type, verbose=verbose)
-            self.orchestrator.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, verbose=verbose)
-
-        self.orchestrator.fieldschanged.status()
-        self.cachemanager.apply_views(actions=('eval', 'commit'))
-        self.indexdb.build(actions=('eval', 'commit'))
-        self.indexdb.patch(actions=('eval', 'commit'))
-        self.orchestrator.fieldschanged.rollover(doc_type=doc_type, verbose=verbose)
-        self.indexdb.idocs[doc_type].airflow_update(verbose=verbose)
-        self.indexdb.idocs[doc_type].flags_cleanup( verbose=verbose)
-        self.orchestrator.fieldschanged.status()
 
     # Import data from JSON data
     def import_from_json(self, json_data, skip_concept_detection=False):
@@ -881,7 +855,7 @@ class GraphRegistry():
                              WHERE (institution_id, object_type)
                                  = ("{object_key[0]}", "{object_key[1]}")
                         """
-                        
+
                     elif len(object_key) == 3:
                         sql_query = f"""
                             SELECT institution_id, object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
@@ -889,7 +863,7 @@ class GraphRegistry():
                              WHERE (institution_id, object_type, object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")
                         """
-                        
+
                     elif len(object_key) == 4:
                         sql_query = f"""
                             SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
@@ -910,7 +884,7 @@ class GraphRegistry():
                         msg = 'Invalid key length.'
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
-                    
+
                     out = db.execute_query(engine_name='test', query=sql_query)
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
@@ -956,7 +930,7 @@ class GraphRegistry():
                 ):
                     sysmsg.error("Invalid input. One of the following must be provided: checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process.")
                     return
-                
+
                 # Generate WHERE condition
                 if len(object_key) == 2:
                     where_conditions = [
@@ -1012,7 +986,7 @@ class GraphRegistry():
                 ):
                     sysmsg.error("Invalid input. One of the following must be provided: older_than, has_expired.")
                     return
-                
+
                 # Generate time period condition (only rows where last_date_cached is older than 'older_than' (in days) with respect to current date)
                 time_condition = f"last_date_cached < CURDATE() - INTERVAL {older_than} DAY" if older_than is not None else "TRUE"
 
@@ -1065,10 +1039,10 @@ class GraphRegistry():
                                   ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id', 'context', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'],
                     where       = where_conditions,
                     verbose     = verbose)
-                
+
                 # Return output as tuples
                 return output
-            
+
             # Sync new objects to operations table
             def sync(self, to_process=1, verbose=False):
 
@@ -1139,7 +1113,7 @@ class GraphRegistry():
                             GROUP BY cp.from_object_type, cp.to_object_type
                     """
                     out = db.execute_query(engine_name='test', query=sql_query)
-                    
+
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
@@ -1155,7 +1129,7 @@ class GraphRegistry():
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
-                    
+
                     # Print status
                     sysmsg.trace(f"Done. New object tuples synched: {out}'")
 
@@ -1199,7 +1173,7 @@ class GraphRegistry():
 
                     # Loop over airflow tables and reset to_process flags
                     for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
-                        
+
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
 
@@ -1323,7 +1297,7 @@ class GraphRegistry():
 
                         # Reset all expiration flags
                         db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
-                        
+
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' - setting 'has_expired' flags to 1 ...")
 
@@ -1346,7 +1320,7 @@ class GraphRegistry():
                                    SET has_expired = 1
                                  WHERE {where_conditions[table_name]}
                             """
-                        
+
                         # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
                         db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
 
@@ -1392,7 +1366,7 @@ class GraphRegistry():
                                 # Filter by doc type
                                 if doc_type is not None and object_type != doc_type:
                                     continue
-                                
+
                                 # Print status
                                 pb.set_description(f"⚙️  Node type: {object_type}".ljust(PBWIDTH)[:PBWIDTH])
 
@@ -1465,7 +1439,7 @@ class GraphRegistry():
 
                                     # Get edge (by which it calculates a new checksum)
                                     edge = GraphRegistry.Edge(object_key=(from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context))
-                                    
+
                                     # Assign new checksum and compare with previous
                                     checksum_current = edge.checksum
                                     has_changed = 1 if checksum_current != checksum_previous else 0
@@ -1673,7 +1647,7 @@ class GraphRegistry():
                 ):
                     sysmsg.error("Invalid input. One of the following must be provided: last_date_cached, has_expired, to_process.")
                     return
-                
+
                 # Generate WHERE condition
                 if len(object_key) == 2:
                     where_conditions = [
@@ -1713,7 +1687,7 @@ class GraphRegistry():
                 ):
                     sysmsg.error("Invalid input. One of the following must be provided: older_than, has_expired.")
                     return
-                
+
                 # Generate time period condition (only rows where last_date_cached is older than 'older_than' (in days) with respect to current date)
                 time_condition = f"last_date_cached < CURDATE() - INTERVAL {older_than} DAY" if older_than is not None else "TRUE"
 
@@ -1745,13 +1719,13 @@ class GraphRegistry():
                     select      = ['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'],
                     where       = where_conditions,
                     verbose     = verbose)
-                
+
                 # Return output as tuples
                 return output
 
             # Sync new objects to operations table -> TODO: optimise queries and include graph_lectures (done?)
             def sync(self, to_process=1, verbose=False):
-                
+
                 # Print status
                 sysmsg.info("♻️  📝 Synching new objects added to the registry with 'ScoresExpired' airflow tables.")
 
@@ -1773,7 +1747,7 @@ class GraphRegistry():
                             GROUP BY n.object_type
                     """
                     out = db.execute_query(engine_name='test', query=sql_query)
-                    
+
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
@@ -1787,7 +1761,7 @@ class GraphRegistry():
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
-                    
+
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
 
@@ -1955,7 +1929,7 @@ class GraphRegistry():
 
                         # Reset all expiration flags
                         db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=verbose)
-                        
+
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - setting 'has_expired' flags to 1 ...")
 
@@ -2115,8 +2089,11 @@ class GraphRegistry():
                 FROM {schema}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)[0][0] > 0.5
-            return out
+            """)
+            if type(out) is list:
+                return out[0][0] > 0.5
+            else:
+                return None
 
         # Print object info
         def info(self):
@@ -2211,10 +2188,10 @@ class GraphRegistry():
 
         # Set inner fields from existing object in database
         def set_from_existing(self):
-            
+
             # Get schema name based on object type
             schema_name = glbcfg.object_type_to_schema.get(self.object_type, glbcfg.schema_registry)
-            
+
             # Get basic object info
             out = db.execute_query(engine_name='test', query=f"""
                 SELECT object_title, text_source, raw_text, record_created_date, record_updated_date
@@ -2261,7 +2238,7 @@ class GraphRegistry():
                     val = out[0][list_of_columns.index(column_name)]
                     if val is not None:
                         self.page_profile[column_name] = val if type(val)!=datetime.datetime else val.strftime('%Y-%m-%d %H:%M:%S')
-            
+
             # Re-calculate checksum
             self.update_checksum()
 
@@ -2381,7 +2358,7 @@ class GraphRegistry():
         # Commit basic node data to database
         def commit_node_object(self, actions=('eval',)):
             schema = glbcfg.object_type_to_schema.get(self.object_type, glbcfg.schema_registry)
-            eval_results = db.registry_insert(
+            eval_results = rbridge.registry_insert(
                 schema_name=schema,
                 table_name='Nodes_N_Object',
                 key_column_names=['institution_id', 'object_type', 'object_id'],
@@ -2398,7 +2375,7 @@ class GraphRegistry():
             schema = glbcfg.object_type_to_schema.get(self.object_type, glbcfg.schema_registry)
             eval_results = []
             for doc in self.custom_fields:
-                eval_results += [db.registry_insert(
+                eval_results += [rbridge.registry_insert(
                     schema_name=schema,
                     table_name='Data_N_Object_T_CustomFields',
                     key_column_names=['institution_id', 'object_type', 'object_id', 'field_language', 'field_name'],
@@ -2423,7 +2400,7 @@ class GraphRegistry():
                     upd_column_values.append(v)
 
             # Execute actions
-            eval_results = db.registry_insert(
+            eval_results = rbridge.registry_insert(
                 schema_name=schema,
                 table_name='Data_N_Object_T_PageProfile',
                 key_column_names=['institution_id', 'object_type', 'object_id'],
@@ -2469,7 +2446,7 @@ class GraphRegistry():
             # Print actions info
             if verbose and 'commit' in actions:
                 print(f'\n✅ All data committed to the database.')
-                
+
             # Return evaluation results
             return eval_results
 
@@ -2478,7 +2455,7 @@ class GraphRegistry():
 
             # Detect concepts if not already done
             if self.concepts_detection is None:
-                
+
                 # Check if text source is set, otherwise exit
                 if self.text_source is None or len(self.text_source.strip()) == 0:
                     sysmsg.warning("No text source set for concept detection.")
@@ -2517,7 +2494,7 @@ class GraphRegistry():
                 )]
 
             for doc in self.concepts_detection:
-                eval_results += [db.registry_insert(
+                eval_results += [rbridge.registry_insert(
                     schema_name       = schema_name,
                     table_name        = 'Edges_N_Object_N_Concept_T_ConceptDetection',
                     key_column_names  = ['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
@@ -2543,7 +2520,7 @@ class GraphRegistry():
                     [self.object_id, ], engine_name='test', actions=actions
                 )]
             for doc in self.manual_mapping:
-                eval_results += [db.registry_insert(
+                eval_results += [rbridge.registry_insert(
                     schema_name=schema_name,
                     table_name='Edges_N_Object_N_Concept_T_ManualMapping',
                     key_column_names=['institution_id', 'object_type', 'object_id', 'concept_id', 'text_source'],
@@ -2573,7 +2550,7 @@ class GraphRegistry():
             for node in self.object_list:
                 out.append(node.exists())
             return out
-        
+
         # Print object info
         def info(self):
             for node in self.object_list:
@@ -2585,7 +2562,7 @@ class GraphRegistry():
             for node in self.object_list:
                 doc_json_list.append(node.to_json())
             return doc_json_list
-        
+
         # Set object list from input JSON
         def set_from_json(self, doc_json_list=(), detect_concepts=False):
             self.object_list = []
@@ -2756,7 +2733,7 @@ class GraphRegistry():
             for k in range(len(doc_json['custom_fields'])):
                 doc_json['custom_fields'][k].pop('record_created_date', None)
                 doc_json['custom_fields'][k].pop('record_updated_date', None)
-            
+
             # Convert to a sorted JSON string
             serialized = json.dumps(doc_json, sort_keys=True, separators=(',', ':'))
 
@@ -2766,7 +2743,7 @@ class GraphRegistry():
         # Commit basic edge data to database
         def commit_edge_object(self, actions=('eval',)):
             schema = self._get_schema()
-            eval_results = db.registry_insert(
+            eval_results = rbridge.registry_insert(
                 schema_name=schema,
                 table_name='Edges_N_Object_N_Object_T_ChildToParent',
                 key_column_names=['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id',
@@ -2784,7 +2761,7 @@ class GraphRegistry():
             schema = self._get_schema()
             eval_results = []
             for doc in self.custom_fields:
-                eval_results += [db.registry_insert(
+                eval_results += [rbridge.registry_insert(
                     schema_name=schema,
                     table_name='Data_N_Object_N_Object_T_CustomFields',
                     key_column_names=['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id',
@@ -2826,7 +2803,7 @@ class GraphRegistry():
         #         if self.exists():
         #             print('Object exists. Update existing is set to OFF.')
         #             return
-            
+
         #     # Update object node table
         #     t = f'{glbcfg.schema_registry}.Edges_N_Object_N_Object_T_ChildToParent'
         #     sql_query = f"""
@@ -3478,9 +3455,9 @@ class GraphRegistry():
                 if 'row_id' in target_table_columns:
                     target_table_columns.remove('row_id')
 
-                # Build commit query                
+                # Build commit query
                 sql_query_commit = f"\tREPLACE INTO {glbcfg.schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
-                
+
                 # Print commit query
                 if 'print' in actions:
                     print(sql_query_commit)
@@ -3601,7 +3578,7 @@ class GraphRegistry():
 
             # Print status
             sysmsg.trace(f"⚙️  Applying batch formula: '{formula_name.split('.')[1]}' ...")
-            
+
             # Read the SQL formula
             with open(f'{SQL_FORMULAS_PATH}/batch/formula.{formula_name}.sql', 'r') as file:
                 sql_formula = file.read()
@@ -3615,7 +3592,7 @@ class GraphRegistry():
 
         # Update cache table from SQL calculated field formula
         def cache_update_from_calculated_field(self, object_type_key, field_name, verbose=False):
-            
+
             # Print status
             sysmsg.trace(f"⚙️  Applying calculated field formula: {object_type_key} / {field_name} ...")
 
@@ -3628,11 +3605,11 @@ class GraphRegistry():
                 # Define key and update column names
                 key_column_names = ['institution_id', 'object_type', 'object_id']
                 upd_column_names = ['field_language', 'field_name', 'field_value']
-                
+
                 # Read the SQL formula
                 with open(f'{SQL_FORMULAS_PATH}/calculated_fields/obj/formula.{object_type_key}.{field_name}.sql', 'r') as file:
                     sql_formula = file.read()
-                
+
             elif type(object_type_key) is tuple and len(object_type_key)==2: # Edge
 
                 # Define target cache table
@@ -3649,7 +3626,7 @@ class GraphRegistry():
             else:
                 sysmsg.error(f"Invalid object_type_key: {object_type_key}. Must be string (node) or tuple of two strings (edge).")
                 return
-            
+
             # Check if SQL formula is valid (return otherwise)
             if 'SELECT' not in sql_formula.upper():
                 sysmsg.warning(f"Invalid SQL formula.")
@@ -3677,14 +3654,14 @@ class GraphRegistry():
             sql_query = f"""
           REPLACE INTO {glbcfg.schema_graph_cache_test}.Edges_N_Lecture_N_Concept_T_Timestamps AS
 
-                SELECT t2.from_institution_id    AS institution_id, 
-                       t2.from_object_type       AS object_type, 
-                       t2.from_object_id         AS object_id, 
+                SELECT t2.from_institution_id    AS institution_id,
+                       t2.from_object_type       AS object_type,
+                       t2.from_object_id         AS object_id,
                        t3.concept_id             AS concept_id,
-                       MAX(t3.score)             AS detection_score, 
-                       t4.field_value            AS detection_time_hms, 
+                       MAX(t3.score)             AS detection_score,
+                       t4.field_value            AS detection_time_hms,
                        t5.field_value            AS detection_timestamp
-                       
+
                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged t1
 
             INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent t2
@@ -3694,15 +3671,15 @@ class GraphRegistry():
             INNER JOIN graph_lectures.Edges_N_Object_N_Concept_T_ConceptDetection t3
                     ON (t2.from_institution_id, t2.from_object_type, t2.from_object_id)
                      = (     t3.institution_id,      t3.object_type,      t3.object_id)
-                     
+
             INNER JOIN graph_lectures.Data_N_Object_N_Object_T_CustomFields t4
                     ON (  t2.to_institution_id,   t2.to_object_type,   t2.to_object_id, t2.from_institution_id, t2.from_object_type, t2.from_object_id)
                      = (t4.from_institution_id, t4.from_object_type, t4.from_object_id,  t4.to_institution_id,   t4.to_object_type,   t4.to_object_id)
-                     
+
             INNER JOIN graph_lectures.Data_N_Object_N_Object_T_CustomFields t5
                     ON (  t2.to_institution_id,   t2.to_object_type,   t2.to_object_id, t2.from_institution_id, t2.from_object_type, t2.from_object_id)
                      = (t5.from_institution_id, t5.from_object_type, t5.from_object_id, t5.to_institution_id,   t5.to_object_type,   t5.to_object_id)
-            
+
                  WHERE t1.object_type = 'Lecture'
                    AND (t2.from_object_type, t2.to_object_type) = ('Slide', 'Lecture')
                    AND t3.object_type = 'Slide'
@@ -3711,9 +3688,9 @@ class GraphRegistry():
                    AND t1.to_process = 1
 
               GROUP BY t2.from_institution_id,
-                       t2.from_object_type, 
-                       t2.from_object_id, 
-                       t3.concept_id, 
+                       t2.from_object_type,
+                       t2.from_object_id,
+                       t3.concept_id,
                        t5.field_value
             """
 
@@ -3871,11 +3848,11 @@ class GraphRegistry():
 
             # Edge types to fetch from Object-to-Category/Concept table
             if (from_object_type in ('Category', 'Concept') or to_object_type in ('Category', 'Concept')) and from_object_type!=to_object_type:
-                
+
                 # If Category/Concept comes first, swap
                 if from_object_type in ('Category', 'Concept') and not (from_object_type, to_object_type) == ('Category', 'Concept'):
                     from_object_type, to_object_type = to_object_type, from_object_type
-                
+
                 # Generate SQL query for adjusted score calculation
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AS
@@ -3963,7 +3940,7 @@ class GraphRegistry():
                              AND (gb.from_object_type, gb.to_object_type) = ('{from_object_type}', '{to_object_type}')
                         GROUP BY from_institution_id, from_object_type, to_institution_id, to_object_type
                     """
-                    
+
                     # Execute average score calculation
                     if 'commit' in actions:
                         db.execute_query_in_shell(engine_name='test', query=sql_query_avg, verbose='print' in actions)
@@ -4340,7 +4317,7 @@ class GraphRegistry():
                                      USING (doc_institution, doc_type, doc_id)
                                      WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
                                     NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
-                                        
+
                                   ORDER BY doc_id ASC, adjusted_row_rank ASC;
                     """
 
@@ -4354,7 +4331,7 @@ class GraphRegistry():
 
                     # Generate SQL query
                     SQLQuery = f"""
-                    CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS      
+                    CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
 
                                     SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
                                       FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
@@ -4387,7 +4364,7 @@ class GraphRegistry():
             # for table_name in list_of_table:
 
             #     table_type = get_table_type_from_name(table_name)
-                
+
             #     db.copy_table_across_engines(
             #         source_engine_name = 'test',
             #         source_schema_name = glbcfg.schema_graph_cache_test,
@@ -4413,7 +4390,7 @@ class GraphRegistry():
             #   %s
             #   FROM {glbcfg.schema_graphsearch_test}.Index_D_%s_L_%s_T_%s;
             # """
-            
+
             # for dmy,doc_type in list_of_doc_types:
 
             #     # Delete loose ends in doc fields
@@ -4422,7 +4399,7 @@ class GraphRegistry():
             #         doc_type
             #     )
             #     print(sql_query)
-                
+
 
             #     for dmy,link_type in list_of_doc_types:
 
@@ -4459,7 +4436,7 @@ class GraphRegistry():
             #  WHERE doc_id  NOT IN (SELECT object_id FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s')
             #     OR link_id NOT IN (SELECT object_id FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
             # """
-            
+
             # for dmy,doc_type in list_of_doc_types:
 
             #     # Delete loose ends in doc fields
@@ -4469,7 +4446,7 @@ class GraphRegistry():
             #         doc_type
             #     )
             #     print(sql_query)
-                
+
 
             #     for dmy,link_type in list_of_doc_types:
 
@@ -6335,10 +6312,10 @@ class GraphRegistry():
                 # Resolve table name or return if it doesn't exist
                 # Table type: MIX
                 if   db.table_exists(engine_name='test', schema_name=glbcfg.mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
-                    
+
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX"
-                    
+
                     # Generate score column name
                     score_column_name = 'adjusted_row_rank'
 
@@ -6362,10 +6339,10 @@ class GraphRegistry():
 
                 # Table type: ORG
                 elif db.table_exists(engine_name='test', schema_name=glbcfg.mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
-                    
+
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG"
-                    
+
                     # Generate score column name
                     score_column_name = 'row_rank'
 
@@ -6379,10 +6356,10 @@ class GraphRegistry():
 
                 # Table type: SEM
                 elif db.table_exists(engine_name='test', schema_name=glbcfg.mysql_schema_names['test']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
-                    
+
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM"
-                    
+
                     # Generate score column name
                     score_column_name = 'row_rank'
 
@@ -6532,7 +6509,7 @@ class GraphRegistry():
 
             # Index > Doc-Links > Airflow updates > Update 'Operations_N_Object_N_Object_T_FieldsChanged' and 'Operations_N_Object_T_ScoresExpired'
             def airflow_update(self, verbose=False):
-                
+
                 # Generate commit query
                 sql_query_commit = f"""
                       UPDATE {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged a
@@ -6669,7 +6646,7 @@ class GraphRegistry():
 
                     # Loop over list of docs
                     for d in list_of_docs:
-                        
+
                         # Build doc JSON
                         doc_json = {
                             'doc_type'            : d[0],
@@ -6866,7 +6843,7 @@ class GraphRegistry():
         #     params_server_test = f"https://{es.params_test['username']}:{quote(es.params_test['password'])}@{es.params_test['host']}:{es.params_test['port']}/{index_name_test}"
         #     params_server_prod = f"https://{es.params_prod['username']}:{quote(es.params_prod['password'])}@{es.params_prod['host']}:{es.params_prod['port']}/{index_name_prod}"
         #     base_command = [glbcfg.settings['elasticsearch']['dump_bin'], f"--input={params_server_test}", f"--output={params_server_prod}", f"--input-ca={es.params_test['cert_file']}", f"--output-ca={es.params_prod['cert_file']}", f"--limit={chunk_size}"]
-            
+
         #     # Copy the index from test to prod
         #     sysmsg.trace(f"⚙️  Dumping and transferring index ...")
         #     # for type in ['settings', 'mapping', 'data']:
