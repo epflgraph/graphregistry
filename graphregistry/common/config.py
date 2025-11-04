@@ -384,9 +384,9 @@ class IndexConfig:
             # Print out initialisation info
             print(f"\n📄 Document type settings:\n")
             print(f" ☑️  Option: include_code_in_name ...... {self.settings['options' ]['include_code_in_name'].get(doc_type, 0)}")
-            print(f" 🐬 GraphSearch > Fields .............. {self.settings['graphsearch'  ]['fields' ]['docs'].get(doc_type, '')}")
-            print(f" ⚡️ ElasticSearch > Fields ............ {self.settings['elasticsearch']['fields' ]['docs'].get(doc_type, '')}")
-            print(f" ⚡️ ElasticSearch > Filters ........... {self.settings['elasticsearch']['filters']['docs'].get(doc_type, '')}")
+            print(f" 🐬 GraphSearch > Fields .............. {self.settings['graphsearch'  ]['fields' ]['docs'].get(doc_type, [])}")
+            print(f" ⚡️ ElasticSearch > Fields ............ {self.settings['elasticsearch']['fields' ]['docs'].get(doc_type, [])}")
+            print(f" ⚡️ ElasticSearch > Filters ........... {self.settings['elasticsearch']['filters']['docs'].get(doc_type, [])}")
 
             # Rename variable for better comprehension
             doc_type_as_link = doc_type
@@ -425,12 +425,12 @@ class IndexConfig:
 
                     # Print out initialisation info
                     print(f"\n🔗 Doc-Link type: {other_doc_type} --> {doc_type_as_link}\n")
-                    print(f" 🐬 GraphSearch > Default > Fields .......... {self.settings['graphsearch'  ]['fields'  ]['links']['default'     ].get(doc_type_as_link, '')}")
-                    print(f" 🐬 GraphSearch > Default > Order ........... {self.settings['graphsearch'  ]['order_by']['links']['default'     ].get(doc_type_as_link, '')}")
-                    print(f" 🐬 GraphSearch > Parent-Child > Fields ..... {self.settings['graphsearch'  ]['fields'  ]['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, '')}")
-                    print(f" 🐬 GraphSearch > Parent-Child > Order ...... {self.settings['graphsearch'  ]['order_by']['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, '')}")
-                    print(f" ⚡️ ElasticSearch > Fields .................. {self.settings['elasticsearch']['fields'  ]['links'].get(doc_type_as_link, '')}")
-                    print(f" ⚡️ ElasticSearch > Filters ................. {self.settings['elasticsearch']['filters' ]['links'].get(doc_type_as_link, '')}")
+                    print(f" 🐬 GraphSearch > Default > Fields .......... {self.settings['graphsearch'  ]['fields'  ]['links']['default'     ].get(doc_type_as_link, [])}")
+                    print(f" 🐬 GraphSearch > Default > Order ........... {self.settings['graphsearch'  ]['order_by']['links']['default'     ].get(doc_type_as_link, [])}")
+                    print(f" 🐬 GraphSearch > Parent-Child > Fields ..... {self.settings['graphsearch'  ]['fields'  ]['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, [])}")
+                    print(f" 🐬 GraphSearch > Parent-Child > Order ...... {self.settings['graphsearch'  ]['order_by']['links']['parent_child'].get(other_doc_type, {}).get(doc_type_as_link, [])}")
+                    print(f" ⚡️ ElasticSearch > Fields .................. {self.settings['elasticsearch']['fields'  ]['links'].get(doc_type_as_link, [])}")
+                    print(f" ⚡️ ElasticSearch > Filters ................. {self.settings['elasticsearch']['filters' ]['links'].get(doc_type_as_link, [])}")
 
         # End of print method
         print('')
