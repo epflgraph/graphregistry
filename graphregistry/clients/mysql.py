@@ -13,88 +13,16 @@ from typing import List, Tuple
 # Initialize global config
 glbcfg = GlobalConfig()
 
-#-----------------------------------------#
-# Get MySQL schema names from config file #
-#-----------------------------------------#
-# TODO: This part is replicated in registry.py; refactor to avoid duplication
-
-# Fetch schema names from config file
-mysql_schema_names = {
-    'test' : {
-        'ontology'    : glbcfg.settings['mysql']['db_schema_names']['ontology'],
-        'registry'    : glbcfg.settings['mysql']['db_schema_names']['registry'],
-        'lectures'    : glbcfg.settings['mysql']['db_schema_names']['lectures'],
-        'airflow'     : glbcfg.settings['mysql']['db_schema_names']['airflow'],
-        'es_cache'    : glbcfg.settings['mysql']['db_schema_names']['elasticsearch_cache'],
-        'graph_cache' : glbcfg.settings['mysql']['db_schema_names']['graph_cache_test'],
-        'graphsearch' : glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']
-    },
-    'prod' : {
-        'graph_cache' : glbcfg.settings['mysql']['db_schema_names']['graph_cache_prod'],
-        'graphsearch' : glbcfg.settings['mysql']['db_schema_names']['graphsearch_prod']
-    }
-}
-
-# Assign to local variables (to act as aliases)
-schema_ontology = mysql_schema_names['test']['ontology']
-schema_registry = mysql_schema_names['test']['registry']
-schema_lectures = mysql_schema_names['test']['lectures']
-schema_airflow  = mysql_schema_names['test']['airflow']
-schema_es_cache = mysql_schema_names['test']['es_cache']
-schema_graph_cache_test = mysql_schema_names['test']['graph_cache']
-schema_graph_cache_prod = mysql_schema_names['prod']['graph_cache']
-schema_graphsearch_test = mysql_schema_names['test']['graphsearch']
-schema_graphsearch_prod = mysql_schema_names['prod']['graphsearch']
-
-# Object type to schema mapping
-object_type_to_schema = {
-    'Category'       : schema_ontology,
-    'Concept'        : schema_ontology,
-    'Course'         : schema_registry,
-    'Lecture'        : schema_lectures,
-    'MOOC'           : schema_registry,
-    'Person'         : schema_registry,
-    'Publication'    : schema_registry,
-    'Slide'          : schema_lectures,
-    'Specialisation' : schema_registry,
-    'Startup'        : schema_registry,
-    'Transcript'     : schema_lectures,
-    'StudyPlan'      : schema_registry,
-    'Unit'           : schema_registry,
-    'Widget'         : schema_registry,
-}
-
-# Object type to institution id mapping
-object_type_to_institution_id = {
-    'Category'       : 'Ont',
-    'Concept'        : 'Ont',
-    'Course'         : 'EPFL',
-    'Lecture'        : 'EPFL',
-    'MOOC'           : 'EPFL',
-    'Person'         : 'EPFL',
-    'Publication'    : 'EPFL',
-    'Slide'          : 'EPFL',
-    'Specialisation' : 'EPFL',
-    'Startup'        : 'EPFL',
-    'Transcript'     : 'EPFL',
-    'StudyPlan'      : 'EPFL',
-    'Unit'           : 'EPFL',
-    'Widget'         : 'EPFL',
-}
-
-#-----------------------------------------#
-# TEMPORARY FIX:
+# Auxiliary function to get schema name from a (from,to) tuple
 def get_schema(from_object_type, to_object_type):
-    schema_from = object_type_to_schema.get(from_object_type, schema_registry)
-    schema_to = object_type_to_schema.get(to_object_type, schema_registry)
-    if schema_from == schema_lectures or schema_to == schema_lectures:
-        return schema_lectures
+    schema_from = glbcfg.object_type_to_schema.get(from_object_type, glbcfg.schema_registry)
+    schema_to = glbcfg.object_type_to_schema.get(to_object_type, glbcfg.schema_registry)
+    if schema_from == glbcfg.schema_lectures or schema_to == glbcfg.schema_lectures:
+        return glbcfg.schema_lectures
     elif schema_from == schema_to:
         return schema_from
     else:
-        return schema_registry
-#-----------------------------------------#
-
+        return glbcfg.schema_registry
 
 #-----------------------------------------#
 # Class definition for Graph MySQL engine #
@@ -2154,7 +2082,7 @@ class GraphDB():
 
     # Function to delete input list of concepts
     def delete_concepts_for_nodes(self, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
-        schema_objects = object_type_to_schema.get(object_type, 'graph_registry')
+        schema_objects = glbcfg.object_type_to_schema.get(object_type, 'graph_registry')
         query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
         eval_results = None
         if 'eval' in actions:
@@ -2176,7 +2104,7 @@ class GraphDB():
 
     # Function to delete input list of nodes by id
     def delete_nodes_by_ids(self, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
-        schema_objects = object_type_to_schema.get(object_type, schema_registry)
+        schema_objects = glbcfg.object_type_to_schema.get(object_type, glbcfg.schema_registry)
         query_where_per_table = {}
         for table in (
                 'Nodes_N_Object', 'Data_N_Object_T_PageProfile', 'Data_N_Object_T_CustomFields',
@@ -2184,7 +2112,7 @@ class GraphDB():
             query_where_per_table[f'{schema_objects}.{table}'] = \
                 f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
 
-        for schema in (schema_registry, schema_lectures):
+        for schema in (glbcfg.schema_registry, glbcfg.schema_lectures):
             for table in (
                     'Edges_N_Object_N_Object_T_ChildToParent', 'Data_N_Object_N_Object_T_CustomFields',
             ):
@@ -2268,7 +2196,7 @@ class GraphDB():
 
     # Get the list of object_id from the existing nodes in the database
     def get_existing_nodes_id(self, institution_id: str, object_type: str, engine_name='test'):
-        schema_name = object_type_to_schema.get(object_type, schema_registry)
+        schema_name = glbcfg.object_type_to_schema.get(object_type, glbcfg.schema_registry)
         existing_nodes_id = self.execute_query(
             engine_name=engine_name,
             query=f"""
@@ -2291,7 +2219,6 @@ class GraphDB():
                     AND to_institution_id='{to_institution_id}' AND to_object_type='{to_object_type}';"""
         )
         return existing_edges_id
-
 
 #================#
 # Main execution #

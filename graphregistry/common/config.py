@@ -24,6 +24,74 @@ class GlobalConfig:
         # Initialise settings
         self.settings = json.loads(json.dumps(global_config, default=str))
 
+        #-----------------------------------------#
+        # Set MySQL schema names from config file #
+        #-----------------------------------------#
+
+        # Fetch schema names from config file
+        self.mysql_schema_names = {
+            'test' : {
+                'ontology'    : self.settings['mysql']['db_schema_names']['ontology'],
+                'registry'    : self.settings['mysql']['db_schema_names']['registry'],
+                'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
+                'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
+                'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
+                'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
+                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
+            },
+            'prod' : {
+                'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
+                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
+            }
+        }
+
+        # Assign to local variables (to act as aliases)
+        self.schema_ontology = self.mysql_schema_names['test']['ontology']
+        self.schema_registry = self.mysql_schema_names['test']['registry']
+        self.schema_lectures = self.mysql_schema_names['test']['lectures']
+        self.schema_airflow  = self.mysql_schema_names['test']['airflow']
+        self.schema_es_cache = self.mysql_schema_names['test']['es_cache']
+        self.schema_graph_cache_test = self.mysql_schema_names['test']['graph_cache']
+        self.schema_graph_cache_prod = self.mysql_schema_names['prod']['graph_cache']
+        self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
+        self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
+
+        # Object type to schema mapping
+        self.object_type_to_schema = {
+            'Category'       : self.schema_ontology,
+            'Concept'        : self.schema_ontology,
+            'Course'         : self.schema_registry,
+            'Lecture'        : self.schema_lectures,
+            'MOOC'           : self.schema_registry,
+            'Person'         : self.schema_registry,
+            'Publication'    : self.schema_registry,
+            'Slide'          : self.schema_lectures,
+            'Specialisation' : self.schema_registry,
+            'Startup'        : self.schema_registry,
+            'Transcript'     : self.schema_lectures,
+            'StudyPlan'      : self.schema_registry,
+            'Unit'           : self.schema_registry,
+            'Widget'         : self.schema_registry,
+        }
+
+        # Object type to institution id mapping
+        self.object_type_to_institution_id = {
+            'Category'       : 'Ont',
+            'Concept'        : 'Ont',
+            'Course'         : 'EPFL',
+            'Lecture'        : 'EPFL',
+            'MOOC'           : 'EPFL',
+            'Person'         : 'EPFL',
+            'Publication'    : 'EPFL',
+            'Slide'          : 'EPFL',
+            'Specialisation' : 'EPFL',
+            'Startup'        : 'EPFL',
+            'Transcript'     : 'EPFL',
+            'StudyPlan'      : 'EPFL',
+            'Unit'           : 'EPFL',
+            'Widget'         : 'EPFL',
+        }
+
     # Print method
     def print(self):
         rich.print_json(data=self.settings)
@@ -310,8 +378,8 @@ class ScoresConfig:
 # Main execution #
 #================#
 if __name__ == "__main__":
-    glbcfg = GlobalConfig()
-    glbcfg.print()
+    self = GlobalConfig()
+    self.print()
     idxcfg = IndexConfig()
     idxcfg.print()
     scrcfg = ScoresConfig()
