@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# TODO:
-# - Create object to category tables (some are still missing)
-# - delete all local variables in functions
-# - add concept-concept to typeflags table
 from graphregistry.common.auxfcn import print_dataframe
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.clients.mysql import GraphDB
@@ -33,8 +29,8 @@ db = GraphDB()
 es = GraphES()
 
 # Print configurations
-idxcfg.print()
-scrcfg.print()
+# idxcfg.print()
+# scrcfg.print()
 
 #------------------------------------------------#
 # Progress bar and system messages configuration #
@@ -54,12 +50,11 @@ sysmsg.add(
     level="TRACE"
 )
 
-#---------------------------------------#
-# Resolve paths from global config file #
-#---------------------------------------#
+#---------------#
+# Resolve paths #
+#---------------#
 
-# graphregistry.py lives at: api/registry/graphregistry.py
-# repo root is two directories above this file
+# Resolve repository root path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # Function to resolve paths
@@ -79,23 +74,21 @@ ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearc
 GRAPHAI_CLIENT_CONFIG_FILE = resolve_repo_path(glbcfg.settings["graphai"]["client_config_file"])
 graphai_login_info = graphai_login(graph_api_json=GRAPHAI_CLIENT_CONFIG_FILE)
 
-#-----------------------------------------#
-#-----------------------------------------#
-#-----------------------------------------#
+#------------------------------#
+# Index field datatypes config #
+#------------------------------#
 
-# Resolve index config file, then load it (only once)
-INDEX_CONFIG_FILE = resolve_repo_path(
-    glbcfg.settings["elasticsearch"]["index_configuration_file"]
-)
-with INDEX_CONFIG_FILE.open("r", encoding="utf-8") as f:
-    index_config = json.load(f)
-
-# Resolve data types file, then load it (only once)
-DATATYPES_CONFIG_FILE = resolve_repo_path(
-    'database/init/config/config_datatypes.json'
-)
-with DATATYPES_CONFIG_FILE.open("r", encoding="utf-8") as f:
+# Fetch index field datatypes from config file
+with open(REPO_ROOT / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
     datatypes_config = json.load(f)
+
+# Define mapping from field datatypes onto "castable" types
+cast_mapping = {
+    "TINYINT(1)"        : "CAST(%s AS UNSIGNED)",
+    "SMALLINT UNSIGNED" : "CAST(%s AS UNSIGNED)",
+    "YEAR"              : "CAST(%s AS UNSIGNED)",
+    "VARCHAR(16)"       : "CAST(%s AS CHAR)"
+}
 
 #----------------------#
 # Temporary parameters #
@@ -169,109 +162,6 @@ local_cache = {
         }
     }
 }
-
-#-------------------------------#
-# GraphAI interaction functions #
-#-------------------------------#
-
-# Function to get access token from GraphAI
-def graphai_get_access_token(username, password):
-    response_login = requests.post(
-        url=f'{glbcfg.settings["graphai"]["url"]}/token', data={'username': username, 'password': password}
-    )
-    return response_login.json()['access_token']
-
-# Function to detect concepts through GraphAI
-def graphai_text_endpoint(object_id, input, endpoint='wikify', headers=None):
-    #Request access token if needed
-    if headers is None:
-        response_login = requests.post(
-            url=f'{glbcfg.settings["graphai"]["url"]}/token',
-            data={'username': glbcfg.settings['graphai']['user'], 'password': glbcfg.settings['graphai']['password']}
-        )
-        graphai_access_token = response_login.json()['access_token']
-        # Define the headers
-        headers = {
-            'accept': 'application/json',
-            'Authorization': f'Bearer {graphai_access_token}',
-            'Content-Type': 'application/json'
-        }
-
-    # Check input type
-    if type(input) is str:
-
-        # Generate md5 from title
-        request_md5 = hashlib.md5(input.encode()).hexdigest()
-
-    elif type(input) is list:
-
-        # Generate md5 from title
-        request_md5 = hashlib.md5(''.join(input).encode()).hexdigest()
-
-    # Define the JSON payload
-    json_payload = {
-        "object_id" : object_id,
-        "request_md5" : request_md5,
-        {str:"raw_text", list:"keywords"}[type(input)] : input
-    }
-
-    # Initiate the output JSON file
-    output_json = {
-        "payload"  : None,
-        "response" : None,
-        "timestamp_sent" : None,
-        "timestamp_received" : None,
-    }
-
-    # Save the payload to the output JSON
-    output_json['payload'] = deepcopy(json_payload)
-    
-    # Send the POST request
-    output_json['timestamp_sent'] = datetime.datetime.now().timestamp()
-    try:
-        response = requests.post(f"https://graphai.epfl.ch/text/{endpoint}", headers=headers, json=json_payload)
-    except:
-        print(f'Error: Request failed for ID {object_id}.')
-        return None
-    output_json['timestamp_received'] = datetime.datetime.now().timestamp()
-
-    # Get the request body from the response
-    response_request_body = json.loads(deepcopy(response.request.body))
-
-    # Get the JSON response
-    response_json = deepcopy(response.json())
-    output_json['response'] = deepcopy(response_json)
-
-    # Check if the token has expired
-    if 'detail' in response_json:
-        if 'Token has expired' in response_json['detail']:
-            print('Token has expired or has an invalid timestamp, obtain another')
-            return None
-        elif "Could not validate credentials" in response_json['detail']:
-            print('Could not validate credentials')
-            return None
-        else:
-            print('Unknown error')
-            return None
-
-    # Check if the response is valid
-    if response_request_body != json_payload:
-
-        # Print error message
-        print(f'Error: Request body does not match the input for ID {object_id}. Saving as logged error ...')
-
-        # Save output as logged error
-        with open(f'errors/{object_id}_{request_md5}.json', 'w') as fid:
-            fid.write(json.dumps(output_json, indent=2))
-
-        # Return None
-        return None
-
-    # Wait for a bit
-    time.sleep(0.1)
-
-    # Return the response
-    return output_json
 
 #---------------------------------------#
 # Auxiliary functions for GraphRegistry #
@@ -6186,31 +6076,41 @@ class GraphRegistry():
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (graphsearch_test)
             def horizontal_patch(self, row_rank_thr=32, actions=()):
 
-
-
                 #---------------------------#
                 # Convert order list to SQL #
                 #---------------------------#
+
+                # Define mapping from link subtype onto type of score (semantic vs degree)
                 index_to_score_type = {'ORG':'degree_score', 'SEM':'semantic_score'}
-                if not self.link_type in index_config['fields']['links']['default']:
-                    order_by = f'{index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
+
+                # Fetch ordering rules from config
+                if self.link_subtype.upper()=='SEM':
+                    order_by_rules_list = idxcfg.settings['graphsearch']['order_by']['links']['default'].get(self.link_type, [])
+                elif self.link_subtype.upper()=='ORG':
+                    order_by_rules_list = idxcfg.settings['graphsearch']['order_by']['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, [])
                 else:
-                    ord = index_config['fields']['links']['default'][self.link_type]['order']
-                    cast_mapping = {
-                        "TINYINT(1)"        : "CAST(%s AS UNSIGNED)",
-                        "SMALLINT UNSIGNED" : "CAST(%s AS UNSIGNED)",
-                        "YEAR"              : "CAST(%s AS UNSIGNED)",
-                        "VARCHAR(16)"       : "CAST(%s AS CHAR)"
-                    }
-                    if len(ord)>0:
-                        order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_vars'][o]]%o+' '+d for o,d in ord]) + f', {index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
-                    else:
-                        order_by = f'{index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
+                    sysmsg.error("Invalid link subtype.")
+                    return
+
+                # Initialise ORDER BY statement with default SQL
+                order_by = f'{index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
+
+                # If additional fields are included in ordering rules, prepend them
+                if len(order_by_rules_list)>0:
+                    order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_fields'][o]]%o+' '+d for o,d in order_by_rules_list]) + f', {order_by}'
+
+                # print('\n')
+                # print('=============================================================')
+                # print(f'Link type [{self.link_subtype.upper()}]:', self.link_type)
+                # print('-------------------------------------------------------------')
+                # print(order_by_rules_list)
+                # print('-------------------------------------------------------------')
+                # print(order_by)
+                # print('=============================================================')
+                # print('\n')
+                # return
                 #---------------------------#
-
-
-
-
+                #---------------------------#
 
                 # Full table paths
                 parentchild_table_path  = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{'Edges_N_Object_N_Object_T_ParentChildSymmetric'}"
