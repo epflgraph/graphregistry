@@ -29,8 +29,8 @@ db = GraphDB()
 es = GraphES()
 
 # Print configurations
-# idxcfg.print()
-# scrcfg.print()
+idxcfg.print()
+scrcfg.print()
 
 #------------------------------------------------#
 # Progress bar and system messages configuration #
@@ -6099,16 +6099,6 @@ class GraphRegistry():
                 if len(order_by_rules_list)>0:
                     order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_fields'][o]]%o+' '+d for o,d in order_by_rules_list]) + f', {order_by}'
 
-                # print('\n')
-                # print('=============================================================')
-                # print(f'Link type [{self.link_subtype.upper()}]:', self.link_type)
-                # print('-------------------------------------------------------------')
-                # print(order_by_rules_list)
-                # print('-------------------------------------------------------------')
-                # print(order_by)
-                # print('=============================================================')
-                # print('\n')
-                # return
                 #---------------------------#
                 #---------------------------#
 
