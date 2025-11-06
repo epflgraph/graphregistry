@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from graphregistry.common.auxfcn import print_dataframe
+from graphregistry.common.auxfcn import print_dataframe, get_table_type_from_name
 from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text, event
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
 from loguru import logger as sysmsg
 from tqdm import tqdm
+from pathlib import Path
+import numpy as np
 import pandas as pd
-import os, re, subprocess
+import os, re, subprocess, json, datetime, hashlib, random, glob, time, rich
 
 # Initialize global config
 glbcfg = GlobalConfig()
+
+# Resolve repository root path
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Fetch index field datatypes from config file
+with open(REPO_ROOT / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
+    datatypes_config = json.load(f)
 
 #-----------------------------------------#
 # Class definition for Graph MySQL engine #
@@ -479,7 +488,6 @@ class GraphDB():
         if verbose:
             print(f"\n\033[96m⚙️ Executing query:\033[0m")
             print(f"\n\t{query.strip().replace('\n','\n\t')}\n")
-            
 
         # Run the command and capture stdout and stderr
         result = subprocess.run(shell_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -1330,13 +1338,13 @@ class GraphDB():
 
         # Display status
         sysmsg.info(f"Copying table {source_schema_name}.{source_table_name} from '{source_engine_name}' to {target_schema_name}.{source_table_name} in '{target_engine_name}' ...")
-        play_system_sound('info', 'soft')
+        # play_system_sound('info', 'soft')
 
         # Check if the target database exists
         if not self.database_exists(engine_name=target_engine_name, schema_name=target_schema_name):
             sysmsg.warning(f"Database '{target_schema_name}' does not exist in '{target_engine_name}'. Returning without copying the table.")
             return False
-        
+
         # Check if the target table exists
         if self.table_exists(engine_name=target_engine_name, schema_name=target_schema_name, table_name=source_table_name):
             sysmsg.warning(f"Table {source_table_name} already exists in '{target_schema_name}' on '{target_engine_name}'.")
@@ -1408,7 +1416,7 @@ class GraphDB():
          
         # Display status
         sysmsg.success(f"Table has been successfully copied from '{source_engine_name}' to '{target_engine_name}'.")
-        play_system_sound('success', 'soft')
+        # play_system_sound('success', 'soft')
 
     #--------------------------------------#
     # Method: Copy database across engines #
@@ -1416,7 +1424,7 @@ class GraphDB():
     def copy_database_across_engines(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, chunk_size=100000, list_of_tables=[], drop_tables=False):
 
         # Play sound
-        play_system_sound('info', 'moderate')
+        # play_system_sound('info', 'moderate')
 
         # Get list of tables in graphsearch test
         if len(list_of_tables) == 0:
@@ -1426,11 +1434,11 @@ class GraphDB():
         for table_name in list_of_tables:
 
             # Get keys json
-            if get_table_type_from_name(table_name) in table_keys_json:
+            if get_table_type_from_name(table_name) in datatypes_config['data-keys']:
                 table_type = get_table_type_from_name(table_name)
                 sysmsg.info(f"Detected table type '{table_type}' for '{table_name}'.")
-                keys_json = table_keys_json[table_type]
-                keys_json.update(table_keys_json['index_vars'])
+                keys_json = datatypes_config['data-keys'][table_type]
+                keys_json.update(datatypes_config['data-keys']['index_vars'])
             else:
                 sysmsg.error(f"Table type not found for '{table_name}'.")
                 exit()
@@ -1448,7 +1456,7 @@ class GraphDB():
             )
 
         # Play sound
-        play_system_sound('success', 'strong')
+        # play_system_sound('success', 'strong')
 
     #------------------------------------------#
     # Method: Convert JSON list to SQL INSERTS #
@@ -1496,7 +1504,7 @@ class GraphDB():
     # Method: Compare two tables by random sampling #
     #-----------------------------------------------#
     def get_random_primary_key_set(self, engine_name, schema_name, table_name, sample_size=100, partition_by=None, use_row_id=False):
-            
+
         # Get the primary keys
         primary_keys = self.get_primary_keys(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
 
@@ -1506,10 +1514,26 @@ class GraphDB():
 
             # Get maximum row_id -> FIX: add min row_id
             # print(f"SELECT MAX(row_id) FROM {schema_name}.{table_name}")
-            max_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT MAX(row_id) FROM {schema_name}.{table_name}")[0][0]
+            max_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX(row_id), 0) FROM {schema_name}.{table_name}")
+
+            # Extract (and fix) the max_row_id value
+            if type(max_row_id) == list and len(max_row_id) > 0:
+                max_row_id = max_row_id[0][0]
+            else:
+                max_row_id = 0
+
+            # Return empty set if no rows in the table
+            if max_row_id == 0:
+                sysmsg.warning(f"No rows found in table {schema_name}.{table_name}.")
+                return []
 
             # Generate random row_id set
             random_primary_key_set = sorted([random.randint(1, max_row_id) for _ in range(sample_size)])
+
+            # Return empty set if no rows in the table
+            if len(random_primary_key_set) == 0:
+                sysmsg.warning(f"No rows found in table {schema_name}.{table_name}.")
+                return []
 
             # Fetch respective primary keys set
             random_primary_key_set = self.execute_query(engine_name=engine_name, query=f"SELECT {', '.join(primary_keys)} FROM {schema_name}.{table_name} WHERE row_id IN ({', '.join([str(r) for r in random_primary_key_set])});")
@@ -1583,7 +1607,7 @@ class GraphDB():
         if not self.table_exists(engine_name=source_engine_name, schema_name=source_schema_name, table_name=target_table_name):
             sysmsg.error(f"🚨 Table {source_schema_name}.{target_table_name} does not exist in '{source_engine_name}'.")
             return
-        
+
         # Check if the target table exists
         if not self.table_exists(engine_name=target_engine_name, schema_name=target_schema_name, table_name=source_table_name):
             sysmsg.error(f"🚨 Table {target_schema_name}.{source_table_name} does not exist in '{target_engine_name}'.")
@@ -1597,10 +1621,15 @@ class GraphDB():
         #------------------------------------------#
         # Generate the SQL query for sample tuples #
         #------------------------------------------#
-      
+
         # Get random primary key set
         random_primary_key_set  = self.get_random_primary_key_set(engine_name=source_engine_name, schema_name=source_schema_name, table_name=source_table_name, sample_size=round(sample_size/2), partition_by='object_type', use_row_id=True)
         random_primary_key_set += self.get_random_primary_key_set(engine_name=target_engine_name, schema_name=target_schema_name, table_name=target_table_name, sample_size=round(sample_size/2), partition_by='object_type', use_row_id=True)
+
+        # Return if no rows found
+        if len(random_primary_key_set) == 0:
+            sysmsg.warning(f"No rows found in either source or target table for comparison.")
+            return
 
         # Get the rows by primary key set (source and target)
         source_row_set_dict = self.get_rows_by_primary_key_set(engine_name=source_engine_name, schema_name=source_schema_name, table_name=source_table_name, primary_key_set=random_primary_key_set, return_as_dict=True)
@@ -1665,7 +1694,7 @@ class GraphDB():
             # Check if the tuple is new
             if t in source_row_set_dict and t not in target_row_set_dict:
                 stats['new_rows'] += 1
-            
+
             # Check if the tuple is deleted
             elif t not in source_row_set_dict and t in target_row_set_dict:
                 stats['deleted_rows'] += 1
@@ -1699,7 +1728,7 @@ class GraphDB():
                             column_missing_or_renamed_list = sorted(list(set(column_missing_or_renamed_list)))
 
                         # Else, analyse values in matching columns
-                        else: 
+                        else:
 
                             # Check if column exists in stats dictionary
                             if k not in stats['mismatch_by_column']:
@@ -1722,7 +1751,7 @@ class GraphDB():
 
                                     # Append the mismatch changes stack
                                     mismatch_changes_stack += [(f'{k}: [S] {source_row_set_dict[t][k]} ... [T] {target_row_set_dict[t][k]}')]
-                                    
+
                                 # Check if the value is set to NULL from source to target
                                 if source_row_set_dict[t][k] is None:
                                     set_to_null_detected = True
@@ -1744,7 +1773,7 @@ class GraphDB():
             stats['percent_existing_rows'] = stats['existing_rows'] / sample_size * 100
             stats['percent_new_rows']      = stats['new_rows'     ] / sample_size * 100
             stats['percent_deleted_rows']  = stats['deleted_rows' ] / sample_size * 100
-            
+
             if stats['existing_rows'] > 0:
                 stats['percent_mismatch']      = stats['mismatch'     ] / stats['existing_rows'] * 100
                 stats['percent_match']         = stats['match'        ] / stats['existing_rows'] * 100
@@ -1753,7 +1782,7 @@ class GraphDB():
                 stats['percent_mismatch']    = 0
                 stats['percent_match']       = 0
                 # stats['percent_set_to_null'] = 0
-            
+
             if stats['mismatch'] > 0:
                 stats['percent_custom_column_mismatch'] = stats['custom_column_mismatch'] / stats['mismatch'] * 100
                 stats['percent_set_to_null'] = stats['set_to_null'] / stats['mismatch'] * 100
@@ -1816,7 +1845,7 @@ class GraphDB():
             test_results['warning_flag'] = True
         else:
             percent_set_to_null_colour = '\033[37m'
-        
+
         # Print the stats
         print('')
         print('==============================================================================================')
@@ -1844,7 +1873,7 @@ class GraphDB():
                     else:
                         print(f"\033[31m\t- {column} {'.'*(64-len(column))} {stats['mismatch_by_column'][column]}\033[0m")
             print('')
-        
+
         # Print score and rank average differences
         if len(score_rank_diffs['semantic_score'])>0 or len(score_rank_diffs['degree_score'])>0 or len(score_rank_diffs['row_rank'])>0:
             print('Median score and rank differences:')
@@ -1926,6 +1955,69 @@ class GraphDB():
 
         # Print line break
         print('')
+
+    #----------------------------------------------------------------------------#
+    # Method: Delete rows from table for which keys don't exist in another table #
+    #----------------------------------------------------------------------------#
+    def delete_orphaned_rows(self, engine_name, upd_schema, upd_table, upd_key, ref_schema, ref_table, ref_key, upd_where='TRUE', ref_where=None, actions=()):
+
+        # Check if update table exists (return if not)
+        if not self.table_exists(engine_name=engine_name, schema_name=upd_schema, table_name=upd_table):
+            # sysmsg.warning(f"Table {upd_schema}.{upd_table} does not exist.")
+            return
+
+        # Build equality predicate for composite keys: u.k1 = r.k1 AND ...
+        preds = " AND ".join([f"u.{uk} = r.{rk}" for uk, rk in zip(upd_key, ref_key)])
+
+        # Build additional reference filter
+        ref_filter = f" AND ({ref_where})" if ref_where else ""
+
+        # Evaluation action
+        if 'eval' in actions:
+
+            # Generate the SQL evaluation query
+            query_eval = f"""
+                SELECT COUNT(*) AS n_to_delete
+                  FROM {upd_schema}.{upd_table} u
+                 WHERE NOT EXISTS (SELECT 1
+                                    FROM {ref_schema}.{ref_table} r
+                                   WHERE {preds}{ref_filter})
+                   AND ({upd_where});
+            """
+
+            # Print the evaluation query
+            if 'print' in actions:
+                print(query_eval)
+
+            # Execute the evaluation query and print the results
+            out = self.execute_query(engine_name=engine_name, query=query_eval)
+            if len(out) > 0:
+                df = pd.DataFrame(out, columns=['rows to delete'])
+                if df['rows to delete'][0] == 0:
+                    sysmsg.warning(f"⚠️  No orphaned rows found in table '{upd_table}' for key {upd_key}.")
+                    return
+                print_dataframe(df, title=f"\n🔍 Evaluation results for '{upd_table}' and key {upd_key}:")
+
+        # Generate the SQL commit query
+        query_commit = f"""
+               USE {upd_schema};
+            DELETE u
+              FROM {upd_schema}.{upd_table} u
+             WHERE NOT EXISTS (SELECT 1
+                                 FROM {ref_schema}.{ref_table} r
+                                WHERE {preds}{ref_filter})
+               AND ({upd_where});
+        """
+
+        # Print the commit query
+        if 'print' in actions:
+            print(query_commit)
+
+        # Execute the commit query
+        if 'commit' in actions:
+            self.execute_query_in_shell(engine_name=engine_name, query=query_commit)
+            sysmsg.success(f"✅ Orphaned rows deleted from table '{upd_table}' for key {upd_key}.")
+
 
 #================#
 # Main execution #
