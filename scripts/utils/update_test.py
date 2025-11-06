@@ -41,7 +41,7 @@ if False:
             node = gr.Node()
             node.set_from_json(doc_json=node_json, detect_concepts=detect_concepts)
             node.commit(actions=('commit'))
-        
+
         # Process edges
         for edge_json in sample_set['edges']:
             edge = gr.Edge()
@@ -107,7 +107,7 @@ rich.print_json(data=gr.orchestrator.typeflags.get_config_json())
 #===================================#
 
 # Execute step?
-if True:
+if False:
     gr.orchestrator.typeflags.status()
     # gr.cachemanager.apply_calculated_field_formulas(verbose=False)
     # gr.cachemanager.materialize_views(actions=('commit'))
@@ -130,29 +130,96 @@ if False:
     index_file = glbcfg.settings['elasticsearch']['index_file']
     index_name = glbcfg.settings['elasticsearch']['index_names']['graphsearch_test']
 
-    # Generate local ES cache from MySQL
-    gr.indexes.generate_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
+    # Execute step?
+    if False:
 
-    # Generate ES index file from local cache
-    gr.indexes.generate_index_from_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
+        # Generate local ES cache from MySQL
+        gr.indexes.generate_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
+
+        # Generate ES index file from local cache
+        gr.indexes.generate_index_from_local_cache(index_date=index_date, ignore_warnings=True, replace_existing=True, force_replace=True)
 
     #-------------------------------------------------------------#
     # Two methods to import index file into ElasticSearch engine: #
     #-------------------------------------------------------------#
 
-    # With index date (index name generated automatically)
-    print(f"\nMETHOD 1: Importing index date '{index_date}' into ElasticSearch engine...\n")
-    gr.indexes.import_index(engine_name='test', index_date=index_date, replace_existing=True, force_replace=True)
+    # Execute step?
+    if False:
 
-    # With explicit index file and name
-    # print(f"\nMETHOD 2: Importing index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
-    # gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, replace_existing=True, force_replace=True)
+        # With index date (index name generated automatically)
+        print(f"\nMETHOD 1: Importing index date '{index_date}' into ElasticSearch engine...\n")
+        gr.indexes.import_index(engine_name='test', index_date=index_date, replace_existing=True, force_replace=True)
+
+        # With explicit index file and name
+        # print(f"\nMETHOD 2: Importing index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
+        # gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, replace_existing=True, force_replace=True)
 
     #-------------------------------------------------------------#
 
     # List indexes and aliases in ElasticSearch engine
-    gr.indexes.idx.index_list(engine_name='test')
-    gr.indexes.idx.alias_list(engine_name='test')
+    es.index_list(engine_name='test', display_size=True)
+    es.alias_list(engine_name='test')
+
+    # Set alias to new generated index
+    # es.set_alias(engine_name='test', alias_name='graphsearch_test', index_name='graphsearch_test_2025_11_05')
+    # es.alias_list(engine_name='test')
 
     # Direct link to Kibana
-    print(f"\nList of indexes in Kibana:\n - http://localhost:5601/app/enterprise_search/content/search_indices/\n")
+    print("\nList of indexes in Kibana:")
+    print("- Local ....... http://localhost:5601/app/enterprise_search/content/search_indices/")
+    print("- Test ........ http://127.0.0.1:35601/app/enterprise_search/content/search_indices/\n")
+    print("- Prod ........ http://127.0.0.1:45601/app/enterprise_search/content/search_indices/\n")
+
+
+
+
+if False:
+
+    db.copy_database_across_engines(
+        source_engine_name = 'test',
+        source_schema_name = 'graphsearch_test',
+        target_engine_name = 'prod',
+        target_schema_name = 'graphsearch_prod_2025_11_05'
+    )
+
+if False:
+
+    es.copy_index_across_engines(
+        source_engine_name = 'test',
+        target_engine_name = 'prod',
+        index_name         = 'graphsearch_test_2025_11_05',
+        rename_to          = 'graphsearch_prod_2025_11_05'
+    )
+
+
+# es.index_list(engine_name='test', display_size=True)
+# es.index_list(engine_name='prod', display_size=True)
+
+if True:
+
+    list_of_tables = db.get_tables_in_schema(
+        engine_name = 'test',
+        schema_name = 'graphsearch_test'
+    )
+
+    start = False
+
+    for table_name in list_of_tables:
+
+        print(f"\nComparing table '{table_name}' between TEST and PROD engines:\n")
+
+        if table_name=='Index_D_Lecture_L_MOOC_T_ORG':
+            start = True
+
+        if not start:
+            continue
+
+        db.compare_tables_by_random_sampling(
+            source_engine_name = 'test',
+            source_schema_name = 'graphsearch_test',
+            source_table_name  = table_name,
+            target_engine_name = 'prod',
+            target_schema_name = 'graphsearch_prod_2025_11_05',
+            target_table_name  = table_name,
+            sample_size = 10000
+        )

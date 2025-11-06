@@ -14,7 +14,7 @@ from itertools import combinations_with_replacement
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import re, sys, json, datetime, requests, itertools, gzip, time, os, glob, rich, hashlib
+import re, sys, json, datetime, itertools, gzip, os, glob, rich, hashlib
 
 #------------------------------#
 # Class objects initialisation #
@@ -72,7 +72,7 @@ def resolve_repo_path(p: Union[str, Path]) -> Path:
 SQL_FORMULAS_PATH = resolve_repo_path('database/formulas')
 
 # Resolve Elasticsearch export path
-ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_path"]["export"])
+ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_export_path"])
 
 # Get GraphAI login info
 GRAPHAI_CLIENT_CONFIG_FILE = resolve_repo_path(glbcfg.settings["graphai"]["client_config_file"])

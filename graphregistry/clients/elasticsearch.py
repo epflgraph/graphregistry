@@ -404,7 +404,7 @@ class GraphES():
         return cls._instance
 
     # Class constructor
-    def __init__(self, name="GraphIndex"):
+    def __init__(self, name="GraphIndex", use_ssl=False):
 
         # Check if the instance is already initialized
         if not self._initialized:
@@ -413,42 +413,42 @@ class GraphES():
             print(f"GraphIndex initialized with name: {self.name}")
 
         # Initiate the ElasticSearch engines
-        self.params_test, self.engine_test = self.initiate_engine(glbcfg.settings['elasticsearch']['server_test'])
-        self.params_prod, self.engine_prod = self.initiate_engine(glbcfg.settings['elasticsearch']['server_prod'])
+        self.params_test, self.engine_test = self.initiate_engine('test')
+        self.params_prod, self.engine_prod = self.initiate_engine('prod')
         self.params = {'test': self.params_test, 'prod': self.params_prod}
         self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
 
     #---------------------------------------------#
     # Method: Initialize the ElasticSearch engine #
     #---------------------------------------------#
-    def initiate_engine(self, server_name):
+    def initiate_engine(self, engine_name, use_ssl=False):
         """
         Initialize the ElasticSearch engine (no SSL) based on the server name provided.
         """
 
         # Check if the server name is in the global configuration
-        if server_name not in glbcfg.settings['elasticsearch']:
+        if f'{engine_name}_env' not in glbcfg.settings['elasticsearch']:
             raise ValueError(
-                f"Could not find configuration for Elasticsearch server '{server_name}' in global config."
+                f"Could not find configuration for Elasticsearch server '{engine_name}' in global config."
             )
 
         # Load parameters
-        params = glbcfg.settings['elasticsearch'][server_name]
+        params = glbcfg.settings['elasticsearch'][f'{engine_name}_env']
 
         # Build connection URL (HTTP only, no SSL)
         if "password" in params and params["password"]:
-            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['hostname']}:{params['port']}"
         elif "username" in params and params["username"]:
-            es_hosts = f"https://{params['username']}@{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['username']}@{params['hostname']}:{params['port']}"
         else:
-            es_hosts = f"https://{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['hostname']}:{params['port']}"
 
-        # Initialize Elasticsearch engine (no SSL)
+        # Initialize Elasticsearch engine
         engine = ElasticSearchEngine(
             hosts           = [es_hosts],
             http_compress   = True,
-            verify_certs    = True,
-            ca_certs        = glbcfg.settings['elasticsearch']['graph_engine_test']['cert_file'],
+            verify_certs    = False, # use_ssl,
+            ca_certs        = '', # glbcfg.settings['elasticsearch']['graph_engine_test']['cert_file'] if use_ssl else '',
             request_timeout = 3600
         )
 
@@ -797,7 +797,10 @@ class GraphES():
         # Define the parameters for the ElasticDump command
         params_server_source = f"https://{self.params[source_engine_name]['username']}:{quote(self.params[source_engine_name]['password'])}@{self.params[source_engine_name]['host']}:{self.params[source_engine_name]['port']}/{index_name_source}"
         params_server_target = f"https://{self.params[target_engine_name]['username']}:{quote(self.params[target_engine_name]['password'])}@{self.params[target_engine_name]['host']}:{self.params[target_engine_name]['port']}/{index_name_target}"
-        base_command = [glbcfg.settings['elasticsearch']['dump_bin'], f"--input={params_server_source}", f"--output={params_server_target}", f"--input-ca={self.params[source_engine_name]['cert_file']}", f"--output-ca={self.params[target_engine_name]['cert_file']}", f"--limit={chunk_size}"]
+        # base_command = ["npx", "elasticdump", f"--input={params_server_source}", f"--output={params_server_target}", f"--input-ca={self.params[source_engine_name]['cert_file']}", f"--output-ca={self.params[target_engine_name]['cert_file']}", f"--limit={chunk_size}"]
+        base_command = ["npx", "elasticdump", f"--input={params_server_source}", f"--output={params_server_target}", f"--limit={chunk_size}"]
+
+        print(base_command)
 
         # Copy the index from test to prod
         for type in ['settings', 'mapping', 'data']:
@@ -1271,3 +1274,11 @@ class GraphES():
         time.sleep(1)
 
         return
+
+
+#================#
+# Main execution #
+#================#
+if __name__ == "__main__":
+    es = GraphES()
+    print(es.test(engine_name='test'))

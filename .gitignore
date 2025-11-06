@@ -253,3 +253,7 @@ config_scores.json
 .gitleaks.toml
 security_scan.sh
 setup.sh
+node_modules/
+*.crt
+./setup.sh
+package-lock.json
