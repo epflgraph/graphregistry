@@ -2024,4 +2024,7 @@ class GraphDB():
 #================#
 if __name__ == "__main__":
     db = GraphDB()
-    print(db.test())
+    if db.test() is True:
+        sysmsg.success("✅ MySQL client test passed.")
+    else:
+        sysmsg.error("❌ MySQL client test failed.")
