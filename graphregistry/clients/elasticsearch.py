@@ -1281,4 +1281,7 @@ class GraphES():
 #================#
 if __name__ == "__main__":
     es = GraphES()
-    print(es.test(engine_name='test'))
+    if es.test(engine_name='test') is True:
+        sysmsg.success("✅ ElasticSearch client test passed.")
+    else:
+        sysmsg.error("❌ ElasticSearch client test failed.")
