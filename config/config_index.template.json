@@ -54,13 +54,13 @@
                 "Lecture" : {
                     "Course" : {
                         "obj2obj" : ["academic_year", "sort_number"],
-                        "order"   : [["latest_teaching_assignment_year", "DESC"]]
+                        "order"   : [["latest_academic_year", "DESC"]]
                     }
                 },
                 "Person" : {
                     "Course" : {
                         "obj2obj" : ["latest_teaching_assignment_year"],
-                        "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
+                        "order"   : [["latest_teaching_assignment_year", "DESC"]]
                     },
                     "Unit" : {
                         "obj2obj" : ["is_active_affiliation", "current_position_rank"],
