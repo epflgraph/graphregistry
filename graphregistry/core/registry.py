@@ -2426,22 +2426,25 @@ class GraphRegistry():
                 'page_profile'  : self.commit_page_profile(actions=actions),
             }
 
-            # This was here before PR. Not sure what it was meant to do.
-            # Leaving commented out for now.
+            # # Execute concept detection if not done yet
             # if self.raw_text and not self.concepts_detection:
-            #     self.detect_concepts(verbose=verbose)
-            # if self.concepts_detection:
-            #     eval_results.update(
-            #         {'concepts_detection': self.commit_concepts(
-            #             actions=actions, engine_name='test', delete_existing=True
-            #         )}
-            #     )
-            # if self.manual_mapping:
-            #     eval_results.update(
-            #         {'manual_mapping': self.commit_manual_mapping(
-            #             actions=actions, engine_name='test', delete_existing=True
-            #         )}
-            #     )
+            #     self.detect_concepts()
+
+            # Commit concepts to database (auto detected)
+            if self.concepts_detection:
+                eval_results.update(
+                    {'concepts_detection': self.commit_concepts(
+                        actions=actions, delete_existing=True
+                    )}
+                )
+
+            # Commit concepts to database (manually tagged)
+            if self.manual_mapping:
+                eval_results.update(
+                    {'manual_mapping': self.commit_manual_mapping(
+                        actions=actions, delete_existing=True
+                    )}
+                )
 
             # Print actions info
             if verbose and 'commit' in actions:
@@ -2488,9 +2491,9 @@ class GraphRegistry():
             eval_results = []
 
             if delete_existing:
-                eval_results += [delete_concepts_for_nodes(
-                    db, 'Edges_N_Object_N_Concept_T_ConceptDetection', self.institution_id, self.object_type,
-                    [self.object_id,], engine_name='test', actions=actions
+                eval_results += [rbridge.delete_concepts_for_nodes(
+                    'Edges_N_Object_N_Concept_T_ConceptDetection', self.institution_id, self.object_type,
+                    [self.object_id,], actions=actions
                 )]
 
             for doc in self.concepts_detection:
