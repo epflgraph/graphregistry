@@ -36,3 +36,7 @@ case "$env_name" in
     exit 1
     ;;
 esac
+
+# Load nvm and use Node.js version 22
+source ~/.nvm/nvm.sh
+nvm use 22
