@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import warnings
+from elastic_transport import SecurityWarning
+warnings.filterwarnings(
+    "ignore",
+    category=SecurityWarning,
+    message=r".*verify_certs=False is insecure.*",
+)
 from graphregistry.common.config import GlobalConfig
-from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers, ElasticsearchWarning
+from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers
 from loguru import logger as sysmsg
 from urllib.parse import quote
 from flatten_dict import flatten
@@ -379,14 +386,10 @@ def es_write_progress(prog, total, status=''):
 #---------------------#
 #---------------------#
 
-# Suppress only the ElasticsearchWarning
-warnings.filterwarnings('ignore', category=ElasticsearchWarning)
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('elasticsearch')
 logger.setLevel(logging.DEBUG)
-
 
 #-------------------------------------------------#
 # Class definition for Graph ElasticSearch engine #
@@ -410,7 +413,7 @@ class GraphES():
         if not self._initialized:
             self.name = name
             self._initialized = True
-            print(f"GraphIndex initialized with name: {self.name}")
+            # print(f"GraphIndex initialized with name: {self.name}")
 
         # Initiate the ElasticSearch engines
         self.params_test, self.engine_test = self.initiate_engine('test')
