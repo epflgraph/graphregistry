@@ -32,10 +32,6 @@ es = GraphES()
 # Initalise Registry db bridge
 rbridge = RegistryDB()
 
-# Print configurations
-idxcfg.print(compact=True)
-scrcfg.print()
-
 #------------------------------------------------#
 # Progress bar and system messages configuration #
 #------------------------------------------------#
@@ -220,13 +216,13 @@ class GraphRegistry():
         return cls._instance
 
     # Constructor
-    def __init__(self, name="GraphRegistry"):
+    def __init__(self, name="GraphRegistry", print_config=False):
 
         # Check if the instance is already initialized
         if not self._initialized:
             self.name = name
             self._initialized = True
-            print(f"GraphRegistry initialized with name: {self.name}")
+            # print(f"GraphRegistry initialized with name: {self.name}")
 
         # Initialize all children objects
         # db = GraphDB()
@@ -235,6 +231,11 @@ class GraphRegistry():
         self.cachemanager = self.CacheManagement()
         self.indexdb = self.IndexDB()
         self.indexes = self.IndexES()
+
+        # Print configuration if requested
+        if print_config:
+            idxcfg.print(compact=True)
+            scrcfg.print()
 
     # Help function
     def help(self):
@@ -581,7 +582,13 @@ class GraphRegistry():
             self.scoresexpired.randomize(doc_type=doc_type, time_period=time_period, verbose=verbose)
 
         # Set expiration dates
-        def expire(self, doc_type=None, older_than=90, limit_per_type=100, verbose=False):
+        def expire(self, doc_type=None, older_than=None, limit_per_type=None, verbose=False):
+
+            # Apply defaults
+            older_than = older_than if older_than!=None else 90
+            limit_per_type = limit_per_type if limit_per_type!=None else 100
+
+            # Call expire functions for both 'fields changed' and 'scores expired' flag types
             self.fieldschanged.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, verbose=verbose)
             self.scoresexpired.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, verbose=verbose)
 
@@ -596,7 +603,8 @@ class GraphRegistry():
 
         # Clean up flags in cache after all processing is done
         def cleanup(self, verbose=False):
-            pass
+            list_of_tables = db.get_tables_in_schema(engine_name='test', schema_name=glbcfg.schema_graph_cache_test)
+            print(list_of_tables)
 
         # === Object Type Flags ===
         class TypeFlags():
@@ -1139,8 +1147,8 @@ class GraphRegistry():
                     # Execute object sync @@@@@@@@
                     sql_query = f"""
                                 INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
-                                           (from_institution_id, from_object_type, to_institution_id, to_object_type, flag_type, to_process)
-                            SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 'fields' AS flag_type, 0 AS to_process
+                                           (from_institution_id, from_object_type, to_institution_id, to_object_type, to_process)
+                            SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
@@ -1252,7 +1260,11 @@ class GraphRegistry():
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'FieldsChanged' airflow tables.\n")
 
             # Set expiration dates
-            def expire(self, doc_type=None, older_than=90, limit_per_type=100, verbose=False):
+            def expire(self, doc_type=None, older_than=None, limit_per_type=None, verbose=False):
+
+                # Apply defaults
+                older_than = older_than if older_than!=None else 90
+                limit_per_type = limit_per_type if limit_per_type!=None else 100
 
                 # Print status
                 sysmsg.info("⌛️ 📝 Set 'has_expired' flag to 1 for expired dates in 'FieldsChanged' airflow tables.")
@@ -1262,6 +1274,8 @@ class GraphRegistry():
 
                 # Generate Airflow WHERE conditions
                 where_conditions = generate_airflow_where_conditions(doc_type=doc_type)
+
+                print('where_conditions:', where_conditions)
 
                 # Check if something to do
                 if where_conditions is None:
@@ -1884,7 +1898,11 @@ class GraphRegistry():
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'ScoresExpired' airflow table.\n")
 
             # Set expiration dates
-            def expire(self, doc_type=None, older_than=90, limit_per_type=100, verbose=False):
+            def expire(self, doc_type=None, older_than=None, limit_per_type=None, verbose=False):
+
+                # Apply defaults
+                older_than = older_than if older_than!=None else 90
+                limit_per_type = limit_per_type if limit_per_type!=None else 100
 
                 # Print status
                 sysmsg.info("⌛️ 📝 Set 'has_expired' flag to 1 for expired dates in 'ScoresExpired' airflow table.")

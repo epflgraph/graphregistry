@@ -41,7 +41,7 @@ class GraphDB():
         if not self._initialized:  # Prevent reinitialization
             self.name = name
             self._initialized = True  # Mark as initialized
-            print(f"GraphDB initialized with name: {self.name}")
+            # print(f"GraphDB initialized with name: {self.name}")
 
         # Initialize the MySQL engines
         self.params_test, self.engine_test = self.initiate_engine(glbcfg.settings['mysql']['server_test'])
@@ -132,6 +132,16 @@ class GraphDB():
 
         # Check if the table exists
         return len(tables) > 0
+
+    #--------------------------------------------#
+    # Method: Count number of rows (with filter) #
+    #--------------------------------------------#
+    def count_rows_in_table(self, engine_name, schema_name, table_name, where_clause=None):
+        query = f"SELECT COUNT(*) FROM {schema_name}.{table_name}"
+        if where_clause:
+            query += f" WHERE {where_clause}"
+        row_count = self.execute_query(engine_name=engine_name, query=query)[0][0]
+        return row_count
 
     #-------------------------------------#
     # Method: Drop a database             #
@@ -2017,7 +2027,6 @@ class GraphDB():
         if 'commit' in actions:
             self.execute_query_in_shell(engine_name=engine_name, query=query_commit)
             sysmsg.success(f"✅ Orphaned rows deleted from table '{upd_table}' for key {upd_key}.")
-
 
 #================#
 # Main execution #
