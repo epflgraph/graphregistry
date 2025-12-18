@@ -4,150 +4,208 @@ from graphregistry.cli.cmd_airflow import (
     cmd_airflow_status,
     cmd_airflow_to_process,
     cmd_airflow_config,
-    cmd_airflow_expire
+    cmd_airflow_expire,
 )
 from graphregistry.cli.cmd_cache import (
-    cmd_cache_to_process
+    cmd_cache_to_process,
 )
 from graphregistry.cli.cmd_db import (
-    cmd_db_test
+    cmd_db_test,
 )
 from graphregistry.cli.cmd_index import (
     cmd_index_test,
     cmd_index_info,
     cmd_index_health,
     cmd_index_list,
+    cmd_index_copy,
+    cmd_index_export,
+    cmd_index_import,
 )
 
-# ==================================================#
+#===================================================#
 # CLI Definitions for all Subcommands and Arguments #
-# ==================================================#
+#===================================================#
 cli_definitions: Dict[str, Any] = {
-    # --------------------#
+
+    #---------------------#
+    # Domain: airflow     #
+    #---------------------#
+    'airflow' : dict(
+        help = "Synchronize Registry with Airflow and manage type-flag configurations.",
+        common_args = dict(),
+        commands = {
+            'sync' : dict(
+                help = "Sync registry with Airflow",
+                func = cmd_airflow_sync,
+                args = [],
+                common_args = []
+            ),
+            'status' : dict(
+                help = "Get status from Airflow",
+                func = cmd_airflow_status,
+                args = [],
+                common_args = []
+            ),
+            'to_process' : dict(
+                help = "Operations on the 'to process' queue for airflow jobs.",
+                func = cmd_airflow_to_process,
+                args = [
+                    dict(flags=('--count', '-c'), kwargs=dict(action='store_true', help="Show number of items waiting to be processed.")),
+                    dict(flags=('--reset', '-r'), kwargs=dict(action='store_true', help="Reset the 'to process' queue / counters."))
+                ],
+                common_args = []
+            ),
+            'config' : dict(
+                help = "Configure Airflow typeflags for orchestration.",
+                func = cmd_airflow_config,
+                args = [
+                    dict(flags=('--typeflags',), kwargs=dict(required=True, type=str, help="Typeflags configuration as a JSON string, or '@path/to/file.json' to load JSON from a file."))
+                ],
+                common_args = []
+            ),
+            'expire' : dict(
+                help = "Set 'has_expired' flag to 1 for objects based on date when they were last cached.",
+                func = cmd_airflow_expire,
+                args = [
+                    dict(flags=('--object_type',   ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
+                    dict(flags=('--older_than',    ), kwargs=dict(required=False, type=int, help="Set 'has_expired' flag to 1 for objects older than <int> in days (default=90).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, help="Limit number of objects to process (default=100).")),
+                    dict(flags=('--verbose', '-v'  ), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
+                ],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
+    # Domain: cache       #
+    #---------------------#
+    'cache' : dict(
+        help = "Cache-related operations (pending items, recalculation, etc.).",
+        common_args = dict(),
+        commands = {
+            'to_process' : dict(
+                help = "Operations on the 'to process' queue for cache jobs.",
+                func = cmd_cache_to_process,
+                args = [
+                    dict(flags=('--count', '-c'), kwargs=dict(action='store_true', help="Show number of items waiting to be processed.")),
+                    dict(flags=('--reset', '-r'), kwargs=dict(action='store_true', help="Reset the 'to process' queue / counters."))
+                ],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
+    # Domain: db          #
+    #---------------------#
+    'db' : dict(
+        help = "MySQL database client.",
+        common_args = dict(),
+        commands = {
+            'test' : dict(
+                help = "Test MySQL connection.",
+                func = cmd_db_test,
+                args = [],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
     # Domain: index       #
-    # --------------------#
-    'index': dict(
+    #---------------------#
+    'index' : dict(
         help = "Manage ElasticSearch server and indexes.",
         common_args = {
             'env': dict(
                 flags = ('--env',),
                 kwargs = dict(
                     help = "Specify environment (default=test).",
-                    choices = ('test', 'prod'),
+                    choices = ('test', 'prod', 'xaas_prod', 'xaas_coresrv'),
                     default = 'test'
                 )
             )
         },
         commands = {
-            'test': dict(
+            'test' : dict(
                 help = "Test ElasticSearch server(s).",
                 func = cmd_index_test,
+                args = [],
                 common_args = ['env'],
             ),
-            'info': dict(
+            'info' : dict(
                 help = "Print server info.",
                 func = cmd_index_info,
+                args = [],
                 common_args = ['env'],
             ),
-            'health': dict(
+            'health' : dict(
                 help = "Print server health.",
                 func = cmd_index_health,
+                args = [],
                 common_args = ['env'],
             ),
-            'list': dict(
+            'list' : dict(
                 help = "List indexes.",
                 func = cmd_index_list,
+                args = [dict(flags = ('--display_size', '-s'), kwargs = dict(action='store_true', help="Display index list with sizes (in GB).")),
+                        dict(flags = ('--aliases'     , '-a'), kwargs = dict(action='store_true', help="Display index aliases."))
+                ],
+                common_args = ['env']
+            ),
+            # 'copy' : dict(
+            #     help = "Copy index across ElasticSearch servers.",
+            #     func = cmd_index_copy,
+            #     args = [
+            #         dict(flags = ('--index_name',), kwargs = dict(required=True,  type=str, help="Name of the index to copy.")),
+            #         dict(flags = ('--from_env'  ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
+            #         dict(flags = ('--to_env'    ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
+            #         dict(flags = ('--rename_to' ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
+            #         dict(flags = ('--chunk_size',), kwargs = dict(required=False, type=int, default=1000,   help="Number of documents to copy per batch (default=1000)."))
+            #     ],
+            #     common_args = [],
+            # ),
+            'export' : dict(
+                help = "Export index from ElasticSearch server into local folder.",
+                func = cmd_index_export,
+                args = [
+                    dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, help="Name of the index to export.")),
+                    dict(flags = ('--output_folder',), kwargs = dict(required=True,  type=str, help="Output folder to save the exported index.")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000, help="Number of documents to export per batch (default=1000).")),
+                    dict(flags = ('--use_gzip'        , '-gz'), kwargs = dict(action='store_true', help="Compress exported data files using GZIP.")),
+                    dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
+                    dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
+                ],
                 common_args = ['env'],
-                args = [dict(flags = ('--display_size', '-s'), kwargs = dict(action='store_true')),
-                        dict(flags = ('--alias'       , '-a'), kwargs = dict(action='store_true'))
-                ]
-            )
+            ),
+            'import' : dict(
+                help = "Import index from local folder into ElasticSearch server.",
+                func = cmd_index_import,
+                args = [
+                    dict(flags = ('--input_folder' ,), kwargs = dict(required=True,  type=str, help="Input folder containing the exported index.")),
+                    dict(flags = ('--rename_to'    ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000, help="Number of documents to export per batch (default=1000).")),
+                    dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
+                    dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
+                ],
+                common_args = ['env'],
+            ),
+            'copy' : dict(
+                help = "Copy index across ElasticSearch servers.",
+                func = cmd_index_copy,
+                args = [
+                    dict(flags = ('--index_name',), kwargs = dict(required=True,  type=str, help="Name of the index to copy.")),
+                    dict(flags = ('--from_env'  ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
+                    dict(flags = ('--to_env'    ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
+                    dict(flags = ('--rename_to' ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
+                    dict(flags = ('--chunk_size',), kwargs = dict(required=False, type=int, default=1000,   help="Number of documents to copy per batch (default=1000).")),
+                    dict(flags = ('--use_gzip'        , '-gz'), kwargs = dict(action='store_true', help="Compress exported data files using GZIP.")),
+                    dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
+                    dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
+                ],
+                common_args = [],
+            ),
         }
-    ),
-
-    # --------------------#
-    # Domain: airflow     #
-    # --------------------#
-    "airflow": dict(
-        help="Synchronize Registry with Airflow and manage type-flag configurations.",
-        common_args=dict(),  # (none for now)
-        commands=dict(
-            sync=dict(
-                help="Sync registry with Airflow",
-                func=cmd_airflow_sync,
-            ),
-            status=dict(
-                help="Get status from Airflow",
-                func=cmd_airflow_status,
-            ),
-            to_process=dict(
-                help="Operations on the 'to process' queue for airflow jobs.",
-                func=cmd_airflow_to_process,
-                # NOTE: mutually exclusive group not representable in the simple spec;
-                # we model as plain args here.
-                args=[
-                    dict(flags=("--count",), kwargs=dict(action="store_true", help="Show number of items waiting to be processed.")),
-                    dict(flags=("--reset",), kwargs=dict(action="store_true", help="Reset the 'to process' queue / counters.")),
-                ],
-            ),
-            config=dict(
-                help="Configure Airflow typeflags for orchestration.",
-                func=cmd_airflow_config,
-                args=[
-                    dict(
-                        flags=("--typeflags",),
-                        kwargs=dict(
-                            required=True,
-                            type=str,
-                            help="Typeflags configuration as a JSON string, or '@path/to/file.json' to load JSON from a file.",
-                        ),
-                    )
-                ],
-            ),
-            expire=dict(
-                help="Set 'has_expired' flag to 1 for objects based on date when they were last cached.",
-                func=cmd_airflow_expire,
-                args=[
-                    dict(flags=("--object_type",), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
-                    dict(flags=("--older_than",), kwargs=dict(required=False, type=int, help="Set 'has_expired' flag to 1 for objects older than <int> in days (default=90).")),
-                    dict(flags=("--limit_per_type",), kwargs=dict(required=False, type=int, help="Limit number of objects to process (default=100).")),
-                    dict(flags=("--verbose",), kwargs=dict(action="store_true", help="Execute in verbose mode.")),
-                ],
-            ),
-        ),
-    ),
-
-    # --------------------#
-    # Domain: cache       #
-    # --------------------#
-    "cache": dict(
-        help="Cache-related operations (pending items, recalculation, etc.).",
-        common_args=dict(),  # (none for now)
-        commands=dict(
-            to_process=dict(
-                help="Operations on the 'to process' queue for cache jobs.",
-                func=cmd_cache_to_process,
-                # NOTE: mutually exclusive group not representable in the simple spec;
-                # we model as plain args here.
-                args=[
-                    dict(flags=("--count",), kwargs=dict(action="store_true", help="Show number of items waiting to be processed.")),
-                    dict(flags=("--reset",), kwargs=dict(action="store_true", help="Reset the 'to process' queue / counters.")),
-                ],
-            ),
-        ),
-    ),
-
-    # --------------------#
-    # Domain: db          #
-    # --------------------#
-    "db": dict(
-        help="MySQL database client.",
-        common_args=dict(),  # (none for now)
-        commands=dict(
-            test=dict(
-                help="Test MySQL connection.",
-                func=cmd_db_test,
-            )
-        ),
     ),
 }
