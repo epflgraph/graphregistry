@@ -11,6 +11,10 @@ from graphregistry.cli.cmd_cache import (
 )
 from graphregistry.cli.cmd_db import (
     cmd_db_test,
+    cmd_db_export,
+    cmd_db_import,
+    cmd_db_copy,
+    cmd_db_compare
 )
 from graphregistry.cli.cmd_index import (
     cmd_index_test,
@@ -21,6 +25,18 @@ from graphregistry.cli.cmd_index import (
     cmd_index_export,
     cmd_index_import,
 )
+
+# Global common arguments
+global_common_args = {
+    'env' : dict(
+        flags = ('--env',),
+        kwargs = dict(
+            help = "Specify environment (default=test).",
+            choices = ('test', 'prod', 'xaas_prod', 'xaas_coresrv'),
+            # default = 'test'
+        )
+    )
+}
 
 #===================================================#
 # CLI Definitions for all Subcommands and Arguments #
@@ -101,14 +117,69 @@ cli_definitions: Dict[str, Any] = {
     #---------------------#
     'db' : dict(
         help = "MySQL database client.",
-        common_args = dict(),
+        common_args = {
+            'env': global_common_args['env']
+        },
         commands = {
             'test' : dict(
-                help = "Test MySQL connection.",
+                help = "Test MySQL server(s).",
                 func = cmd_db_test,
                 args = [],
-                common_args = []
-            )
+                common_args = ['env'],
+            ),
+            'export' : dict(
+                help = "Export database from MySQL server into local folder.",
+                func = cmd_db_export,
+                args = [
+                    dict(flags = ('--schema_name'  ,), kwargs = dict(required=True,  type=str, help="Name of the database/schema to export.")),
+                    dict(flags = ('--output_folder',), kwargs = dict(required=True,  type=str, help="Output folder to save the exported index.")),
+                    dict(flags = ('--table_name'   ,), kwargs = dict(required=False, type=str, default=None,    help="Name of the table to export (optional).")),
+                    dict(flags = ('--filter_by'    ,), kwargs = dict(required=False, type=str, default='TRUE',  help="Filter condition to apply to all tables.")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to export per batch (default=1000000).")),
+                    dict(flags = ('--include_create_tables', '-c'), kwargs = dict(action='store_true', help="Include table definitions in export.")),
+                    dict(flags = ('--include_data'         , '-d'), kwargs = dict(action='store_true', help="Include data in export."))
+                ],
+                common_args = ['env'],
+            ),
+            'import' : dict(
+                help = "Import database from local folder into MySQL server.",
+                func = cmd_db_import,
+                args = [
+                    dict(flags = ('--schema_name' ,), kwargs = dict(required=True,  type=str, help="Name of the database/schema to import.")),
+                    dict(flags = ('--input_folder',), kwargs = dict(required=True,  type=str, help="Input folder containing the exported index.")),
+                    dict(flags = ('--table_name'  ,), kwargs = dict(required=False, type=str, default=None, help="Name of the table to export (optional).")),
+                    dict(flags = ('--include_create_tables', '-c'), kwargs = dict(action='store_true', help="Include table definitions in export.")),
+                    dict(flags = ('--include_data'         , '-d'), kwargs = dict(action='store_true', help="Include data in export.")),
+                    dict(flags = ('--ignore_existing'      , '-i'), kwargs = dict(action='store_true', help="Soft ignore table creation and existing rows."))
+                ],
+                common_args = ['env'],
+            ),
+            'copy' : dict(
+                help = "Copy database or tables across MySQL servers.",
+                func = cmd_db_copy,
+                args = [
+                    dict(flags = ('--from_env'   ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
+                    dict(flags = ('--to_env'     ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
+                    dict(flags = ('--from_schema',), kwargs = dict(required=True,  type=str, help="Name of the source database/schema to copy from.")),
+                    dict(flags = ('--to_schema'  ,), kwargs = dict(required=True,  type=str, help="Name of the target database/schema to copy to.")),
+                    dict(flags = ('--table_name' ,), kwargs = dict(required=False, type=str, default=None,    help="Name of the table to export (optional).")),
+                    dict(flags = ('--chunk_size' ,), kwargs = dict(required=False, type=int, default=1000000, help="Number of rows to copy per batch (default=1000000).")),
+                ],
+                common_args = [],
+            ),
+            'compare' : dict(
+                help = "Compare database or tables across MySQL servers.",
+                func = cmd_db_compare,
+                args = [
+                    dict(flags = ('--from_env'   ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
+                    dict(flags = ('--to_env'     ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
+                    dict(flags = ('--from_schema',), kwargs = dict(required=True,  type=str, help="Name of the source database/schema to copy from.")),
+                    dict(flags = ('--to_schema'  ,), kwargs = dict(required=True,  type=str, help="Name of the target database/schema to copy to.")),
+                    dict(flags = ('--table_name' ,), kwargs = dict(required=False, type=str, default=None,   help="Name of the table to export (optional).")),
+                    dict(flags = ('--exact_row_count', '-e'), kwargs = dict(action='store_true', help="Calculate exact row counts (slower)."))
+                ],
+                common_args = [],
+            ),
         }
     ),
 
@@ -118,14 +189,7 @@ cli_definitions: Dict[str, Any] = {
     'index' : dict(
         help = "Manage ElasticSearch server and indexes.",
         common_args = {
-            'env': dict(
-                flags = ('--env',),
-                kwargs = dict(
-                    help = "Specify environment (default=test).",
-                    choices = ('test', 'prod', 'xaas_prod', 'xaas_coresrv'),
-                    default = 'test'
-                )
-            )
+            'env': global_common_args['env']
         },
         commands = {
             'test' : dict(
@@ -154,25 +218,13 @@ cli_definitions: Dict[str, Any] = {
                 ],
                 common_args = ['env']
             ),
-            # 'copy' : dict(
-            #     help = "Copy index across ElasticSearch servers.",
-            #     func = cmd_index_copy,
-            #     args = [
-            #         dict(flags = ('--index_name',), kwargs = dict(required=True,  type=str, help="Name of the index to copy.")),
-            #         dict(flags = ('--from_env'  ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
-            #         dict(flags = ('--to_env'    ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
-            #         dict(flags = ('--rename_to' ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
-            #         dict(flags = ('--chunk_size',), kwargs = dict(required=False, type=int, default=1000,   help="Number of documents to copy per batch (default=1000)."))
-            #     ],
-            #     common_args = [],
-            # ),
             'export' : dict(
                 help = "Export index from ElasticSearch server into local folder.",
                 func = cmd_index_export,
                 args = [
                     dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, help="Name of the index to export.")),
                     dict(flags = ('--output_folder',), kwargs = dict(required=True,  type=str, help="Output folder to save the exported index.")),
-                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000, help="Number of documents to export per batch (default=1000).")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to export per batch (default=1000000).")),
                     dict(flags = ('--use_gzip'        , '-gz'), kwargs = dict(action='store_true', help="Compress exported data files using GZIP.")),
                     dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
                     dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
@@ -184,8 +236,8 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_index_import,
                 args = [
                     dict(flags = ('--input_folder' ,), kwargs = dict(required=True,  type=str, help="Input folder containing the exported index.")),
-                    dict(flags = ('--rename_to'    ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
-                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000, help="Number of documents to export per batch (default=1000).")),
+                    dict(flags = ('--rename_to'    ,), kwargs = dict(required=False, type=str, default=None,    help="Rename index to this name on target server.")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to export per batch (default=1000000).")),
                     dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
                     dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
                 ],
@@ -196,15 +248,28 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_index_copy,
                 args = [
                     dict(flags = ('--index_name',), kwargs = dict(required=True,  type=str, help="Name of the index to copy.")),
-                    dict(flags = ('--from_env'  ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
-                    dict(flags = ('--to_env'    ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
-                    dict(flags = ('--rename_to' ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
-                    dict(flags = ('--chunk_size',), kwargs = dict(required=False, type=int, default=1000,   help="Number of documents to copy per batch (default=1000).")),
+                    dict(flags = ('--from_env'  ,), kwargs = dict(required=False, type=str, default='test',  help="Source environment.")),
+                    dict(flags = ('--to_env'    ,), kwargs = dict(required=False, type=str, default='prod',  help="Target environment.")),
+                    dict(flags = ('--rename_to' ,), kwargs = dict(required=False, type=str, default=None,    help="Rename index to this name on target server.")),
+                    dict(flags = ('--chunk_size',), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to copy per batch (default=1000000).")),
                     dict(flags = ('--use_gzip'        , '-gz'), kwargs = dict(action='store_true', help="Compress exported data files using GZIP.")),
                     dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
                     dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
                 ],
                 common_args = [],
+            ),
+            'backup' : dict(
+                help = "Backup one or all indexes from ElasticSearch server into backup folder.",
+                func = cmd_index_test,
+                args = [
+                    dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, help="Name of the index to export.")),
+                    dict(flags = ('--output_folder',), kwargs = dict(required=True,  type=str, help="Output folder to save the exported index.")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to export per batch (default=1000000).")),
+                    dict(flags = ('--use_gzip'        , '-gz'), kwargs = dict(action='store_true', help="Compress exported data files using GZIP.")),
+                    dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
+                    dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
+                ],
+                common_args = ['env'],
             ),
         }
     ),
