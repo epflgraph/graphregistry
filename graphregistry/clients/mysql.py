@@ -9,13 +9,33 @@ from tqdm import tqdm
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import os, re, subprocess, json, datetime, hashlib, random, glob, time, rich
+import sys, os, re, subprocess, json, datetime, hashlib, random, glob, time, rich
 
 # Initialize global config
 glbcfg = GlobalConfig()
 
 # Resolve repository root path
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+#------------------------------------------------#
+# Progress bar and system messages configuration #
+#------------------------------------------------#
+
+# Width of the progress bar
+PBWIDTH = 64
+
+# Set up system message handler to display TRACE messages
+sysmsg.remove()
+sysmsg.add(
+    sys.stdout,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+           "<level>{level: <8}</level> | "
+           "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line:06d}</cyan> - "
+           "<level>{message}</level>",
+    level="TRACE"
+)
+
+#------------------------------------------------#
 
 # Fetch index field datatypes from config file
 with open(REPO_ROOT / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
@@ -38,25 +58,46 @@ class GraphDB():
 
     # Class constructor
     def __init__(self, name="GraphDB"):
+
+        # Check if the instance is already initialized
         if not self._initialized:  # Prevent reinitialization
             self.name = name
-            self._initialized = True  # Mark as initialized
-            # print(f"GraphDB initialized with name: {self.name}")
+            self._initialized = True
 
-        # Initialize the MySQL engines
-        self.params_test, self.engine_test = self.initiate_engine(glbcfg.settings['mysql']['server_test'])
-        self.params_prod, self.engine_prod = self.initiate_engine(glbcfg.settings['mysql']['server_prod'])
-        self.params = {'test': self.params_test, 'prod': self.params_prod}
-        self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+        # Initiate the MySQL engines
+        # self.params_test, self.engine_test = self.initiate_engine(glbcfg.settings['mysql']['server_test'])
+        # self.params_prod, self.engine_prod = self.initiate_engine(glbcfg.settings['mysql']['server_prod'])
+        # self.params = {'test': self.params_test, 'prod': self.params_prod}
+        # self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+        self.params_test        , self.engine_test         = self.initiate_engine('test')
+        self.params_prod        , self.engine_prod         = self.initiate_engine('prod')
+        self.params_xaas_prod   , self.engine_xaas_prod    = self.initiate_engine('xaas_prod')
+        self.params_xaas_coresrv, self.engine_xaas_coresrv = self.initiate_engine('xaas_coresrv')
+        self.params = {
+            'test'         : self.params_test,
+            'prod'         : self.params_prod,
+            'xaas_prod'    : self.params_xaas_prod,
+            'xaas_coresrv' : self.params_xaas_coresrv
+        }
+        self.engine = {
+            'test'         : self.engine_test,
+            'prod'         : self.engine_prod,
+            'xaas_prod'    : self.engine_xaas_prod,
+            'xaas_coresrv' : self.engine_xaas_coresrv
+        }
 
         # Set the MySQL password in an environment variable
-        os.environ['MYSQL_TEST_PWD'] = self.params_test['password']
-        os.environ['MYSQL_PROD_PWD'] = self.params_prod['password']
+        os.environ['MYSQL_TEST_PWD']         = self.params_test['password']
+        os.environ['MYSQL_PROD_PWD']         = self.params_prod['password']
+        os.environ['MYSQL_XAAS_PROD_PWD']    = self.params_xaas_prod['password']
+        os.environ['MYSQL_XAAS_CORESRV_PWD'] = self.params_xaas_coresrv['password']
 
         # Build base shell command (MySQL)
         self.base_command_mysql = {
-            'test': [glbcfg.settings['mysql']['client_bin'], '-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port'])],
-            'prod': [glbcfg.settings['mysql']['client_bin'], '-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port'])]
+            'test'         : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_test[        'username'], f'--password={os.getenv("MYSQL_TEST_PWD"        )}', '-h', self.params_test[        'host_address'], '-P', str(self.params_test[        'port'])],
+            'prod'         : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_prod[        'username'], f'--password={os.getenv("MYSQL_PROD_PWD"        )}', '-h', self.params_prod[        'host_address'], '-P', str(self.params_prod[        'port'])],
+            'xaas_prod'    : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_xaas_prod[   'username'], f'--password={os.getenv("MYSQL_XAAS_PROD_PWD"   )}', '-h', self.params_xaas_prod[   'host_address'], '-P', str(self.params_xaas_prod[   'port'])],
+            'xaas_coresrv' : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_xaas_coresrv['username'], f'--password={os.getenv("MYSQL_XAAS_CORESRV_PWD")}', '-h', self.params_xaas_coresrv['host_address'], '-P', str(self.params_xaas_coresrv['port'])],
         }
 
         # Build base shell command (MySQLDump)
@@ -69,11 +110,12 @@ class GraphDB():
     # Method: Initialize the MySQL engine #
     #-------------------------------------#
     def initiate_engine(self, server_name):
-        if server_name not in glbcfg.settings['mysql']:
+
+        if server_name+'_env' not in glbcfg.settings['mysql']:
             raise ValueError(
                 f'could not find the configuration for mysql server {server_name} in global config file.'
             )
-        params = glbcfg.settings['mysql'][server_name]
+        params = glbcfg.settings['mysql'][server_name+'_env']
         engine = SQLEngine(
             f'mysql+pymysql://{params["username"]}:{params["password"]}@{params["host_address"]}:{params["port"]}/',
             pool_pre_ping=True
@@ -199,12 +241,37 @@ class GraphDB():
         # Return the row count
         return row_count
 
-    #-------------------------------------#
-    # Method: Get table definition        #
-    #-------------------------------------#
+    # #-------------------------------------#
+    # # Method: Get table definition        #
+    # #-------------------------------------#
+    # def get_create_table(self, engine_name, schema_name, table_name):
+    #     query = f"SHOW CREATE TABLE {schema_name}.{table_name}"
+    #     return self.execute_query(engine_name=engine_name, query=query)[0][1]
+
+    def _q(self, name: str) -> str:
+        """Backtick-quote an identifier safely (handles dots separately elsewhere)."""
+        return f"`{name.replace('`', '``')}`"
+
     def get_create_table(self, engine_name, schema_name, table_name):
-        query = f"SHOW CREATE TABLE {schema_name}.{table_name}"
+        # Always quote, otherwise names with hyphens/reserved words break
+        query = f"SHOW CREATE TABLE {self._q(schema_name)}.{self._q(table_name)}"
         return self.execute_query(engine_name=engine_name, query=query)[0][1]
+
+    def get_create_view(self, engine_name, schema_name, view_name):
+        query = f"SHOW CREATE VIEW {self._q(schema_name)}.{self._q(view_name)}"
+        # Result columns include "Create View" at index 1
+        return self.execute_query(engine_name=engine_name, query=query)[0][1]
+
+    def is_view(self, engine_name, schema_name, name) -> bool:
+        q = f"""
+            SELECT TABLE_TYPE
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = {json.dumps(schema_name)}
+            AND TABLE_NAME   = {json.dumps(name)}
+            LIMIT 1
+        """
+        rows = self.execute_query(engine_name=engine_name, query=q)
+        return bool(rows) and rows[0][0] == "VIEW"
 
     #-------------------------------------#
     # Method: Get column names of a table #
@@ -451,7 +518,7 @@ class GraphDB():
     #-------------------------------------------------#
     # Method: Executes a query sequentially by chunks #
     #-------------------------------------------------#
-    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, has_filters=None, chunk_size=10000, row_id_name='row_id', show_progress=False, verbose=False):
+    def execute_query_in_chunks(self, engine_name, schema_name, table_name, query, has_filters=None, chunk_size=1000000, row_id_name='row_id', show_progress=False, verbose=False):
 
         # Remove trailing semicolon from the query
         if query.strip()[-1] == ';':
@@ -533,7 +600,7 @@ class GraphDB():
     # Method: Executes a query in the MySQL shell from an SQL file #
     #--------------------------------------------------------------#
     def execute_query_from_file(self, engine_name, file_path, database=None, verbose=False):
-        
+
         # Start with the base command for the engine
         shell_command = list(self.base_command_mysql[engine_name])
 
@@ -733,7 +800,7 @@ class GraphDB():
     #----------------------------------------------#
     # Method: Copies a table from source to target #
     #----------------------------------------------#
-    def copy_table(self, engine_name, source_schema_name, source_table_name, target_schema_name, target_table_name, list_of_columns=False, where_condition='TRUE', row_id_name=None, chunk_size=100000, create_table=False, drop_keys=False, use_replace_or_ignore=False):
+    def copy_table_LEGACY(self, engine_name, source_schema_name, source_table_name, target_schema_name, target_table_name, list_of_columns=False, where_condition='TRUE', row_id_name=None, chunk_size=1000000, create_table=False, drop_keys=False, use_replace_or_ignore=False):
 
         # Create the target table if it does not exist
         if create_table:
@@ -792,7 +859,8 @@ class GraphDB():
             self.drop_view(engine_name=engine_name, schema_name=target_schema_name, view_name=target_view_name)
 
         # Get the view definition
-        view_definition = self.get_create_table(engine_name=engine_name, schema_name=source_schema_name, table_name=source_view_name)
+        # view_definition = self.get_create_table(engine_name=engine_name, schema_name=source_schema_name, table_name=source_view_name)
+        view_definition = self.get_create_view(engine_name=engine_name, schema_name=source_schema_name, view_name=source_view_name)
 
         # Fix the view definition
         view_definition = view_definition.replace(f'`{source_schema_name}`', f'`{target_schema_name}`')
@@ -1045,29 +1113,83 @@ class GraphDB():
         if verbose:
             sysmsg.success(f"Table '{target_table}' updated from view '{source_view}'.")
 
-    #------------------------------#
-    # Method: Dump table to folder #
-    #------------------------------#
-    def dump_table_to_folder(self, engine_name, schema_name, table_name, folder_path, filter_by='TRUE', chunk_size=100000):
 
-        # Create the folder if it does not exist
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
+    #===============================================#
+    #                                               #
+    #   METHOD GROUP: Export tables and databases   #
+    #                                               #
+    #===============================================#
+
+    #--------------------------------------------#
+    # Method: Export table definitions to folder #
+    #--------------------------------------------#
+    def export_create_table(self, engine_name, schema_name, table_name, output_folder):
+
+        # Append schema and table name to output folder
+        output_folder = f"{output_folder}/{schema_name}/{table_name}"
+
+        # Create the output folder if it does not exist
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        # Get table definition
+        create_table_sql = self.get_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
+
+        # Fix auto increment issues
+        create_table_sql = create_table_sql.replace("`row_id` int NOT NULL AUTO_INCREMENT,", "`row_id` int NOT NULL AUTO_INCREMENT UNIQUE KEY,")
+        create_table_sql = re.sub(r"AUTO_INCREMENT=\d+", "AUTO_INCREMENT=1", create_table_sql)
+
+        # Extract only the keys definition chunk
+        create_table_sql_keys_chunk = '\n'.join(re.findall(r'(?m)^\s*(?!PRIMARY KEY)(?:UNIQUE KEY|KEY|INDEX|CONSTRAINT)\b.*$', create_table_sql))
+
+        # Generate table definition with no keys (except the PRIMARY KEY)
+        create_table_no_keys_sql = create_table_sql.replace(create_table_sql_keys_chunk, "").replace(",\n\n) ENGINE", "\n) ENGINE")
+
+        # Generate the ALTER TABLE operation to add the keys to the existing table
+        create_keys_sql = ''
+        for line in create_table_sql_keys_chunk.split('\n'):
+            if 'UNIQUE KEY' in line or 'KEY' in line or 'INDEX' in line or 'CONSTRAINT' in line:
+                line = line.strip()
+                line = line[:-1] if line.endswith(',') else line
+                for key_type in ('UNIQUE KEY', 'KEY', 'INDEX', 'CONSTRAINT'):
+                    if "IF NOT EXISTS" not in line:
+                        line = line.replace(key_type, key_type+" IF NOT EXISTS ")
+                create_keys_sql += f"ALTER TABLE `{table_name}` ADD {line};\n"
+
+        # Save all definitions to output folder
+        with open(f"{output_folder}/CREATE_TABLE.sql", "w") as f:
+            f.write(create_table_sql + ";\n")
+        with open(f"{output_folder}/CREATE_TABLE_NO_KEYS.sql", "w") as f:
+            f.write(create_table_no_keys_sql + ";\n")
+        with open(f"{output_folder}/CREATE_KEYS.sql", "w") as f:
+            f.write(create_keys_sql + "\n")
+
+    #-------------------------------------#
+    # Method: Export table data to folder #
+    #-------------------------------------#
+    def export_table_data(self, engine_name, schema_name, table_name, output_folder, filter_by='TRUE', chunk_size=1000000):
+
+        # Append schema and table name to output folder
+        output_folder = f"{output_folder}/{schema_name}/{table_name}"
+
+        # Create the output folder if it does not exist
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
 
         # Check if row_id column exists in the table
         check_column_query = f"""
-            SELECT COUNT(*) 
-            FROM INFORMATION_SCHEMA.COLUMNS 
+            SELECT COUNT(*)
+            FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = '{schema_name}' AND TABLE_NAME = '{table_name}' AND COLUMN_NAME = 'row_id'
         """
-        has_row_id = self.execute_query(engine_name=engine_name, query=check_column_query)[0][0] > 0
+        has_row_id = int(self.execute_query(engine_name=engine_name, query=check_column_query)[0][0]) > 0
 
         # If row_id exists, proceed with chunked dump
         if has_row_id:
 
             # Get minimum row_id
             min_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MIN(row_id),0) FROM {schema_name}.{table_name} WHERE {filter_by}")[0][0]
-            
+
             # Get maximum row_id
             max_row_id = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX(row_id),0) FROM {schema_name}.{table_name} WHERE {filter_by}")[0][0]
 
@@ -1081,45 +1203,49 @@ class GraphDB():
                 return
 
             # Process table in chunks (from min to max row_id)
-            for offset in tqdm(range(min_row_id-1, max_row_id+1, chunk_size)):
+            with tqdm(range(min_row_id-1, max_row_id+1, chunk_size), unit='offset') as pb:
+                for offset in pb:
 
-                # Generate output file path
-                output_file = f'{folder_path}/{table_name}_{str(offset).zfill(10)}.sql'
+                    # Update progress bar description
+                    pb.set_description(f"⚙️  Table: {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
-                # Check if the output file already exists
-                if os.path.exists(output_file):
-                    continue
+                    # Generate output file path
+                    output_file = f'{output_folder}/{table_name}_{str(offset).zfill(10)}.sql'
 
-                # Generate shell command to dump table chunck using mysqldump executable
-                shell_command = self.base_command_mysqldump[engine_name] + [schema_name, table_name, f'--where="{filter_by} AND (row_id BETWEEN {offset} AND {offset + chunk_size - 1})"'] + ['--result-file=' + output_file]
+                    # Check if the output file already exists
+                    if os.path.exists(output_file):
+                        continue
 
-                # Generate shell text command
-                shell_text_command = ' '.join(shell_command)
+                    # Generate shell command to dump table chunck using mysqldump executable
+                    shell_command = self.base_command_mysqldump[engine_name] + [schema_name, table_name, f'--where="{filter_by} AND (row_id BETWEEN {offset} AND {offset + chunk_size - 1})"'] + ['--result-file=' + output_file]
 
-                # Run the command and capture stdout and stderr
-                result = subprocess.run(shell_text_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+                    # Generate shell text command
+                    shell_text_command = ' '.join(shell_command)
 
-                # Check if there's a MySQL-specific warning
-                if result.stderr:
-                    if result.stderr.strip() == 'mysql: [Warning] Using a password on the command line interface can be insecure.':
-                        # Suppress the warning by doing nothing
-                        pass
-                    else:
-                        # Print the stderr output if it's not the specific MySQL warning
-                        if 'ERROR' in result.stderr:
-                            print('Error dumping table:', table_name)
-                            print(result.stderr)
-                            exit()
+                    # Run the command and capture stdout and stderr
+                    result = subprocess.run(shell_text_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+
+                    # Check if there's a MySQL-specific warning
+                    if result.stderr:
+                        if result.stderr.strip() == 'mysql: [Warning] Using a password on the command line interface can be insecure.':
+                            # Suppress the warning by doing nothing
+                            pass
+                        else:
+                            # Print the stderr output if it's not the specific MySQL warning
+                            if 'ERROR' in result.stderr:
+                                print('Error dumping table:', table_name)
+                                print(result.stderr)
+                                exit()
 
         # Else, if row_id does not exist, dump the entire table at once
         else:
 
             # Generate output file path
-            output_file = f'{folder_path}/{table_name}_FULL.sql'
+            output_file = f'{output_folder}/{table_name}_FULL.sql'
 
             # Check if the output file already exists
             if os.path.exists(output_file):
-                sysmsg.warning(f"Output file {output_file} already exists. Skipping dump for table {table_name}.")
+                sysmsg.warning(f"Output file {output_file} already exists. Skipping dump for table '{table_name}'.")
                 return
 
             # Fallback: dump entire table with optional filter
@@ -1142,331 +1268,679 @@ class GraphDB():
                 print(result.stderr)
                 exit()
 
+    #--------------------------------#
+    # Method: Export table to folder #
+    #--------------------------------#
+    def export_table(self, engine_name, schema_name, table_name, output_folder, filter_by='TRUE', chunk_size=1000000, include_create_tables=False):
+
+        # Print messages only if not already printed by referring method
+        if sys._getframe(1).f_code.co_name not in ['export_database', 'copy_table', 'copy_database']:
+
+            # Print status message
+            sysmsg.info(f"📝 Export table from MySQL server.")
+
+            # Print parameters
+            sysmsg.trace(f"Target engine: {engine_name}")
+            sysmsg.trace(f"Database: {schema_name}")
+            sysmsg.trace(f"Table: {table_name}")
+            if filter_by!='TRUE':
+                sysmsg.trace(f"WHERE condition: {filter_by}")
+            if chunk_size!=1000000:
+                sysmsg.trace(f"Chunk size: {chunk_size}")
+            sysmsg.trace(f"""'include_create_tables' set to {'TRUE' if include_create_tables else 'FALSE'}.""")
+            sysmsg.trace(f"Output folder: {output_folder}")
+
+            # Print status message
+            sysmsg.info(f"⚙️  Exporting table from '{engine_name}' engine to ouput folder ...")
+
+        # Include create table statement if requested
+        if include_create_tables:
+            self.export_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name, output_folder=output_folder)
+
+        # Export data to output folder
+        self.export_table_data(engine_name=engine_name, schema_name=schema_name, table_name=table_name, output_folder=output_folder, filter_by=filter_by, chunk_size=chunk_size)
+
+        # Print status message
+        if sys._getframe(1).f_code.co_name not in ['export_database', 'copy_table', 'copy_database']:
+            sysmsg.success(f"✅ Done exporting table.")
+
+    #------------------------------------------------------------#
+    # Method: Export all table definitions in database to folder #
+    #------------------------------------------------------------#
+    def export_create_tables_in_database(self, engine_name, schema_name, output_folder):
+        for table_name in self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name):
+            self.export_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name, output_folder=output_folder)
+
+    #-----------------------------------------------------#
+    # Method: Export all table data in database to folder #
+    #-----------------------------------------------------#
+    def export_table_data_in_database(self, engine_name, schema_name, output_folder, filter_by='TRUE', chunk_size=1000000):
+        for table_name in self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name):
+            self.export_table_data(engine_name=engine_name, schema_name=schema_name, table_name=table_name, output_folder=output_folder, filter_by=filter_by, chunk_size=chunk_size)
+
+    #-----------------------------------------------------#
+    # Method: Export all table data in database to folder #
+    #-----------------------------------------------------#
+    def export_database(self, engine_name, schema_name, output_folder, filter_by='TRUE', chunk_size=1000000, include_create_tables=False):
+
+        # Print messages only if not already printed by referring method
+        if sys._getframe(1).f_code.co_name not in ['copy_table', 'copy_database']:
+
+            # Print status message
+            sysmsg.info(f"📝 Export database from MySQL server.")
+
+            # Print parameters
+            sysmsg.trace(f"Target engine: {engine_name}")
+            sysmsg.trace(f"Database: {schema_name}")
+            if filter_by!='TRUE':
+                sysmsg.trace(f"WHERE condition: {filter_by}")
+            if chunk_size!=1000000:
+                sysmsg.trace(f"Chunk size: {chunk_size}")
+            sysmsg.trace(f"""'include_create_tables' set to {'TRUE' if include_create_tables else 'FALSE'}.""")
+            sysmsg.trace(f"Output folder: {output_folder}")
+
+            # Print status message
+            sysmsg.info(f"⚙️  Exporting database tables from '{engine_name}' engine to ouput folder ...")
+
+        # Get list of tables in database
+        list_of_tables = self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name)
+
+        # Export all tables
+        for table_name in sorted(list_of_tables):
+            self.export_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name, output_folder=output_folder, filter_by=filter_by, chunk_size=chunk_size, include_create_tables=include_create_tables)
+
+        # Print status message
+        if sys._getframe(1).f_code.co_name not in ['copy_table', 'copy_database']:
+            sysmsg.success(f"✅ Done exporting database.")
+
+
+    #===============================================#
+    #                                               #
+    #   METHOD GROUP: Import tables and databases   #
+    #                                               #
+    #===============================================#
+
+    #----------------------------------------------#
+    # Method: Import table definitions from folder #
+    #----------------------------------------------#
+    def import_create_table(self, engine_name, schema_name, input_folder, include_keys=True, ignore_existing=False):
+
+        # Check if keys should be included
+        file_path = f"{input_folder}/CREATE_TABLE.sql" if include_keys else f"{input_folder}/CREATE_TABLE_NO_KEYS.sql"
+
+        # Impose soft ignore by replacing 'CREATE TABLE' with 'CREATE TABLE IF NOT EXISTS'
+        # Replace existing file with the modified content.
+        if ignore_existing:
+            with open(file_path, 'r') as file:
+                file_data = file.read()
+            if 'IF NOT EXISTS' not in file_data:
+                file_data = file_data.replace('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ')
+                with open(file_path, 'w') as file:
+                    file.write(file_data)
+
+        # Execute the SQL file
+        self.execute_query_from_file(engine_name=engine_name, database=schema_name, file_path=file_path)
+
+    #---------------------------------------#
+    # Method: Import table data from folder #
+    #---------------------------------------#
+    def import_table_data(self, engine_name, schema_name, input_folder, ignore_existing=False):
+
+        # Get list of data files from the input folder
+        list_of_sql_files = [p for p in sorted(glob.glob(f'{input_folder}/*.sql'))
+                            if os.path.basename(p) not in ('CREATE_KEYS.sql', 'CREATE_TABLE_NO_KEYS.sql', 'CREATE_TABLE.sql')]
+
+        # Execute SQL files
+        with tqdm(list_of_sql_files, unit='offset') as pb:
+            for file_path in pb:
+
+                # Extract table name from file path
+                table_name = os.path.basename(os.path.dirname(file_path))
+
+                # Update progress bar description
+                pb.set_description(f"⚙️  Table: {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+
+                # Impose soft ignore by replacing 'INSERT INTO' with 'INSERT IGNORE INTO'
+                if ignore_existing:
+                    with open(file_path, 'r') as file:
+                        file_data = file.read()
+                    if 'INSERT IGNORE INTO' not in file_data:
+                        file_data = file_data.replace('INSERT INTO ', 'INSERT IGNORE INTO ')
+                        with open(file_path, 'w') as file:
+                            file.write(file_data)
+
+                # Execute import query from SQL file
+                self.execute_query_from_file(engine_name=engine_name, database=schema_name, file_path=file_path)
+
+    #---------------------------------------------#
+    # Method: Import/apply table keys from folder #
+    #---------------------------------------------#
+    def import_table_keys(self, engine_name, schema_name, input_folder):
+
+        # Check if keys should be included
+        file_path = f"{input_folder}/CREATE_KEYS.sql"
+
+        # Execute the SQL file
+        self.execute_query_from_file(engine_name=engine_name, database=schema_name, file_path=file_path)
+
     #----------------------------------#
     # Method: Import table from folder #
     #----------------------------------#
-    def import_table_from_folder(self, engine_name, schema_name, folder_path):
+    def import_table(self, engine_name, schema_name, input_folder, create_keys_after_import=False, ignore_existing=False):
 
-        # Get list of files from the input folder
-        list_of_sql_files = sorted(glob.glob(f'{folder_path}/*.sql'))
+        # Print messages only if not already printed by referring method
+        if sys._getframe(1).f_code.co_name not in ['import_database', 'copy_table', 'copy_database']:
 
-        # Loop over the files
-        for sql_file in tqdm(list_of_sql_files):
+            # Print status message
+            sysmsg.info(f"📝 Import table into MySQL server.")
 
-            # Define the command components, including the schema name
-            shell_command = self.base_command_mysql[engine_name] + [schema_name]
+            # Print parameters
+            sysmsg.trace(f"Target engine: {engine_name}")
+            sysmsg.trace(f"Table: {schema_name}")
+            sysmsg.trace(f"""'create_keys_after_import' set to {'TRUE' if create_keys_after_import else 'FALSE'}.""")
+            sysmsg.trace(f"Input folder: {input_folder}")
 
-            # Open the SQL file and pass it to the command via stdin
-            with open(sql_file, 'rb') as fid:
-                process = subprocess.Popen(shell_command, stdin=fid, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = process.communicate()
+            # Print status message
+            sysmsg.info(f"⚙️  Importing table from input folder into '{engine_name}' engine ...")
 
-            # Print the output and any errors
-            # print(stdout.decode())
-            # print(stderr.decode())
+        # Import the table definition
+        self.import_create_table(engine_name=engine_name, schema_name=schema_name, input_folder=input_folder, include_keys=not create_keys_after_import, ignore_existing=ignore_existing)
 
-    #---------------------------------#
-    # Method: Dump database to folder #
-    #---------------------------------#
-    def dump_database_to_folder(self, engine_name, schema_name, folder_path, filter_by='TRUE', chunk_size=100000, include_create_tables=True, include_views=True):
+        # Import the table data
+        self.import_table_data(engine_name=engine_name, schema_name=schema_name, input_folder=input_folder, ignore_existing=ignore_existing)
 
-        # Display status
-        sysmsg.info(f"📝 Dump database '{schema_name}' from '{engine_name}' to: {folder_path}")
+        # Import/apply the table keys
+        if create_keys_after_import:
+            self.import_table_keys(engine_name=engine_name, schema_name=schema_name, input_folder=input_folder)
 
-        # Check if the database exists
-        if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
-            sysmsg.error(f"Database '{schema_name}' does not exist in '{engine_name}'.\n")
-            return
-
-        # Get list of tables in the schema
-        list_of_tables = self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name, include_views=include_views)
-        print(list_of_tables)
-
-        # Loop over the tables
-        for table_name in list_of_tables:
-
-            # Display status
-            sysmsg.trace(f"⚙️ Exporting table: {table_name} ...")
-
-            # Create export folder with database schema name and table name (if it doesn't exist)
-            export_path = f"{folder_path}/{schema_name}/{table_name}"
-            if not os.path.exists(export_path):
-                os.makedirs(export_path)
-
-            # If include_create_tables, dump the create table statement
-            if include_create_tables:
-
-                # Get the create table SQL
-                create_table_sql = self.get_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
-
-                # Write the create table SQL to a file
-                with open(f"{folder_path}/{schema_name}/{table_name}/create_table.sql", 'w') as fid:
-                    fid.write(create_table_sql)
-
-            # Dump the table to the folder
-            self.dump_table_to_folder(
-                engine_name = engine_name,
-                schema_name = schema_name,
-                table_name  = table_name,
-                folder_path = export_path,
-                chunk_size  = chunk_size,
-                filter_by   = filter_by
-            )
-        
-        # Display status
-        sysmsg.success(f"✅ Done exporting databases from '{schema_name}'.\n")
+        # Print status message
+        if sys._getframe(1).f_code.co_name not in ['import_database', 'copy_table', 'copy_database']:
+            sysmsg.success(f"✅ Done importing table.")
 
     #-------------------------------------#
     # Method: Import database from folder #
     #-------------------------------------#
-    def import_database_from_folder(self, engine_name, folder_path, schema_name=None, create_if_not_exists=False, replace_existing=False, include_views=True):
+    def import_database(self, engine_name, schema_name, input_folder, create_keys_after_import=False, ignore_existing=False):
 
-        # Is schema name provided? If not, extract from folder path
-        if schema_name is None:
-            # Get schema name from the folder path
-            # -> the folder structure is assumed to be: schema_path = root_path/schema_name/
-            #    and the full path is root_path/schema_name/table_name/*.sql
-            schema_name = os.path.basename(os.path.normpath(folder_path))
+        # Print messages only if not already printed by referring method
+        if sys._getframe(1).f_code.co_name not in ['copy_table', 'copy_database']:
 
-        # Display status
-        sysmsg.info(f"📝 Import database '{schema_name}' into '{engine_name}'.")
+            # Print status message
+            sysmsg.info(f"📝 Import database into MySQL server.")
 
-        # Check if the database exists (create if not)
-        if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
+            # Print parameters
+            sysmsg.trace(f"Target engine: {engine_name}")
+            sysmsg.trace(f"Target database: {schema_name}")
+            sysmsg.trace(f"""'create_keys_after_import' set to {'TRUE' if create_keys_after_import else 'FALSE'}.""")
+            sysmsg.trace(f"Input folder: {input_folder}")
 
-            # Display warning
-            sysmsg.warning(f"Database '{schema_name}' does not exist in '{engine_name}'. The flag 'create_if_not_exists' is set to {str(create_if_not_exists).upper()}.")
+            # Print status message
+            sysmsg.info(f"⚙️  Importing database tables from input folder into '{engine_name}' engine ...")
 
-            # Create database if it does not exist and create_if_not_exists is True
-            if not create_if_not_exists:
-                sysmsg.error(f"❌ Failed to import database.")
-                return
-            else:
-                sysmsg.trace(f"Creating database '{schema_name}' ...")
-                self.create_database(engine_name=engine_name, schema_name=schema_name)
+        # Get list of table subfolders
+        list_of_table_folders = [f.path for f in os.scandir(input_folder) if f.is_dir()]
 
-        # If the database exists and replace_existing is True, drop and recreate it
-        elif replace_existing:
-            
-            # Display warning
-            sysmsg.warning(f"Database '{schema_name}' already exists. The flag 'replace_existing' is set to TRUE.")
-            
-            # Ask for confirmation (write yes/no)
-            confirmation = input(f"Are you sure you want to replace the existing database? (yes/no): ")
-            if confirmation.lower() != 'yes':
-                sysmsg.error("❌ Operation cancelled by user.")
-                return
+        # Import each table
+        for table_folder in sorted(list_of_table_folders):
+            self.import_table(engine_name=engine_name, schema_name=schema_name, input_folder=table_folder, create_keys_after_import=create_keys_after_import, ignore_existing=ignore_existing)
 
-            # Drop and recreate the database
-            self.drop_database(  engine_name=engine_name, schema_name=schema_name)
-            self.create_database(engine_name=engine_name, schema_name=schema_name)
+        # Print status message
+        if sys._getframe(1).f_code.co_name not in ['copy_table', 'copy_database']:
+            sysmsg.success(f"✅ Done importing database.")
 
-        # Else, if the database exists and replace_existing is False, do nothing
-        else:
-            sysmsg.warning(f"Database '{schema_name}' already exists. The flag 'replace_existing' is set to FALSE.")
-            sysmsg.error("❌ Failed to import database.")
-            return
-        
-        # Get list of tables in the schema folder
-        list_of_tables = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d))]
-
-        # Separate the views from the tables
-        list_of_views = [d for d in list_of_tables if os.path.exists(os.path.join(folder_path, d, 'create_view.sql'))]
-        list_of_tables = [d for d in list_of_tables if d not in list_of_views]
-
-        # Loop over the tables
-        for table_name in list_of_tables:
-
-            # Display status
-            sysmsg.trace(f"⚙️ Importing table: {table_name} ...")
-
-            #----------------------------#
-            # Apply CREATE TABLE queries #
-            #----------------------------#
-
-            # Create the table in the database
-            create_table_file = f"{folder_path}/{table_name}/create_table.sql"
-
-            # Check if the create table file exists
-            if os.path.exists(create_table_file):
-
-                # Read the SQL statement from the file
-                with open(create_table_file, 'r') as f:
-                    create_table_sql = f.read()
-
-                # Execute the SQL statement to create the table
-                self.execute_query(engine_name=engine_name, query=create_table_sql, schema_name=schema_name) 
-
-            else:
-                sysmsg.warning(f"Create table file '{create_table_file}' does not exist. Skipping table import.")
-
-            #----------------------------#
-            # Import data from SQL files #
-            #----------------------------#
-            
-            # Import the table from the folder
-            self.import_table_from_folder(
-                engine_name = engine_name,
-                schema_name = schema_name,
-                folder_path = f"{folder_path}/{table_name}"
-            )
-
-            #---------------------------#
-            # Apply CREATE VIEW queries #
-            #---------------------------#
-
-        # Include views?
-        if include_views:
-                
-            # Loop over the views
-            for view_name in list_of_views:
-
-                # Create the view in the database
-                create_view_file = f"{folder_path}/{view_name}/create_view.sql"
-
-                # Check if the create view file exists
-                if os.path.exists(create_view_file):
-
-                    # Read the SQL statement from the file
-                    with open(create_view_file, 'r') as f:
-                        create_view_sql = f.read()
-
-                    # Execute the SQL statement to create the view
-                    self.execute_query(engine_name=engine_name, query=create_view_sql, schema_name=schema_name)
-
-        # If include_views, import the views
-        if include_views:
-            pass
-
-        # Display status
-        sysmsg.success(f"✅ Done importing database into '{schema_name}'.\n")
+    #========================================================#
+    #                                                        #
+    #   METHOD GROUP: Migrate tables across engines/servers  #
+    #                                                        #
+    #========================================================#
 
     #-----------------------------------#
     # Method: Copy table across engines #
     #-----------------------------------#
-    def copy_table_across_engines(self, source_engine_name, source_schema_name, source_table_name, target_engine_name, target_schema_name, keys_json, filter_by='TRUE', chunk_size=100000, drop_table=False):
+    def copy_table(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, table_name, filter_by='TRUE', chunk_size=1000000, create_keys_after_import=False):
 
-        # Display status
-        sysmsg.info(f"Copying table {source_schema_name}.{source_table_name} from '{source_engine_name}' to {target_schema_name}.{source_table_name} in '{target_engine_name}' ...")
-        # play_system_sound('info', 'soft')
+        # Print status message
+        sysmsg.info(f"📝 Copy table across MySQL servers.")
 
-        # Check if the target database exists
-        if not self.database_exists(engine_name=target_engine_name, schema_name=target_schema_name):
-            sysmsg.warning(f"Database '{target_schema_name}' does not exist in '{target_engine_name}'. Returning without copying the table.")
-            return False
-
-        # Check if the target table exists
-        if self.table_exists(engine_name=target_engine_name, schema_name=target_schema_name, table_name=source_table_name):
-            sysmsg.warning(f"Table {source_table_name} already exists in '{target_schema_name}' on '{target_engine_name}'.")
-            if not drop_table:
-                sysmsg.info("'drop_table' is set to FALSE. Returning without copying the table.")
-                return False
+        # Print parameters
+        sysmsg.trace(    f"Engines .......... {source_engine_name} --> {target_engine_name}")
+        sysmsg.trace(    f"Table ............ {table_name}")
+        if filter_by!='TRUE':
+            sysmsg.trace(f"Filter by ........ {filter_by}")
+        if chunk_size!=1000000:
+            sysmsg.trace(f"Chunk size ....... {chunk_size}")
+        sysmsg.trace(f"""'create_keys_after_import' set to {'TRUE' if create_keys_after_import else 'FALSE'}.""")
 
         # Get current date in YYYY-MM-DD format
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
         # Generate random MD5 hash
-        md5_hash = hashlib.md5(str(random.random()).encode()).hexdigest()[:8]
+        md5_hash = hashlib.md5(str(source_engine_name+source_schema_name+target_engine_name+target_schema_name+table_name+filter_by+str(chunk_size)+str(create_keys_after_import)).encode()).hexdigest()[:8]
 
-        # Generate the full folder path
-        config_mysql_export_path = glbcfg.settings['mysql']['data_path']['export']
-        if os.path.isabs(config_mysql_export_path):
-            folder_path = os.path.join(             config_mysql_export_path, current_date, md5_hash, source_table_name)
-        else:
-            folder_path = os.path.join(package_dir, config_mysql_export_path, current_date, md5_hash, source_table_name)
+        # Generate the full folder path for temporary export
+        temp_output_path = os.path.join(glbcfg.settings['mysql']['data_path']['export'], current_date, md5_hash)
 
-        # Display status
-        sysmsg.info(f"{'Creating' if not drop_table else 'Recreating'} table in target engine '{target_engine_name}'.")
+        # Print parameters
+        sysmsg.trace(f"Temporary folder: {temp_output_path}")
 
-        # Create the target schema
-        self.copy_create_table(
-            source_engine_name  = source_engine_name,
-            source_schema_name  = source_schema_name,
-            source_table_name   = source_table_name,
-            target_engine_name  = target_engine_name,
-            target_schema_name  = target_schema_name,
-            target_table_name   = source_table_name,
-            drop_table          = drop_table,
-            drop_keys           = True
-        )
-        
-        # Display status
-        sysmsg.info(f"Dumping table from '{source_engine_name}' to folder '$/{current_date}/{md5_hash}/{source_table_name}'.")
+        # Print status message
+        sysmsg.info(f"⚙️  Exporting table from '{source_engine_name}' engine into temporary folder ...")
 
-        # Dump the table to the folder
-        self.dump_table_to_folder(
-            engine_name = source_engine_name,
-            schema_name = source_schema_name,
-            table_name  = source_table_name,
-            folder_path = folder_path,
-            chunk_size  = chunk_size,
-            filter_by   = filter_by
-        )
+        # Export the table from source engine to temporary folder
+        self.export_table(engine_name=source_engine_name, schema_name=source_schema_name, table_name=table_name, output_folder=temp_output_path, filter_by=filter_by, chunk_size=chunk_size, include_create_tables=True)
 
-        # Display status
-        sysmsg.info(f"Importing table from folder '$/{current_date}/{md5_hash}/{source_table_name}' into '{target_engine_name}'.")
+        # Print status message
+        sysmsg.info("☑️  Data export completed.")
 
-        # Import the table from the folder
-        self.import_table_from_folder(
-            engine_name = target_engine_name,
-            schema_name = target_schema_name,
-            folder_path = folder_path
-        )
+        # Print status message
+        sysmsg.info(f"⚙️  Importing table from temporary folder into '{target_engine_name}' engine ...")
 
-        # Display status
-        sysmsg.info(f"Applying keys to table {target_schema_name}.{source_table_name} in '{target_engine_name}'.")
+        # Import the table from temporary folder to target engine
+        self.import_table(engine_name=target_engine_name, schema_name=target_schema_name, input_folder=os.path.join(temp_output_path, source_schema_name, table_name), create_keys_after_import=create_keys_after_import)
 
-        # Apply keys in the target table
-        self.apply_keys(
-            engine_name = target_engine_name,
-            schema_name = target_schema_name,
-            table_name  = source_table_name,
-            keys_json   = keys_json
-        )
-         
-        # Display status
-        sysmsg.success(f"Table has been successfully copied from '{source_engine_name}' to '{target_engine_name}'.")
-        # play_system_sound('success', 'soft')
+        # Print status message
+        sysmsg.info("☑️  Data import completed.")
+
+        # Print status message
+        sysmsg.success(f"✅ Done copying table.")
 
     #--------------------------------------#
     # Method: Copy database across engines #
     #--------------------------------------#
-    def copy_database_across_engines(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, chunk_size=100000, list_of_tables=[], drop_tables=False):
+    def copy_database(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, filter_by='TRUE', chunk_size=1000000, create_keys_after_import=False):
 
-        # Play sound
-        # play_system_sound('info', 'moderate')
+        # Print status message
+        sysmsg.info(f"📝 Copy database across MySQL servers.")
 
-        # Get list of tables in graphsearch test
-        if len(list_of_tables) == 0:
-            list_of_tables = self.get_tables_in_schema(engine_name=source_engine_name, schema_name=source_schema_name)
+        # Print parameters
+        sysmsg.trace(    f"Engines .......... {source_engine_name} --> {target_engine_name}")
+        sysmsg.trace(    f"Database ......... {source_schema_name} --> {target_schema_name}")
+        if filter_by!='TRUE':
+            sysmsg.trace(f"Filter by ........ {filter_by}")
+        if chunk_size!=1000000:
+            sysmsg.trace(f"Chunk size ....... {chunk_size}")
+        sysmsg.trace(f"""'create_keys_after_import' set to {'TRUE' if create_keys_after_import else 'FALSE'}.""")
 
-        # Loop over the tables
-        for table_name in list_of_tables:
+        # Get current date in YYYY-MM-DD format
+        current_date = datetime.datetime.now().strftime('%Y-%m-%d')
 
-            # Get keys json
-            if get_table_type_from_name(table_name) in datatypes_config['data-keys']:
-                table_type = get_table_type_from_name(table_name)
-                sysmsg.info(f"Detected table type '{table_type}' for '{table_name}'.")
-                keys_json = datatypes_config['data-keys'][table_type]
-                keys_json.update(datatypes_config['data-keys']['index_vars'])
-            else:
-                sysmsg.error(f"Table type not found for '{table_name}'.")
-                exit()
+        # Generate random MD5 hash
+        md5_hash = hashlib.md5(str(source_engine_name+source_schema_name+target_engine_name+target_schema_name+filter_by+str(chunk_size)+str(create_keys_after_import)).encode()).hexdigest()[:8]
 
-            # Copy the table from test to prod
-            self.copy_table_across_engines(
-                source_engine_name = source_engine_name,
-                source_schema_name = source_schema_name,
-                source_table_name  = table_name,
-                target_engine_name = target_engine_name,
-                target_schema_name = target_schema_name,
-                keys_json          = keys_json,
-                chunk_size         = chunk_size,
-                drop_table         = drop_tables
+        # Generate the full folder path for temporary export
+        temp_output_path = os.path.join(glbcfg.settings['mysql']['data_path']['export'], current_date, md5_hash)
+
+        # Print parameters
+        sysmsg.trace(f"Temporary folder: {temp_output_path}")
+
+        # Print status message
+        sysmsg.info(f"⚙️  Exporting database tables from '{source_engine_name}' engine into temporary folder ...")
+
+        # Export the database from source engine to temporary folder
+        self.export_database(engine_name=source_engine_name, schema_name=source_schema_name, output_folder=temp_output_path, filter_by=filter_by, chunk_size=chunk_size, include_create_tables=True)
+
+        # Print status message
+        sysmsg.info("☑️  Data export completed.")
+
+        # Print status message
+        sysmsg.info(f"⚙️  Importing database tables from temporary folder into '{target_engine_name}' engine ...")
+
+        # Import the database from temporary folder to target engine
+        self.import_database(engine_name=target_engine_name, schema_name=target_schema_name, input_folder=os.path.join(temp_output_path, source_schema_name), create_keys_after_import=create_keys_after_import)
+
+        # Print status message
+        sysmsg.info("☑️  Data import completed.")
+
+        # Print status message
+        sysmsg.success(f"✅ Done copying database.")
+
+
+    #=========================================================#
+    #                                                         #
+    #   METHOD GROUP: Compare tables across engines/servers   #
+    #                                                         #
+    #=========================================================#
+
+    #---------------------------------------#
+    # Method: Compare tables across engines #
+    #---------------------------------------#
+    def compare_tables(self, source_engine_name, source_schema_name,
+                    target_engine_name, target_schema_name,
+                    table_name: str, *, exact_row_count: bool = False):
+        """
+        Compare a table across two MySQL servers/schemas and print results as:
+
+                            source   target   result
+        metric
+        engine              ...      ...      ✅/⚠️/❌
+        ...
+
+        If exact_row_count=True, also runs COUNT(*) on both tables and adds:
+        - row_count (exact)
+
+        Returns a dict with source/target rows + comparison table rows + df.
+        """
+
+        from collections.abc import Mapping, Sequence
+        import pandas as pd
+
+        sysmsg.info("🔎 Compare table across MySQL servers.")
+        sysmsg.trace(f"Source ........... {source_engine_name} / {source_schema_name}")
+        sysmsg.trace(f"Target ........... {target_engine_name} / {target_schema_name}")
+        sysmsg.trace(f"Table ............ {table_name}")
+        sysmsg.trace(f"'exact_row_count' is set to {str(exact_row_count).upper()}")
+
+        # -------------------------
+        # Formatting helpers
+        # -------------------------
+        def _fmt(v):
+            return "NULL" if v is None else str(v)
+
+        def _fmt_dt(v):
+            return "NULL" if v is None else str(v)
+
+        def _fmt_bytes(n):
+            if n is None:
+                return "NULL"
+            try:
+                n = int(n)
+            except Exception:
+                return str(n)
+            units = ["B", "KiB", "MiB", "GiB", "TiB"]
+            v = float(n)
+            for u in units:
+                if v < 1024 or u == units[-1]:
+                    return f"{v:.2f} {u}"
+                v /= 1024.0
+
+        # -------------------------
+        # Result normalizer
+        # -------------------------
+        def _first_row_as_dict(result, *, columns):
+            if result is None:
+                return None
+            if not isinstance(result, (list, tuple)):
+                return None
+            if len(result) == 0:
+                return None
+
+            first = result[0]
+
+            # dict-like row
+            if isinstance(first, Mapping):
+                return dict(first)
+
+            # sequence-like row (tuple/list/Row/RowProxy/etc.), but avoid str/bytes
+            if isinstance(first, Sequence) and not isinstance(first, (str, bytes, bytearray)):
+                vals = list(first)
+                if not columns:
+                    return {"__row__": vals}
+                return dict(zip(columns, vals))
+
+            # last resort
+            try:
+                vals = list(first)
+                if vals and columns:
+                    return dict(zip(columns, vals))
+                if vals:
+                    return {"__row__": vals}
+            except Exception:
+                pass
+
+            return None
+
+        expected_cols = [
+            "table_schema", "table_name", "engine", "table_collation", "row_format",
+            "table_rows", "data_length", "index_length", "total_bytes",
+            "column_count", "nullable_columns", "columns_with_default",
+            "index_count", "unique_index_count",
+            "avg_row_length", "create_time", "update_time"
+        ]
+
+        comparison_sql_template = """
+            SELECT
+                it.table_schema,
+                it.table_name,
+                it.engine,
+                it.table_collation,
+                it.row_format,
+
+                it.table_rows,
+                it.data_length,
+                it.index_length,
+                (it.data_length + it.index_length) AS total_bytes,
+
+                (SELECT COUNT(*)
+                FROM information_schema.columns c
+                WHERE c.table_schema = it.table_schema AND c.table_name = it.table_name
+                ) AS column_count,
+
+                (SELECT SUM(c.is_nullable = 'YES')
+                FROM information_schema.columns c
+                WHERE c.table_schema = it.table_schema AND c.table_name = it.table_name
+                ) AS nullable_columns,
+
+                (SELECT SUM(c.column_default IS NOT NULL)
+                FROM information_schema.columns c
+                WHERE c.table_schema = it.table_schema AND c.table_name = it.table_name
+                ) AS columns_with_default,
+
+                (SELECT COUNT(DISTINCT s.index_name)
+                FROM information_schema.statistics s
+                WHERE s.table_schema = it.table_schema AND s.table_name = it.table_name
+                ) AS index_count,
+
+                (SELECT COUNT(DISTINCT CASE WHEN s.non_unique = 0 THEN s.index_name END)
+                FROM information_schema.statistics s
+                WHERE s.table_schema = it.table_schema AND s.table_name = it.table_name
+                ) AS unique_index_count,
+
+                it.avg_row_length,
+                it.create_time,
+                it.update_time
+            FROM information_schema.tables it
+            WHERE it.table_schema = '%s'
+            AND it.table_name = '%s'
+            LIMIT 1;
+        """
+
+        def _secondary_exists_check(engine_name, schema_name, tname):
+            sql = f"SHOW FULL TABLES FROM `{schema_name}` LIKE '{tname}';"
+            try:
+                raw = self.execute_query(engine_name=engine_name, query=sql)
+                if raw is None:
+                    return False
+                if isinstance(raw, dict) and raw.get("rows"):
+                    return len(raw["rows"]) > 0
+                if isinstance(raw, (list, tuple)):
+                    return len(raw) > 0
+                return False
+            except Exception:
+                return False
+
+        def _fetch_side(engine_name, schema_name, tname):
+            sql = comparison_sql_template % (schema_name, tname)
+            raw = self.execute_query(engine_name=engine_name, query=sql)
+            row = _first_row_as_dict(raw, columns=expected_cols)
+
+            if not raw:
+                if _secondary_exists_check(engine_name, schema_name, tname):
+                    sysmsg.warning(
+                        f"⚠️ `{schema_name}`.`{tname}` exists on {engine_name}, but information_schema returned 0 rows."
+                    )
+                else:
+                    sysmsg.error(f"❌ Table not found: `{schema_name}`.`{tname}` on {engine_name}")
+            elif row is None:
+                sysmsg.warning(
+                    f"⚠️ `{schema_name}`.`{tname}` found on {engine_name}, but could not map result row to dict."
+                )
+                sysmsg.trace(f"Raw row type={type(raw[0])} value={raw[0]!r}")
+
+            return raw, row
+
+        def _exact_count(engine_name, schema_name, tname):
+            sql = f"SELECT COUNT(*) AS cnt FROM `{schema_name}`.`{tname}`;"
+            raw = self.execute_query(engine_name=engine_name, query=sql)
+            if not raw:
+                return None
+            first = raw[0]
+            if isinstance(first, Mapping):
+                return first.get("cnt")
+            try:
+                return list(first)[0]
+            except Exception:
+                return None
+
+        # -------------------------
+        # Execute both sides
+        # -------------------------
+        try:
+            src_raw, src = _fetch_side(source_engine_name, source_schema_name, table_name)
+        except Exception as e:
+            sysmsg.error(f"❌ Source query failed on {source_engine_name}: {e}")
+            return {"source": None, "target": None, "table": None, "df": None, "diffs": {"fatal": ["source_query_failed"]}}
+
+        try:
+            tgt_raw, tgt = _fetch_side(target_engine_name, target_schema_name, table_name)
+        except Exception as e:
+            sysmsg.error(f"❌ Target query failed on {target_engine_name}: {e}")
+            return {"source": None, "target": None, "table": None, "df": None, "diffs": {"fatal": ["target_query_failed"]}}
+
+        if not src or not tgt:
+            return {"source": src, "target": tgt, "table": None, "df": None, "diffs": {"fatal": ["missing_or_unreadable_table_metadata"]}}
+
+        # -------------------------
+        # Optional exact row count
+        # -------------------------
+        if exact_row_count:
+            sysmsg.info("🔢 Computing exact row counts (COUNT(*))...")
+            src["exact_row_count"] = _exact_count(source_engine_name, source_schema_name, table_name)
+            tgt["exact_row_count"] = _exact_count(target_engine_name, target_schema_name, table_name)
+        else:
+            # keep keys absent (or set to None if you prefer)
+            src.pop("exact_row_count", None)
+            tgt.pop("exact_row_count", None)
+
+        # -------------------------
+        # Build comparison table rows
+        # -------------------------
+        OK, WARN, ERR = "✅ ", "⚠️", "❌"
+
+        def _row(metric, a, b, formatter, sev_on_diff):
+            if a == b:
+                return {"metric": metric, "source": formatter(a), "target": formatter(b), "result": OK}
+            return {"metric": metric, "source": formatter(a), "target": formatter(b), "result": sev_on_diff}
+
+        rows = []
+
+        # Schema-ish (critical)
+        rows.append(_row("engine", src.get("engine"), tgt.get("engine"), _fmt, ERR))
+        rows.append(_row("collation", src.get("table_collation"), tgt.get("table_collation"), _fmt, ERR))
+        rows.append(_row("row_format", src.get("row_format"), tgt.get("row_format"), _fmt, WARN))
+
+        rows.append(_row("column_count", src.get("column_count"), tgt.get("column_count"), _fmt, ERR))
+        rows.append(_row("nullable_columns", src.get("nullable_columns"), tgt.get("nullable_columns"), _fmt, ERR))
+        rows.append(_row("columns_with_default", src.get("columns_with_default"), tgt.get("columns_with_default"), _fmt, WARN))
+
+        # Indexes (usually warning)
+        rows.append(_row("index_count", src.get("index_count"), tgt.get("index_count"), _fmt, WARN))
+        rows.append(_row("unique_index_count", src.get("unique_index_count"), tgt.get("unique_index_count"), _fmt, WARN))
+
+        # Exact count (optional, authoritative)
+        if exact_row_count:
+            rows.append(_row("row_count (exact)", src.get("exact_row_count"), tgt.get("exact_row_count"), _fmt, ERR))
+
+        # Estimate (FYI)
+        rows.append(_row("table_rows (estimate)", src.get("table_rows"), tgt.get("table_rows"), _fmt, WARN))
+
+        # Footprint (warning)
+        rows.append(_row("data_length", src.get("data_length"), tgt.get("data_length"), _fmt_bytes, WARN))
+        rows.append(_row("index_length", src.get("index_length"), tgt.get("index_length"), _fmt_bytes, WARN))
+        rows.append(_row("total_bytes", src.get("total_bytes"), tgt.get("total_bytes"), _fmt_bytes, WARN))
+        rows.append(_row("avg_row_length", src.get("avg_row_length"), tgt.get("avg_row_length"), _fmt, WARN))
+
+        # Timestamps (warning)
+        rows.append(_row("create_time", src.get("create_time"), tgt.get("create_time"), _fmt_dt, WARN))
+        rows.append(_row("update_time", src.get("update_time"), tgt.get("update_time"), _fmt_dt, WARN))
+
+        # -------------------------
+        # Display as dataframe
+        # -------------------------
+        df = pd.DataFrame(rows).set_index("metric")[["source", "target", "result"]]
+
+        sysmsg.info("📋 Table comparison:")
+        with pd.option_context(
+            "display.max_rows", 200,
+            "display.max_colwidth", 120,
+            "display.width", 200
+        ):
+            print(df.to_string())
+
+        # -------------------------
+        # Emit soft sysmsg summary
+        # -------------------------
+        n_warn = int((df["result"] == WARN).sum())
+        n_err = int((df["result"] == ERR).sum())
+
+        diffs = {"warning": [], "error": [], "fatal": []}
+        for metric, r in df.iterrows():
+            if r["result"] == WARN:
+                diffs["warning"].append(f"{metric}: {r['source']} != {r['target']}")
+            elif r["result"] == ERR:
+                diffs["error"].append(f"{metric}: {r['source']} != {r['target']}")
+
+        if n_err:
+            sysmsg.error(f"⛔ {n_err} critical differences found. ({n_warn} warnings)")
+        elif n_warn:
+            sysmsg.warning(f"⚠️  {n_warn} warnings found.")
+        else:
+            sysmsg.success("✅ No differences detected in metadata metrics.")
+
+        # Helpful note (only relevant when exact_row_count is False or estimate differs)
+        if str(src.get("engine", "")).upper() == "INNODB" and not exact_row_count:
+            sysmsg.warning(
+                "ℹ️  Note: table_rows is an estimate for InnoDB. "
+                "Re-run with exact_row_count=True to compute COUNT(*)."
             )
 
-        # Play sound
-        # play_system_sound('success', 'strong')
+        return {"source": src, "target": tgt, "table": rows, "df": df, "diffs": diffs}
+
+    #-----------------------------------------#
+    # Method: Compare database across engines #
+    #-----------------------------------------#
+    def compare_databases(self, source_engine_name, source_schema_name,
+                    target_engine_name, target_schema_name,
+                    *, exact_row_count: bool = False):
+        """
+        Compare all tables in a database across two MySQL servers/schemas.
+        Calls compare_tables() for each table and aggregates results.
+        """
+        sysmsg.info("🔎 Compare database across MySQL servers.")
+        sysmsg.trace(f"Source ........... {source_engine_name} / {source_schema_name}")
+        sysmsg.trace(f"Target ........... {target_engine_name} / {target_schema_name}")
+        sysmsg.trace(f"'exact_row_count' is set to {str(exact_row_count).upper()}")
+
+        source_tables = set(self.get_tables_in_schema(source_engine_name, source_schema_name))
+        target_tables = set(self.get_tables_in_schema(target_engine_name, target_schema_name))
+        all_tables = sorted(source_tables.union(target_tables))
+        sysmsg.info(f"🔢 Found {len(source_tables)} tables in source, {len(target_tables)} tables in target, {len(all_tables)} total unique tables.")
+
+        results = {}
+        for table_name in all_tables:
+            sysmsg.info(f"🔎 Comparing table: {table_name}")
+            result = self.compare_tables(
+                source_engine_name, source_schema_name,
+                target_engine_name, target_schema_name,
+                table_name,
+                exact_row_count=exact_row_count
+            )
+            results[table_name] = result
+
+        sysmsg.success("✅ Done comparing database.")
+        return results
+
+    #=========================================================#
+    #=========================================================#
 
     #------------------------------------------#
     # Method: Convert JSON list to SQL INSERTS #
@@ -2037,3 +2511,448 @@ if __name__ == "__main__":
         sysmsg.success("✅ MySQL client test passed.")
     else:
         sysmsg.error("❌ MySQL client test failed.")
+
+
+
+
+    # #---------------------------------#
+    # # Method: Dump database to folder #
+    # #---------------------------------#
+    # def export_database_LEGACY(self, engine_name, schema_name, folder_path, filter_by='TRUE', chunk_size=1000000, include_create_tables=False, include_views=False):
+
+    #     # Display status
+    #     sysmsg.info(f"📝 Dump database '{schema_name}' from '{engine_name}' to: {folder_path}")
+
+    #     # Check if the database exists
+    #     if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
+    #         sysmsg.error(f"Database '{schema_name}' does not exist in '{engine_name}'.\n")
+    #         return
+
+    #     # Get list of tables in the schema
+    #     list_of_tables = self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name, include_views=include_views)
+    #     print(list_of_tables)
+
+    #     # Loop over the tables
+    #     for table_name in list_of_tables:
+
+    #         # Display status
+    #         sysmsg.trace(f"⚙️ Exporting table: {table_name} ...")
+
+    #         # Create export folder with database schema name and table name (if it doesn't exist)
+    #         export_path = f"{folder_path}/{schema_name}/{table_name}"
+    #         if not os.path.exists(export_path):
+    #             os.makedirs(export_path)
+
+    #         # # If include_create_tables, dump the create table statement
+    #         # if include_create_tables:
+
+    #         #     # Get the create table SQL
+    #         #     create_table_sql = self.get_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
+
+    #         #     # Write the create table SQL to a file
+    #         #     with open(f"{folder_path}/{schema_name}/{table_name}/create_table.sql", 'w') as fid:
+    #         #         fid.write(create_table_sql)
+
+    #         # If include_create_tables, dump the create statement
+    #         if include_create_tables:
+
+    #             if self.is_view(engine_name=engine_name, schema_name=schema_name, name=table_name):
+    #                 create_sql = self.get_create_view(engine_name=engine_name, schema_name=schema_name, view_name=table_name) + ";\n"
+    #                 ddl_file = f"{export_path}/create_view.sql"
+    #             else:
+    #                 create_sql = self.get_create_table(engine_name=engine_name, schema_name=schema_name, table_name=table_name) + ";\n"
+    #                 ddl_file = f"{export_path}/create_table.sql"
+
+    #             with open(ddl_file, "w", encoding="utf-8") as fid:
+    #                 fid.write(create_sql)
+
+    #         # Dump the table to the folder
+    #         # self.dump_table_to_folder(
+    #         #     engine_name = engine_name,
+    #         #     schema_name = schema_name,
+    #         #     table_name  = table_name,
+    #         #     folder_path = export_path,
+    #         #     chunk_size  = chunk_size,
+    #         #     filter_by   = filter_by
+    #         # )
+
+    #         # Dump the table data only if it's a BASE TABLE
+    #         if not self.is_view(engine_name=engine_name, schema_name=schema_name, name=table_name):
+    #             self.export_table(
+    #                 engine_name = engine_name,
+    #                 schema_name = schema_name,
+    #                 table_name  = table_name,
+    #                 folder_path = export_path,
+    #                 chunk_size  = chunk_size,
+    #                 filter_by   = filter_by
+    #             )
+
+    #     # Display status
+    #     sysmsg.success(f"✅ Done exporting databases from '{schema_name}'.\n")
+
+        # # Define the command components, including the schema name
+        # shell_command = self.base_command_mysql[engine_name] + [schema_name]
+
+        # # Open the SQL file and pass it to the command via stdin
+        # with open(create_table_file_path, 'rb') as fid:
+        #     process = subprocess.Popen(shell_command, stdin=fid, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        #     stdout, stderr = process.communicate()
+
+        # # Print the output and any errors
+        # if stderr:
+        #     sysmsg.error(f"Error importing create table from folder '{input_folder}':\n")
+        #     print(stderr.decode())
+        #     exit()
+
+    # #-------------------------------------#
+    # # Method: Import database from folder #
+    # #-------------------------------------#
+    # def import_database_from_folder_LEGACY(self, engine_name, folder_path, schema_name=None, create_if_not_exists=False, replace_existing=False, include_views=True):
+
+    #     # Is schema name provided? If not, extract from folder path
+    #     if schema_name is None:
+    #         # Get schema name from the folder path
+    #         # -> the folder structure is assumed to be: schema_path = root_path/schema_name/
+    #         #    and the full path is root_path/schema_name/table_name/*.sql
+    #         schema_name = os.path.basename(os.path.normpath(folder_path))
+
+    #     # Display status
+    #     sysmsg.info(f"📝 Import database '{schema_name}' into '{engine_name}'.")
+
+    #     # Check if the database exists (create if not)
+    #     if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
+
+    #         # Display warning
+    #         sysmsg.warning(f"Database '{schema_name}' does not exist in '{engine_name}'. The flag 'create_if_not_exists' is set to {str(create_if_not_exists).upper()}.")
+
+    #         # Create database if it does not exist and create_if_not_exists is True
+    #         if not create_if_not_exists:
+    #             sysmsg.error(f"❌ Failed to import database.")
+    #             return
+    #         else:
+    #             sysmsg.trace(f"Creating database '{schema_name}' ...")
+    #             self.create_database(engine_name=engine_name, schema_name=schema_name)
+
+    #     # If the database exists and replace_existing is True, drop and recreate it
+    #     elif replace_existing:
+            
+    #         # Display warning
+    #         sysmsg.warning(f"Database '{schema_name}' already exists. The flag 'replace_existing' is set to TRUE.")
+            
+    #         # Ask for confirmation (write yes/no)
+    #         confirmation = input(f"Are you sure you want to replace the existing database? (yes/no): ")
+    #         if confirmation.lower() != 'yes':
+    #             sysmsg.error("❌ Operation cancelled by user.")
+    #             return
+
+    #         # Drop and recreate the database
+    #         self.drop_database(  engine_name=engine_name, schema_name=schema_name)
+    #         self.create_database(engine_name=engine_name, schema_name=schema_name)
+
+    #     # Else, if the database exists and replace_existing is False, do nothing
+    #     else:
+    #         sysmsg.warning(f"Database '{schema_name}' already exists. The flag 'replace_existing' is set to FALSE.")
+    #         sysmsg.error("❌ Failed to import database.")
+    #         return
+
+    #     # Get list of tables in the schema folder
+    #     list_of_tables = [d for d in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, d))]
+
+    #     # Separate the views from the tables
+    #     list_of_views = [d for d in list_of_tables if os.path.exists(os.path.join(folder_path, d, 'create_view.sql'))]
+    #     list_of_tables = [d for d in list_of_tables if d not in list_of_views]
+
+    #     # Loop over the tables
+    #     for table_name in list_of_tables:
+
+    #         # Display status
+    #         sysmsg.trace(f"⚙️ Importing table: {table_name} ...")
+
+    #         #----------------------------#
+    #         # Apply CREATE TABLE queries #
+    #         #----------------------------#
+
+    #         # Create the table in the database
+    #         create_table_file = f"{folder_path}/{table_name}/create_table.sql"
+
+    #         # Check if the create table file exists
+    #         if os.path.exists(create_table_file):
+
+    #             # Read the SQL statement from the file
+    #             with open(create_table_file, 'r') as f:
+    #                 create_table_sql = f.read()
+
+    #             # Execute the SQL statement to create the table
+    #             self.execute_query(engine_name=engine_name, query=create_table_sql, schema_name=schema_name) 
+
+    #         else:
+    #             sysmsg.warning(f"Create table file '{create_table_file}' does not exist. Skipping table import.")
+
+    #         #----------------------------#
+    #         # Import data from SQL files #
+    #         #----------------------------#
+            
+    #         # Import the table from the folder
+    #         self.import_table_from_folder(
+    #             engine_name = engine_name,
+    #             schema_name = schema_name,
+    #             folder_path = f"{folder_path}/{table_name}"
+    #         )
+
+    #         #---------------------------#
+    #         # Apply CREATE VIEW queries #
+    #         #---------------------------#
+
+    #     # Include views?
+    #     if include_views:
+                
+    #         # Loop over the views
+    #         for view_name in list_of_views:
+
+    #             # Create the view in the database
+    #             create_view_file = f"{folder_path}/{view_name}/create_view.sql"
+
+    #             # Check if the create view file exists
+    #             if os.path.exists(create_view_file):
+
+    #                 # Read the SQL statement from the file
+    #                 with open(create_view_file, 'r') as f:
+    #                     create_view_sql = f.read()
+
+    #                 # Execute the SQL statement to create the view
+    #                 self.execute_query(engine_name=engine_name, query=create_view_sql, schema_name=schema_name)
+
+    #     # If include_views, import the views
+    #     if include_views:
+    #         pass
+
+    #     # Display status
+    #     sysmsg.success(f"✅ Done importing database into '{schema_name}'.\n")
+
+    # def import_database_from_folder_LEGACY2(self, engine_name, folder_path, schema_name=None,
+    #                                 create_if_not_exists=False, replace_existing=False,
+    #                                 include_views=True):
+
+    #     folder_path = os.path.abspath(folder_path)
+
+    #     # Infer schema_name from folder_path if needed
+    #     if schema_name is None:
+    #         schema_name = os.path.basename(os.path.normpath(folder_path))
+
+    #     sysmsg.info(f"📝 Import database '{schema_name}' into '{engine_name}' from: {folder_path}")
+
+    #     # --- ensure schema exists ---
+    #     if not self.database_exists(engine_name=engine_name, schema_name=schema_name):
+    #         sysmsg.warning(f"Database '{schema_name}' does not exist in '{engine_name}'. create_if_not_exists={create_if_not_exists}")
+    #         if not create_if_not_exists:
+    #             sysmsg.error("❌ Aborting import.")
+    #             return
+    #         self.create_database(engine_name=engine_name, schema_name=schema_name)
+
+    #     elif replace_existing:
+    #         sysmsg.warning(f"Database '{schema_name}' already exists. replace_existing=TRUE")
+    #         confirmation = input("Replace existing database? (yes/no): ").strip().lower()
+    #         if confirmation != "yes":
+    #             sysmsg.error("❌ Operation cancelled by user.")
+    #             return
+    #         # self.drop_database(engine_name=engine_name, schema_name=schema_name)
+    #         # self.create_database(engine_name=engine_name, schema_name=schema_name)
+    #         print('Recreate database [simulated] ...')
+    #         return ####
+
+    #     # --- discover object folders ---
+    #     obj_names = sorted([d for d in os.listdir(folder_path)
+    #                         if os.path.isdir(os.path.join(folder_path, d))])
+
+    #     # classify by presence of ddl files
+    #     views  = [n for n in obj_names if os.path.exists(os.path.join(folder_path, n, "create_view.sql"))]
+    #     tables = [n for n in obj_names if os.path.exists(os.path.join(folder_path, n, "create_table.sql")) and n not in views]
+
+    #     # sanity: folders without ddl
+    #     other = [n for n in obj_names if n not in set(views) | set(tables)]
+    #     if other:
+    #         sysmsg.warning(f"Skipping folders with no create_table.sql/create_view.sql: {other}")
+
+    #     # =========================
+    #     # 1) Create ALL tables first
+    #     # =========================
+    #     sysmsg.info(f"🏗️ Creating {len(tables)} tables...")
+    #     for table_name in tables:
+    #         ddl_file = os.path.join(folder_path, table_name, "create_table.sql")
+    #         with open(ddl_file, "r", encoding="utf-8") as f:
+    #             create_sql = f.read().strip()
+    #         if not create_sql.endswith(";"):
+    #             create_sql += ";"
+
+    #         # Important: execute against target schema
+    #         self.execute_query(engine_name=engine_name, query=create_sql, schema_name=schema_name)
+
+    #     # =========================
+    #     # 2) Import ALL table data
+    #     # =========================
+    #     sysmsg.info(f"📦 Importing data into {len(tables)} tables...")
+    #     for table_name in tables:
+    #         table_dir = os.path.join(folder_path, table_name)
+    #         self.import_table_from_folder(
+    #             engine_name=engine_name,
+    #             schema_name=schema_name,
+    #             folder_path=table_dir
+    #         )
+
+    #     # =========================
+    #     # 3) Create views last
+    #     # =========================
+    #     if include_views:
+    #         sysmsg.info(f"👁️ Creating {len(views)} views...")
+    #         for view_name in views:
+    #             ddl_file = os.path.join(folder_path, view_name, "create_view.sql")
+    #             with open(ddl_file, "r", encoding="utf-8") as f:
+    #                 create_sql = f.read().strip()
+    #             if not create_sql.endswith(";"):
+    #                 create_sql += ";"
+
+    #             self.execute_query(engine_name=engine_name, query=create_sql, schema_name=schema_name)
+
+    #     sysmsg.success(f"✅ Done importing database into '{schema_name}'.\n")
+
+
+
+    # #-----------------------------------#
+    # # Method: Copy table across engines #
+    # #-----------------------------------#
+    # def copy_table_across_engines(self, source_engine_name, source_schema_name, source_table_name, target_engine_name, target_schema_name, keys_json, filter_by='TRUE', chunk_size=1000000, drop_table=False, force=False):
+
+    #     # Display status
+    #     sysmsg.info(f"Copying table {source_schema_name}.{source_table_name} from '{source_engine_name}' to {target_schema_name}.{source_table_name} in '{target_engine_name}' ...")
+    #     # play_system_sound('info', 'soft')
+
+    #     # Check if the target database exists
+    #     if not self.database_exists(engine_name=target_engine_name, schema_name=target_schema_name):
+    #         sysmsg.warning(f"Database '{target_schema_name}' does not exist in '{target_engine_name}'. Returning without copying the table.")
+    #         return False
+
+    #     # Check if the target table exists
+    #     if self.table_exists(engine_name=target_engine_name, schema_name=target_schema_name, table_name=source_table_name):
+    #         sysmsg.warning(f"Table {source_table_name} already exists in '{target_schema_name}' on '{target_engine_name}'.")
+    #         if not drop_table:
+    #             sysmsg.info("'drop_table' is set to FALSE. Returning without copying the table.")
+    #             return False
+
+    #         if not force:
+    #             confirmation = input(
+    #                 f"Target table '{source_table_name}' already exists. Replace it? (yes/no): "
+    #             ).strip().lower()
+    #             if confirmation != "yes":
+    #                 print(f"Copy operation cancelled for table {source_table_name}.")
+    #                 return False
+
+    #         print('Droping table... [simulated]')
+    #         return False
+
+    #     # Get current date in YYYY-MM-DD format
+    #     current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+
+    #     # Generate random MD5 hash
+    #     md5_hash = hashlib.md5(str(random.random()).encode()).hexdigest()[:8]
+
+    #     # Generate the full folder path
+    #     config_mysql_export_path = glbcfg.settings['mysql']['data_path']['export']
+    #     if os.path.isabs(config_mysql_export_path):
+    #         folder_path = os.path.join(             config_mysql_export_path, current_date, md5_hash, source_table_name)
+    #     else:
+    #         folder_path = os.path.join(package_dir, config_mysql_export_path, current_date, md5_hash, source_table_name)
+
+    #     # Display status
+    #     sysmsg.info(f"{'Creating' if not drop_table else 'Recreating'} table in target engine '{target_engine_name}'.")
+
+    #     # Create the target schema
+    #     self.copy_create_table(
+    #         source_engine_name  = source_engine_name,
+    #         source_schema_name  = source_schema_name,
+    #         source_table_name   = source_table_name,
+    #         target_engine_name  = target_engine_name,
+    #         target_schema_name  = target_schema_name,
+    #         target_table_name   = source_table_name,
+    #         drop_table          = drop_table,
+    #         drop_keys           = True
+    #     )
+        
+    #     # Display status
+    #     sysmsg.info(f"Dumping table from '{source_engine_name}' to folder '$/{current_date}/{md5_hash}/{source_table_name}'.")
+
+    #     # Dump the table to the folder
+    #     self.dump_table_to_folder(
+    #         engine_name = source_engine_name,
+    #         schema_name = source_schema_name,
+    #         table_name  = source_table_name,
+    #         folder_path = folder_path,
+    #         chunk_size  = chunk_size,
+    #         filter_by   = filter_by
+    #     )
+
+    #     # Display status
+    #     sysmsg.info(f"Importing table from folder '$/{current_date}/{md5_hash}/{source_table_name}' into '{target_engine_name}'.")
+
+    #     # Import the table from the folder
+    #     self.import_table_from_folder(
+    #         engine_name = target_engine_name,
+    #         schema_name = target_schema_name,
+    #         folder_path = folder_path
+    #     )
+
+    #     # Display status
+    #     sysmsg.info(f"Applying keys to table {target_schema_name}.{source_table_name} in '{target_engine_name}'.")
+
+    #     # Apply keys in the target table
+    #     self.apply_keys(
+    #         engine_name = target_engine_name,
+    #         schema_name = target_schema_name,
+    #         table_name  = source_table_name,
+    #         keys_json   = keys_json
+    #     )
+         
+    #     # Display status
+    #     sysmsg.success(f"Table has been successfully copied from '{source_engine_name}' to '{target_engine_name}'.")
+    #     # play_system_sound('success', 'soft')
+
+    # #--------------------------------------#
+    # # Method: Copy database across engines #
+    # #--------------------------------------#
+    # def copy_database_across_engines(self, source_engine_name, source_schema_name, target_engine_name, target_schema_name, chunk_size=1000000, list_of_tables=[], drop_tables=False, force=False):
+
+    #     # Play sound
+    #     # play_system_sound('info', 'moderate')
+
+    #     # Get list of tables in graphsearch test
+    #     if len(list_of_tables) == 0:
+    #         list_of_tables = self.get_tables_in_schema(engine_name=source_engine_name, schema_name=source_schema_name)
+
+    #     # Loop over the tables
+    #     for table_name in list_of_tables:
+
+    #         # Get keys json
+    #         if get_table_type_from_name(table_name) in datatypes_config['data-keys']:
+    #             table_type = get_table_type_from_name(table_name)
+    #             sysmsg.info(f"Detected table type '{table_type}' for '{table_name}'.")
+    #             keys_json = datatypes_config['data-keys'][table_type]
+    #             keys_json.update(datatypes_config['data-keys']['index_vars'])
+    #         else:
+    #             sysmsg.error(f"Table type not found for '{table_name}'.")
+    #             exit()
+
+    #         # Copy the table from test to prod
+    #         self.copy_table_across_engines(
+    #             source_engine_name = source_engine_name,
+    #             source_schema_name = source_schema_name,
+    #             source_table_name  = table_name,
+    #             target_engine_name = target_engine_name,
+    #             target_schema_name = target_schema_name,
+    #             keys_json          = keys_json,
+    #             chunk_size         = chunk_size,
+    #             drop_table         = drop_tables,
+    #             force              = force
+    #         )
+
+    #     # Play sound
+    #     # play_system_sound('success', 'strong')
+
