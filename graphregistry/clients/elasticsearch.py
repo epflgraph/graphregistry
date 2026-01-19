@@ -1257,9 +1257,159 @@ class GraphES():
             if not keep_temp:
                 # Clean up temp folder (best effort)
                 try:
-                    shutil.rmtree(base_tmp)
+                    pass
+                    # shutil.rmtree(base_tmp)
                 except Exception:
                     pass
+
+    #---------------------------------------------------------#
+    # Method: Copy one or more aliases across two ES servers  #
+    #---------------------------------------------------------#
+    def copy_aliases_across_engines(
+        self,
+        source_engine: str,
+        target_engine: str,
+        *,
+        index_pattern: str = "*",
+        alias_pattern: str = "*",
+        index_map: dict[str, str] | None = None,
+        replace_existing: bool = False,
+        force: bool = False,
+        ignore_missing_target_index: bool = False,
+        include_write_index: bool = False,
+    ):
+        """
+        Copy index aliases from source_engine to target_engine.
+
+        Typical use
+        -----------
+        - After copying indices across engines, run this to recreate aliases on the target.
+
+        Parameters
+        ----------
+        source_engine, target_engine:
+            Keys for self.engine[...] connections.
+
+        index_pattern:
+            Which source indices to consider (default "*").
+
+        alias_pattern:
+            Which aliases to copy (default "*").
+
+        index_map:
+            Optional mapping {source_index: target_index}. Useful when you renamed indices
+            during migration/copy. If None, uses the same index name on target.
+
+            Example:
+                {"myindex_v1": "myindex_v2"}
+
+        replace_existing:
+            If True, remove aliases on target before re-adding them (for the affected alias/index pairs).
+
+        force:
+            If replace_existing=True and force=False, prompt before making changes.
+
+        ignore_missing_target_index:
+            If True, skip alias actions when the target index doesn't exist.
+            If False, raise.
+
+        include_write_index:
+            If True, preserve is_write_index when present.
+            If False, do not set it (ES may infer / or keep existing behavior).
+        """
+
+        src = self.engine[source_engine]
+        dst = self.engine[target_engine]
+
+        index_map = index_map or {}
+
+        # Get aliases from source
+        # Returns: { "indexA": {"aliases": {"alias1": {...}, "alias2": {...}}}, ... }
+        src_aliases = src.indices.get_alias(index=index_pattern, name=alias_pattern)
+
+        # Build target actions
+        actions = []
+        skipped = []  # (source_index, target_index, alias, reason)
+
+        for src_index, payload in src_aliases.items():
+            aliases = (payload or {}).get("aliases", {}) or {}
+            if not aliases:
+                continue
+
+            tgt_index = index_map.get(src_index, src_index)
+
+            # Validate target index exists
+            if not dst.indices.exists(index=tgt_index):
+                msg = "target index missing"
+                if ignore_missing_target_index:
+                    for a in aliases.keys():
+                        skipped.append((src_index, tgt_index, a, msg))
+                    continue
+                raise ValueError(
+                    f"Target index '{tgt_index}' does not exist on '{target_engine}' "
+                    f"(source '{src_index}' on '{source_engine}')."
+                )
+
+            for alias_name, alias_body in aliases.items():
+                # alias_body can contain: filter, routing, index_routing, search_routing, is_write_index, etc.
+                add_action = {
+                    "add": {
+                        "index": tgt_index,
+                        "alias": alias_name,
+                    }
+                }
+
+                if isinstance(alias_body, dict):
+                    # Preserve supported alias options
+                    for k in ("filter", "routing", "index_routing", "search_routing"):
+                        if k in alias_body:
+                            add_action["add"][k] = alias_body[k]
+                    if include_write_index and "is_write_index" in alias_body:
+                        add_action["add"]["is_write_index"] = alias_body["is_write_index"]
+
+                if replace_existing:
+                    actions.append({"remove": {"index": tgt_index, "alias": alias_name}})
+                actions.append(add_action)
+
+        if not actions:
+            return {
+                "source_engine": source_engine,
+                "target_engine": target_engine,
+                "index_pattern": index_pattern,
+                "alias_pattern": alias_pattern,
+                "actions_applied": 0,
+                "skipped": skipped,
+            }
+
+        if replace_existing and not force:
+            confirmation = input(
+                f"This will update aliases on '{target_engine}' (replace_existing=True). Continue? (yes/no): "
+            ).strip().lower()
+            if confirmation != "yes":
+                print("Alias copy cancelled.")
+                return {
+                    "source_engine": source_engine,
+                    "target_engine": target_engine,
+                    "index_pattern": index_pattern,
+                    "alias_pattern": alias_pattern,
+                    "actions_applied": 0,
+                    "skipped": skipped,
+                    "cancelled": True,
+                }
+
+        # Apply in one call (atomic-ish)
+        resp = dst.indices.update_aliases(body={"actions": actions})
+
+        return {
+            "source_engine": source_engine,
+            "target_engine": target_engine,
+            "index_pattern": index_pattern,
+            "alias_pattern": alias_pattern,
+            "actions_applied": len(actions),
+            "skipped": skipped,
+            "acknowledged": bool(resp.get("acknowledged", False)) if isinstance(resp, dict) else None,
+        }
+
 
     #-------------------------------------#
     # Method: Execute a query on an index #
