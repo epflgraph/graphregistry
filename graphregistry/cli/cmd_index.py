@@ -16,10 +16,17 @@ def cmd_index_test(args):
 
     # Execute command:
     # - Test connection to ElasticSearch server
-    if index.test(engine_name=args.env) is True:
-        print(f"✅ ElasticSearch server is up and running [env='{args.env}'].")
+    if args.env:
+        if index.test(engine_name=args.env) is True:
+            print(f"✅ ElasticSearch server is up and running [env='{args.env}'].")
+        else:
+            print(f"❌ ElasticSearch server is down or unreachable [env='{args.env}'].")
     else:
-        print(f"❌ ElasticSearch server is down or unreachable [env='{args.env}'].")
+        for engine in index.engine.keys():
+            if index.test(engine_name=engine) is True:
+                print(f"✅ ElasticSearch server is up and running [env='{engine}'].")
+            else:
+                print(f"❌ ElasticSearch server is down or unreachable [env='{engine}'].")
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -163,29 +170,34 @@ def cmd_index_copy(args):
 
     # Fetch context objects
     index = args.ctx.index
+    gz = args.use_gzip
+    r  = args.replace_existing
+    f  = args.force
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Copy ElasticSearch index.")
 
     # Execute command:
     # - Copy ElasticSearch index from source to destination
-    # index.copy_index_across_engines(
-    #     source_engine_name = args.from_env,
-    #     target_engine_name = args.to_env,
-    #     index_name = args.index_name,
-    #     rename_to  = args.rename_to,
-    #     chunk_size = args.chunk_size
-    # )
-    index.copy_index_across_engines(
-        index_name       = args.index_name,
-        source_engine    = args.from_env,
-        target_engine    = args.to_env,
-        rename_to        = args.rename_to,
-        chunk_size       = args.chunk_size,
-        use_gzip         = args.use_gzip,
-        replace_existing = args.replace_existing,
-        force            = args.force
-    )
+    if args.alias_pattern is None:
+        index.copy_index_across_engines(
+            index_name       = args.index_name,
+            source_engine    = args.from_env,
+            target_engine    = args.to_env,
+            rename_to        = args.rename_to,
+            chunk_size       = args.chunk_size,
+            use_gzip         = gz,
+            replace_existing = r,
+            force            = f
+        )
+    else:
+        index.copy_aliases_across_engines(
+            source_engine    = args.from_env,
+            target_engine    = args.to_env,
+            alias_pattern    = args.alias_pattern,
+            replace_existing = r,
+            force            = f
+        )
 
     # Print footers
     print("🖥️  ~ Done.")

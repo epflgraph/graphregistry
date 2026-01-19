@@ -247,11 +247,12 @@ cli_definitions: Dict[str, Any] = {
                 help = "Copy index across ElasticSearch servers.",
                 func = cmd_index_copy,
                 args = [
-                    dict(flags = ('--index_name',), kwargs = dict(required=True,  type=str, help="Name of the index to copy.")),
-                    dict(flags = ('--from_env'  ,), kwargs = dict(required=False, type=str, default='test',  help="Source environment.")),
-                    dict(flags = ('--to_env'    ,), kwargs = dict(required=False, type=str, default='prod',  help="Target environment.")),
-                    dict(flags = ('--rename_to' ,), kwargs = dict(required=False, type=str, default=None,    help="Rename index to this name on target server.")),
-                    dict(flags = ('--chunk_size',), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to copy per batch (default=1000000).")),
+                    dict(flags = ('--index_name'   ,), kwargs = dict(required=False, type=str, default=None,   help="Name of the index to copy.")),
+                    dict(flags = ('--from_env'     ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
+                    dict(flags = ('--to_env'       ,), kwargs = dict(required=False, type=str, default='prod', help="Target environment.")),
+                    dict(flags = ('--rename_to'    ,), kwargs = dict(required=False, type=str, default=None,   help="Rename index to this name on target server.")),
+                    dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000,   help="Number of documents to copy per batch (default=1000000).")),
+                    dict(flags = ('--alias_pattern',), kwargs = dict(required=False, type=str, default=None,   help="Name of the alias to copy.")),
                     dict(flags = ('--use_gzip'        , '-gz'), kwargs = dict(action='store_true', help="Compress exported data files using GZIP.")),
                     dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
                     dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
