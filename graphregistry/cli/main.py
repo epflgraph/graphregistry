@@ -5,7 +5,7 @@ from graphregistry.cli.register          import register
 from graphregistry.common.config         import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.clients.mysql         import GraphDB
 from graphregistry.clients.elasticsearch import GraphES
-from graphregistry.core.registry         import GraphRegistry
+# from graphregistry.core.registry         import GraphRegistry
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -33,9 +33,9 @@ def main(argv=None) -> int:
     scores_config = ScoresConfig()
     db       = GraphDB()
     index    = GraphES()
-    registry = GraphRegistry()
+    # registry = GraphRegistry()
 
-    ctx = CLIContext(global_config=global_config, index_config=index_config, scores_config=scores_config, db=db, index=index, registry=registry)
+    ctx = CLIContext(global_config=global_config, index_config=index_config, scores_config=scores_config, db=db, index=index) #, registry=registry)
     args.ctx = ctx   # attach to args for all subcommands
 
     try:
