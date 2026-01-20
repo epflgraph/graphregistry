@@ -1405,7 +1405,7 @@ class GraphDB():
                 if ignore_existing:
                     with open(file_path, 'r') as file:
                         file_data = file.read()
-                    if 'INSERT IGNORE INTO' not in file_data:
+                    if 'INSERT INTO' in file_data:
                         sysmsg.warning(f"Imposing 'INSERT IGNORE' for file: {file_path}")
                         file_data = file_data.replace('INSERT INTO ', 'INSERT IGNORE INTO ')
                         with open(file_path, 'w') as file:
