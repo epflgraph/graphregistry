@@ -1137,6 +1137,7 @@ class GraphDB():
 
         # Fix auto increment issues
         create_table_sql = create_table_sql.replace("`row_id` int NOT NULL AUTO_INCREMENT,", "`row_id` int NOT NULL AUTO_INCREMENT UNIQUE KEY,")
+        create_table_sql = create_table_sql.replace("`row_id` int unsigned NOT NULL AUTO_INCREMENT,", "`row_id` int NOT NULL AUTO_INCREMENT UNIQUE KEY,")
         create_table_sql = re.sub(r"AUTO_INCREMENT=\d+", "AUTO_INCREMENT=1", create_table_sql)
 
         # Extract only the keys definition chunk
@@ -1405,6 +1406,7 @@ class GraphDB():
                     with open(file_path, 'r') as file:
                         file_data = file.read()
                     if 'INSERT IGNORE INTO' not in file_data:
+                        sysmsg.warning(f"Imposing 'INSERT IGNORE' for file: {file_path}")
                         file_data = file_data.replace('INSERT INTO ', 'INSERT IGNORE INTO ')
                         with open(file_path, 'w') as file:
                             file.write(file_data)
@@ -1693,8 +1695,7 @@ class GraphDB():
             "table_schema", "table_name", "engine", "table_collation", "row_format",
             "table_rows", "data_length", "index_length", "total_bytes",
             "column_count", "nullable_columns", "columns_with_default",
-            "index_count", "unique_index_count",
-            "avg_row_length", "create_time", "update_time"
+            "index_count", "unique_index_count", "avg_row_length"
         ]
 
         comparison_sql_template = """
@@ -1735,9 +1736,8 @@ class GraphDB():
                 WHERE s.table_schema = it.table_schema AND s.table_name = it.table_name
                 ) AS unique_index_count,
 
-                it.avg_row_length,
-                it.create_time,
-                it.update_time
+                it.avg_row_length
+
             FROM information_schema.tables it
             WHERE it.table_schema = '%s'
             AND it.table_name = '%s'
@@ -1824,7 +1824,7 @@ class GraphDB():
         # -------------------------
         # Build comparison table rows
         # -------------------------
-        OK, WARN, ERR = "✅ ", "⚠️", "❌"
+        OK, WARN, ERR = "✅ ", "⚠️", "❌ "
 
         def _row(metric, a, b, formatter, sev_on_diff):
             if a == b:
@@ -1851,17 +1851,13 @@ class GraphDB():
             rows.append(_row("row_count (exact)", src.get("exact_row_count"), tgt.get("exact_row_count"), _fmt, ERR))
 
         # Estimate (FYI)
-        rows.append(_row("table_rows (estimate)", src.get("table_rows"), tgt.get("table_rows"), _fmt, WARN))
+        rows.append(_row("table_rows (estimate)", src.get("table_rows"), tgt.get("table_rows"), _fmt, WARN if exact_row_count else ERR))
 
         # Footprint (warning)
         rows.append(_row("data_length", src.get("data_length"), tgt.get("data_length"), _fmt_bytes, WARN))
         rows.append(_row("index_length", src.get("index_length"), tgt.get("index_length"), _fmt_bytes, WARN))
         rows.append(_row("total_bytes", src.get("total_bytes"), tgt.get("total_bytes"), _fmt_bytes, WARN))
         rows.append(_row("avg_row_length", src.get("avg_row_length"), tgt.get("avg_row_length"), _fmt, WARN))
-
-        # Timestamps (warning)
-        rows.append(_row("create_time", src.get("create_time"), tgt.get("create_time"), _fmt_dt, WARN))
-        rows.append(_row("update_time", src.get("update_time"), tgt.get("update_time"), _fmt_dt, WARN))
 
         # -------------------------
         # Display as dataframe
