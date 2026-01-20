@@ -16,4 +16,4 @@ class CLIContext:
     scores_config : "ScoresConfig"
     db       : "GraphDB"
     index    : "GraphES"
-    registry : "GraphRegistry"
+    # registry : "GraphRegistry"
