@@ -255,3 +255,4 @@ node_modules/
 *.crt
 ./setup.sh
 package-lock.json
+docker-compose.yml
