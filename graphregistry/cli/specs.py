@@ -1,4 +1,8 @@
 from typing import Any, Dict
+
+from graphregistry.cli.cmd_ai import (
+    cmd_ai_test,
+)
 from graphregistry.cli.cmd_airflow import (
     cmd_airflow_sync,
     cmd_airflow_status,
@@ -42,6 +46,22 @@ global_common_args = {
 # CLI Definitions for all Subcommands and Arguments #
 #===================================================#
 cli_definitions: Dict[str, Any] = {
+
+    #---------------------#
+    # Domain: ai          #
+    #---------------------#
+    'ai' : dict(
+        help = "Test GraphAI service.",
+        common_args = dict(),
+        commands = {
+            'test' : dict(
+                help = "Test GraphAI service.",
+                func = cmd_ai_test,
+                args = [],
+                common_args = []
+            )
+        }
+    ),
 
     #---------------------#
     # Domain: airflow     #

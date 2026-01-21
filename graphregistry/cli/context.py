@@ -17,3 +17,5 @@ class CLIContext:
     db       : "GraphDB"
     index    : "GraphES"
     # registry : "GraphRegistry"
+    ai       : "GraphAI"
+    graphai_auth_token : str
