@@ -256,3 +256,4 @@ node_modules/
 ./setup.sh
 package-lock.json
 docker-compose.yml
+config/config_graphai_client.json
