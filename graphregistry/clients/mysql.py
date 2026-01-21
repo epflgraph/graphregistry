@@ -564,7 +564,9 @@ class GraphDB():
         # If verbose is enabled, print the command being executed
         if verbose:
             print(f"\n\033[96m⚙️ Executing query:\033[0m")
-            print(f"\n\t{query.strip().replace('\n','\n\t')}\n")
+            # print(f"\n\t{query.strip().replace('\n','\n\t')}\n")
+            formatted = query.strip().replace("\n", "\n\t")
+            print(f"\n\t{formatted}\n")
 
         # Run the command and capture stdout and stderr
         result = subprocess.run(shell_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
