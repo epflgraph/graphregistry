@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from graphregistry.clients.mysql import GraphDB
     from graphregistry.clients.elasticsearch import GraphES
     from graphregistry.core.registry import GraphRegistry
+    import graphai_client as GraphAI
 
 @dataclass
 class CLIContext:
@@ -16,6 +17,6 @@ class CLIContext:
     scores_config : "ScoresConfig"
     db       : "GraphDB"
     index    : "GraphES"
-    # registry : "GraphRegistry"
+    registry : "GraphRegistry"
     ai       : "GraphAI"
     graphai_auth_token : str
