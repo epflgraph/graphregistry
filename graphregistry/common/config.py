@@ -44,6 +44,8 @@ class GlobalConfig:
                 'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
             }
         }
+        self.mysql_schema_names['xaas_coresrv'] = self.mysql_schema_names['test']
+        self.mysql_schema_names['xaas_prod']    = self.mysql_schema_names['prod']
 
         # Assign to local variables (to act as aliases)
         self.schema_ontology = self.mysql_schema_names['test']['ontology']
@@ -63,6 +65,7 @@ class GlobalConfig:
             'Course'         : self.schema_registry,
             'Lecture'        : self.schema_lectures,
             'MOOC'           : self.schema_registry,
+            'Notebook'       : self.schema_registry,
             'Person'         : self.schema_registry,
             'Publication'    : self.schema_registry,
             'Slide'          : self.schema_lectures,
@@ -455,6 +458,12 @@ class ScoresConfig:
 
         # Fetch score edge tuples
         self.settings['scored_edge_tuples'] = scores_config['scored-edge-tuples']
+
+        # Create reverse mapping too
+        self.settings['scored_edge_tuple_to_class_mapping'] = {}
+        for edge_class in self.settings['scored_edge_tuples']:
+            for edge_tuple in self.settings['scored_edge_tuples'][edge_class]:
+                self.settings['scored_edge_tuple_to_class_mapping'][tuple(edge_tuple)] = edge_class
 
     # Print method
     def print(self):

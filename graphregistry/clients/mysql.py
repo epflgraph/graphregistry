@@ -65,10 +65,6 @@ class GraphDB():
             self._initialized = True
 
         # Initiate the MySQL engines
-        # self.params_test, self.engine_test = self.initiate_engine(glbcfg.settings['mysql']['server_test'])
-        # self.params_prod, self.engine_prod = self.initiate_engine(glbcfg.settings['mysql']['server_prod'])
-        # self.params = {'test': self.params_test, 'prod': self.params_prod}
-        # self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
         self.params_test        , self.engine_test         = self.initiate_engine('test')
         self.params_prod        , self.engine_prod         = self.initiate_engine('prod')
         self.params_xaas_prod   , self.engine_xaas_prod    = self.initiate_engine('xaas_prod')
@@ -94,16 +90,16 @@ class GraphDB():
 
         # Build base shell command (MySQL)
         self.base_command_mysql = {
-            'test'         : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_test[        'username'], f'--password={os.getenv("MYSQL_TEST_PWD"        )}', '-h', self.params_test[        'host_address'], '-P', str(self.params_test[        'port'])],
-            'prod'         : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_prod[        'username'], f'--password={os.getenv("MYSQL_PROD_PWD"        )}', '-h', self.params_prod[        'host_address'], '-P', str(self.params_prod[        'port'])],
-            'xaas_prod'    : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_xaas_prod[   'username'], f'--password={os.getenv("MYSQL_XAAS_PROD_PWD"   )}', '-h', self.params_xaas_prod[   'host_address'], '-P', str(self.params_xaas_prod[   'port'])],
-            'xaas_coresrv' : [glbcfg.settings['mysql']['client_bin'], '-u', self.params_xaas_coresrv['username'], f'--password={os.getenv("MYSQL_XAAS_CORESRV_PWD")}', '-h', self.params_xaas_coresrv['host_address'], '-P', str(self.params_xaas_coresrv['port'])],
+            'test'         : glbcfg.settings['mysql']['client_bin'].split(' ') + ['-u', self.params_test[        'username'], f'--password={os.getenv("MYSQL_TEST_PWD"        )}', '-h', self.params_test[        'host_address'], '-P', str(self.params_test[        'port'])],
+            'prod'         : glbcfg.settings['mysql']['client_bin'].split(' ') + ['-u', self.params_prod[        'username'], f'--password={os.getenv("MYSQL_PROD_PWD"        )}', '-h', self.params_prod[        'host_address'], '-P', str(self.params_prod[        'port'])],
+            'xaas_prod'    : glbcfg.settings['mysql']['client_bin'].split(' ') + ['-u', self.params_xaas_prod[   'username'], f'--password={os.getenv("MYSQL_XAAS_PROD_PWD"   )}', '-h', self.params_xaas_prod[   'host_address'], '-P', str(self.params_xaas_prod[   'port'])],
+            'xaas_coresrv' : glbcfg.settings['mysql']['client_bin'].split(' ') + ['-u', self.params_xaas_coresrv['username'], f'--password={os.getenv("MYSQL_XAAS_CORESRV_PWD")}', '-h', self.params_xaas_coresrv['host_address'], '-P', str(self.params_xaas_coresrv['port'])],
         }
 
         # Build base shell command (MySQLDump)
         self.base_command_mysqldump = {
-            'test': [glbcfg.settings['mysql']['dump_bin'], '-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
-            'prod': [glbcfg.settings['mysql']['dump_bin'], '-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
+            'test': glbcfg.settings['mysql']['dump_bin'].split(' ') + ['-u', self.params_test['username'], f'--password={os.getenv("MYSQL_TEST_PWD")}', '-h', self.params_test['host_address'], '-P', str(self.params_test['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
+            'prod': glbcfg.settings['mysql']['dump_bin'].split(' ') + ['-u', self.params_prod['username'], f'--password={os.getenv("MYSQL_PROD_PWD")}', '-h', self.params_prod['host_address'], '-P', str(self.params_prod['port']), '-v', '--no-create-db', '--no-create-info', '--skip-lock-tables', '--single-transaction'],
         }
 
     #-------------------------------------#
@@ -130,7 +126,7 @@ class GraphDB():
     #-------------------------------#
     # Method: Test MySQL connection #
     #-------------------------------#
-    def test(self, engine_name='test'):
+    def test(self, engine_name='xaas_coresrv'):
         """
         Test the MySQL connection by executing a simple query.
         """
@@ -928,13 +924,13 @@ class GraphDB():
     # Method: Print list of tables in the cache    #
     #----------------------------------------------#
     def print_tables_in_cache(self):
-        self.print_tables_in_schema(engine_name='test', schema_name=glbcfg.settings['mysql']['schema_cache'])
+        self.print_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['schema_cache'])
 
     #----------------------------------------------#
     # Method: Print list of tables in the test     #
     #----------------------------------------------#
     def print_tables_in_test(self):
-        self.print_tables_in_schema(engine_name='test', schema_name=glbcfg.settings['mysql']['schema_test'])
+        self.print_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['schema_test'])
 
     #-------------------------------------------------#
     # Method: Apply data types to a table (from JSON) #
@@ -1062,20 +1058,20 @@ class GraphDB():
 
         # Drop the target table if it exists
         if drop_table:
-            self.execute_query(engine_name='test', query=f"DROP TABLE IF EXISTS {target_schema}.{target_table}")
+            self.execute_query(engine_name='xaas_coresrv', query=f"DROP TABLE IF EXISTS {target_schema}.{target_table}")
 
         # If use_replace, set the REPLACE statement
         insert_or_replace_statement = 'REPLACE' if use_replace else 'INSERT'
         
         # Create the target table
-        self.execute_query(engine_name='test', query=f"CREATE TABLE IF NOT EXISTS {target_schema}.{target_table} AS SELECT * FROM {source_schema}.{source_view} WHERE 1=0")
+        self.execute_query(engine_name='xaas_coresrv', query=f"CREATE TABLE IF NOT EXISTS {target_schema}.{target_table} AS SELECT * FROM {source_schema}.{source_view} WHERE 1=0")
 
         # Set auto increment column
         if auto_increment_column:
-            self.execute_query(engine_name='test', query=f"ALTER TABLE {target_schema}.{target_table} MODIFY COLUMN row_id INT AUTO_INCREMENT UNIQUE KEY")
+            self.execute_query(engine_name='xaas_coresrv', query=f"ALTER TABLE {target_schema}.{target_table} MODIFY COLUMN row_id INT AUTO_INCREMENT UNIQUE KEY")
 
         # Populate the target table
-        self.execute_query_in_shell(engine_name='test', query=f"{insert_or_replace_statement} INTO {target_schema}.{target_table} SELECT * FROM {source_schema}.{source_view}")
+        self.execute_query_in_shell(engine_name='xaas_coresrv', query=f"{insert_or_replace_statement} INTO {target_schema}.{target_table} SELECT * FROM {source_schema}.{source_view}")
 
         # Print the elapsed time
         if display_elapsed_time:
@@ -1085,13 +1081,13 @@ class GraphDB():
         if datatypes_json:
             if verbose:
                 sysmsg.info(f"Applying datatypes to {target_schema}.{target_table} ...")
-            self.apply_datatypes(engine_name='test', schema_name=target_schema, table_name=target_table, datatypes_json=datatypes_json, display_elapsed_time=display_elapsed_time, estimated_num_rows=estimated_num_rows)
+            self.apply_datatypes(engine_name='xaas_coresrv', schema_name=target_schema, table_name=target_table, datatypes_json=datatypes_json, display_elapsed_time=display_elapsed_time, estimated_num_rows=estimated_num_rows)
 
         # Create keys JSON
         if keys_json:
             if verbose:
                 sysmsg.info(f"Applying keys to {target_schema}.{target_table} ...")
-            self.apply_keys(engine_name='test', schema_name=target_schema, table_name=target_table, keys_json=keys_json, display_elapsed_time=display_elapsed_time, estimated_num_rows=estimated_num_rows)
+            self.apply_keys(engine_name='xaas_coresrv', schema_name=target_schema, table_name=target_table, keys_json=keys_json, display_elapsed_time=display_elapsed_time, estimated_num_rows=estimated_num_rows)
 
     #----------------------------------------------#
     # Method: Materialise a view to the cache      #
@@ -1099,7 +1095,7 @@ class GraphDB():
     def update_table_from_view(self, engine_name, source_schema, source_view, target_schema, target_table, verbose=False):
 
         # Fetch list of columns in the source view
-        source_columns = self.get_column_names(engine_name='test', schema_name=source_schema, table_name=source_view)
+        source_columns = self.get_column_names(engine_name='xaas_coresrv', schema_name=source_schema, table_name=source_view)
         
         # Generate the SQL query
         SQLQuery = f"REPLACE INTO {target_schema}.{target_table} ({', '.join(source_columns)}) SELECT * FROM {source_schema}.{source_view};"
@@ -1109,7 +1105,7 @@ class GraphDB():
             sysmsg.info(f"Updating table '{target_table}' from view '{source_view}' ...")
 
         # Execute the query
-        self.execute_query_in_shell(engine_name='test', query=f"REPLACE INTO {target_schema}.{target_table} ({', '.join(source_columns)}) SELECT * FROM {source_schema}.{source_view}")
+        self.execute_query_in_shell(engine_name='xaas_coresrv', query=f"REPLACE INTO {target_schema}.{target_table} ({', '.join(source_columns)}) SELECT * FROM {source_schema}.{source_view}")
 
         # Print status
         if verbose:

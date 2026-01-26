@@ -11,6 +11,7 @@ from graphregistry.cli.cmd_airflow import (
     cmd_airflow_expire,
 )
 from graphregistry.cli.cmd_cache import (
+    cmd_cache_update,
     cmd_cache_to_process,
 )
 from graphregistry.cli.cmd_db import (
@@ -106,6 +107,7 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--object_type',   ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
                     dict(flags=('--older_than',    ), kwargs=dict(required=False, type=int, help="Set 'has_expired' flag to 1 for objects older than <int> in days (default=90).")),
                     dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, help="Limit number of objects to process (default=100).")),
+                    dict(flags=('--count',   '-c'  ), kwargs=dict(action='store_true', help="Show number of items that match the input conditions (no execution).")),
                     dict(flags=('--verbose', '-v'  ), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
                 ],
                 common_args = []
@@ -120,6 +122,17 @@ cli_definitions: Dict[str, Any] = {
         help = "Cache-related operations (pending items, recalculation, etc.).",
         common_args = dict(),
         commands = {
+            'update' : dict(
+                help = "Operations on the 'to process' queue for cache jobs.",
+                func = cmd_cache_update,
+                args = [
+                    dict(flags=('--formulas',  ), kwargs=dict(required=False, type=str, help="...")),
+                    dict(flags=('--actions',   ), kwargs=dict(required=False, type=str, help="...")),
+                    dict(flags=('--matrix',    ), kwargs=dict(action='store_true', help="Show number of items waiting to be processed.")),
+                    dict(flags=('--count', '-c'), kwargs=dict(action='store_true', help="Show number of items waiting to be processed."))
+                ],
+                common_args = []
+            ),
             'to_process' : dict(
                 help = "Operations on the 'to process' queue for cache jobs.",
                 func = cmd_cache_to_process,

@@ -5,7 +5,7 @@ from graphregistry.cli.register          import register
 from graphregistry.common.config         import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.clients.mysql         import GraphDB
 from graphregistry.clients.elasticsearch import GraphES
-# from graphregistry.core.registry         import GraphRegistry
+from graphregistry.core.registry         import GraphRegistry
 
 # Import GraphAI client
 import graphai_client as GraphAI
@@ -39,7 +39,7 @@ def main(argv=None) -> int:
     scores_config = ScoresConfig()
     db       = GraphDB()
     index    = GraphES()
-    # registry = GraphRegistry()
+    registry = GraphRegistry()
     ai       = GraphAI
 
     # Login to GraphAI and get auth token
@@ -50,11 +50,12 @@ def main(argv=None) -> int:
         global_config = global_config,
         index_config  = index_config,
         scores_config = scores_config,
-        db    = db,
-        index = index,
-        ai    = ai,
+        db       = db,
+        index    = index,
+        registry = registry,
+        ai       = ai,
         graphai_auth_token = graphai_auth_token
-    ) #, registry=registry)
+    )
     args.ctx = ctx   # attach to args for all subcommands
 
     return args.func(args) or 0
