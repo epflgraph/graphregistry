@@ -1,12 +1,23 @@
     SELECT n.institution_id, n.object_type, n.object_id, 'n/a' AS field_language, 'is_active_unit' AS field_name,
+           
            CASE
            WHEN EXISTS (SELECT 1
-                          FROM [[registry]].Data_N_Object_T_CustomFields cf
-                         WHERE (cf.object_id, cf.object_type, cf.field_language, cf.field_name)
-                             = (n.object_id, 'Unit', 'n/a', 'date_terminated')
-                           AND cf.field_value IS NOT NULL
-                           AND CAST(cf.field_value AS DATETIME) < NOW()
-           ) THEN 0 ELSE 1 END AS field_value
+                          FROM (SELECT cf.object_id,
+                                  CASE
+                                  WHEN cf.field_value REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+                                  THEN STR_TO_DATE(cf.field_value, '%Y-%m-%d')
+                                  WHEN cf.field_value REGEXP '^[0-9]{4}-[0-9]{2}-[0-9]{2}[ T][0-9]{2}:[0-9]{2}:[0-9]{2}$'
+                                  THEN STR_TO_DATE(cf.field_value, '%Y-%m-%d %H:%i:%s')
+                                  ELSE NULL END AS dt
+                                  FROM [[registry]].Data_N_Object_T_CustomFields cf
+                                 WHERE cf.object_type    = 'Unit'
+                                   AND cf.field_language = 'n/a'
+                                   AND cf.field_name     = 'date_terminated'
+                                   AND cf.field_value IS NOT NULL) AS dt_cf
+                         WHERE dt_cf.object_id = n.object_id
+                           AND dt_cf.dt IS NOT NULL
+                           AND dt_cf.dt < NOW()) THEN 0 ELSE 1 END AS field_value
+
       FROM [[registry]].Nodes_N_Object n
 
         -- Check object flags
