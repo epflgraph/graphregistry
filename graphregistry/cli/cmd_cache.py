@@ -40,6 +40,58 @@ def cmd_cache_update(args):
 #-----------------------------------------#
 # Handler: Operations on to_process flags #
 #-----------------------------------------#
+def cmd_cache_build(args):
+    """
+    Handle:
+      graphregistry cache build [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Build index field tables.")
+
+    # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ()
+
+    # -----------------#
+    # Execute commands #
+    # -----------------#
+    registry.indexdb.build(actions=actions)
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_cache_patch(args):
+    """
+    Handle:
+      graphregistry cache patch [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Patch index field tables.")
+
+    # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ()
+
+    # -----------------#
+    # Execute commands #
+    # -----------------#
+    registry.indexdb.patch(actions=actions)
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
 def cmd_cache_to_process(args):
     """
     Handle:
@@ -90,3 +142,36 @@ def cmd_cache_to_process(args):
 
         # Print footers
         print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_cache_debug(args):
+    """
+    Handle:
+      graphregistry cache debug
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+    db = args.ctx.db
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. General debug function.")
+
+    # ------------------#
+    # Function to debug #
+    # ------------------#
+    # registry.indexdb.idoclinks['Notebook']['Person']['ORG'].horizontal_patch_elasticsearch(actions=('print'))
+    # registry.indexdb.doclinks_vertical_patch_all(actions=('eval'))
+    # db.print_database_stats(engine_name='xaas_coresrv', schema_name='graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
+    # db.print_database_stats(engine_name='xaas_coresrv', schema_name='elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
+    # registry.indexdb.idoclinks['Category']['Course']['SEM'].horizontal_patch(actions=('eval', 'commit', 'print'))
+    
+    registry.cachemanager.calculate_scores_matrix(  from_object_type='Category', to_object_type='Category', actions=('print', 'commit'))
+    registry.cachemanager.consolidate_scores_matrix(from_object_type='Category', to_object_type='Category', update_averages=True, score_thr=0.1, actions=('commit'))
+
+
+
+    # Print footers
+    print("🖥️  ~ Done.")

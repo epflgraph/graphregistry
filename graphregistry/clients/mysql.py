@@ -287,6 +287,19 @@ class GraphDB():
         # Return the column names
         return column_names
 
+    #-------------------------------------#
+    # Method: Check if column name exists #
+    #-------------------------------------#
+    def has_column(self, engine_name, schema_name, table_name, column_name):
+        query = f"""
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = '{schema_name}'
+              AND TABLE_NAME   = '{table_name}'
+              AND COLUMN_NAME  = '{column_name}'
+        """
+        return len(self.execute_query(engine_name=engine_name, query=query)) > 0
+
     #-----------------------------------------#
     # Method: Get column datatypes of a table #
     #-----------------------------------------#
@@ -389,7 +402,7 @@ class GraphDB():
                   FROM (
                         {query}
                        ) t
-            INNER JOIN {target_table_path} j
+             LEFT JOIN {target_table_path} j
                     ON {' AND '.join([f"t.{c} = j.{c}" for c in key_column_names])}
               GROUP BY t.{', t.'.join(eval_column_names)}
             """
@@ -2408,7 +2421,7 @@ class GraphDB():
     def print_database_stats(self, engine_name, schema_name, re_include=[], re_exclude=[]):
 
         # Get list of tables in the schema
-        list_of_tables = self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name)
+        list_of_tables = sorted(self.get_tables_in_schema(engine_name=engine_name, schema_name=schema_name))
 
         # Apply include/exclude filters
         if len(re_include) > 0:

@@ -1,7 +1,18 @@
 {
     "nodes": [
-        ["Notebook"   , true, true]
+        ["Course"     , true, true],
+        ["Notebook"   , true, true],
+        ["Person"     , true, true],
+        ["Startup"    , true, true],
+        ["Unit"       , true, true],
+        ["Widget"     , true, true]
     ],
     "edges": [
+        ["Course"     , "Person"  , true],
+        ["Lecture"    , "Widget"  , true],
+        ["Notebook"   , "Person"  , true],
+        ["Person"     , "Unit"    , true],
+        ["Startup"    , "Person"  , true],
+        ["Unit"       , "Unit"    , true]
     ]
 }

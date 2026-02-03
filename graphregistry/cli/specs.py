@@ -8,11 +8,19 @@ from graphregistry.cli.cmd_airflow import (
     cmd_airflow_status,
     cmd_airflow_to_process,
     cmd_airflow_config,
+    cmd_airflow_reset,
     cmd_airflow_expire,
+    cmd_airflow_refresh,
 )
 from graphregistry.cli.cmd_cache import (
     cmd_cache_update,
+    cmd_cache_build,
+    cmd_cache_patch,
     cmd_cache_to_process,
+    cmd_cache_debug,
+)
+from graphregistry.cli.cmd_config import (
+    cmd_config_index,
 )
 from graphregistry.cli.cmd_db import (
     cmd_db_test,
@@ -100,6 +108,16 @@ cli_definitions: Dict[str, Any] = {
                 ],
                 common_args = []
             ),
+            'reset' : dict(
+                help = "...",
+                func = cmd_airflow_reset,
+                args = [
+                    dict(flags=('--object_type', ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
+                    dict(flags=('--options',     ), kwargs=dict(required=False, type=str, help="...")),
+                    dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
+                ],
+                common_args = []
+            ),
             'expire' : dict(
                 help = "Set 'has_expired' flag to 1 for objects based on date when they were last cached.",
                 func = cmd_airflow_expire,
@@ -109,6 +127,16 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, help="Limit number of objects to process (default=100).")),
                     dict(flags=('--count',   '-c'  ), kwargs=dict(action='store_true', help="Show number of items that match the input conditions (no execution).")),
                     dict(flags=('--verbose', '-v'  ), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
+                ],
+                common_args = []
+            ),
+            'refresh' : dict(
+                help = "...",
+                func = cmd_airflow_refresh,
+                args = [
+                    dict(flags=('--object_type',           ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
+                    dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', help="Show number of items that match the input conditions (no execution).")),
+                    dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
                 ],
                 common_args = []
             )
@@ -133,6 +161,22 @@ cli_definitions: Dict[str, Any] = {
                 ],
                 common_args = []
             ),
+            'build' : dict(
+                help = "...",
+                func = cmd_cache_build,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="..."))
+                ],
+                common_args = []
+            ),
+            'patch' : dict(
+                help = "...",
+                func = cmd_cache_patch,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="..."))
+                ],
+                common_args = []
+            ),
             'to_process' : dict(
                 help = "Operations on the 'to process' queue for cache jobs.",
                 func = cmd_cache_to_process,
@@ -141,6 +185,28 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--reset', '-r'), kwargs=dict(action='store_true', help="Reset the 'to process' queue / counters."))
                 ],
                 common_args = []
+            ),
+            'debug' : dict(
+                help = "...",
+                func = cmd_cache_debug,
+                args = [],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
+    # Domain: config      #
+    #---------------------#
+    'config' : dict(
+        help = "...",
+        common_args = {},
+        commands = {
+            'index' : dict(
+                help = "Print out index config.",
+                func = cmd_config_index,
+                args = [],
+                common_args = [],
             )
         }
     ),
