@@ -154,6 +154,34 @@ def cmd_airflow_config(args):
 #-----------------------------------------#
 # Handler: Operations on to_process flags #
 #-----------------------------------------#
+def cmd_airflow_reset(args):
+    """
+    Handle:
+      graphregistry airflow reset [...]
+    """
+
+    # Fetch context objects
+    gr = args.ctx.registry
+
+    # Get input options
+    doc_type = args.object_type
+    options  = tuple(args.options.split(','))  if args.options else ()
+    v = args.verbose
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Reset 'to_process' flags.")
+
+    # Execute command:
+    # - ...
+    gr.orchestrator.reset(options=options, doc_type=doc_type, verbose=v)
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
 def cmd_airflow_expire(args):
     """
     Handle:
@@ -187,6 +215,34 @@ def cmd_airflow_expire(args):
         limit_per_type = args.limit_per_type,
         count_only = c,
         verbose    = v
+    )
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_airflow_refresh(args):
+    """
+    Handle:
+      graphregistry airflow refresh [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+    refresh_checksums = args.refresh_checksums
+    v = args.verbose
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")
+
+    # Execute command:
+    # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
+    registry.orchestrator.refresh(
+        doc_type = args.object_type,
+        refresh_checksums = args.refresh_checksums,
+        verbose = v
     )
 
     # Print footers

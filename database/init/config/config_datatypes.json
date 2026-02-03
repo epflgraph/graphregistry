@@ -203,7 +203,10 @@
             "quiz_type"             : "ENUM('MultiSelect', 'SingleSelect')",
             "sequential_id"         : "SMALLINT UNSIGNED",
             "study_level"           : "ENUM('Bachelor', 'Master', 'HorsProgramme', 'Preparatory', 'Propedeutic')",
-            "vertical_id"           : "SMALLINT UNSIGNED"
+            "vertical_id"           : "SMALLINT UNSIGNED",
+            "notebook_type"         : "VARCHAR(128)",
+            "repository_id"         : "VARCHAR(128)",
+            "html_document_url"     : "VARCHAR(128)"
         }
     },
     "data-keys" : {
