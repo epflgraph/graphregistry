@@ -123,6 +123,9 @@ class IndexConfig:
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types
 
+        # Fetch data types for SQL field definitions
+        self.settings['data_types'] = index_config['data-types']
+
         #--------------------#
         # Fetch doc settings #
         #--------------------#
@@ -248,11 +251,13 @@ class IndexConfig:
 
                 # Fetch list of additional organisational-specific fields to display on the 'link' side of doc-links
                 # There are additional fields, so there's no defaulting to other fields
+                p2c_exists = False
                 list_of_fields = []
                 if doc_type               in index_config['fields']['links']['parent-child']:
                     if link_type          in index_config['fields']['links']['parent-child'][doc_type]:
                         if 'obj2obj'      in index_config['fields']['links']['parent-child'][doc_type][link_type]:
                             list_of_fields = index_config['fields']['links']['parent-child'][doc_type][link_type]['obj2obj']
+                        p2c_exists = True
 
                 # Assign list of fields to object's internal variables
                 graphsearch_obj2obj_fields = [
@@ -261,7 +266,7 @@ class IndexConfig:
                 ]
 
                 # Assign to parsed options dictionary
-                if len(graphsearch_obj2obj_fields)>0:
+                if p2c_exists: # len(graphsearch_obj2obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_fields
 
                 #--------------------------------------------------------------------#
@@ -276,7 +281,7 @@ class IndexConfig:
                             graphsearch_obj2obj_order_by = index_config['fields']['links']['parent-child'][doc_type][link_type]['order']
 
                 # Assign to parsed options dictionary
-                if len(graphsearch_obj2obj_order_by)>0:
+                if p2c_exists: # len(graphsearch_obj2obj_order_by)>0
                     self.settings['graphsearch']['order_by']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_order_by
 
                 #----------------------------------------------------------#
