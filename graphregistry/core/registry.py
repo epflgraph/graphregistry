@@ -243,9 +243,9 @@ def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
         else:
             return None
 
-#----------------------------------#
+#==================================#
 # Class definition: Graph Registry #
-#----------------------------------#
+#==================================#
 class GraphRegistry():
 
     # Class variable to hold the single instance
@@ -279,63 +279,6 @@ class GraphRegistry():
         if print_config:
             idxcfg.print(compact=True)
             scrcfg.print()
-
-    # Help function
-    def help(self):
-        instructions = """
-
-        gr = GraphRegistry()
-
-        # Config object types to process
-        gr.orchestrator.config(
-            node_types = [('EPFL', 'Widget')],
-            edge_types = [('EPFL', 'Widget', 'EPFL', 'Lecture' ),
-                          ('EPFL', 'Widget', 'EPFL', 'Widget'  ),
-                          ('EPFL', 'Widget', 'Ont' , 'Category'),
-                          ('EPFL', 'Widget', 'Ont' , 'Concept' )],
-            sync  = False,
-            reset = False,
-            print = True
-        )
-
-        gr.orchestrator.propagate()
-
-        gr.cachemanager.eval()
-
-        gr.cachemanager.apply_views()
-        gr.cachemanager.apply_formulas()
-
-        gr.cachemanager.calculate_scores_matrix(  from_object_type='Widget', to_object_type='Widget')
-        gr.cachemanager.consolidate_scores_matrix(from_object_type='Widget', to_object_type='Widget')
-
-        gr.indexdb.cachebuilder.build_all(actions=('eval', 'commit'))
-
-        pp = gr.indexdb.PageProfile()
-        pp.patch(actions=('eval'))
-        pp.patch(actions=('commit'))
-
-        idoc = gr.indexdb.IndexDocs(doc_type='Widget')
-        idoc.create_table(actions=('print'))
-        idoc.patch(actions=('eval'))
-        idoc.patch(actions=('commit'))
-
-        doc_type     = 'Widget'
-        link_type    = 'Category'
-        link_subtype = 'SEM'
-
-        idoclink = gr.indexdb.IndexDocLinks(doc_type, link_type, link_subtype)
-        idoclink.set_engine('prod')
-        idoclink.create_table(actions=('commit'))
-        idoclink.vertical_patch(actions=('eval'))
-        idoclink.vertical_patch(actions=('commit'))
-        idoclink.horizontal_patch(actions=('print'))
-        idoclink.horizontal_patch(actions=('eval'))
-        idoclink.horizontal_patch(actions=('commit'))
-
-
-        """
-        print(instructions)
-        pass
 
     # Import data from JSON data
     def import_from_json(self, json_data, skip_concept_detection=False):
