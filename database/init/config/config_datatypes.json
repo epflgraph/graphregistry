@@ -131,16 +131,15 @@
             "external_url_fr" : "VARCHAR(255)",
             "external_url_de" : "VARCHAR(255)",
             "external_url_it" : "VARCHAR(255)",
-            "is_visible" : "TINYINT NOT NULL DEFAULT 0",
-            "object_created" : "DATETIME DEFAULT CURRENT_TIMESTAMP",
-            "object_updated" : "DATETIME DEFAULT NULL"
+            "is_visible"      : "TINYINT NOT NULL DEFAULT 0",
+            "object_created"  : "DATETIME DEFAULT CURRENT_TIMESTAMP",
+            "object_updated"  : "DATETIME DEFAULT NULL"
         },
         "doc_index" : {
-            "doc_institution"      : "VARCHAR(16) NOT NULL",
-            "doc_type"             : "VARCHAR(64) NOT NULL",
-            "doc_id"               : "VARCHAR(255) NOT NULL",
-            "include_code_in_name" : "TINYINT(1) NOT NULL",
-            "degree_score"         : "FLOAT NOT NULL"
+            "doc_institution" : "VARCHAR(16) NOT NULL",
+            "doc_type"        : "VARCHAR(64) NOT NULL",
+            "doc_id"          : "VARCHAR(255) NOT NULL",
+            "degree_score"    : "FLOAT NOT NULL"
         },
         "link_index" : {
             "doc_institution"  : "VARCHAR(16) NOT NULL",
@@ -152,61 +151,36 @@
             "link_id"          : "VARCHAR(255) NOT NULL",
             "semantic_score"   : "FLOAT NOT NULL",
             "degree_score"     : "FLOAT NOT NULL",
-            "row_score"        : "FLOAT NOT NULL",
-            "row_rank"         : "SMALLINT UNSIGNED NOT NULL"
+            "row_score"        : "FLOAT NOT NULL"
         },
-        "index_fields" : {
-            "depth"                 : "SMALLINT UNSIGNED",
-            "latest_academic_year"  : "VARCHAR(16)",
-            "latest_teaching_assignment_year" : "VARCHAR(16)",
-            "is_at_epfl"            : "TINYINT(1)",
-            "year"                  : "YEAR",
-            "is_active_unit"        : "TINYINT(1)",
-            "is_research_unit"      : "TINYINT(1)",
-            "subtype_rank"          : "SMALLINT UNSIGNED",
-            "sort_number"           : "SMALLINT UNSIGNED",
-            "is_active_affiliation" : "TINYINT(1)",
-            "current_position_rank" : "SMALLINT UNSIGNED",
-            "video_stream_url"      : "MEDIUMTEXT",
-            "video_duration"        : "FLOAT",
-            "creation_time"         : "DATETIME",
-            "update_time"           : "DATETIME",
-            "is_restricted"         : "TINYINT(1)",
-            "available_start_date"  : "DATETIME",
-            "available_end_date"    : "DATETIME",
-            "srt_subtitles_en"      : "MEDIUMTEXT",
-            "srt_subtitles_fr"      : "MEDIUMTEXT",
-            "gender"                : "ENUM('Male', 'Female')",
-            "published_in"          : "MEDIUMTEXT",
-            "publisher"             : "MEDIUMTEXT",
-            "domain"                : "ENUM('Basic Science', 'Environment', 'Life Science', 'Brain', 'Engineering', 'Urbanism', 'Computer Science', 'Business', 'Development', 'Misc', 'Water')",
-            "language"              : "ENUM('English', 'French', 'German', 'Italian', 'Portuguese')",
-            "level"                 : "ENUM('Bachelor', 'Hors Programme', 'Master', 'Preparatory', 'Propedeutic')",
-            "platform"              : "ENUM('coursera', 'courseraod', 'courseware', 'edx', 'edx edge', 'youtube')",
-            "thumbnail_image_url"   : "VARCHAR(255)",
-            "lecture_source"        : "ENUM('Course', 'MOOC')",
-            "teaching_formats"      : "ENUM('Course', 'MOOC', 'Course,MOOC')",
-            "name_en"               : "VARCHAR(255)",
-            "name_fr"               : "VARCHAR(255)",
-            "timestamps"            : "MEDIUMTEXT",
-            "timestamps_md5"        : "CHAR(32)",
-            "n_timestamps"          : "SMALLINT UNSIGNED",
-            "detection_sum_score"   : "FLOAT",
-            "detection_avg_score"   : "FLOAT",
-            "detection_max_score"   : "FLOAT",
-            "publication_id_v1"     : "VARCHAR(255)",
-            "chapter_id"            : "SMALLINT UNSIGNED",
-            "mainly_math_notation"  : "TINYINT(1)",
-            "mooc_id"               : "VARCHAR(128)",
-            "platform_name"         : "ENUM('coursera', 'courseraod', 'courseware', 'edx', 'edx edge', 'youtube')",
-            "quiz_filename"         : "VARCHAR(128)",
-            "quiz_type"             : "ENUM('MultiSelect', 'SingleSelect')",
-            "sequential_id"         : "SMALLINT UNSIGNED",
-            "study_level"           : "ENUM('Bachelor', 'Master', 'HorsProgramme', 'Preparatory', 'Propedeutic')",
-            "vertical_id"           : "SMALLINT UNSIGNED",
-            "notebook_type"         : "VARCHAR(128)",
-            "repository_id"         : "VARCHAR(128)",
-            "html_document_url"     : "VARCHAR(128)"
+        "es_doc_index" : {
+            "doc_type"     : "VARCHAR(64) NOT NULL",
+            "doc_id"       : "VARCHAR(255) NOT NULL",
+            "degree_score" : "FLOAT NOT NULL",
+            "short_code"   : "VARCHAR(32)",
+            "subtype_en"   : "VARCHAR(255)",
+            "subtype_fr"   : "VARCHAR(255)",
+            "name_en"      : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL",
+            "name_fr"      : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL",
+            "short_description_en" : "MEDIUMTEXT DEFAULT NULL",
+            "short_description_fr" : "MEDIUMTEXT DEFAULT NULL",
+            "long_description_en"  : "LONGTEXT DEFAULT NULL",
+            "long_description_fr"  : "LONGTEXT DEFAULT NULL"
+        },
+        "es_link_index" : {
+            "doc_type"     : "VARCHAR(64) NOT NULL",
+            "doc_id"       : "VARCHAR(255) NOT NULL",
+            "link_type"    : "VARCHAR(64) NOT NULL",
+            "link_subtype" : "ENUM('Parent-to-Child', 'Child-to-Parent', 'Semantic') NOT NULL",
+            "link_id"      : "VARCHAR(255) NOT NULL",
+            "link_rank"    : "INT UNSIGNED NOT NULL",
+            "link_name_en" : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL",
+            "link_name_fr" : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL",
+            "link_short_description_en" : "MEDIUMTEXT DEFAULT NULL",
+            "link_short_description_fr" : "MEDIUMTEXT DEFAULT NULL"
+        },
+        "common" : {
+            "row_id" : "INT UNSIGNED AUTO_INCREMENT NOT NULL"
         }
     },
     "data-keys" : {
@@ -237,8 +211,7 @@
             "institution_id"     : "PRIMARY KEY",
             "object_type"        : "PRIMARY KEY",
             "object_id"          : "PRIMARY KEY",
-            "concept_id"         : "PRIMARY KEY",
-            "detection_time_hms" : "PRIMARY KEY"
+            "concept_id"         : "PRIMARY KEY"
         },
         "doc_profile" : {
             "institution_id" : "PRIMARY KEY",
@@ -247,9 +220,9 @@
             "is_visible"     : "KEY"
         },
         "doc_index" : {
-            "doc_institution"      : "PRIMARY KEY",
-            "doc_type"             : "PRIMARY KEY",
-            "doc_id"               : "PRIMARY KEY"
+            "doc_institution" : "PRIMARY KEY",
+            "doc_type"        : "PRIMARY KEY",
+            "doc_id"          : "PRIMARY KEY"
         },
         "link_index" : {
             "doc_institution"  : "PRIMARY KEY",
@@ -260,35 +233,19 @@
             "link_subtype"     : "PRIMARY KEY",
             "link_id"          : "PRIMARY KEY"
         },
-        "index_vars" : {
-            "depth"                	: "KEY",
-            "latest_academic_year" 	: "KEY",
-            "is_at_epfl"           	: "KEY",
-            "year"                 	: "KEY",
-            "is_active_unit"       	: "KEY",
-            "is_research_unit"		: "KEY",
-            "subtype_rank"			: "KEY",
-            "is_active_affiliation" : "KEY",
-            "current_position_rank" : "KEY",
-            "gender"                : "KEY",
-            "domain"                : "KEY",
-            "language"              : "KEY",
-            "level"                 : "KEY",
-            "platform"              : "KEY",
-            "lecture_source"        : "KEY",
-            "name_en"               : "KEY",
-            "name_fr"               : "KEY",
-            "timestamps_md5"        : "KEY",
-            "n_timestamps"          : "KEY",
-            "chapter_id"            : "KEY",
-            "mainly_math_notation"  : "KEY",
-            "mooc_id"               : "KEY",
-            "platform_name"         : "KEY",
-            "quiz_filename"         : "KEY",
-            "quiz_type"             : "KEY",
-            "sequential_id"         : "KEY",
-            "study_level"           : "KEY",
-            "vertical_id"           : "KEY"
+        "es_doc_index" : {
+            "doc_type" : "PRIMARY KEY",
+            "doc_id"   : "PRIMARY KEY"
+        },
+        "es_link_index" : {
+            "doc_type"     : "PRIMARY KEY",
+            "doc_id"       : "PRIMARY KEY",
+            "link_type"    : "PRIMARY KEY",
+            "link_subtype" : "PRIMARY KEY",
+            "link_id"      : "PRIMARY KEY"
+        },
+        "common" : {
+            "row_id" : "UNIQUE KEY"
         }
     }
 }
