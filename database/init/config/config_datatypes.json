@@ -160,7 +160,7 @@
             "short_code"   : "VARCHAR(32)",
             "subtype_en"   : "VARCHAR(255)",
             "subtype_fr"   : "VARCHAR(255)",
-            "name_en"      : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL",
+            "name_en"      : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL",
             "name_fr"      : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL",
             "short_description_en" : "MEDIUMTEXT DEFAULT NULL",
             "short_description_fr" : "MEDIUMTEXT DEFAULT NULL",
@@ -174,12 +174,14 @@
             "link_subtype" : "ENUM('Parent-to-Child', 'Child-to-Parent', 'Semantic') NOT NULL",
             "link_id"      : "VARCHAR(255) NOT NULL",
             "link_rank"    : "INT UNSIGNED NOT NULL",
-            "link_name_en" : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL",
+            "link_name_en" : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL",
             "link_name_fr" : "MEDIUMTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL",
             "link_short_description_en" : "MEDIUMTEXT DEFAULT NULL",
             "link_short_description_fr" : "MEDIUMTEXT DEFAULT NULL"
         },
         "common" : {
+            "to_process" : "TINYINT(1) NOT NULL DEFAULT 0",
+            "row_rank" : "INT UNSIGNED NOT NULL",
             "row_id" : "INT UNSIGNED AUTO_INCREMENT NOT NULL"
         }
     },
@@ -245,6 +247,7 @@
             "link_id"      : "PRIMARY KEY"
         },
         "common" : {
+            "row_rank" : "KEY",
             "row_id" : "UNIQUE KEY"
         }
     }

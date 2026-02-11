@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from graphregistry.clients.mysql import GraphDB
 import rich, json, re
 from pathlib import Path
 
@@ -8,6 +9,9 @@ from pathlib import Path
 glbcfg = GlobalConfig()
 idxcfg = IndexConfig()
 scrcfg = ScoresConfig()
+
+# Initialize GraphDB
+db = GraphDB()
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -72,10 +76,25 @@ core_datatypes_config_flat = flatten_schema_remove_duplicates(core_datatypes_con
 #============================================#
 # Class definition: Graph Database Structure #
 #============================================#
-class DBStruct():
+class DynamicSQL():
+
+    # Prevent from initialising twice
+    _instance = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(DynamicSQL, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
 
     # Constructor
     def __init__(self):
+
+        # Prevent from initialising twice (e.g. when calling DynamicSQL() multiple times to access static methods)
+        if getattr(self, "_initialized", False):
+            return
+
+        # Set initialization flag and print message
+        self._initialized = True
 
         #-------------------------------#
         # Basic configuation parameters #
@@ -137,6 +156,59 @@ class DBStruct():
         for (doc_type, link_type) in self.doclink_types_org:
             self.doclinks_org[(doc_type, link_type)] = self.DocLink(doc_type=doc_type, link_type=link_type, link_subtype='ORG')
 
+    #------------------------------#
+    # Method group: Static methods #
+    #------------------------------#
+
+    @staticmethod
+    def get_fields(doc_type, link_type=None, link_subtype=None, index_group=None):
+        if link_type is None:
+            return DynamicSQL().get_all_doc_fields(doc_type=doc_type, index_group=index_group)
+        else:
+            return DynamicSQL().get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+
+    @staticmethod
+    def get_create_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
+        return DynamicSQL().get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+
+    @staticmethod
+    def get_alter_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
+        return DynamicSQL().get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+
+    @staticmethod
+    def compare_fields(doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
+        return DynamicSQL().compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
+
+    #---------------------------------#
+    # Method group: Table diagnostics #
+    #---------------------------------#
+
+    # Compare list of fields with the one currently in the table and return missing and extra fields
+    def compare_fields_with_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
+
+        # Get list of fields based on doc type, link type, link subtype, and index group
+        fields_in_config = self.get_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+
+        # Typecheck
+        if type(fields_in_config) is not list:
+            print(f"❌ Error: fields_in_config must be a list. Got {type(fields_in_config)}")
+            exit()
+
+        # Get table name
+        table_name = self.get_sql_table_name(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=False)
+
+        # Get existing fields in the table
+        fields_in_table = db.get_column_names(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
+
+        # Get missing fields in existing table that are in the config (fields to add)
+        missing_fields = [f for f in fields_in_config if f not in fields_in_table]
+
+        # Get fields in existing table that are not in the config (fields to drop)
+        fields_to_drop = [f for f in fields_in_table if f not in fields_in_config]
+
+        # Return missing fields and fields to drop
+        return missing_fields, fields_to_drop
+
     #----------------------------------#
     # Method group: Export field lists #
     #----------------------------------#
@@ -150,19 +222,18 @@ class DBStruct():
         id_fields_wi  = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=True)
         id_fields_woi = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=False)
         option_fields = list(idxcfg.settings['options'].keys())
-        # print(type(option_fields))
-        # print(option_fields)
         custom_fields = self.get_custom_fields(doc_type=doc_type, index_group=index_group)
 
         # Combine and return according to index group
-        if index_group=='indexbuildup':
-            return id_fields_wi + option_fields + custom_fields + ['degree_score', 'row_id']
-        elif index_group=='indexrollback':
-            return ['rollback_date'] + id_fields_wi + option_fields + custom_fields + ['degree_score', 'row_id']
-        elif index_group=='graphsearch':
-            return id_fields_wi + option_fields + custom_fields + ['degree_score', 'row_id']
-        elif index_group=='elasticsearch':
-            return id_fields_woi + ['degree_score', 'short_code', 'subtype_en', 'subtype_fr', 'name_en', 'name_fr', 'short_description_en', 'short_description_fr', 'long_description_en', 'long_description_fr'] + custom_fields + ['row_id']
+        if type(id_fields_wi) is list and type(id_fields_woi) is list and type(option_fields) is list and type(custom_fields) is list:
+            if index_group=='indexbuildup':
+                return id_fields_wi + option_fields + custom_fields + ['degree_score', 'to_process', 'row_id']
+            elif index_group=='indexrollback':
+                return ['rollback_date'] + id_fields_wi + option_fields + custom_fields + ['degree_score', 'to_process', 'row_id']
+            elif index_group=='graphsearch':
+                return id_fields_wi + option_fields + custom_fields + ['degree_score', 'row_id']
+            elif index_group=='elasticsearch':
+                return id_fields_woi + ['degree_score', 'short_code', 'subtype_en', 'subtype_fr', 'name_en', 'name_fr', 'short_description_en', 'short_description_fr', 'long_description_en', 'long_description_fr'] + custom_fields + ['row_id']
 
     # General simplified method to get all combined fields
     def get_all_doclink_fields(self, doc_type, link_type, link_subtype, index_group):
@@ -173,10 +244,11 @@ class DBStruct():
         custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
         # Combine and return according to index group
-        if index_group=='graphsearch':
-            return id_fields_wi + custom_fields + ['degree_score', 'row_id']
-        elif index_group=='elasticsearch':
-            return id_fields_woi + ['link_rank', 'link_name_en', 'link_name_fr', 'link_short_description_en', 'link_short_description_fr'] + custom_fields + ['row_id']
+        if type(id_fields_wi) is list and type(id_fields_woi) is list and type(custom_fields) is list:
+            if index_group=='graphsearch':
+                return id_fields_wi + custom_fields + [{'ORG':'degree_score', 'SEM':'semantic_score'}[link_subtype.upper()], 'row_score', 'row_rank', 'row_id']
+            elif index_group=='elasticsearch':
+                return id_fields_woi + ['link_rank', 'link_name_en', 'link_name_fr', 'link_short_description_en', 'link_short_description_fr'] + custom_fields + ['row_id']
 
     #===== ID fields =====#
 
@@ -218,12 +290,12 @@ class DBStruct():
     # General simplified method to get custom fields
     def get_custom_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None):
         if link_type is None:
-            if   index_group=='graphsearch':
+            if index_group in ('indexbuildup', 'indexrollback', 'graphsearch'):
                 return self.get_doc_custom_fields_graphsearch(doc_type)
             elif index_group=='elasticsearch':
                 return self.get_doc_custom_fields_elasticsearch(doc_type)
         else:
-            if   index_group=='graphsearch':
+            if index_group=='graphsearch':
                 return self.get_doclink_custom_fields_graphsearch(doc_type, link_type, link_subtype)
             elif index_group=='elasticsearch':
                 return self.get_doclink_custom_fields_elasticsearch(doc_type, link_type)
@@ -238,15 +310,22 @@ class DBStruct():
 
     # Export graphsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
     def get_doclink_custom_fields_graphsearch(self, doc_type, link_type, link_subtype):
-        if   link_subtype.upper() == 'SEM':
-            return self.doclinks_sem[(doc_type, link_type)].graphsearch_obj_fields + self.doclinks_sem[(doc_type, link_type)].graphsearch_obj2obj_fields
+        fields_list = []
+        if link_subtype.upper() == 'SEM':
+            fields_list = self.doclinks_sem[(doc_type, link_type)].graphsearch_obj_fields
         elif link_subtype.upper() == 'ORG':
-            return self.doclinks_org[(doc_type, link_type)].graphsearch_obj_fields + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields
+            fields_list = self.doclinks_org[(doc_type, link_type)].graphsearch_obj_fields
+            if (doc_type, link_type) in self.doclinks_org:
+                fields_list += self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields
+        return fields_list
 
     # Export elasticsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
     def get_doclink_custom_fields_elasticsearch(self, doc_type, link_type):
         if (doc_type, link_type) in self.doclinks_org:
-            return self.doclinks_org[(doc_type, link_type)].elasticsearch_obj_fields
+            if (doc_type, link_type) in self.doclinks_org:
+                return self.doclinks_org[(doc_type, link_type)].elasticsearch_obj_fields
+            else:
+                return []
         else:
             return self.doclinks_sem[(doc_type, link_type)].elasticsearch_obj_fields
 
@@ -278,6 +357,9 @@ class DBStruct():
                 return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Docs_{doc_type}"
         else:
             if index_group=='graphsearch':
+                if link_subtype is None:
+                    print(f"❌ Error: link_subtype must be specified for index_group='graphsearch'")
+                    exit()
                 return f"{glbcfg.mysql_schema_names['test']['graphsearch']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}"
             elif index_group=='elasticsearch':
                 return f"{glbcfg.mysql_schema_names['test']['es_cache']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}"
@@ -299,7 +381,11 @@ class DBStruct():
         datatypes_list = self.get_datatypes_from_fields(fields_list)
 
         # Combine into list of "field datatype" strings
-        field_definitions = [f"{field} {datatype}" for field, datatype in zip(fields_list, datatypes_list)]
+        if type(fields_list) is list and type(datatypes_list) is list and len(fields_list)==len(datatypes_list):
+            field_definitions = [f"{field} {datatype}" for field, datatype in zip(fields_list, datatypes_list)]
+        else:
+            print(f"❌ Error combining fields and datatypes into field definitions: {fields_list} and {datatypes_list}")
+            exit()
 
         # Get table name
         sql_table_name = self.get_sql_table_name(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
@@ -312,6 +398,11 @@ class DBStruct():
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+
+        # Typecheck
+        if not (type(doc_id_fields) is list and type(doc_custom_fields) is list):
+            print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(doc_id_fields)} and {type(doc_custom_fields)}")
+            exit()
 
         # Create composite unique key from id fields
         sql_create_table += f",\n  UNIQUE KEY uid ({', '.join(doc_id_fields)})"
@@ -346,6 +437,11 @@ class DBStruct():
         # Convert fields list to datatypes list
         datatypes_list = self.get_datatypes_from_fields(fields_list)
 
+        # Typecheck
+        if not (type(fields_list) is list and type(datatypes_list) is list and len(fields_list)==len(datatypes_list)):
+            print(f"❌ Error: fields_list and datatypes_list must be lists of the same length. Got {type(fields_list)} and {type(datatypes_list)} with lengths {len(fields_list) if type(fields_list) is list else 'N/A'} and {len(datatypes_list) if type(datatypes_list) is list else 'N/A'}")
+            exit()
+
         # Combine into list of "field datatype" strings
         field_definitions = [f"{field} {datatype}" for field, datatype in zip(fields_list, datatypes_list)]
 
@@ -368,6 +464,11 @@ class DBStruct():
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+
+        # Typecheck
+        if not (type(doc_id_fields) is list and type(doc_custom_fields) is list):
+            print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(doc_id_fields)} and {type(doc_custom_fields)}")
+            exit()
 
         # Create composite unique key from id fields
         sql_alter_table += f"  ADD UNIQUE KEY IF NOT EXISTS uid ({', '.join(doc_id_fields)})"
@@ -401,8 +502,8 @@ class DBStruct():
             self.options = {}
             for k in idxcfg.settings['options'].keys():
                 self.options[k] = idxcfg.settings['options'][k][self.doc_type]
-            self.graphsearch_obj_fields   = idxcfg.settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, [])
-            self.elasticsearch_obj_fields = idxcfg.settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, [])
+            self.graphsearch_obj_fields   = list(idxcfg.settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, []))
+            self.elasticsearch_obj_fields = list(idxcfg.settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, []))
 
     #--------------------------------------#
     # Sub-class definition: DocLink object #
@@ -414,9 +515,9 @@ class DBStruct():
             self.doc_type     = doc_type
             self.link_type    = link_type
             self.link_subtype = link_subtype
-            self.graphsearch_obj_fields     = idxcfg.settings['graphsearch'  ]['fields' ]['links']['default'].get(self.link_type, [])
-            self.graphsearch_obj2obj_fields = idxcfg.settings['graphsearch'  ]['fields' ]['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, []) if link_subtype.upper() == 'ORG' else []
-            self.elasticsearch_obj_fields   = idxcfg.settings['elasticsearch']['fields' ]['links'].get(self.link_type, [])
+            self.graphsearch_obj_fields     =  list(idxcfg.settings['graphsearch'  ]['fields']['links']['default'].get(self.link_type, []))
+            self.graphsearch_obj2obj_fields = (list(idxcfg.settings['graphsearch'  ]['fields']['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, [])) if link_subtype.upper() == 'ORG' else [])
+            self.elasticsearch_obj_fields   =  list(idxcfg.settings['elasticsearch']['fields']['links'].get(self.link_type, []))
 
 #===============================#
 # Class definition: Graph Table #
@@ -481,105 +582,100 @@ class GraphTable():
         # Determine tables type (doc vs doclink)
         self.table_type = 'doc' if link_type is None else 'doclink'
 
+        #----------------------------------#
+        # Pre-generate dynamic SQL queries #
+        #----------------------------------#
 
-        print(self.doc_type)
-        print(self.link_type)
-        print(self.link_subtype)
-        print(self.index_group)
-        print(self.schema_name)
-        print(self.table_name)
+        # Get list of table fields
+        self.table_fields = DynamicSQL().get_fields(doc_type=self.doc_type, index_group=self.index_group)
+
+        # Get create table SQL statement
+        self.create_table_sql = DynamicSQL().get_create_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
+
+        # Get drop primary keys and alter table SQL statements
+        self.drop_primary_key_sql, self.alter_table_sql = DynamicSQL().get_alter_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
+
+    #----------------------#
+    # Basic export methods #
+    #----------------------#
+
+    # Method: Get table name (with or without path)
+    def get_table_name(self, include_path=False):
+        if self.schema_name is not None:
+            return f"{self.schema_name+'.' if include_path else ''}{self.table_name}"
+
+    # Method: Get list of table fields
+    def get_fields(self):
+        return self.table_fields
+
+    # Method: Get SQL create table statement
+    def get_create_table(self):
+        return self.create_table_sql
+
+    # Method: Get SQL drop primary key statement
+    def get_drop_primary_key(self):
+        return self.drop_primary_key_sql
+
+    # Method: Get SQL alter table statement
+    def get_alter_table(self):
+        return self.alter_table_sql
 
 #-------------------------------#
 # Command line execution script #
 #-------------------------------#
 if __name__ == "__main__":
 
+    # Set schema name for testing
+    schema_name = glbcfg.mysql_schema_names['test']['graph_cache']
 
-    tb = GraphTable(
-        doc_type     = None,
-        link_type    = None,
-        link_subtype = None,
-        index_group  = None,
-        schema_name  = glbcfg.mysql_schema_names['test']['es_cache'],
-        table_name   = 'Index_D_Category_L_Category'
-    )
+    # Get list of tables in schema
+    # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name, use_regex=[r"IndexBuildup_Fields_Docs_[^_]*"])
+    list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name)
 
-    exit()
+    # Loop over list of tables
+    for table_name in list_of_tables:
 
-    dbstr = DBStruct()
+        # if table_name != 'Index_D_Lecture_L_Lecture_T_SEM':
+        #     continue
 
-    sql_drop_primary_key, sql_alter_table = dbstr.get_sql_alter_table(
-        doc_type       = 'Category',
-        index_group    = 'elasticsearch',
-        include_schema = True
-    )
+        # Display status
+        # print(f"Processing table: {table_name}")
 
-    print('\n')
-    print(sql_drop_primary_key)
-    print(sql_alter_table)
-    print('\n')
+        if 'PageProfile' in table_name or table_name=='Index_D_Lecture_L_Concept_T_ORG' or table_name=='Index_D_Lecture_L_Concept_T_ORG_Search' or table_name=='Index_D_Lecture_L_Person_T_ORG':
+            continue
 
-    exit()
+        # Initialise table
+        tb = GraphTable(schema_name=schema_name, table_name=table_name)
 
-    sql_drop_primary_key, sql_alter_table = dbstr.get_sql_alter_table(
-        doc_type       = 'Person',
-        link_type      = 'Concept',
-        link_subtype   = 'SEM',
-        index_group    = 'elasticsearch',
-        include_schema = True
-    )
-    print(sql_drop_primary_key)
-    print(sql_alter_table)
+        # print(tb.get_drop_primary_key(), '\n' )
+        # print(tb.get_alter_table(), '\n\n' )
 
+        missing_fields, fields_to_drop = DynamicSQL().compare_fields(
+            doc_type     = tb.doc_type,
+            link_type    = tb.link_type,
+            link_subtype = tb.link_subtype,
+            index_group  = tb.index_group,
+            engine_name  = 'xaas_coresrv',
+            schema_name  = tb.schema_name
+        )
 
-    # # print(dbstr.get_fields(doc_type='Person', index_group='graphsearch'))
-    # # print(dbstr.get_fields(doc_type='Person', index_group='elasticsearch'))
-    # # print(dbstr.get_fields(doc_type='Person', link_type='Concept', link_subtype='SEM', index_group='graphsearch'))
-    # # print(dbstr.get_fields(doc_type='Person', link_type='Unit'   , link_subtype='ORG', index_group='graphsearch'))
-    # # print(dbstr.get_fields(doc_type='Person', link_type='Concept', link_subtype='SEM', index_group='elasticsearch'))
-    # # print(dbstr.get_fields(doc_type='Unit'  , link_type='Unit'   , link_subtype='ORG', index_group='graphsearch'))
-    # # print('\n')
+        if not missing_fields and not fields_to_drop:
+            continue
 
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', index_group='graphsearch', include_schema=False))
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', index_group='graphsearch', include_schema=True))
-    # # fields_list = dbstr.get_all_doc_fields       (doc_type='Person', index_group='graphsearch')
-    # # print(f"Fields for Person (graphsearch): {fields_list}")
-    # # datatypes_list = dbstr.get_datatypes_from_fields(fields_list)
-    # # print(f"Datatypes for Person fields: {datatypes_list}")
-    # sql_drop_primary_key, sql_alter_table = dbstr.get_sql_alter_table(doc_type='Person', index_group='graphsearch', include_schema=True)
-    # print(sql_drop_primary_key)
-    # print(sql_alter_table)
-    # print('\n')
+        print("\n================================================================")
+        print(f"Results for {tb.schema_name}.{table_name}")
+        print("================================================================\n")
 
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', index_group='elasticsearch', include_schema=False))
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', index_group='elasticsearch', include_schema=True))
-    # # fields_list = dbstr.get_all_doc_fields       (doc_type='Person', index_group='elasticsearch')
-    # # print(f"Fields for Person (elasticsearch): {fields_list}")
-    # # datatypes_list = dbstr.get_datatypes_from_fields(fields_list)
-    # # print(f"Datatypes for Person fields (elasticsearch): {datatypes_list}")
-    # sql_drop_primary_key, sql_alter_table = dbstr.get_sql_alter_table(doc_type='Person', index_group='elasticsearch', include_schema=True)
-    # print(sql_drop_primary_key)
-    # print(sql_alter_table)
-    # print('\n')
+        if missing_fields:
+            print(f"⚠️ Missing fields to add: {missing_fields}")
+        else:
+            print("✅ No missing fields to add.")
 
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', link_type='Unit'   , link_subtype='ORG', index_group='graphsearch', include_schema=False))
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', link_type='Unit'   , link_subtype='ORG', index_group='graphsearch', include_schema=True))
-    # # fields_list = dbstr.get_all_doclink_fields   (doc_type='Person', link_type='Unit'   , link_subtype='ORG', index_group='graphsearch')
-    # # print(f"Fields for Person-Unit (ORG) fields: {fields_list}")
-    # # datatypes_list = dbstr.get_datatypes_from_fields(fields_list)
-    # # print(f"Datatypes for Person-Unit (ORG) fields: {datatypes_list}")
-    # sql_drop_primary_key, sql_alter_table = dbstr.get_sql_alter_table(doc_type='Person', link_type='Unit', link_subtype='ORG', index_group='graphsearch', include_schema=True)
-    # print(sql_drop_primary_key)
-    # print(sql_alter_table)
-    # print('\n')
+        if fields_to_drop:
+            print(f"⚠️ Extra fields to drop: {fields_to_drop}")
 
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', link_type='Concept', link_subtype='SEM', index_group='elasticsearch', include_schema=False))
-    # # print(dbstr.get_sql_table_name       (doc_type='Person', link_type='Concept', link_subtype='SEM', index_group='elasticsearch', include_schema=True))
-    # # fields_list = dbstr.get_all_doclink_fields   (doc_type='Person', link_type='Concept', link_subtype='SEM', index_group='elasticsearch')
-    # # print(f"Fields for Person-Concept (SEM) fields: {fields_list}")
-    # # datatypes_list = dbstr.get_datatypes_from_fields(fields_list)
-    # # print(f"Datatypes for Person-Concept (SEM) fields: {datatypes_list}")
-    # sql_drop_primary_key, sql_alter_table = dbstr.get_sql_alter_table(doc_type='Person', link_type='Concept', link_subtype='SEM', index_group='elasticsearch', include_schema=True)
-    # print(sql_drop_primary_key)
-    # print(sql_alter_table)
-    # print('\n')
+            # Generate drop columns SQL query
+            sql_query = f"ALTER TABLE {tb.schema_name}.{table_name} {', '.join([f'DROP COLUMN {field}' for field in fields_to_drop])};"
+            print(sql_query)
+        else:
+            print("✅ No extra fields to drop.")
