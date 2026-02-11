@@ -892,10 +892,10 @@ class GraphDB():
     # Method: Get list of tables in a schema #
     #----------------------------------------#
     def get_tables_in_schema(self, engine_name, schema_name, include_views=False, filter_by=False, use_regex=False):
-        
+
         # Get the list of tables and views
         query = f"SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = '{schema_name}'"
-        
+
         # Include views if requested
         if not include_views:
             query += " AND TABLE_TYPE = 'BASE TABLE'"
@@ -910,9 +910,9 @@ class GraphDB():
         # Filter the list of tables using regex if requested
         if use_regex:
             list_of_tables = [t for t in list_of_tables if any([re.search(f, t) for f in use_regex])]
-        
+
         # Execute the query and return the result
-        return list_of_tables
+        return sorted(list_of_tables)
 
     #-------------------------------#
     # Method: Get views in a schema #
