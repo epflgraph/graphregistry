@@ -21,15 +21,21 @@ sql_data_type_mapping = {
     'int'      : 'MEDIUMINT UNSIGNED',
     'bool'     : 'TINYINT(1)',
     'date'     : 'DATE',
-    'datetime' : 'TIMESTAMP'
+    'datetime' : 'DATETIME'
 }
 
 # Define mapping from field datatypes onto "castable" types
 cast_mapping = {
-    "TINYINT(1)"        : "CAST(%s AS UNSIGNED)",
-    "SMALLINT UNSIGNED" : "CAST(%s AS UNSIGNED)",
-    "YEAR"              : "CAST(%s AS UNSIGNED)",
-    "VARCHAR(16)"       : "CAST(%s AS CHAR)"
+    "TINYINT(1)"         : "CAST(%s AS UNSIGNED)",
+    "SMALLINT UNSIGNED"  : "CAST(%s AS UNSIGNED)",
+    "YEAR"               : "CAST(%s AS UNSIGNED)",
+    "VARCHAR(16)"        : "CAST(%s AS CHAR)",
+    "VARCHAR(255)"       : "CAST(%s AS CHAR)",
+    "MEDIUMTEXT"         : "CAST(%s AS CHAR)",
+    "LONGTEXT"           : "CAST(%s AS CHAR)",
+    "DATE"               : "CAST(%s AS DATE)",
+    "DATETIME"           : "CAST(%s AS DATETIME)",
+    "MEDIUMINT UNSIGNED" : "CAST(%s AS UNSIGNED)"
 }
 
 # Function to flatten config schema and remove duplicates
@@ -122,7 +128,7 @@ class DynamicSQL():
 
         # Get available parent-to-child tuples
         p2c_tuples = []
-        for k1 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'].keys():
+        for     k1 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'].keys():
             for k2 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][k1].keys():
                 p2c_tuples += [tuple(sorted([k1,k2]))]
 
@@ -394,22 +400,25 @@ class DynamicSQL():
         sql_create_table = f"CREATE TABLE {sql_table_name} (\n  " + ",\n  ".join(field_definitions)
 
         # Get id fields for unique key definition
-        doc_id_fields = self.get_doc_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+        if link_type is None:
+            id_fields = self.get_doc_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+        else:
+            id_fields = self.get_doclink_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
         # Typecheck
-        if not (type(doc_id_fields) is list and type(doc_custom_fields) is list):
-            print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(doc_id_fields)} and {type(doc_custom_fields)}")
+        if not (type(id_fields) is list and type(doc_custom_fields) is list):
+            print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(id_fields)} and {type(doc_custom_fields)}")
             exit()
 
         # Create composite unique key from id fields
-        sql_create_table += f",\n  UNIQUE KEY uid ({', '.join(doc_id_fields)})"
+        sql_create_table += f",\n  UNIQUE KEY uid ({', '.join(id_fields)})"
 
         # Make all id fields keys
-        for doc_id_field in doc_id_fields:
-            sql_create_table += f",\n  KEY ({doc_id_field})"
+        for id_field_k in id_fields:
+            sql_create_table += f",\n  KEY ({id_field_k})"
 
         # Make all custom fields keys
         for custom_field in doc_custom_fields:
@@ -460,22 +469,25 @@ class DynamicSQL():
             sql_alter_table += f"  MODIFY COLUMN {field_definition},\n"
 
         # Get id fields for unique key definition
-        doc_id_fields = self.get_doc_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+        if link_type is None:
+            id_fields = self.get_doc_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+        else:
+            id_fields = self.get_doclink_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
         # Typecheck
-        if not (type(doc_id_fields) is list and type(doc_custom_fields) is list):
-            print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(doc_id_fields)} and {type(doc_custom_fields)}")
+        if not (type(id_fields) is list and type(doc_custom_fields) is list):
+            print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(id_fields)} and {type(doc_custom_fields)}")
             exit()
 
         # Create composite unique key from id fields
-        sql_alter_table += f"  ADD UNIQUE KEY IF NOT EXISTS uid ({', '.join(doc_id_fields)})"
+        sql_alter_table += f"  ADD UNIQUE KEY IF NOT EXISTS uid ({', '.join(id_fields)})"
 
         # Make all id fields keys
-        for doc_id_field in doc_id_fields:
-            sql_alter_table += f",\n  ADD KEY IF NOT EXISTS ({doc_id_field})"
+        for id_field_k in id_fields:
+            sql_alter_table += f",\n  ADD KEY IF NOT EXISTS ({id_field_k})"
 
         # Make all custom fields keys
         for custom_field in doc_custom_fields:
@@ -625,8 +637,37 @@ class GraphTable():
 #-------------------------------#
 if __name__ == "__main__":
 
+
+    list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
+    for t in list_of_tables:
+        if '_L_' in t:
+            print(f"SELECT * FROM elasticsearch_cache.{t} WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG);")
+
+    exit()
+
+
+
+    # CHANGE THIS
+    which_cache = 'elasticsearch'
+
+    # Mapping
+    mapping_for_which_cache = {
+        'graphsearch' : ['graphsearch', 'graphsearch_test'],
+        'elasticsearch' : ['es_cache', 'elasticsearch_cache']
+    }
+
     # Set schema name for testing
-    schema_name = glbcfg.mysql_schema_names['test']['graph_cache']
+    schema_name = glbcfg.mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
+
+    # Initialise table
+    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Course_L_Person')
+    print('\n\n',tb.create_table_sql,'\n\n')
+
+    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Person_L_Course')
+    print('\n\n',tb.create_table_sql,'\n\n')
+
+
+    exit()
 
     # Get list of tables in schema
     # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name, use_regex=[r"IndexBuildup_Fields_Docs_[^_]*"])

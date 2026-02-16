@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from graphregistry.common.auxfcn import print_dataframe, print_colour
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from graphregistry.common.dbstruct import DynamicSQL
 from graphregistry.clients.mysql import GraphDB
 from graphregistry.clients.elasticsearch import GraphES, es_degree_score_factors
 from graphregistry.core.dbbridge import RegistryDB
@@ -24,6 +25,9 @@ import re, sys, json, datetime, itertools, gzip, os, glob, rich, hashlib
 glbcfg = GlobalConfig()
 idxcfg =  IndexConfig()
 scrcfg = ScoresConfig()
+
+# Initialise dynamic sql object
+dynsql = DynamicSQL()
 
 # Initialise clients
 db = GraphDB()
@@ -82,12 +86,29 @@ graphai_login_info = graphai_login(graph_api_json=GRAPHAI_CLIENT_CONFIG_FILE)
 with open(REPO_ROOT / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
     datatypes_config = json.load(f)
 
+# SQL data type mapping dictionary
+sql_data_type_mapping = {
+    'char'     : 'VARCHAR(255)',
+    'text'     : 'MEDIUMTEXT',
+    'longtext' : 'LONGTEXT',
+    'int'      : 'MEDIUMINT UNSIGNED',
+    'bool'     : 'TINYINT(1)',
+    'date'     : 'DATE',
+    'datetime' : 'DATETIME'
+}
+
 # Define mapping from field datatypes onto "castable" types
 cast_mapping = {
-    "TINYINT(1)"        : "CAST(%s AS UNSIGNED)",
-    "SMALLINT UNSIGNED" : "CAST(%s AS UNSIGNED)",
-    "YEAR"              : "CAST(%s AS UNSIGNED)",
-    "VARCHAR(16)"       : "CAST(%s AS CHAR)"
+    "TINYINT(1)"         : "CAST(%s AS UNSIGNED)",
+    "SMALLINT UNSIGNED"  : "CAST(%s AS UNSIGNED)",
+    "YEAR"               : "CAST(%s AS UNSIGNED)",
+    "VARCHAR(16)"        : "CAST(%s AS CHAR)",
+    "VARCHAR(255)"       : "CAST(%s AS CHAR)",
+    "MEDIUMTEXT"         : "CAST(%s AS CHAR)",
+    "LONGTEXT"           : "CAST(%s AS CHAR)",
+    "DATE"               : "CAST(%s AS DATE)",
+    "DATETIME"           : "CAST(%s AS DATETIME)",
+    "MEDIUMINT UNSIGNED" : "CAST(%s AS UNSIGNED)"
 }
 
 #----------------------#
@@ -215,13 +236,6 @@ def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
             table_name = "Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_GBC"
             return table_name
 
-            # # Order edge correctly
-            # src,trg = ('Object', to_object_type) if to_object_type in ('Category','Concept','Curated area') else ('Object', from_object_type)
-
-            # # Generate and return table name
-            # table_name = f"Edges_N_{src}_N_{trg}_T_FinalScores"
-            # return table_name
-
         # Adjusted scores table?
         elif gbc_or_as.upper()=='AS':
             table_name = "Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_AS"
@@ -238,6 +252,8 @@ def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
         # Generate table name if inputs are correct
         if sorted_tuple in scrcfg.settings['scored_edge_tuple_to_class_mapping'] and gbc_or_as.upper() in ('GBC','AS'):
             research_or_education = scrcfg.settings['scored_edge_tuple_to_class_mapping'][sorted_tuple]
+            if research_or_education not in ['education', 'research', 'ontology']:
+                return None
             table_name = f"Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education.title()}_{gbc_or_as.upper()}"
             return table_name
         else:
@@ -4130,13 +4146,22 @@ class GraphRegistry():
             self.idoclinks = {}
             self.list_of_index_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'])
 
+
+            # Get all doc types available
+            doc_types_available = dynsql.doc_types
+
             # Initialize IndexDoc objects for all doc types
             # for doc_type in [t[0] for t in [re.findall(r'Index_D_([^_]*)$', table_name) for table_name in self.list_of_index_tables] if len(t)>0]:
-            for doc_type in [t[0] for t in [re.findall(r'IndexBuildup_Fields_Docs_([^_]*)$', table_name) for table_name in db.get_tables_in_schema(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graph_cache'])] if len(t)>0]:
+            # for doc_type in [t[0] for t in [re.findall(r'IndexBuildup_Fields_Docs_([^_]*)$', table_name) for table_name in db.get_tables_in_schema(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graph_cache'])] if len(t)>0]:
+            for doc_type in doc_types_available:
                 self.idocs[doc_type] = self.IndexDocs(doc_type=doc_type)
 
+            # Get all doc-link types available
+            doclink_types_available = [(t[0],t[1],'SEM') for t in dynsql.doclink_types_sem] + [(t[0],t[1],'ORG') for t in dynsql.doclink_types_org]
+
             # Initialize IndexDocLinks objects for all doc-link types
-            for doc_type, link_type, link_subtype in [t[0] for t in [re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_([^_]*)$', table_name) for table_name in self.list_of_index_tables] if len(t)>0]:
+            # for doc_type, link_type, link_subtype in [t[0] for t in [re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_([^_]*)$', table_name) for table_name in self.list_of_index_tables] if len(t)>0]:
+            for doc_type, link_type, link_subtype in doclink_types_available:
                 if doc_type not in self.idoclinks:
                     self.idoclinks[doc_type] = {}
                 if link_type not in self.idoclinks[doc_type]:
@@ -4234,8 +4259,7 @@ class GraphRegistry():
             else:
 
                 # Get all doc-link types available
-                list_of_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
-                doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
+                doclink_types_available = [(t[0],t[1],'SEM') for t in dynsql.doclink_types_sem] + [(t[0],t[1],'ORG') for t in dynsql.doclink_types_org]
 
                 # Keep only intersection of available and to-process types
                 doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config and t[2]=='ORG']
@@ -4333,9 +4357,8 @@ class GraphRegistry():
             # If not empty, proceed
             else:
 
-                # Get all doc-link types available
-                list_of_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'], use_regex=[r'Index_D_\w*_L_\w*_T_\w*$'])
-                doclink_types_available = re.findall(r'Index_D_([^_]*)_L_([^_]*)_T_(ORG|SEM)', ' '.join(list_of_tables))
+                # Get all doc-link types available $$$$$$$$$$$$$$$$$$$$
+                doclink_types_available = [(t[0],t[1],'SEM') for t in dynsql.doclink_types_sem] + [(t[0],t[1],'ORG') for t in dynsql.doclink_types_org]
 
                 # Keep only intersection of available and to-process types
                 doclink_types_to_process = [t for t in doclink_types_available if t[:2] in doclink_types_in_config and t[2]=='ORG']
@@ -4405,80 +4428,90 @@ class GraphRegistry():
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
-            # Get the list of tables in graphsearch test
-            list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], use_regex=[r'.*_ORG'], include_views=False)
+            # Get intersection between doclink tuples or semantic and organisational types
+            doclinks_to_process = sorted(list(set(dynsql.doclink_types_sem) & set(dynsql.doclink_types_org)))
 
-            # Loop over all tables
-            for table_name_org in tqdm(list_of_tables):
+            for t in doclinks_to_process:
+                print(t)
 
-                # Generate SEM and MIX table names
-                table_name_sem = table_name_org.replace('_ORG', '_SEM')
-                table_name_mix = table_name_org.replace('_ORG', '_MIX')
+            # Loop over all doclink tuples
+            for doc_type, link_type in tqdm(doclinks_to_process):
 
-                # TODO: FIX THIS...
+                # Generate  table names
+                table_name_org = f"Index_D_{doc_type}_L_{link_type}_T_ORG"
+                table_name_sem = f"Index_D_{doc_type}_L_{link_type}_T_SEM"
+                table_name_mix = f"Index_D_{doc_type}_L_{link_type}_T_MIX"
+
+                # Generate 'table exists' flags
+                table_exists_org = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
+                table_exists_sem = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
+                table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix)
+
+                # Only process if both SEM and ORG tables exist
+                if not (table_exists_org and table_exists_sem) or table_exists_mix:
+                    sysmsg.warning(f"Skipping doc-link type: {doc_type} --> {link_type}. SEM table exists: {table_exists_sem}. ORG table exists: {table_exists_org}. MIX table exists: {table_exists_mix}.")
+                    continue
+
+                # Ignore concept search table (special case)
                 if table_name_sem == 'Index_D_Lecture_L_Concept_T_SEM_Search':
                     continue
 
-                # Check if view already exists
-                if db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix) and not drop_existing:
-                    continue
-
                 # Check if SEM table exists
-                if db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem):
+                # if table_name_sem:
 
-                    # Get list of columns for SEM table
-                    list_of_columns_sem = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
+                # Get list of columns for SEM table
+                list_of_columns_sem = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
 
-                    # Remove row_id
-                    list_of_columns_sem.remove('row_id')
+                # Remove row_id
+                list_of_columns_sem.remove('row_id')
 
-                    # Fix list of columns for ORG table
-                    list_of_columns_org = ['degree_score' if c == 'semantic_score' else c for c in list_of_columns_sem]
+                # Fix list of columns for ORG table
+                list_of_columns_org = ['degree_score' if c == 'semantic_score' else c for c in list_of_columns_sem]
 
-                    # Generate SQL query
-                    SQLQuery = f"""
-                    CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS      
+                # Generate SQL query
+                SQLQuery = f"""
+                CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
 
-                                    SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
-                                      FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
-                                INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                              FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                          GROUP BY doc_institution, doc_type, doc_id) o
-                                     USING (doc_institution, doc_type, doc_id)
+                                SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
+                                    FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
+                            INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                                            FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                                        GROUP BY doc_institution, doc_type, doc_id) o
+                                    USING (doc_institution, doc_type, doc_id)
 
-                                 UNION ALL
+                                UNION ALL
 
-                                    SELECT {', '.join(list_of_columns_sem)}, (s.row_rank + COALESCE(o.max_row_rank, 0)) AS adjusted_row_rank
-                                      FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
-                                 LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                              FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                          GROUP BY doc_institution, doc_type, doc_id) o
-                                     USING (doc_institution, doc_type, doc_id)
-                                     WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
-                                    NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
+                                SELECT {', '.join(list_of_columns_sem)}, (s.row_rank + COALESCE(o.max_row_rank, 0)) AS adjusted_row_rank
+                                    FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
+                                LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                                            FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                                        GROUP BY doc_institution, doc_type, doc_id) o
+                                    USING (doc_institution, doc_type, doc_id)
+                                    WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
+                                NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
 
-                                  ORDER BY doc_id ASC, adjusted_row_rank ASC;
-                    """
+                                ORDER BY doc_id ASC, adjusted_row_rank ASC;
+                """
 
-                else:
+                # elif table_name_org:
 
-                    # Get list of columns for ORG table
-                    list_of_columns_org = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
+                #     # Get list of columns for ORG table
+                #     list_of_columns_org = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
 
-                    # Remove row_id
-                    list_of_columns_org.remove('row_id')
+                #     # Remove row_id
+                #     list_of_columns_org.remove('row_id')
 
-                    # Generate SQL query
-                    SQLQuery = f"""
-                    CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
+                #     # Generate SQL query
+                #     SQLQuery = f"""
+                #     CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
 
-                                    SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
-                                      FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
-                                INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                              FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                          GROUP BY doc_institution, doc_type, doc_id) o
-                                     USING (doc_institution, doc_type, doc_id)
-                    """
+                #                     SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
+                #                       FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
+                #                 INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                #                               FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                #                           GROUP BY doc_institution, doc_type, doc_id) o
+                #                      USING (doc_institution, doc_type, doc_id)
+                #     """
 
                 if test_mode:
                     print(SQLQuery)
@@ -5207,7 +5240,7 @@ class GraphRegistry():
                     engine_name = self.engine_name,
                     schema_name = target_schema_name,
                     table_name  = target_table_name
-                ):
+                ) and 'print' in actions:
                     sysmsg.warning(f"Target table '{target_schema_name}.{target_table_name}' does not exist. Nothing to do.")
                     return
 
@@ -5263,11 +5296,11 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Print the evaluation results
-                    if rows_to_process + rows_to_patch > 0:
-                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
-                        if rows_to_patch == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
+                    # if rows_to_process + rows_to_patch > 0:
+                    df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
+                    if rows_to_patch == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
 
                # Update column names
                 upd_column_names = [
@@ -5332,7 +5365,7 @@ class GraphRegistry():
                     engine_name = self.engine_name,
                     schema_name = target_schema_name,
                     table_name  = target_table_name
-                ):
+                ) and 'print' in actions:
                     sysmsg.warning(f"Target table '{target_schema_name}.{target_table_name}' does not exist. Nothing to do.")
                     return
 
@@ -5397,11 +5430,11 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Print the evaluation results
-                    if rows_to_process + rows_to_patch > 0:
-                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
-                        if rows_to_patch == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
+                    # if rows_to_process + rows_to_patch > 0:
+                    df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_schema_name}.{target_table_name}:')
+                    if rows_to_patch == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_schema_name}.{target_table_name}'.")
 
                 # Update column names
                 upd_column_names = [
@@ -5723,7 +5756,7 @@ class GraphRegistry():
                     engine_name = self.engine_name,
                     schema_name = glbcfg.mysql_schema_names[self.engine_name]['graphsearch'],
                     table_name  = self.index_table_name
-                ):
+                ) and 'print' in actions:
                     sysmsg.warning(f"Target table '{target_table_path}' does not exist. Nothing to do.")
                     return
 
@@ -5760,11 +5793,11 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Print the evaluation results
-                    if rows_to_process + rows_to_patch > 0:
-                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
-                        if rows_to_patch == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
+                    # if rows_to_process + rows_to_patch > 0:
+                    df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
+                    if rows_to_patch == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -5893,11 +5926,11 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Print the evaluation results
-                    if rows_to_process + rows_to_patch > 0:
-                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
-                        if rows_to_patch == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
+                    # if rows_to_process + rows_to_patch > 0:
+                    df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
+                    if rows_to_patch == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -6042,18 +6075,18 @@ class GraphRegistry():
                         print(sql_query_eval_2)
 
                     # Print the evaluation results for query 1
-                    if rows_to_process_1 + rows_to_patch_1 > 0:
-                        df = pd.DataFrame(out_1, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path_1}:')
-                        if rows_to_patch_1 == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_table_name_1}'.")
+                    # if rows_to_process_1 + rows_to_patch_1 > 0:
+                    df = pd.DataFrame(out_1, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path_1}:')
+                    if rows_to_patch_1 == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_table_name_1}'.")
 
                     # Print the evaluation results for query 2
-                    if rows_to_process_2 + rows_to_patch_2 > 0:
-                        df = pd.DataFrame(out_2, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path_2}:')
-                        if rows_to_patch_2 == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_table_name_2}'.")
+                    # if rows_to_process_2 + rows_to_patch_2 > 0:
+                    df = pd.DataFrame(out_2, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path_2}:')
+                    if rows_to_patch_2 == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_table_name_2}'.")
 
                 # Generate commit query 1
                 sql_query_commit_1 = f"""
@@ -6132,7 +6165,7 @@ class GraphRegistry():
                     engine_name = self.engine_name,
                     schema_name = target_schema_name,
                     table_name  = target_table_name
-                ):
+                ) and 'print' in actions:
                     sysmsg.warning(f"Target table '{target_table_path}' does not exist. Nothing to do.")
                     return
 
@@ -6181,11 +6214,11 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Print the evaluation results
-                    if rows_to_process + rows_to_patch > 0:
-                        df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
-                        if rows_to_patch == 0:
-                            sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
+                    # if rows_to_process + rows_to_patch > 0:
+                    df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
+                    if rows_to_patch == 0 and 'print' in actions:
+                        sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -6364,7 +6397,8 @@ class GraphRegistry():
 
                 # If additional fields are included in ordering rules, prepend them
                 if len(order_by_rules_list)>0:
-                    order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_fields'][o]]%o+' '+d for o,d in order_by_rules_list]) + f', {order_by}'
+                    # order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_fields'][o]]%o+' '+d for o,d in order_by_rules_list]) + f', {order_by}'
+                    order_by = ', '.join([ cast_mapping[sql_data_type_mapping[idxcfg.settings['data_types'][o]]] % o + ' ' + d for o,d in order_by_rules_list ]) + f', {order_by}'
 
                 #---------------------------#
                 #---------------------------#
@@ -6418,7 +6452,7 @@ class GraphRegistry():
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.to_process > 0.5;
+                                 AND p.to_process > 0.5
                         """
 
                     # No buildup table
@@ -6437,7 +6471,7 @@ class GraphRegistry():
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.to_process > 0.5;
+                                 AND p.to_process > 0.5
                         """
 
                     # Generate SQL query 3
@@ -6456,7 +6490,7 @@ class GraphRegistry():
                                                       AND to_process > 0.5) t
                                    USING (doc_id)
                                  ) tt
-                           WHERE row_rank <= {row_rank_thr};
+                           WHERE row_rank <= {row_rank_thr}
                     """
 
                 # Semantic table?
@@ -6473,7 +6507,7 @@ class GraphRegistry():
                             FROM {scoresmatrix_table_path} s
                       INNER JOIN {buildup_link_table_path} i
                               ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                           WHERE s.to_process > 0.5;
+                           WHERE s.to_process > 0.5
                     """
 
                     # Generate SQL query 2 (same as SQL query 1 but flipped)
@@ -6487,7 +6521,7 @@ class GraphRegistry():
                             FROM {scoresmatrix_table_path} s
                       INNER JOIN {buildup_link_table_path} i
                               ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                           WHERE s.to_process > 0.5;
+                           WHERE s.to_process > 0.5
                     """
 
                     # Generate SQL query 3
@@ -6532,7 +6566,7 @@ class GraphRegistry():
                                          ) t
                                    USING (doc_id)
                                  ) tt
-                           WHERE row_rank <= {row_rank_thr};
+                           WHERE row_rank <= {row_rank_thr}
                     """
 
                 #------------------------------#
@@ -6541,50 +6575,53 @@ class GraphRegistry():
                 if 'eval' in actions:
 
                     # Generate evaluation query (#1)
+                    sql_query_no_replace_1 = re.sub(r'REPLACE INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
                     sql_query_eval_1 = f"""
-                        SELECT COUNT(*) AS n_total
-                        FROM {SQLQuery1.split('FROM')[1]}
+                        SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                        FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
                     """
 
                     # Generate evaluation query (#2)
                     if SQLQuery2 is not None:
+                        sql_query_no_replace_2 = re.sub(r'REPLACE INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery2)
                         sql_query_eval_2 = f"""
-                            SELECT COUNT(*) AS n_total
-                            FROM {SQLQuery2.split('FROM')[1]}
+                            SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                            FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
                         """
                     else:
                         sql_query_eval_2 = f"""
-                            SELECT 0 AS n_total;
+                            SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
                         """
 
-                    # Generate evaluation query (#3)
-                    sql_query_eval_3 = f"""
-                        SELECT COUNT(*) AS n_total
-                        FROM (SELECT {SQLQuery3.split('FROM (SELECT')[1]}
-                    """
+                    # # Generate evaluation query (#3)
+                    # sql_query_eval_3 = f"""
+                    #     SELECT COUNT(*) AS n_total
+                    #     FROM (SELECT {SQLQuery3.split('FROM (SELECT')[1]}
+                    # """
 
                     # Print the evaluation queries
                     if 'print' in actions:
                         print(f"\n🔍 Evaluation queries for {target_table_path}:")
                         print(sql_query_eval_1)
                         print(sql_query_eval_2)
-                        print(sql_query_eval_3)
+                        # print(sql_query_eval_3)
 
                     # Execute the evaluation queries
                     out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
                     out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
-                    out_3 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_3)
+                    # out_3 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_3)
 
                     # Sum up the results
-                    out = [[out_1[0][0] + out_2[0][0], out_3[0][0]]]
+                    # out = [[out_1[0][0] + out_2[0][0], out_3[0][0]]]
+                    out = [[out_1[0][0] + out_2[0][0], out_1[0][1] + out_2[0][1]]]
 
                     # Print the results
-                    if np.sum(out) > 0:
-                        df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
+                    # if np.sum(out) > 0:
+                    df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
 
                 # Print SQL query
-                if 'print' in actions:
+                if 'print' in actions and not ('eval' in actions and np.sum(out)==0):
                     if SQLQuery1:
                         print('')
                         print(SQLQuery1)
@@ -6596,7 +6633,7 @@ class GraphRegistry():
                         print(SQLQuery3)
 
                 # Execute SQL query
-                if 'commit' in actions:
+                if 'commit' in actions and not ('eval' in actions and np.sum(out)==0):
                     if SQLQuery1:
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions)
                     if SQLQuery2:
@@ -6609,6 +6646,7 @@ class GraphRegistry():
 
                 # Generate scores matrix table name
                 scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
+                print("scores_matrix_table_name_as ---------------------> ", scores_matrix_table_name_as)
 
                 # Resolve table name or return if it doesn't exist
                 # Table type: MIX
@@ -6626,6 +6664,9 @@ class GraphRegistry():
                                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
                                     AND to_process > 0.5
+                        """
+                    if scores_matrix_table_name_as is not None:
+                        to_process_sql_statement += f"""
                                   UNION
                         SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
@@ -6683,7 +6724,7 @@ class GraphRegistry():
                 t = f"{glbcfg.schema_es_cache}.Index_D_{self.doc_type}_L_{self.link_type}"
 
                 # Generate SQL query
-                print('self.elasticsearch_obj_fields ->', self.elasticsearch_obj_fields)
+                # print('self.elasticsearch_obj_fields ->', self.elasticsearch_obj_fields)
                 sql_query_commit = f"""
                     INSERT INTO {t}
                                 (doc_type, doc_id, link_type, link_subtype, link_id, link_rank, link_name_en, link_name_fr, link_short_description_en, link_short_description_fr{', ' if len(self.elasticsearch_obj_fields)>0 else ''}{', '.join([f'{c}' for c in self.elasticsearch_obj_fields])})
@@ -6710,9 +6751,15 @@ class GraphRegistry():
                 """
 
                 # Generate evaluation query (#1)
+                sql_query_chunk_1 = re.sub(r"(?is)\A.*?\bINSERT\s+INTO\b.*?\bSELECT\b.*?(?P<block>\bFROM\b.*?)(?=\bWHERE\s+dl\.row_rank\s*<=\s*16\b).*?\Z", r"\g<block>", sql_query_commit, count=1)
+                sql_query_chunk_2 = re.sub(r"(?is)\A.*?\bWHERE\s+dl\.row_rank\s*<=\s*16\b(?P<block>.*?)(?=\bON\s+DUPLICATE\s+KEY\b).*?\Z", r"\g<block>", sql_query_commit, count=1)
                 sql_query_eval = f"""
-                    SELECT COUNT(*) AS n_total
-                    FROM {sql_query_commit.split('FROM', 1)[1].split('ON DUPLICATE KEY')[0].strip()}
+                         SELECT COALESCE(SUM(ISNULL(e.link_rank)),0) AS rows_to_insert,
+                                COALESCE(SUM(COALESCE(e.link_rank, "__null__") != COALESCE(dl.row_rank, "__null__")),0) AS rows_to_replace
+                           {sql_query_chunk_1}
+                      LEFT JOIN {t} e ON dl.doc_id = e.doc_id AND dl.link_id = e.link_id
+                          WHERE dl.row_rank <= 16
+                           {sql_query_chunk_2}
                 """
 
                 # Execute the evaluation query.
@@ -6722,10 +6769,10 @@ class GraphRegistry():
 
                     # Execute and validate the evaluation query
                     out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
-                    out = out if type(out) is list else [[0,0]]
+                    out = [int(out[0][0]), int(out[0][1])] if type(out) is list else [[0,0]]
 
                     # Number of rows to patch
-                    rows_to_patch = out[0][0] if out else 0
+                    rows_to_patch = np.sum(out)
 
                 # Else, we assume that the evaluation query has not been executed
                 else:
@@ -6736,32 +6783,28 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print(f"\n🔍 Evaluation query for {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type}:") 
+                        print(f"\n🔍 Evaluation query for {t}:") 
                         print(sql_query_eval)
 
                     # Execute the evaluation query
                     out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
 
                     # Print the results
-                    if rows_to_patch > 0:
-                        df = pd.DataFrame(out, columns=['rows to insert/replace'])
-                        print_dataframe(df, title=f'\n🔍 Evaluation results for {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}:')
-
-                # Print the commit query
-                if 'print' in actions:
-                    print('   =================>   ')
-                    rich.print_json(data=idxcfg.settings['elasticsearch']['fields' ]['links'])
-                    print(sql_query_commit)
+                    # if rows_to_patch > 0:
+                    df = pd.DataFrame(out, columns=['rows to insert', 'rows to replace'])
+                    print_dataframe(df, title=f'\n🔍 Evaluation results for {t}:')
 
                 # Execute the commit query
-                if 'commit' in actions:
+                if 'commit' in actions and not ('eval' in actions and rows_to_patch==0):
 
-                    # Return if there are no rows to patch
-                    if rows_to_patch == 0:
-                        return
-                    # Else, execute the query in chunks
-                    else:
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit)
+                    # Print the commit query
+                    if 'print' in actions:
+                        print(sql_query_commit)
+
+                    # Execute the commit SQL query
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit)
+
+            # TODO: SELECT * FROM elasticsearch_cache.Index_D_Unit_L_Person WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG)
 
             # ------- Rollbacks ------- #
 
