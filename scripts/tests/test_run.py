@@ -135,7 +135,7 @@ if True:
     gr.cachemanager.apply_calculated_field_formulas(verbose=False)
     gr.cachemanager.materialize_views(actions=('commit'))
     gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
-    gr.cachemanager.update_scores(score_thr=0.01, actions=('commit'))
+    gr.cachemanager.update_scores_matrix(score_thr=0.01, actions=('commit'))
     gr.indexdb.build(actions=('commit'))
     gr.indexdb.patch(actions=('commit'))
     db.print_database_stats(engine_name='test', schema_name='test_graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
