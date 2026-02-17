@@ -164,7 +164,7 @@ def cmd_airflow_reset(args):
     gr = args.ctx.registry
 
     # Get input options
-    doc_type = args.object_type
+    doc_type = args.doc_type
     options  = tuple(args.options.split(','))  if args.options else ()
     v = args.verbose
 
@@ -177,7 +177,6 @@ def cmd_airflow_reset(args):
 
     # Print footers
     print("🖥️  ~ Done.")
-
 
 #-----------------------------------------#
 # Handler: Operations on to_process flags #
@@ -195,10 +194,10 @@ def cmd_airflow_expire(args):
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")
-    if args.object_type or args.older_than or args.limit_per_type or args.verbose:
+    if args.doc_type or args.older_than or args.limit_per_type or args.verbose:
         print("\nInput options:")
-        if args.object_type:
-            print(f"  object_type .......... {args.object_type}")
+        if args.doc_type:
+            print(f"  doc_type ............. {args.doc_type}")
         if args.older_than:
             print(f"  older_than ........... {args.older_than}")
         if args.limit_per_type:
@@ -210,7 +209,7 @@ def cmd_airflow_expire(args):
     # Execute command:
     # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
     gr.orchestrator.expire(
-        doc_type       = args.object_type,
+        doc_type       = args.doc_type,
         older_than     = args.older_than,
         limit_per_type = args.limit_per_type,
         count_only = c,
@@ -231,7 +230,7 @@ def cmd_airflow_refresh(args):
 
     # Fetch context objects
     registry = args.ctx.registry
-    refresh_checksums = args.refresh_checksums
+    r = args.refresh_checksums
     v = args.verbose
 
     # Print headers
@@ -240,8 +239,8 @@ def cmd_airflow_refresh(args):
     # Execute command:
     # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
     registry.orchestrator.refresh(
-        doc_type = args.object_type,
-        refresh_checksums = args.refresh_checksums,
+        doc_type = args.doc_type,
+        refresh_checksums = r,
         verbose = v
     )
 

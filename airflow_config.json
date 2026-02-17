@@ -1,18 +1,34 @@
 {
     "nodes": [
-        ["Course"     , true, true],
-        ["Notebook"   , true, true],
-        ["Person"     , true, true],
-        ["Startup"    , true, true],
-        ["Unit"       , true, true],
-        ["Widget"     , true, true]
+        ["Category"      , true, true],
+        ["Course"        , true, true],
+        ["Curated area"  , true, true],
+        ["Exercise"      , true, true],
+        ["Lecture"       , true, true],
+        ["MOOC"          , true, true],
+        ["Notebook"      , true, true],
+        ["Person"        , true, true],
+        ["Publication"   , true, true],
+        ["Specialisation", true, true],
+        ["Startup"       , true, true],
+        ["StudyPlan"     , true, true],
+        ["Unit"          , true, true],
+        ["Widget"        , true, true]
     ],
     "edges": [
-        ["Course"     , "Person"  , true],
-        ["Lecture"    , "Widget"  , true],
-        ["Notebook"   , "Person"  , true],
-        ["Person"     , "Unit"    , true],
-        ["Startup"    , "Person"  , true],
-        ["Unit"       , "Unit"    , true]
+        ["Category"   , "Category"      , true],
+        ["Concept"    , "Category"      , true],
+        ["Course"     , "Person"        , true],
+        ["Course"     , "Specialisation", true],
+        ["Course"     , "StudyPlan"     , true],
+        ["Exercise"   , "Person"        , true],
+        ["Lecture"    , "Course"        , true],
+        ["Lecture"    , "MOOC"          , true],
+        ["MOOC"       , "Person"        , true],
+        ["Person"     , "Unit"          , true],
+        ["Publication", "Person"        , true],
+        ["Unit"       , "Unit"          , true],
+        ["Widget"     , "Lecture"       , true]
+
     ]
 }

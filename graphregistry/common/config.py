@@ -81,6 +81,7 @@ class GlobalConfig:
         self.object_type_to_institution_id = {
             'Category'       : 'Ont',
             'Concept'        : 'Ont',
+            'Curated area'   : 'Ont',
             'Course'         : 'EPFL',
             'Exercise'       : 'EPFL',
             'Lecture'        : 'EPFL',
