@@ -6,7 +6,9 @@
             ["Course", "MOOC"],
             ["Lecture", "Lecture"],
             ["Lecture", "MOOC"],
+            ["Lecture", "Widget"],
             ["MOOC", "MOOC"],
+            ["Notebook", "Notebook"],
             ["Widget", "Widget"]
         ],
         "research" : [
