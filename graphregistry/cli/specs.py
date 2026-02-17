@@ -112,7 +112,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "...",
                 func = cmd_airflow_reset,
                 args = [
-                    dict(flags=('--object_type', ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
+                    dict(flags=('--doc_type',    ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
                     dict(flags=('--options',     ), kwargs=dict(required=False, type=str, help="...")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
                 ],
@@ -122,7 +122,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Set 'has_expired' flag to 1 for objects based on date when they were last cached.",
                 func = cmd_airflow_expire,
                 args = [
-                    dict(flags=('--object_type',   ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
+                    dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
                     dict(flags=('--older_than',    ), kwargs=dict(required=False, type=int, help="Set 'has_expired' flag to 1 for objects older than <int> in days (default=90).")),
                     dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, help="Limit number of objects to process (default=100).")),
                     dict(flags=('--count',   '-c'  ), kwargs=dict(action='store_true', help="Show number of items that match the input conditions (no execution).")),
@@ -134,7 +134,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "...",
                 func = cmd_airflow_refresh,
                 args = [
-                    dict(flags=('--object_type',           ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
+                    dict(flags=('--doc_type',              ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', help="Show number of items that match the input conditions (no execution).")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
                 ],

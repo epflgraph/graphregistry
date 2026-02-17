@@ -1457,6 +1457,7 @@ class GraphRegistry():
 
                     # Print conditions if verbose
                     if verbose:
+                        sysmsg.trace(f"Processing doc type: {doc_type}")
                         print("\nAirflow WHERE conditions:")
                         rich.print_json(data=where_conditions)
                         print('')
@@ -2561,6 +2562,9 @@ class GraphRegistry():
             # Compute 32 char MD5 hash
             self.checksum = hashlib.md5(serialized.encode()).hexdigest()
 
+            # Print object key and resulting checksum
+            # print(f"\n({self.institution_id}, {self.object_type}, {self.object_id}): {self.checksum}")
+
         # Commit basic node data to database
         def commit_node_object(self, actions=('eval',)):
             schema = glbcfg.object_type_to_schema.get(self.object_type, glbcfg.schema_registry)
@@ -2949,6 +2953,8 @@ class GraphRegistry():
             # Compute 32 char MD5 hash
             self.checksum = hashlib.md5(serialized.encode()).hexdigest()
 
+            print(f"\n({self.from_object_type}, {self.from_object_id}, {self.to_object_type}, {self.to_object_id}): {self.checksum}")
+
         # Commit basic edge data to database
         def commit_edge_object(self, actions=('eval',)):
             schema = self._get_schema()
@@ -3003,60 +3009,6 @@ class GraphRegistry():
 
             # Return evaluation results
             return eval_results
-
-
-        # # Commit object to database
-        # def commit(self, update_existing=True, test_mode=False):
-
-        #     if not update_existing:
-        #         if self.exists():
-        #             print('Object exists. Update existing is set to OFF.')
-        #             return
-
-        #     # Update object node table
-        #     t = f'{glbcfg.schema_registry}.Edges_N_Object_N_Object_T_ChildToParent'
-        #     sql_query = f"""
-        #         INSERT IGNORE INTO {t} (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
-        #         VALUES ('{self.from_institution_id}', '{self.from_object_type}', '{self.from_object_id}', '{self.to_institution_id}', '{self.to_object_type}', '{self.to_object_id}', '{self.context}');
-        #     """
-        #     # Execute commit
-        #     if test_mode:
-        #         print(sql_query)
-        #     else:
-        #         db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query)
-
-        #     # Update custom fields table
-        #     t = f'{glbcfg.schema_registry}.Data_N_Object_N_Object_T_CustomFields'
-        #     custom_columns = ['field_language', 'field_name', 'field_value']
-        #     date_update_conditions  = ' OR '.join([f"{t}.{c} != d.{c}" for c in custom_columns])
-        #     value_update_conditions =   ', '.join([f"{c} = IF({t}.{c} != d.{c}, d.{c}, {t}.{c})" for c in custom_columns])
-        #     for doc in self.custom_fields:
-        #         sql_query = f"""
-        #              INSERT INTO {t}
-        #                         (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, field_language, field_name, field_value)
-        #                   SELECT from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, field_language, field_name, field_value
-        #                     FROM (SELECT '{self.from_institution_id}' AS from_institution_id,
-        #                                  '{self.from_object_type}'    AS from_object_type,
-        #                                  '{self.from_object_id}'      AS from_object_id,
-        #                                  '{self.to_institution_id}'   AS to_institution_id,
-        #                                  '{self.to_object_type}'      AS to_object_type,
-        #                                  '{self.to_object_id}'        AS to_object_id,
-        #                                  '{self.context}'             AS context,
-        #                                  '{doc['field_language']}'    AS field_language,
-        #                                  '{doc['field_name']}'        AS field_name,
-        #                                  '{doc['field_value']}'       AS field_value
-        #                          ) AS d
-        #         ON DUPLICATE KEY
-        #                   UPDATE record_updated_date = IF(
-        #                          {date_update_conditions},
-        #                          CURRENT_TIMESTAMP, {t}.record_updated_date),
-        #                          {value_update_conditions};
-        #         """
-        #         # Execute commit
-        #         if test_mode:
-        #             print(sql_query)
-        #         else:
-        #             db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query)
 
     #-------------------------------------#
     # Subclass definition: Graph EdgeList #
@@ -4194,7 +4146,22 @@ class GraphRegistry():
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
             # Fetch typeflags config JSON
-            doc_types_to_process, _ = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields')
+            doc_types_in_config, _ = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields')
+
+            # Get all doc types available
+            doc_types_available = dynsql.doc_types
+
+            # Keep only intersection of available and to-process types
+            doc_types_to_process = [t for t in doc_types_available if t in doc_types_in_config]
+
+            # Append doclinks for which links equal doc types to be processed
+            doc_types_to_process += [t for t in doc_types_available if t in doc_types_in_config]
+
+            # Process links in both directions
+            doc_types_to_process += [t for t in doc_types_to_process if t in doc_types_available]
+
+            # Clean and sort list
+            doc_types_to_process = sorted(list(set(doc_types_to_process)))
 
             # Check if empty
             if len(doc_types_to_process)==0:
@@ -4205,6 +4172,12 @@ class GraphRegistry():
 
                 # Print status
                 sysmsg.trace(f"Patch tables in '{glbcfg.mysql_schema_names[self.engine_name]['graphsearch']}' and '{glbcfg.mysql_schema_names[self.engine_name]['es_cache']}' schemas.")
+
+                # Print list of affected tables
+                print('\n[🐬 GraphSearch DB] [D-P-DB] The following tables will be affected:')
+                for t in doc_types_to_process:
+                    print(f" - {glbcfg.mysql_schema_names[self.engine_name]['graphsearch']}.Index_D_{t}")
+                print('')
 
                 # Loop over doc types
                 with tqdm(doc_types_to_process, unit='doc type') as pb:
@@ -4431,9 +4404,6 @@ class GraphRegistry():
             # Get intersection between doclink tuples or semantic and organisational types
             doclinks_to_process = sorted(list(set(dynsql.doclink_types_sem) & set(dynsql.doclink_types_org)))
 
-            for t in doclinks_to_process:
-                print(t)
-
             # Loop over all doclink tuples
             for doc_type, link_type in tqdm(doclinks_to_process):
 
@@ -4448,16 +4418,14 @@ class GraphRegistry():
                 table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix)
 
                 # Only process if both SEM and ORG tables exist
-                if not (table_exists_org and table_exists_sem) or table_exists_mix:
+                if not (table_exists_org and table_exists_sem) or (table_exists_mix and not drop_existing):
                     sysmsg.warning(f"Skipping doc-link type: {doc_type} --> {link_type}. SEM table exists: {table_exists_sem}. ORG table exists: {table_exists_org}. MIX table exists: {table_exists_mix}.")
                     continue
 
                 # Ignore concept search table (special case)
                 if table_name_sem == 'Index_D_Lecture_L_Concept_T_SEM_Search':
+                    sysmsg.warning(f"Skipping Index_D_Lecture_L_Concept_T_SEM_Search table.")
                     continue
-
-                # Check if SEM table exists
-                # if table_name_sem:
 
                 # Get list of columns for SEM table
                 list_of_columns_sem = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
@@ -4473,45 +4441,27 @@ class GraphRegistry():
                 CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
 
                                 SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
-                                    FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
+                                  FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
                             INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                            FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                        GROUP BY doc_institution, doc_type, doc_id) o
-                                    USING (doc_institution, doc_type, doc_id)
+                                          FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                                      GROUP BY doc_institution, doc_type, doc_id) o
+                                 USING (doc_institution, doc_type, doc_id)
+                                 WHERE doc_id IN (SELECT doc_id FROM graph_cache.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
 
-                                UNION ALL
+                             UNION ALL
 
                                 SELECT {', '.join(list_of_columns_sem)}, (s.row_rank + COALESCE(o.max_row_rank, 0)) AS adjusted_row_rank
-                                    FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
-                                LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                            FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                        GROUP BY doc_institution, doc_type, doc_id) o
-                                    USING (doc_institution, doc_type, doc_id)
-                                    WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
-                                NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
+                                  FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
+                             LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                                          FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                                      GROUP BY doc_institution, doc_type, doc_id) o
+                                 USING (doc_institution, doc_type, doc_id)
+                                 WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
+                                          NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
+                                   AND doc_id IN (SELECT doc_id FROM graph_cache.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
 
-                                ORDER BY doc_id ASC, adjusted_row_rank ASC;
+                              ORDER BY doc_id ASC, adjusted_row_rank ASC;
                 """
-
-                # elif table_name_org:
-
-                #     # Get list of columns for ORG table
-                #     list_of_columns_org = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
-
-                #     # Remove row_id
-                #     list_of_columns_org.remove('row_id')
-
-                #     # Generate SQL query
-                #     SQLQuery = f"""
-                #     CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
-
-                #                     SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
-                #                       FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
-                #                 INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                #                               FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                #                           GROUP BY doc_institution, doc_type, doc_id) o
-                #                      USING (doc_institution, doc_type, doc_id)
-                #     """
 
                 if test_mode:
                     print(SQLQuery)
@@ -6646,11 +6596,14 @@ class GraphRegistry():
 
                 # Generate scores matrix table name
                 scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
-                print("scores_matrix_table_name_as ---------------------> ", scores_matrix_table_name_as)
+                # print("scores_matrix_table_name_as ---------------------> ", scores_matrix_table_name_as)
 
                 # Resolve table name or return if it doesn't exist
                 # Table type: MIX
                 if   db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
+
+                    # Print status
+                    sysmsg.trace(f"Using MIX table for {self.doc_type} --> {self.link_type}")
 
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX"

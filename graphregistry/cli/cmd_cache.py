@@ -164,14 +164,19 @@ def cmd_cache_debug(args):
     # ------------------#
     # registry.indexdb.idoclinks['Notebook']['Person']['ORG'].horizontal_patch_elasticsearch(actions=('print'))
     # registry.indexdb.doclinks_vertical_patch_all(actions=('eval'))
+    # registry.indexdb.doclinks_horizontal_patch_all(actions=('eval', 'commit'))
     # db.print_database_stats(engine_name='xaas_coresrv', schema_name='graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
     # db.print_database_stats(engine_name='xaas_coresrv', schema_name='elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
     # registry.indexdb.idoclinks['Category']['Course']['SEM'].horizontal_patch(actions=('eval', 'commit', 'print'))
-    
-    registry.cachemanager.calculate_scores_matrix(  from_object_type='Category', to_object_type='Category', actions=('print', 'commit'))
-    registry.cachemanager.consolidate_scores_matrix(from_object_type='Category', to_object_type='Category', update_averages=True, score_thr=0.1, actions=('commit'))
+    # registry.cachemanager.calculate_scores_matrix(  from_object_type='Category', to_object_type='Category', actions=('print', 'commit'))
+    # registry.cachemanager.consolidate_scores_matrix(from_object_type='Category', to_object_type='Category', update_averages=True, score_thr=0.1, actions=('commit'))
 
+    # registry.indexdb.idoclinks['Person']['Publication']['ORG'].horizontal_patch(actions=('eval', 'print'))
 
+    # registry.indexdb.idoclinks['Course']['Person']['ORG'].horizontal_patch_elasticsearch(actions=('eval', 'print', 'commit'))
+    # registry.indexdb.create_mixed_views(drop_existing=True, test_mode=False)
+
+    registry.orchestrator.rollover(verbose=True)
 
     # Print footers
     print("🖥️  ~ Done.")
