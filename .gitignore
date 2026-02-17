@@ -257,3 +257,4 @@ node_modules/
 package-lock.json
 docker-compose.yml
 config/config_graphai_client.json
+example_config_dict.json
