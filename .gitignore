@@ -218,7 +218,8 @@ config.ini
 .env
 .certs
 .vscode
-
+.vscode
+.trash
 
 .DS_Store
 __pycache__
@@ -236,8 +237,6 @@ resources/credentials/*
 geckodriver.log
 database/init/data_patches/
 database/tests/
-
-.python_version
 
 config/config_global.yaml
 config/config_index.json
