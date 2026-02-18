@@ -231,7 +231,6 @@ __pycache__
 .idea/
 _trash/
 _local_data/
-venv/
 resources/certificates/*.crt
 resources/credentials/*
 geckodriver.log
