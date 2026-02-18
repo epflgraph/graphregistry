@@ -246,3 +246,26 @@ def cmd_airflow_refresh(args):
 
     # Print footers
     print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_airflow_rollover(args):
+    """
+    Handle:
+      graphregistry airflow rollover [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+    actions = tuple(args.actions.split(',')) if args.actions else ()
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Rollover orchestrator tasks.")
+
+    # Execute command:
+    # - Rollover orchestrator tasks.
+    registry.orchestrator.rollover(actions=actions)
+
+    # Print footers
+    print("🖥️  ~ Done.")

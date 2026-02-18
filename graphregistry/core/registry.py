@@ -602,8 +602,8 @@ class GraphRegistry():
             self.scoresexpired.refresh(doc_type=doc_type, verbose=verbose)
 
         # Rollover checksums (replace previous one with current)
-        def rollover(self, doc_type=None, verbose=False):
-            self.fieldschanged.rollover(doc_type=doc_type, verbose=verbose)
+        def rollover(self, doc_type=None, actions=('eval',)):
+            self.fieldschanged.rollover(doc_type=doc_type, actions=actions)
 
         # Clean up flags in cache after all processing is done
         def cleanup(self, verbose=False):
@@ -1658,7 +1658,7 @@ class GraphRegistry():
                 sysmsg.success("🧩 🏁 ✅ Done refreshing checksums and setting 'to_process' flags in 'FieldsChanged' airflow tables.\n")
 
             # Rollover checksums (replace previous one with current)
-            def rollover(self, doc_type=None, verbose=False):
+            def rollover(self, doc_type=None, actions=('eval',)):
 
                 # Print status
                 sysmsg.info("⬅️  📝 Rollover checksums (make previous checksum equal to current) in 'FieldsChanged' airflow tables.")
@@ -1674,7 +1674,7 @@ class GraphRegistry():
                 else:
 
                     # Print conditions if verbose
-                    if verbose:
+                    if 'eval' in actions or 'print' in actions:
                         print("\nAirflow WHERE conditions:")
                         rich.print_json(data=where_conditions)
                         print('')
@@ -1690,8 +1690,36 @@ class GraphRegistry():
                             sysmsg.trace("Nothing to do. Check input 'doc_type' or typeflags config.")
                             continue
 
-                        # Generate SQL query
-                        sql_query = f"""
+                        # Generate SQL evaluation query
+                        sql_query_eval = f"""
+                            SELECT {'object_type' if table_name == 'Operations_N_Object_T_FieldsChanged' else 'from_object_type, to_object_type'}, COUNT(*) AS n_to_rollover
+                              FROM {glbcfg.schema_airflow}.{table_name}
+                             WHERE (   COALESCE(checksum_previous, '__null__') != COALESCE(checksum_current, '__null__')
+                                    OR has_changed > 0.5
+                                    OR (has_changed IS NULL AND checksum_current IS NOT NULL)
+                                   )
+                               AND {where_conditions[table_name]}
+                               AND to_process = 1
+                          GROUP BY {'object_type' if table_name == 'Operations_N_Object_T_FieldsChanged' else 'from_object_type, to_object_type'}
+                        """
+
+                        # Evaluate
+                        if 'eval' in actions:
+
+                            # Print evaluation query
+                            if 'print' in actions:
+                                print('\nSQL evaluation query:\n\n')
+                                print(sql_query_eval)
+                                print('\n')
+
+                            # Execute evaluation query
+                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                            if len(out) > 0:
+                                df = pd.DataFrame(out, columns=[['object_type'] if table_name == 'Operations_N_Object_T_FieldsChanged' else ['from_object_type', 'to_object_type']][0]+['n_to_rollover'])
+                                print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
+
+                        # Generate SQL commit query
+                        sql_query_commit = f"""
                             UPDATE {glbcfg.schema_airflow}.{table_name}
                                SET checksum_previous = checksum_current, has_changed = 0
                              WHERE (   COALESCE(checksum_previous, '__null__') != COALESCE(checksum_current, '__null__')
@@ -1699,10 +1727,16 @@ class GraphRegistry():
                                     OR (has_changed IS NULL AND checksum_current IS NOT NULL)
                                    )
                                AND {where_conditions[table_name]}
+                               AND to_process = 1
                         """
 
                         # Reset all expiration flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        if 'commit' in actions:
+                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
+                        elif 'print' in actions:
+                            print('\nSQL commit query:\n\n')
+                            print(sql_query_commit)
+                            print('\n')
 
                 # Print status
                 sysmsg.success("⬅️  ✅ Done rolling over checksums.\n")
