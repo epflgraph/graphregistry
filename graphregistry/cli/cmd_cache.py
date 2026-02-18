@@ -176,7 +176,7 @@ def cmd_cache_debug(args):
     # registry.indexdb.idoclinks['Course']['Person']['ORG'].horizontal_patch_elasticsearch(actions=('eval', 'print', 'commit'))
     # registry.indexdb.create_mixed_views(drop_existing=True, test_mode=False)
 
-    registry.orchestrator.rollover(actions=('commit',))
+    registry.orchestrator.update_dates(actions=('commit',))
 
     # Print footers
     print("🖥️  ~ Done.")

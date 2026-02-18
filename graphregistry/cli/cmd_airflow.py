@@ -269,3 +269,26 @@ def cmd_airflow_rollover(args):
 
     # Print footers
     print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_airflow_update_dates(args):
+    """
+    Handle:
+      graphregistry airflow update_dates [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+    actions = tuple(args.actions.split(',')) if args.actions else ()
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. update_dates orchestrator tasks.")
+
+    # Execute command:
+    # - Rollover orchestrator tasks.
+    registry.orchestrator.update_dates(actions=actions)
+
+    # Print footers
+    print("🖥️  ~ Done.")
