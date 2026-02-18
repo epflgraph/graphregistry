@@ -605,10 +605,10 @@ class GraphRegistry():
         def rollover(self, doc_type=None, actions=('eval',)):
             self.fieldschanged.rollover(doc_type=doc_type, actions=actions)
 
-        # Clean up flags in cache after all processing is done
-        def cleanup(self, verbose=False):
-            list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test)
-            print(list_of_tables)
+        # Update last_date_cached values
+        def update_dates(self, doc_type=None, actions=('eval',)):
+            self.fieldschanged.update_dates(doc_type=doc_type, actions=actions)
+            self.scoresexpired.update_dates(doc_type=doc_type, actions=actions)
 
         # === Object Type Flags ===
         class TypeFlags():
@@ -1741,6 +1741,84 @@ class GraphRegistry():
                 # Print status
                 sysmsg.success("⬅️  ✅ Done rolling over checksums.\n")
 
+            # Update last_date_cached values
+            def update_dates(self, doc_type=None, actions=('eval',)):
+
+                # Print status
+                sysmsg.info("⬅️  📝 Update last_date_cached values in 'FieldsChanged' airflow tables.")
+
+                # Generate Airflow WHERE conditions
+                where_conditions = generate_airflow_where_conditions(doc_type=doc_type)
+
+                # Check if something to do
+                if where_conditions is None:
+                    sysmsg.warning("Nothing to do. Check input 'doc_type' or typeflags config.")
+
+                # If WHERE conditions were generated, continue
+                else:
+
+                    # Print conditions if verbose
+                    if 'eval' in actions or 'print' in actions:
+                        print("\nAirflow WHERE conditions:")
+                        rich.print_json(data=where_conditions)
+                        print('')
+
+                    # Loop over airflow tables
+                    for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
+
+                        # Print status
+                        sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
+
+                        # Check if something to do before continuing
+                        if where_conditions[table_name] == "FALSE":
+                            sysmsg.trace("Nothing to do. Check input 'doc_type' or typeflags config.")
+                            continue
+
+                        # Generate SQL evaluation query
+                        sql_query_eval = f"""
+                            SELECT {'object_type' if table_name == 'Operations_N_Object_T_FieldsChanged' else 'from_object_type, to_object_type'}, COUNT(*) AS n_to_update
+                              FROM {glbcfg.schema_airflow}.{table_name}
+                             WHERE COALESCE(last_date_cached, DATE('0000-00-00')) != DATE(NOW())
+                               AND {where_conditions[table_name]}
+                               AND to_process = 1
+                          GROUP BY {'object_type' if table_name == 'Operations_N_Object_T_FieldsChanged' else 'from_object_type, to_object_type'}
+                        """
+
+                        # Evaluate
+                        if 'eval' in actions:
+
+                            # Print evaluation query
+                            if 'print' in actions:
+                                print('\nSQL evaluation query:\n\n')
+                                print(sql_query_eval)
+                                print('\n')
+
+                            # Execute evaluation query
+                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                            if len(out) > 0:
+                                df = pd.DataFrame(out, columns=[['object_type'] if table_name == 'Operations_N_Object_T_FieldsChanged' else ['from_object_type', 'to_object_type']][0]+['n_to_update'])
+                                print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
+
+                        # Generate SQL commit query
+                        sql_query_commit = f"""
+                            UPDATE {glbcfg.schema_airflow}.{table_name}
+                               SET last_date_cached = DATE(NOW()), has_expired = 0
+                             WHERE COALESCE(last_date_cached, DATE('0000-00-00')) != DATE(NOW())
+                               AND {where_conditions[table_name]}
+                               AND to_process = 1
+                        """
+
+                        # Reset all expiration flags
+                        if 'commit' in actions:
+                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
+                        elif 'print' in actions:
+                            print('\nSQL commit query:\n\n')
+                            print(sql_query_commit)
+                            print('\n')
+
+                # Print status
+                sysmsg.success("⬅️  ✅ Done updating last_date_cached values in 'FieldsChanged' airflow tables.\n")
+
         # === Scores Expired Flags ===
         class ScoresExpired():
 
@@ -2299,6 +2377,84 @@ class GraphRegistry():
 
                 # Print status
                 sysmsg.success("🏁 ✅ Done setting 'to_process' flags in 'ScoresExpired' airflow tables.\n")
+
+            # Update last_date_cached values
+            def update_dates(self, doc_type=None, actions=('eval',)):
+
+                # Print status
+                sysmsg.info("⬅️  📝 Update last_date_cached values in 'ScoresExpired' airflow tables.")
+
+                # Generate Airflow WHERE conditions
+                where_conditions = generate_airflow_where_conditions(doc_type=doc_type)
+
+                # Check if something to do
+                if where_conditions is None:
+                    sysmsg.warning("Nothing to do. Check input 'doc_type' or typeflags config.")
+
+                # If WHERE conditions were generated, continue
+                else:
+
+                    # Print conditions if verbose
+                    if 'eval' in actions or 'print' in actions:
+                        print("\nAirflow WHERE conditions:")
+                        rich.print_json(data=where_conditions)
+                        print('')
+
+                    # Only one table to process
+                    table_name = 'Operations_N_Object_T_ScoresExpired'
+
+                    # Print status
+                    sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
+
+                    # Check if something to do before continuing
+                    if where_conditions[table_name] == "FALSE":
+                        sysmsg.trace("Nothing to do. Check input 'doc_type' or typeflags config.")
+                        return
+
+                    # Generate SQL evaluation query
+                    sql_query_eval = f"""
+                        SELECT object_type, COUNT(*) AS n_to_update
+                          FROM {glbcfg.schema_airflow}.{table_name}
+                         WHERE COALESCE(last_date_cached, DATE('0000-00-00')) != DATE(NOW())
+                           AND {where_conditions[table_name]}
+                           AND to_process = 1
+                      GROUP BY object_type
+                    """
+
+                    # Evaluate
+                    if 'eval' in actions:
+
+                        # Print evaluation query
+                        if 'print' in actions:
+                            print('\nSQL evaluation query:\n\n')
+                            print(sql_query_eval)
+                            print('\n')
+
+                        # Execute evaluation query
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                        if len(out) > 0:
+                            df = pd.DataFrame(out, columns=['object_type', 'n_to_update'])
+                            print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
+
+                    # Generate SQL commit query
+                    sql_query_commit = f"""
+                        UPDATE {glbcfg.schema_airflow}.{table_name}
+                           SET last_date_cached = DATE(NOW()), has_expired = 0
+                         WHERE COALESCE(last_date_cached, DATE('0000-00-00')) != DATE(NOW())
+                           AND {where_conditions[table_name]}
+                           AND to_process = 1
+                    """
+
+                    # Reset all expiration flags
+                    if 'commit' in actions:
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
+                    elif 'print' in actions:
+                        print('\nSQL commit query:\n\n')
+                        print(sql_query_commit)
+                        print('\n')
+
+                # Print status
+                sysmsg.success("⬅️  ✅ Done updating last_date_cached values in 'ScoresExpired' airflow tables.\n")
 
     #---------------------------------#
     # Subclass definition: Graph Node #

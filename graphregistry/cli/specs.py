@@ -11,7 +11,8 @@ from graphregistry.cli.cmd_airflow import (
     cmd_airflow_reset,
     cmd_airflow_expire,
     cmd_airflow_refresh,
-    cmd_airflow_rollover
+    cmd_airflow_rollover,
+    cmd_airflow_update_dates
 )
 from graphregistry.cli.cmd_cache import (
     cmd_cache_update,
@@ -144,6 +145,14 @@ cli_definitions: Dict[str, Any] = {
             'rollover' : dict(
                 help = "...",
                 func = cmd_airflow_rollover,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="Actions to perform: eval, print, commit (default=eval)."))
+                ],
+                common_args = []
+            ),
+            'update_dates' : dict(
+                help = "...",
+                func = cmd_airflow_update_dates,
                 args = [
                     dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="Actions to perform: eval, print, commit (default=eval)."))
                 ],
