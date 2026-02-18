@@ -11,6 +11,7 @@ from graphregistry.cli.cmd_airflow import (
     cmd_airflow_reset,
     cmd_airflow_expire,
     cmd_airflow_refresh,
+    cmd_airflow_rollover
 )
 from graphregistry.cli.cmd_cache import (
     cmd_cache_update,
@@ -137,6 +138,14 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--doc_type',              ), kwargs=dict(required=False, type=str, help="Process only the input object type (default=all).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', help="Show number of items that match the input conditions (no execution).")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', help="Execute in verbose mode.")),
+                ],
+                common_args = []
+            ),
+            'rollover' : dict(
+                help = "...",
+                func = cmd_airflow_rollover,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="Actions to perform: eval, print, commit (default=eval)."))
                 ],
                 common_args = []
             )
