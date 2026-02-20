@@ -13,9 +13,10 @@ from loguru import logger as sysmsg
 from copy import deepcopy
 from itertools import combinations_with_replacement
 from pathlib import Path
+from decimal import Decimal
 import numpy as np
 import pandas as pd
-import re, sys, json, datetime, itertools, gzip, os, glob, rich, hashlib
+import os, re, sys, json, ijson, datetime, itertools, gzip, os, glob, rich, hashlib
 
 #------------------------------#
 # Class objects initialisation #
@@ -7054,8 +7055,6 @@ class GraphRegistry():
         # Class constructor
         def __init__(self):
             pass
-            # db = GraphDB()
-            # self.es = GraphIndex()
 
         # Generate local JSON cache for ElasticSearch index creation
         def generate_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
@@ -7231,214 +7230,13 @@ class GraphRegistry():
         # Generate ElasticSearch index from local JSON cache
         def generate_index_from_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
 
-            # Print status
-            sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
-
-            # Generate target file path
-            target_output_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
-
-            #-------------------------------------------#
-            # If file exists, handle according to flags #
-            #-------------------------------------------#
-            if os.path.exists(target_output_path):
-                if not ignore_warnings:
-                    sysmsg.warning(f"File already exists: {target_output_path}")
-                if not replace_existing:
-                    sysmsg.error(f"❌ Failed to generate ElasticSearch index. File already exists: {target_output_path}")
-                    return
-                elif replace_existing:
-                    if force_replace:
-                        confirmation = 'yes'
-                    else:
-                        confirmation = input(f"Are you sure you want to replace the existing file? (yes/no): ")
-                    if confirmation.lower() != 'yes':
-                        sysmsg.error("❌ Operation cancelled by user.")
-                        return
-                    elif not ignore_warnings:
-                        sysmsg.warning(f"Replacing existing file ...")
-                    os.remove(target_output_path)
-            #-------------------------------------------#
-
-            # Fetch list of doc type from config
-            list_of_doc_types = idxcfg.settings['doc_types']
-
-            # Initialize index doc types list
-            es_index = []
-
-            # Loop over all doc types
-            with tqdm(list_of_doc_types, unit='doc type') as pb:
-                for doc_type in pb:
-
-                    print('doc_type -------> ', doc_type)
-
-                    # Print status
-                    pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-
-                    # Generate source file path
-                    source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
-
-                    # Check if source file exists
-                    if not os.path.exists(source_file_path):
-                        if not ignore_warnings:
-                            sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
-                        continue
-
-                    # Load JSON structure from file
-                    with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
-                        es_index_struct = json.load(f)
-
-                    # Append JSON structure to index
-                    for doc_id in es_index_struct[doc_type]:
-                        es_index += [es_index_struct[doc_type][doc_id]]
-
-            # Save index JSON to file (as json.gz)
-            sysmsg.trace(f"⚙️  Saving index JSON to file '{target_output_path}' ...")
-            with gzip.open(target_output_path, 'wt', encoding='utf-8') as f:
-                json.dump(es_index, f, indent=4)
-
-            # Print status
-            sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
-
-
-        import os, json, gzip
-        from tqdm import tqdm
-
-        def generate_index_from_local_cache_v2(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
-
-            sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
-
-            target_output_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
-
-            # Handle existing file
-            if os.path.exists(target_output_path):
-                if not ignore_warnings:
-                    sysmsg.warning(f"File already exists: {target_output_path}")
-                if not replace_existing:
-                    sysmsg.error(f"❌ Failed to generate ElasticSearch index. File already exists: {target_output_path}")
-                    return
-                confirmation = 'yes' if force_replace else input("Are you sure you want to replace the existing file? (yes/no): ")
-                if confirmation.lower() != 'yes':
-                    sysmsg.error("❌ Operation cancelled by user.")
-                    return
-                os.remove(target_output_path)
-
-            list_of_doc_types = idxcfg.settings['doc_types']
-
-            sysmsg.trace(f"⚙️  Streaming index JSON to file '{target_output_path}' ...")
-
-            # Stream-write JSON array
-            with gzip.open(target_output_path, 'wt', encoding='utf-8') as out:
-                out.write("[\n")
-                first = True
-
-                with tqdm(list_of_doc_types, unit='doc type') as pb:
-                    for doc_type in pb:
-                        pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-
-                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
-
-                        if not os.path.exists(source_file_path):
-                            if not ignore_warnings:
-                                sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
-                            continue
-
-                        # Load split file (still loads that one split file fully)
-                        with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
-                            es_index_struct = json.load(f)
-
-                        # Write each doc as an element in the output array
-                        for doc_id, doc in es_index_struct.get(doc_type, {}).items():
-                            if not first:
-                                out.write(",\n")
-                            else:
-                                first = False
-                            json.dump(doc, out, ensure_ascii=False)  # no indent -> smaller & faster
-
-                out.write("\n]\n")
-
-            sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
-
-        import os, gzip, json
-        import ijson
-        from tqdm import tqdm
-
-        def generate_index_from_local_cache_v3(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
-
-            import ijson
-
-            from decimal import Decimal
-
-            def _json_default(o):
-                if isinstance(o, Decimal):
-                    # choose one:
-                    return float(o)   # numeric in JSON
-                    # return str(o)   # exact string representation (uncomment if you prefer)
-                raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
-
-            sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
-
-            target_output_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
-
-            # Existing file handling
-            if os.path.exists(target_output_path):
-                if not ignore_warnings:
-                    sysmsg.warning(f"File already exists: {target_output_path}")
-                if not replace_existing:
-                    sysmsg.error(f"❌ Failed. File already exists: {target_output_path}")
-                    return
-                confirmation = 'yes' if force_replace else input("Are you sure you want to replace the existing file? (yes/no): ")
-                if confirmation.lower() != 'yes':
-                    sysmsg.error("❌ Operation cancelled by user.")
-                    return
-                os.remove(target_output_path)
-
-            list_of_doc_types = idxcfg.settings['doc_types']
-
-            sysmsg.trace(f"⚙️  Streaming index JSON to file '{target_output_path}' ...")
-
-            with gzip.open(target_output_path, "wt", encoding="utf-8") as out:
-                out.write("[\n")
-                first = True
-
-                with tqdm(list_of_doc_types, unit="doc type") as pb:
-                    for doc_type in pb:
-                        pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-
-                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
-                        if not os.path.exists(source_file_path):
-                            if not ignore_warnings:
-                                sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
-                            continue
-
-                        # Stream over: { "<doc_type>": { "<doc_id>": <doc>, ... } }
-                        with gzip.open(source_file_path, "rb") as f:
-                            # emits (<doc_id>, <doc>) pairs without loading full dict
-                            for _, doc in ijson.kvitems(f, f"{doc_type}"):
-                                if not first:
-                                    out.write(",\n")
-                                else:
-                                    first = False
-                                # json.dump(doc, out, ensure_ascii=False)
-                                json.dump(doc, out, ensure_ascii=False, default=_json_default)
-
-                out.write("\n]\n")
-
-            sysmsg.success("🐙 ✅ Done generating ElasticSearch index file.\n")
-
-
-
-        def generate_index_from_local_cache_v4(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
-
-            import os, json, gzip
-            import ijson
-            from decimal import Decimal
-            from tqdm import tqdm
-
+            # Helper function for JSON serialization of Decimal objects
             def _json_default(o):
                 if isinstance(o, Decimal):
                     return float(o)  # numeric in JSON
                 raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
 
+            # Display status
             sysmsg.info(f"🐙 📝 Generate ElasticSearch import folder from local JSON cache (index date: {index_date}).")
 
             # ------------------------------------------------------------------
@@ -7449,7 +7247,6 @@ class GraphRegistry():
             # ------------------------------------------------------------------
             output_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}"
             os.makedirs(output_folder, exist_ok=True)
-
             docs_path = os.path.join(output_folder, "documents.jsonl")
             settings_path = os.path.join(output_folder, "settings_mappings.json")
 
@@ -7661,25 +7458,36 @@ class GraphRegistry():
                 }
             }
 
+            # Write settings and mappings to file
             with open(settings_path, "w", encoding="utf-8") as f:
                 json.dump(settings_mappings_payload, f, ensure_ascii=False, indent=4)
 
             # ------------------------------------------------------------------
             # Stream documents into documents.jsonl
             #
-            # IMPORTANT for your importer:
+            # IMPORTANT for the importer:
             # - one valid JSON object per line
             # - each object should preferably be {"_id": ..., "_source": {...}}
             # - if cache docs are already shaped like that, we keep them as-is
             # ------------------------------------------------------------------
+
+            # Get list of doc types from index config
             list_of_doc_types = idxcfg.settings["doc_types"]
+
+            # Display status
             sysmsg.trace(f"⚙️  Streaming documents to '{docs_path}' ...")
 
+            # Stream over doc types and write to JSONL file (one JSON object per line)
             with open(docs_path, "w", encoding="utf-8") as out:
                 with tqdm(list_of_doc_types, unit="doc type") as pb:
+
+                    # For each doc type, read the corresponding JSON cache file (if exists) and stream its documents to the output JSONL file
                     for doc_type in pb:
+
+                        # Print status
                         pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
+                        # Check if source JSON cache file exists for doc type
                         source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
                         if not os.path.exists(source_file_path):
                             if not ignore_warnings:
@@ -7688,6 +7496,8 @@ class GraphRegistry():
 
                         # Stream over: { "<doc_type>": { "<doc_id>": <doc>, ... } }
                         with gzip.open(source_file_path, "rb") as f:
+
+                            # Use ijson to stream over the JSON structure and write each document as a separate line in the output JSONL file
                             for doc_id, doc in ijson.kvitems(f, f"{doc_type}"):
 
                                 # Ensure shape compatible with import_index_from_folder()
@@ -7698,80 +7508,12 @@ class GraphRegistry():
                                 else:
                                     obj = {"_id": doc_id, "_source": doc}
 
+                                # Write JSON object to file (one per line)
                                 out.write(json.dumps(obj, ensure_ascii=False, default=_json_default))
                                 out.write("\n")
 
+            # Print status
             sysmsg.success(f"🐙 ✅ Done generating import folder:\n  {output_folder}\n")
-
-
-
-        # Import index from local JSON file to ElasticSearch engine
-        def import_index(self, engine_name, index_file=None, index_name=None, index_date=None, chunk_size=1000, replace_existing=False, force_replace=False):
-
-            # Print status
-            sysmsg.info(f"🐙 📝 Import index file into ElasticSearch server.")
-
-            # Use index date convention (generate file path and name accordingly)
-            if (index_file, index_name)==(None, None):
-                index_file = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
-                index_name = f'graphsearch_{engine_name}_{index_date.replace("-", "_")}'
-
-            # Use input file and name parameters directly
-            elif not (index_file, index_name)==(None, None):
-                index_file = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_file}"
-                index_name = index_name.replace(' ', '_').replace('-', '_')
-
-            # Else, raise error
-            else:
-                raise ValueError("Either both 'index_file' and 'index_name' parameters must be provided, or neither of them (in which case 'index_date' must be provided).")                
-
-            # Import index from file
-            es.import_index_from_file(
-                engine_name = engine_name,
-                index_name  = index_name,
-                index_file  = index_file,
-                chunk_size  = chunk_size,
-                delete_if_exists = replace_existing,
-                force_replace = force_replace
-            )
-
-            # Print status
-            sysmsg.success(f"🐙 ✅ Done importing index file.\n")
-
-
-
-        # # Copy ElasticSearch index from test to production environment
-        # def copy_index_from_test_to_prod(self, index_name, rename_to=None, chunk_size=1000):
-
-        #     # Print status
-        #     sysmsg.info(f"➡️ 📝 Copy ElasticSearch index '{index_name}' from test to prod environment (rename to: {rename_to}).")
-
-        #     # Define the index names
-        #     index_name_test = index_name
-        #     index_name_prod = index_name
-        #     if rename_to is not None:
-        #         index_name_prod = rename_to
-
-        #     # Define the parameters for the ElasticDump command
-        #     params_server_test = f"https://{es.params_test['username']}:{quote(es.params_test['password'])}@{es.params_test['host']}:{es.params_test['port']}/{index_name_test}"
-        #     params_server_prod = f"https://{es.params_prod['username']}:{quote(es.params_prod['password'])}@{es.params_prod['host']}:{es.params_prod['port']}/{index_name_prod}"
-        #     base_command = [glbcfg.settings['elasticsearch']['dump_bin'], f"--input={params_server_test}", f"--output={params_server_prod}", f"--input-ca={es.params_test['cert_file']}", f"--output-ca={es.params_prod['cert_file']}", f"--limit={chunk_size}"]
-
-        #     # Copy the index from test to prod
-        #     sysmsg.trace(f"⚙️  Dumping and transferring index ...")
-        #     # for type in ['settings', 'mapping', 'data']:
-        #         # subprocess.run(base_command + [f"--type={type}"], env={**os.environ, "NODE_TLS_REJECT_UNAUTHORIZED": "0"})
-
-        #     # Print status
-        #     sysmsg.success(f"➡️ ✅ Done copying ElasticSearch index.\n")
-
-
-        # es.create_index_from_file(engine_name='xaas_coresrv', index_name='graphsearch_test_2025_03-27', index_file='/Users/francisco/Cloud/Academia/CEDE/EPFLGraph/GitHub/data/elasticsearch_data_exports/es_fullindex_2025-03-27.json', chunk_size=1000, delete_if_exists=True)
-        # es.alias_list(engine_name='xaas_coresrv')
-        # es.set_alias(engine_name='xaas_coresrv', alias_name='graphsearch_test', index_name='2025-03-27')
-        # es.copy_index_from_test_to_prod(index_name='2025-03-27', rename_to='graphsearch_prod_2025_03_27', chunk_size=10000)
-
-        # es.set_alias(engine_name='xaas_prod', alias_name='graphsearch_prod', index_name='graphsearch_prod_2025_03_27')
 
 #==================================#
 # Main: >> python graphregistry.py #
