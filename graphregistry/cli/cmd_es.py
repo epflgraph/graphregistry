@@ -1,19 +1,21 @@
+# graphregistry/cli/cmd_es.py
+# Manage ElasticSearch server operations.
 import os
 
-#-------------------------------------#
-# Handler: Test ElasticSearch servers #
-#-------------------------------------#
+#-----------------------------------#
+# Handler: Test server connectivity #
+#-----------------------------------#
 def cmd_es_test(args):
     """
-    Handle:
-      graphregistry index test [...]
+    Usage:
+        graphregistry es test [...]
     """
 
     # Fetch context objects
     index = args.ctx.index
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test ElasticSearch server.")
+    print("🖥️  ~ Graph Registry CLI. Test server connectivity.")
 
     # Execute command:
     # - Test connection to ElasticSearch server
@@ -32,20 +34,20 @@ def cmd_es_test(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#----------------------------------------------#
-# Handler: Print info on ElasticSearch servers #
-#----------------------------------------------#
+#----------------------------#
+# Handler: Print server info #
+#----------------------------#
 def cmd_es_info(args):
     """
-    Handle:
-      graphregistry index info [...]
+    Usage:
+        graphregistry es info [...]
     """
 
     # Fetch context objects
     index = args.ctx.index
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test ElasticSearch server.")
+    print("🖥️  ~ Graph Registry CLI. Print server info.")
 
     # Execute command:
     # - Print info on ElasticSearch server
@@ -54,20 +56,20 @@ def cmd_es_info(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#------------------------------------------------#
-# Handler: Print health of ElasticSearch servers #
-#------------------------------------------------#
+#------------------------------#
+# Handler: Print server health #
+#------------------------------#
 def cmd_es_health(args):
     """
-    Handle:
-      graphregistry index health [...]
+    Usage:
+        graphregistry es health [...]
     """
 
     # Fetch context objects
     index = args.ctx.index
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test ElasticSearch server.")
+    print("🖥️  ~ Graph Registry CLI. Print server health.")
 
     # Execute command:
     # - Print health of ElasticSearch server
@@ -77,19 +79,19 @@ def cmd_es_health(args):
     print("🖥️  ~ Done.")
 
 #-------------------------------------#
-# Handler: List ElasticSearch indexes #
+# Handler: List indexes on the server #
 #-------------------------------------#
 def cmd_es_list(args):
     """
-    Handle:
-      graphregistry index list [...]
+    Usage:
+        graphregistry es list [...]
     """
 
     # Fetch context objects
     index = args.ctx.index
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. List ElasticSearch indexes.")
+    print("🖥️  ~ Graph Registry CLI. List indexes on the server.")
 
     # Execute command:
     # - List ElasticSearch indexes or aliases
@@ -101,20 +103,20 @@ def cmd_es_list(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#-------------------------------------#
-# Handler: Export ElasticSearch index #
-#-------------------------------------#
+#-----------------------------------------#
+# Handler: Export index into local folder #
+#-----------------------------------------#
 def cmd_es_export(args):
     """
-    Handle:
-      graphregistry index export [...]
+    Usage:
+        graphregistry es export [...]
     """
 
     # Fetch context objects
     index = args.ctx.index
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Export ElasticSearch index.")
+    print("🖥️  ~ Graph Registry CLI. Export index into local folder.")
 
     # Execute command:
     # - Export ElasticSearch index to local folder
@@ -131,13 +133,13 @@ def cmd_es_export(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#-------------------------------------#
-# Handler: Import ElasticSearch index #
-#-------------------------------------#
+#-----------------------------------------#
+# Handler: Import index from local folder #
+#-----------------------------------------#
 def cmd_es_import(args):
     """
-    Handle:
-      graphregistry index import [...]
+    Usage:
+        graphregistry es import [...]
     """
 
     # Fetch context objects
@@ -152,7 +154,7 @@ def cmd_es_import(args):
     force            = args.force
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Import ElasticSearch index.")
+    print("🖥️  ~ Graph Registry CLI. Import index from local folder.")
 
     # Execute command:
     # - Import ElasticSearch index from local folder
@@ -172,14 +174,17 @@ def cmd_es_import(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#-------------------------------------#
-# Handler: Copy ElasticSearch index   #
-#-------------------------------------#
+#------------------------------------#
+# Handler: Copy index across servers #
+#------------------------------------#
 def cmd_es_copy(args):
     """
-    Handle:
-      graphregistry index copy [...]
+    Usage:
+        graphregistry es copy [...]
     """
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Copy index across servers.")
 
     # Fetch context objects
     index = args.ctx.index
@@ -187,11 +192,7 @@ def cmd_es_copy(args):
     r  = args.replace_existing
     f  = args.force
 
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Copy ElasticSearch index.")
-
-    # Execute command:
-    # - Copy ElasticSearch index from source to destination
+    # ...
     if args.alias_pattern is None:
         index.copy_index_across_engines(
             index_name       = args.index_name,

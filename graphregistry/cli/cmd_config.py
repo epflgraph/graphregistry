@@ -1,11 +1,13 @@
+# graphregistry/cli/cmd_config.py
+# Inspect and validate Registry configuration files.
 
-#-----------------------------------------#
-# Handler: Operations on to_process flags #
-#-----------------------------------------#
+#---------------------------------#
+# Handler: Print out index config #
+#---------------------------------#
 def cmd_config_index(args):
     """
-    Handle:
-      graphregistry config index
+    Usage:
+        graphregistry config index
     """
 
     # Fetch context objects

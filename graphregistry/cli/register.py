@@ -14,12 +14,12 @@ def register(subparsers, cmd_name):
 
     # Register Level 1 parser
     # >> graphregistry cmd_name [-h|...]
-    parser = subparsers.add_parser(cmd_name,
-        help="Manage ElasticSearch server and cmd_namees.")
+    parser = subparsers.add_parser(cmd_name, help=cli_definitions[cmd_name]['help'])
 
     # Register Level 2 parser
     # >> graphregistry cmd_name cmd [-h|...]
-    subcmd_cmd_name = parser.add_subparsers(dest=f"{cmd_name}_cmd", metavar="<command>", required=True, help=f"{cmd_name} subcommand.")
+    subcmd_cmd_name = parser.add_subparsers(dest=f"{cmd_name}_cmd", metavar="<command>", required=True,
+        help=f"<{cmd_name}> subcommands. Use \"graphregistry {cmd_name} <command> -h\" for options.")
 
     # Initialize dictionary to hold subcommand parsers
     subcommands = {}

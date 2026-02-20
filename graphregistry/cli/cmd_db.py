@@ -1,18 +1,20 @@
+# graphregistry/cli/cmd_db.py
+# Manage MySQL/MariaDB server operations.
 
-#-----------------------------#
-# Handler: Test MySQL servers #
-#-----------------------------#
+#-----------------------------------#
+# Handler: Test server connectivity #
+#-----------------------------------#
 def cmd_db_test(args):
     """
-    Handle:
-      graphregistry db test [...]
+    Usage:
+        graphregistry db test [...]
     """
 
     # Fetch context objects
     db = args.ctx.db
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test MySQL server.")
+    print("🖥️  ~ Graph Registry CLI. Test server connectivity.")
 
     # Execute command:
     # - Test connection to MySQL server
@@ -31,20 +33,20 @@ def cmd_db_test(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#----------------------------------------#
-# Handler: Export MySQL tables to folder #
-#----------------------------------------#
+#--------------------------------------------#
+# Handler: Export database into local folder #
+#--------------------------------------------#
 def cmd_db_export(args):
     """
-    Handle:
-      graphregistry db export [...]
+    Usage:
+        graphregistry db export [...]
     """
 
     # Fetch context objects
     db = args.ctx.db
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Export MySQL database or table to folder.")
+    print("🖥️  ~ Graph Registry CLI. Export database into local folder.")
 
     # Get export options
     t = args.table_name is not None
@@ -102,20 +104,20 @@ def cmd_db_export(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#------------------------------------------#
-# Handler: Import MySQL tables from folder #
-#------------------------------------------#
+#--------------------------------------------#
+# Handler: Import database from local folder #
+#--------------------------------------------#
 def cmd_db_import(args):
     """
-    Handle:
-      graphregistry db import [...]
+    Usage:
+        graphregistry db import [...]
     """
 
     # Fetch context objects
     db = args.ctx.db
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Import MySQL database or table from folder.")
+    print("🖥️  ~ Graph Registry CLI. Import database from local folder.")
 
     # Get import options
     t = args.table_name is not None
@@ -164,20 +166,20 @@ def cmd_db_import(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#------------------------------#
-# Handler: Copy MySQL database #
-#------------------------------#
+#-------------------------------------------------#
+# Handler: Copy database or tables across servers #
+#-------------------------------------------------#
 def cmd_db_copy(args):
     """
-    Handle:
-      graphregistry db copy [...]
+    Usage:
+        graphregistry db copy [...]
     """
 
     # Fetch context objects
     db = args.ctx.db
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Copy MySQL database or table across environments.")
+    print("🖥️  ~ Graph Registry CLI. Copy database or tables across servers.")
 
     # Get import options
     t = args.table_name is not None
@@ -210,20 +212,20 @@ def cmd_db_copy(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#---------------------------------#
-# Handler: Compare MySQL database #
-#---------------------------------#
+#----------------------------------------------------#
+# Handler: Compare database or tables across servers #
+#----------------------------------------------------#
 def cmd_db_compare(args):
     """
-    Handle:
-      graphregistry db compare [...]
+    Usage:
+        graphregistry db compare [...]
     """
 
     # Fetch context objects
     db = args.ctx.db
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Compare MySQL database or table across environments.")
+    print("🖥️  ~ Graph Registry CLI. Compare database or tables across servers.")
 
     # Get import options
     t = args.table_name is not None

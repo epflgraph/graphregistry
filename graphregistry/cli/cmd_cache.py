@@ -18,7 +18,6 @@ def cmd_cache_update(args):
     formulas = tuple(args.formulas.split(',')) if args.formulas else ()
     actions  = tuple(args.actions.split(','))  if args.actions  else ()
     matrix   = args.matrix if 'matrix' in args else False
-    c = args.count
 
     # -----------------#
     # Execute commands #
