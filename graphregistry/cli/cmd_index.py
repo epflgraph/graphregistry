@@ -87,7 +87,7 @@ def cmd_index_generate(args):
 
         # Generate ES index file from local cache
         if not lco:
-            registry.indexes.generate_index_from_local_cache_v4(index_date=index_date, ignore_warnings=i, replace_existing=r, force_replace=f)
+            registry.indexes.generate_index_from_local_cache(index_date=index_date, ignore_warnings=i, replace_existing=r, force_replace=f)
 
     # Print footers
     print("🖥️  ~ Done.")
