@@ -16,10 +16,13 @@ from graphregistry.cli.cmd_airflow import (
 )
 from graphregistry.cli.cmd_cache import (
     cmd_cache_update,
-    cmd_cache_build,
-    cmd_cache_patch,
     cmd_cache_to_process,
     cmd_cache_debug,
+)
+from graphregistry.cli.cmd_index import (
+    cmd_index_build,
+    cmd_index_patch,
+    cmd_index_generate
 )
 from graphregistry.cli.cmd_config import (
     cmd_config_index,
@@ -31,14 +34,14 @@ from graphregistry.cli.cmd_db import (
     cmd_db_copy,
     cmd_db_compare
 )
-from graphregistry.cli.cmd_index import (
-    cmd_index_test,
-    cmd_index_info,
-    cmd_index_health,
-    cmd_index_list,
-    cmd_index_copy,
-    cmd_index_export,
-    cmd_index_import,
+from graphregistry.cli.cmd_es import (
+    cmd_es_test,
+    cmd_es_info,
+    cmd_es_health,
+    cmd_es_list,
+    cmd_es_copy,
+    cmd_es_export,
+    cmd_es_import,
 )
 
 # Global common arguments
@@ -179,22 +182,6 @@ cli_definitions: Dict[str, Any] = {
                 ],
                 common_args = []
             ),
-            'build' : dict(
-                help = "...",
-                func = cmd_cache_build,
-                args = [
-                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="..."))
-                ],
-                common_args = []
-            ),
-            'patch' : dict(
-                help = "...",
-                func = cmd_cache_patch,
-                args = [
-                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="..."))
-                ],
-                common_args = []
-            ),
             'to_process' : dict(
                 help = "Operations on the 'to process' queue for cache jobs.",
                 func = cmd_cache_to_process,
@@ -208,6 +195,46 @@ cli_definitions: Dict[str, Any] = {
                 help = "...",
                 func = cmd_cache_debug,
                 args = [],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
+    # Domain: index       #
+    #---------------------#
+    'index' : dict(
+        help = "Index-related operations",
+        common_args = dict(),
+        commands = {
+            'build' : dict(
+                help = "...",
+                func = cmd_index_build,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="..."))
+                ],
+                common_args = []
+            ),
+            'patch' : dict(
+                help = "...",
+                func = cmd_index_patch,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="..."))
+                ],
+                common_args = []
+            ),
+            'generate' : dict(
+                help = "...",
+                func = cmd_index_generate,
+                args = [
+                    dict(flags=('--target',    ), kwargs=dict(required=False, type=str, default='elasticsearch', help="Target platform (default=elasticsearch).")),
+                    dict(flags=('--index_date',), kwargs=dict(required=False, type=str, default=None, help="Date of ElasticSearch index in YYYY-MM-DD format (default=today's date).")),
+                    dict(flags=('--ignore_warnings',    '-i'), kwargs=dict(action='store_true', default=False, help="Ignore warning messages.")),
+                    dict(flags=('--replace_existing',   '-r'), kwargs=dict(action='store_true', default=False, help="Replace existing local cache and index files.")),
+                    dict(flags=('--force_replace',      '-f'), kwargs=dict(action='store_true', default=False, help="Force replace without prompting.")),
+                    dict(flags=('--local_cache_only', '-lco'), kwargs=dict(action='store_true', default=False, help="Generate local cache only.")),
+                    dict(flags=('--index_file_only',  '-ifo'), kwargs=dict(action='store_true', default=False, help="Generate index file only (from existing local cache)."))
+                ],
                 common_args = []
             )
         }
@@ -301,9 +328,9 @@ cli_definitions: Dict[str, Any] = {
     ),
 
     #---------------------#
-    # Domain: index       #
+    # Domain: ElasticSearch #
     #---------------------#
-    'index' : dict(
+    'es' : dict(
         help = "Manage ElasticSearch server and indexes.",
         common_args = {
             'env': global_common_args['env']
@@ -311,25 +338,25 @@ cli_definitions: Dict[str, Any] = {
         commands = {
             'test' : dict(
                 help = "Test ElasticSearch server(s).",
-                func = cmd_index_test,
+                func = cmd_es_test,
                 args = [],
                 common_args = ['env'],
             ),
             'info' : dict(
                 help = "Print server info.",
-                func = cmd_index_info,
+                func = cmd_es_info,
                 args = [],
                 common_args = ['env'],
             ),
             'health' : dict(
                 help = "Print server health.",
-                func = cmd_index_health,
+                func = cmd_es_health,
                 args = [],
                 common_args = ['env'],
             ),
             'list' : dict(
                 help = "List indexes.",
-                func = cmd_index_list,
+                func = cmd_es_list,
                 args = [dict(flags = ('--display_size', '-s'), kwargs = dict(action='store_true', help="Display index list with sizes (in GB).")),
                         dict(flags = ('--aliases'     , '-a'), kwargs = dict(action='store_true', help="Display index aliases."))
                 ],
@@ -337,7 +364,7 @@ cli_definitions: Dict[str, Any] = {
             ),
             'export' : dict(
                 help = "Export index from ElasticSearch server into local folder.",
-                func = cmd_index_export,
+                func = cmd_es_export,
                 args = [
                     dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, help="Name of the index to export.")),
                     dict(flags = ('--output_folder',), kwargs = dict(required=True,  type=str, help="Output folder to save the exported index.")),
@@ -350,9 +377,9 @@ cli_definitions: Dict[str, Any] = {
             ),
             'import' : dict(
                 help = "Import index from local folder into ElasticSearch server.",
-                func = cmd_index_import,
+                func = cmd_es_import,
                 args = [
-                    dict(flags = ('--input_folder' ,), kwargs = dict(required=True,  type=str, help="Input folder containing the exported index.")),
+                    dict(flags = ('--input_folder' ,), kwargs = dict(required=False, type=str, help="Input folder containing the exported index.")),
                     dict(flags = ('--rename_to'    ,), kwargs = dict(required=False, type=str, default=None,    help="Rename index to this name on target server.")),
                     dict(flags = ('--chunk_size'   ,), kwargs = dict(required=False, type=int, default=1000000, help="Number of documents to export per batch (default=1000000).")),
                     dict(flags = ('--replace_existing',  '-r'), kwargs = dict(action='store_true', help="Replace existing files in the output folder if they exist.")),
@@ -362,7 +389,7 @@ cli_definitions: Dict[str, Any] = {
             ),
             'copy' : dict(
                 help = "Copy index across ElasticSearch servers.",
-                func = cmd_index_copy,
+                func = cmd_es_copy,
                 args = [
                     dict(flags = ('--index_name'   ,), kwargs = dict(required=False, type=str, default=None,   help="Name of the index to copy.")),
                     dict(flags = ('--from_env'     ,), kwargs = dict(required=False, type=str, default='test', help="Source environment.")),
@@ -378,7 +405,7 @@ cli_definitions: Dict[str, Any] = {
             ),
             'backup' : dict(
                 help = "Backup one or all indexes from ElasticSearch server into backup folder.",
-                func = cmd_index_test,
+                func = cmd_es_test,
                 args = [
                     dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, help="Name of the index to export.")),
                     dict(flags = ('--output_folder',), kwargs = dict(required=True,  type=str, help="Output folder to save the exported index.")),

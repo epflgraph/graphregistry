@@ -40,58 +40,6 @@ def cmd_cache_update(args):
 #-----------------------------------------#
 # Handler: Operations on to_process flags #
 #-----------------------------------------#
-def cmd_cache_build(args):
-    """
-    Handle:
-      graphregistry cache build [...]
-    """
-
-    # Fetch context objects
-    registry = args.ctx.registry
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Build index field tables.")
-
-    # Get input options
-    actions = tuple(args.actions.split(',')) if args.actions else ()
-
-    # -----------------#
-    # Execute commands #
-    # -----------------#
-    registry.indexdb.build(actions=actions)
-
-    # Print footers
-    print("🖥️  ~ Done.")
-
-#-----------------------------------------#
-# Handler: Operations on to_process flags #
-#-----------------------------------------#
-def cmd_cache_patch(args):
-    """
-    Handle:
-      graphregistry cache patch [...]
-    """
-
-    # Fetch context objects
-    registry = args.ctx.registry
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Patch index field tables.")
-
-    # Get input options
-    actions = tuple(args.actions.split(',')) if args.actions else ()
-
-    # -----------------#
-    # Execute commands #
-    # -----------------#
-    registry.indexdb.patch(actions=actions)
-
-    # Print footers
-    print("🖥️  ~ Done.")
-
-#-----------------------------------------#
-# Handler: Operations on to_process flags #
-#-----------------------------------------#
 def cmd_cache_to_process(args):
     """
     Handle:

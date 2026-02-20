@@ -638,12 +638,12 @@ class GraphTable():
 if __name__ == "__main__":
 
 
-    list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
-    for t in list_of_tables:
-        if '_L_' in t:
-            print(f"SELECT * FROM elasticsearch_cache.{t} WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG);")
+    # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
+    # for t in list_of_tables:
+    #     if '_L_' in t:
+    #         print(f"SELECT * FROM elasticsearch_cache.{t} WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG);")
 
-    exit()
+    # exit()
 
 
 
@@ -660,10 +660,13 @@ if __name__ == "__main__":
     schema_name = glbcfg.mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
 
     # Initialise table
-    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Course_L_Person')
+    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Exercise')
     print('\n\n',tb.create_table_sql,'\n\n')
 
-    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Person_L_Course')
+    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Notebook')
+    print('\n\n',tb.create_table_sql,'\n\n')
+
+    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Widget')
     print('\n\n',tb.create_table_sql,'\n\n')
 
 

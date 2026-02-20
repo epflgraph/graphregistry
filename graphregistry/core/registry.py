@@ -7099,8 +7099,8 @@ class GraphRegistry():
                         if not ignore_warnings:
                             sysmsg.warning(f"File already exists: {target_output_path}")
                         if not replace_existing:
-                            sysmsg.error(f"❌ Failed to generate local ElasticSearch cache. File already exists: {target_output_path}")
-                            return
+                            sysmsg.warning(f"Failed to generate local ElasticSearch cache. File already exists: {target_output_path}")
+                            continue
                         elif replace_existing:
                             if not overwrite_flag:
                                 if force_replace:
@@ -7132,6 +7132,12 @@ class GraphRegistry():
                             FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}
                         ORDER BY doc_id ASC
                     """)
+
+                    # Move on if no docs found for doc_type
+                    if not list_of_docs or type(list_of_docs) is not list:
+                        if not ignore_warnings:
+                            sysmsg.warning(f"No docs found for doc type '{doc_type}'. Skipping.")
+                        continue
 
                     # Add doc type to index struct
                     if doc_type not in es_index_struct:
@@ -7182,8 +7188,8 @@ class GraphRegistry():
                         # Fetch list of links for doc_type and link_type
                         list_of_links = db.execute_query(engine_name='xaas_coresrv', query=f"""
                             SELECT {', '.join(column_names_link)}
-                                FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}_L_{link_type}
-                            ORDER BY doc_id ASC, link_rank ASC
+                              FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}_L_{link_type}
+                          ORDER BY doc_id ASC, link_rank ASC
                         """)
                         list_of_links = list_of_links if type(list_of_links) is list else []
 
@@ -7263,11 +7269,19 @@ class GraphRegistry():
             with tqdm(list_of_doc_types, unit='doc type') as pb:
                 for doc_type in pb:
 
+                    print('doc_type -------> ', doc_type)
+
                     # Print status
                     pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                     # Generate source file path
                     source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
+
+                    # Check if source file exists
+                    if not os.path.exists(source_file_path):
+                        if not ignore_warnings:
+                            sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
+                        continue
 
                     # Load JSON structure from file
                     with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
@@ -7284,6 +7298,412 @@ class GraphRegistry():
 
             # Print status
             sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
+
+
+        import os, json, gzip
+        from tqdm import tqdm
+
+        def generate_index_from_local_cache_v2(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
+
+            sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
+
+            target_output_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
+
+            # Handle existing file
+            if os.path.exists(target_output_path):
+                if not ignore_warnings:
+                    sysmsg.warning(f"File already exists: {target_output_path}")
+                if not replace_existing:
+                    sysmsg.error(f"❌ Failed to generate ElasticSearch index. File already exists: {target_output_path}")
+                    return
+                confirmation = 'yes' if force_replace else input("Are you sure you want to replace the existing file? (yes/no): ")
+                if confirmation.lower() != 'yes':
+                    sysmsg.error("❌ Operation cancelled by user.")
+                    return
+                os.remove(target_output_path)
+
+            list_of_doc_types = idxcfg.settings['doc_types']
+
+            sysmsg.trace(f"⚙️  Streaming index JSON to file '{target_output_path}' ...")
+
+            # Stream-write JSON array
+            with gzip.open(target_output_path, 'wt', encoding='utf-8') as out:
+                out.write("[\n")
+                first = True
+
+                with tqdm(list_of_doc_types, unit='doc type') as pb:
+                    for doc_type in pb:
+                        pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
+
+                        if not os.path.exists(source_file_path):
+                            if not ignore_warnings:
+                                sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
+                            continue
+
+                        # Load split file (still loads that one split file fully)
+                        with gzip.open(source_file_path, 'rt', encoding='utf-8') as f:
+                            es_index_struct = json.load(f)
+
+                        # Write each doc as an element in the output array
+                        for doc_id, doc in es_index_struct.get(doc_type, {}).items():
+                            if not first:
+                                out.write(",\n")
+                            else:
+                                first = False
+                            json.dump(doc, out, ensure_ascii=False)  # no indent -> smaller & faster
+
+                out.write("\n]\n")
+
+            sysmsg.success(f"🐙 ✅ Done generating ElasticSearch index file.\n")
+
+        import os, gzip, json
+        import ijson
+        from tqdm import tqdm
+
+        def generate_index_from_local_cache_v3(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
+
+            import ijson
+
+            from decimal import Decimal
+
+            def _json_default(o):
+                if isinstance(o, Decimal):
+                    # choose one:
+                    return float(o)   # numeric in JSON
+                    # return str(o)   # exact string representation (uncomment if you prefer)
+                raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
+
+            sysmsg.info(f"🐙 📝 Generate ElasticSearch index file from local JSON cache (index date: {index_date}).")
+
+            target_output_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}.json.gz"
+
+            # Existing file handling
+            if os.path.exists(target_output_path):
+                if not ignore_warnings:
+                    sysmsg.warning(f"File already exists: {target_output_path}")
+                if not replace_existing:
+                    sysmsg.error(f"❌ Failed. File already exists: {target_output_path}")
+                    return
+                confirmation = 'yes' if force_replace else input("Are you sure you want to replace the existing file? (yes/no): ")
+                if confirmation.lower() != 'yes':
+                    sysmsg.error("❌ Operation cancelled by user.")
+                    return
+                os.remove(target_output_path)
+
+            list_of_doc_types = idxcfg.settings['doc_types']
+
+            sysmsg.trace(f"⚙️  Streaming index JSON to file '{target_output_path}' ...")
+
+            with gzip.open(target_output_path, "wt", encoding="utf-8") as out:
+                out.write("[\n")
+                first = True
+
+                with tqdm(list_of_doc_types, unit="doc type") as pb:
+                    for doc_type in pb:
+                        pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
+                        if not os.path.exists(source_file_path):
+                            if not ignore_warnings:
+                                sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
+                            continue
+
+                        # Stream over: { "<doc_type>": { "<doc_id>": <doc>, ... } }
+                        with gzip.open(source_file_path, "rb") as f:
+                            # emits (<doc_id>, <doc>) pairs without loading full dict
+                            for _, doc in ijson.kvitems(f, f"{doc_type}"):
+                                if not first:
+                                    out.write(",\n")
+                                else:
+                                    first = False
+                                # json.dump(doc, out, ensure_ascii=False)
+                                json.dump(doc, out, ensure_ascii=False, default=_json_default)
+
+                out.write("\n]\n")
+
+            sysmsg.success("🐙 ✅ Done generating ElasticSearch index file.\n")
+
+
+
+        def generate_index_from_local_cache_v4(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
+
+            import os, json, gzip
+            import ijson
+            from decimal import Decimal
+            from tqdm import tqdm
+
+            def _json_default(o):
+                if isinstance(o, Decimal):
+                    return float(o)  # numeric in JSON
+                raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
+
+            sysmsg.info(f"🐙 📝 Generate ElasticSearch import folder from local JSON cache (index date: {index_date}).")
+
+            # ------------------------------------------------------------------
+            # Output folder layout expected by import_index_from_folder():
+            #   <output_folder>/
+            #       settings_mappings.json
+            #       documents.jsonl
+            # ------------------------------------------------------------------
+            output_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}"
+            os.makedirs(output_folder, exist_ok=True)
+
+            docs_path = os.path.join(output_folder, "documents.jsonl")
+            settings_path = os.path.join(output_folder, "settings_mappings.json")
+
+            # Existing file handling (folder-level)
+            existing_files = [p for p in (docs_path, settings_path) if os.path.exists(p)]
+            if existing_files:
+                if not ignore_warnings:
+                    for p in existing_files:
+                        sysmsg.warning(f"File already exists: {p}")
+
+                if not replace_existing:
+                    sysmsg.error(f"❌ Failed. Output already exists in: {output_folder}")
+                    return
+
+                confirmation = "yes" if force_replace else input(
+                    f"Are you sure you want to replace existing files in '{output_folder}'? (yes/no): "
+                ).strip().lower()
+
+                if confirmation != "yes":
+                    sysmsg.error("❌ Operation cancelled by user.")
+                    return
+
+                for p in existing_files:
+                    try:
+                        os.remove(p)
+                    except FileNotFoundError:
+                        pass
+
+            # ------------------------------------------------------------------
+            # Write settings_mappings.json (exact structure as requested)
+            # ------------------------------------------------------------------
+            settings_mappings_payload = {
+                "aliases": {},
+                "settings": {
+                    "index": {
+                        "number_of_shards": 1,
+                        "number_of_replicas": 1,
+                        "max_ngram_diff": 2,
+                        "analysis": {
+                            "char_filter": {
+                                "strip_html": {"type": "html_strip"}
+                            },
+                            "normalizer": {
+                                "lc_fold": {
+                                    "type": "custom",
+                                    "filter": ["lowercase", "asciifolding"]
+                                }
+                            },
+                            "filter": {
+                                "stemmer_en": {"type": "stemmer", "language": "light_english"},
+                                "stemmer_fr": {"type": "stemmer", "language": "light_french"},
+                                "shingle_2_3": {
+                                    "type": "shingle",
+                                    "min_shingle_size": 2,
+                                    "max_shingle_size": 3,
+                                    "output_unigrams": True
+                                },
+                                "synonym_en": {
+                                    "type": "synonym_graph",
+                                    "synonyms": ["computational complexity, algorithmic complexity"]
+                                },
+                                "edge_2_20": {"type": "edge_ngram", "min_gram": 2, "max_gram": 20},
+                                "ngram_3_5": {"type": "ngram", "min_gram": 3, "max_gram": 5}
+                            },
+                            "analyzer": {
+                                "raw_lc": {
+                                    "tokenizer": "keyword",
+                                    "filter": ["lowercase", "asciifolding"]
+                                },
+                                "base_en": {
+                                    "type": "custom",
+                                    "char_filter": ["strip_html"],
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "stemmer_en"]
+                                },
+                                "base_fr": {
+                                    "type": "custom",
+                                    "char_filter": ["strip_html"],
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "stemmer_fr"]
+                                },
+                                "search_en": {
+                                    "type": "custom",
+                                    "char_filter": ["strip_html"],
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "stemmer_en", "synonym_en"]
+                                },
+                                "search_fr": {
+                                    "type": "custom",
+                                    "char_filter": ["strip_html"],
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "stemmer_fr"]
+                                },
+                                "autocomplete_en": {
+                                    "type": "custom",
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "edge_2_20"]
+                                },
+                                "autocomplete_fr": {
+                                    "type": "custom",
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "edge_2_20"]
+                                },
+                                "trigram": {
+                                    "type": "custom",
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "shingle_2_3"]
+                                },
+                                "typo_ngram": {
+                                    "type": "custom",
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding", "ngram_3_5"]
+                                },
+                                "typo_search": {
+                                    "type": "custom",
+                                    "tokenizer": "standard",
+                                    "filter": ["lowercase", "asciifolding"]
+                                }
+                            }
+                        }
+                    }
+                },
+                "mappings": {
+                    "dynamic": True,
+                    "properties": {
+                        "name": {
+                            "properties": {
+                                "en": {
+                                    "type": "text",
+                                    "analyzer": "base_en",
+                                    "search_analyzer": "search_en",
+                                    "fields": {
+                                        "raw": {"type": "keyword", "normalizer": "lc_fold"},
+                                        "sayt": {
+                                            "type": "search_as_you_type",
+                                            "analyzer": "base_en",
+                                            "doc_values": False,
+                                            "max_shingle_size": 3
+                                        },
+                                        "ac": {
+                                            "type": "text",
+                                            "analyzer": "autocomplete_en",
+                                            "search_analyzer": "search_en"
+                                        },
+                                        "trigram": {"type": "text", "analyzer": "trigram"},
+                                        "typo": {
+                                            "type": "text",
+                                            "analyzer": "typo_ngram",
+                                            "search_analyzer": "typo_search"
+                                        }
+                                    }
+                                },
+                                "fr": {
+                                    "type": "text",
+                                    "analyzer": "base_fr",
+                                    "search_analyzer": "search_fr",
+                                    "fields": {
+                                        "raw": {"type": "keyword", "normalizer": "lc_fold"},
+                                        "sayt": {
+                                            "type": "search_as_you_type",
+                                            "analyzer": "base_fr",
+                                            "doc_values": False,
+                                            "max_shingle_size": 3
+                                        },
+                                        "ac": {
+                                            "type": "text",
+                                            "analyzer": "autocomplete_fr",
+                                            "search_analyzer": "search_fr"
+                                        },
+                                        "trigram": {"type": "text", "analyzer": "trigram"},
+                                        "typo": {
+                                            "type": "text",
+                                            "analyzer": "typo_ngram",
+                                            "search_analyzer": "typo_search"
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        "long_description": {
+                            "properties": {
+                                "en": {
+                                    "type": "text",
+                                    "analyzer": "base_en",
+                                    "search_analyzer": "search_en",
+                                    "fields": {
+                                        "typo": {
+                                            "type": "text",
+                                            "analyzer": "typo_ngram",
+                                            "search_analyzer": "typo_search"
+                                        }
+                                    }
+                                },
+                                "fr": {
+                                    "type": "text",
+                                    "analyzer": "base_fr",
+                                    "search_analyzer": "search_fr",
+                                    "fields": {
+                                        "typo": {
+                                            "type": "text",
+                                            "analyzer": "typo_ngram",
+                                            "search_analyzer": "typo_search"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            with open(settings_path, "w", encoding="utf-8") as f:
+                json.dump(settings_mappings_payload, f, ensure_ascii=False, indent=4)
+
+            # ------------------------------------------------------------------
+            # Stream documents into documents.jsonl
+            #
+            # IMPORTANT for your importer:
+            # - one valid JSON object per line
+            # - each object should preferably be {"_id": ..., "_source": {...}}
+            # - if cache docs are already shaped like that, we keep them as-is
+            # ------------------------------------------------------------------
+            list_of_doc_types = idxcfg.settings["doc_types"]
+            sysmsg.trace(f"⚙️  Streaming documents to '{docs_path}' ...")
+
+            with open(docs_path, "w", encoding="utf-8") as out:
+                with tqdm(list_of_doc_types, unit="doc type") as pb:
+                    for doc_type in pb:
+                        pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
+                        if not os.path.exists(source_file_path):
+                            if not ignore_warnings:
+                                sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
+                            continue
+
+                        # Stream over: { "<doc_type>": { "<doc_id>": <doc>, ... } }
+                        with gzip.open(source_file_path, "rb") as f:
+                            for doc_id, doc in ijson.kvitems(f, f"{doc_type}"):
+
+                                # Ensure shape compatible with import_index_from_folder()
+                                if isinstance(doc, dict) and "_source" in doc:
+                                    obj = doc
+                                    if "_id" not in obj:
+                                        obj["_id"] = doc_id
+                                else:
+                                    obj = {"_id": doc_id, "_source": doc}
+
+                                out.write(json.dumps(obj, ensure_ascii=False, default=_json_default))
+                                out.write("\n")
+
+            sysmsg.success(f"🐙 ✅ Done generating import folder:\n  {output_folder}\n")
+
+
 
         # Import index from local JSON file to ElasticSearch engine
         def import_index(self, engine_name, index_file=None, index_name=None, index_date=None, chunk_size=1000, replace_existing=False, force_replace=False):
