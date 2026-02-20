@@ -1,203 +1,95 @@
+import datetime
 
-#-------------------------------------#
-# Handler: Test ElasticSearch servers #
-#-------------------------------------#
-def cmd_index_test(args):
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_index_build(args):
     """
     Handle:
-      graphregistry index test [...]
+      graphregistry cache build [...]
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    registry = args.ctx.registry
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test ElasticSearch server.")
+    print("🖥️  ~ Graph Registry CLI. Build index field tables.")
 
-    # Execute command:
-    # - Test connection to ElasticSearch server
-    if args.env:
-        if index.test(engine_name=args.env) is True:
-            print(f"✅ ElasticSearch server is up and running [env='{args.env}'].")
-        else:
-            print(f"❌ ElasticSearch server is down or unreachable [env='{args.env}'].")
-    else:
-        for engine in index.engine.keys():
-            if index.test(engine_name=engine) is True:
-                print(f"✅ ElasticSearch server is up and running [env='{engine}'].")
-            else:
-                print(f"❌ ElasticSearch server is down or unreachable [env='{engine}'].")
+    # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ()
+
+    # -----------------#
+    # Execute commands #
+    # -----------------#
+    registry.indexdb.build(actions=actions)
 
     # Print footers
     print("🖥️  ~ Done.")
 
-#----------------------------------------------#
-# Handler: Print info on ElasticSearch servers #
-#----------------------------------------------#
-def cmd_index_info(args):
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_index_patch(args):
     """
     Handle:
-      graphregistry index info [...]
+      graphregistry cache patch [...]
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    registry = args.ctx.registry
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test ElasticSearch server.")
+    print("🖥️  ~ Graph Registry CLI. Patch index field tables.")
 
-    # Execute command:
-    # - Print info on ElasticSearch server
-    index.info(engine_name=args.env)
+    # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ()
+
+    # -----------------#
+    # Execute commands #
+    # -----------------#
+    registry.indexdb.patch(actions=actions)
 
     # Print footers
     print("🖥️  ~ Done.")
 
-#------------------------------------------------#
-# Handler: Print health of ElasticSearch servers #
-#------------------------------------------------#
-def cmd_index_health(args):
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_index_generate(args):
     """
     Handle:
-      graphregistry index health [...]
+      graphregistry cache generate [...]
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    registry   = args.ctx.registry
+    target     = args.target
+    index_date = args.index_date if args.index_date else str(datetime.date.today())
+    i   = args.ignore_warnings
+    r   = args.replace_existing
+    f   = args.force_replace
+    lco = args.local_cache_only
+    ifo = args.index_file_only
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Test ElasticSearch server.")
+    print("🖥️  ~ Graph Registry CLI. ...")
 
-    # Execute command:
-    # - Print health of ElasticSearch server
-    index.cluster_health(engine_name=args.env)
+    # -----------------#
+    # Execute commands #
+    # -----------------#
+
+    # Generate ElasticSearch index
+    if target=='elasticsearch':
+
+        # Generate local ES cache from MySQL
+        if not ifo:
+            registry.indexes.generate_local_cache(index_date=index_date, ignore_warnings=i, replace_existing=r, force_replace=f)
+
+        # Generate ES index file from local cache
+        if not lco:
+            registry.indexes.generate_index_from_local_cache_v4(index_date=index_date, ignore_warnings=i, replace_existing=r, force_replace=f)
 
     # Print footers
     print("🖥️  ~ Done.")
 
-#-------------------------------------#
-# Handler: List ElasticSearch indexes #
-#-------------------------------------#
-def cmd_index_list(args):
-    """
-    Handle:
-      graphregistry index list [...]
-    """
 
-    # Fetch context objects
-    index = args.ctx.index
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. List ElasticSearch indexes.")
-
-    # Execute command:
-    # - List ElasticSearch indexes or aliases
-    if args.aliases is True:
-        index.alias_list(engine_name=args.env)
-    else:
-        index.index_list(engine_name=args.env, display_size=args.display_size)
-
-    # Print footers
-    print("🖥️  ~ Done.")
-
-#-------------------------------------#
-# Handler: Export ElasticSearch index #
-#-------------------------------------#
-def cmd_index_export(args):
-    """
-    Handle:
-      graphregistry index export [...]
-    """
-
-    # Fetch context objects
-    index = args.ctx.index
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Export ElasticSearch index.")
-
-    # Execute command:
-    # - Export ElasticSearch index to local folder
-    index.export_index_to_folder(
-        engine_name      = args.env,
-        index_name       = args.index_name,
-        output_folder    = args.output_folder,
-        chunk_size       = args.chunk_size,
-        use_gzip         = args.use_gzip,
-        replace_existing = args.replace_existing,
-        force            = args.force
-    )
-
-    # Print footers
-    print("🖥️  ~ Done.")
-
-#-------------------------------------#
-# Handler: Import ElasticSearch index #
-#-------------------------------------#
-def cmd_index_import(args):
-    """
-    Handle:
-      graphregistry index import [...]
-    """
-
-    # Fetch context objects
-    index = args.ctx.index
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Import ElasticSearch index.")
-
-    # Execute command:
-    # - Import ElasticSearch index from local folder
-    index.import_index_from_folder(
-        engine_name      = args.env,
-        input_folder     = args.input_folder,
-        rename_to        = args.rename_to,
-        chunk_size       = args.chunk_size,
-        replace_existing = args.replace_existing,
-        force            = args.force
-    )
-
-    # Print footers
-    print("🖥️  ~ Done.")
-
-#-------------------------------------#
-# Handler: Copy ElasticSearch index   #
-#-------------------------------------#
-def cmd_index_copy(args):
-    """
-    Handle:
-      graphregistry index copy [...]
-    """
-
-    # Fetch context objects
-    index = args.ctx.index
-    gz = args.use_gzip
-    r  = args.replace_existing
-    f  = args.force
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Copy ElasticSearch index.")
-
-    # Execute command:
-    # - Copy ElasticSearch index from source to destination
-    if args.alias_pattern is None:
-        index.copy_index_across_engines(
-            index_name       = args.index_name,
-            source_engine    = args.from_env,
-            target_engine    = args.to_env,
-            rename_to        = args.rename_to,
-            chunk_size       = args.chunk_size,
-            use_gzip         = gz,
-            replace_existing = r,
-            force            = f
-        )
-    else:
-        index.copy_aliases_across_engines(
-            source_engine    = args.from_env,
-            target_engine    = args.to_env,
-            alias_pattern    = args.alias_pattern,
-            replace_existing = r,
-            force            = f
-        )
-
-    # Print footers
-    print("🖥️  ~ Done.")

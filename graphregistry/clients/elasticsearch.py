@@ -391,16 +391,18 @@ es_settings_and_mappings = {
 
 # Define degree score factors
 es_degree_score_factors = {
+    'Category'   : 512,
+    'Concept'    : 512,
     'Course'     : 128,
+    'Exercise'   : 64,
     'Lecture'    : 128,
     'MOOC'       : 64,
+    'Notebook'   : 64,
     'Person'     : 128,
     'Publication': 1,
     'Startup'    : 64,
     'Unit'       : 64,
-    'Widget'     : 64,
-    'Category'   : 512,
-    'Concept'    : 512
+    'Widget'     : 64
 }
 
 # Index doc combinations
@@ -960,26 +962,7 @@ class GraphES():
     #---------------------------------------#
     # Method: Import an index from a folder #
     #---------------------------------------#
-    def import_index_from_folder(self,
-        engine_name:str, input_folder:str, *,
-        rename_to:str|None=None, replace_existing:bool=False, force:bool=False, chunk_size:int=2000, request_timeout:int=120, refresh:bool=False):
-        """
-        Import an ElasticSearch index from a folder created by export_index_to_folder().
-
-        Parameters
-        ----------
-        index_name : str
-            Default target index name.
-        rename_to : str | None
-            If provided, restore the index under this new name.
-
-        Flags
-        -----
-        replace_existing : bool
-            Replace existing target index if it exists.
-        force : bool
-            If False, prompt before replacing.
-        """
+    def import_index_from_folder(self, engine_name:str, input_folder:str, *, rename_to:str|None=None, replace_existing:bool=False, force:bool=False, chunk_size:int=2000, request_timeout:int=120, refresh:bool=False):
 
         # Get ElasticSearch connector object for selected engine
         es = self.engine[engine_name]
@@ -1088,18 +1071,6 @@ class GraphES():
                         action["_id"] = obj["_id"]
 
                     yield action
-
-        # print("⬆️  Bulk indexing documents...")
-        # success, errors = helpers.bulk(
-        #     client=es,
-        #     actions=gen_actions(),
-        #     chunk_size=chunk_size,
-        #     request_timeout=request_timeout,
-        #     raise_on_error=False,
-        #     raise_on_exception=False,
-        #     refresh=refresh,
-        # )
-
 
         # Optional: show percentage by counting docs first
         total = count_jsonl_lines(docs_path_final)
@@ -1950,7 +1921,6 @@ class GraphES():
         time.sleep(1)
 
         return
-
 
 #================#
 # Main execution #
