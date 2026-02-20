@@ -11,7 +11,7 @@ def cmd_ai_test(args):
     # Fetch context objects
     ai = args.ctx.ai
     graphai_auth_token = args.ctx.graphai_auth_token
-   
+
     # Execute command:
     # - Test connection to GraphAI server
 
