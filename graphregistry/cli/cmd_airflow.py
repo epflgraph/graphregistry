@@ -151,6 +151,31 @@ def cmd_airflow_config(args):
     # Print footers
     print("🖥️  ~ Done.")
 
+#----------------------------------#
+# Handler: Update object checksums #
+#----------------------------------#
+def cmd_airflow_update_checksums(args):
+    """
+    Handle:
+      graphregistry airflow update_checksums [...]
+    """
+
+    # Fetch context objects
+    gr = args.ctx.registry
+
+    # Get input options
+    v = args.verbose
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. update_checksums.")
+
+    # Execute command:
+    # - ...
+    gr.orchestrator.update_checksums_v2(verbose=v)
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
 #-----------------------------------------#
 # Handler: Operations on to_process flags #
 #-----------------------------------------#

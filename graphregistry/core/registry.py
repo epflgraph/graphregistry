@@ -611,6 +611,214 @@ class GraphRegistry():
             self.fieldschanged.update_dates(doc_type=doc_type, actions=actions)
             self.scoresexpired.update_dates(doc_type=doc_type, actions=actions)
 
+        # Update object checksums based on typeflag activation
+        def update_checksums_v2(self, verbose=False):
+
+            #========================#
+            # Node related checksums #
+            #========================#
+
+            #--------------------------#
+            # General object checksums #
+            #--------------------------#
+
+            # Loop over registry and lectures schemas
+            for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures]:
+
+                # Generate SQL query (Object checksum > All non-ontology types)
+                sql_query = f"""
+                        REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject
+                                    (object_type, object_id, checksum_val)
+                              SELECT object_type, object_id,
+                                     MD5(CONCAT(MD5(COALESCE(object_type, "__null__")), MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(object_title, "__null__")), MD5(COALESCE(text_source, "__null__")), MD5(COALESCE(raw_text, "__null__")))) AS checksum_val
+                                FROM {schema_name}.Nodes_N_Object o
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                               USING (object_type)
+                               WHERE object_type NOT IN ('Slide', 'Transcript')
+                                 AND to_process = 1
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            # Generate SQL query (Object checksum > Concept)
+            sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject
+                                (object_type, object_id, checksum_val)
+                          SELECT object_type, object_id,
+                                 MD5(CONCAT(MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(name, "__null__")), MD5(COALESCE(is_ontology_category, "__null__")), MD5(COALESCE(is_ontology_concept, "__null__")), MD5(COALESCE(is_ontology_neighbour, "__null__")), MD5(COALESCE(is_noise, "__null__")), MD5(COALESCE(is_unused, "__null__")))) AS checksum_val
+                            FROM {glbcfg.schema_ontology}.Nodes_N_Concept o
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                           USING (object_type)
+                           WHERE to_process = 1
+            """
+
+            # Execute query in shell
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            # Generate SQL query (Object checksum > Category)
+            sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject
+                                (object_type, object_id, checksum_val)
+                          SELECT object_type, object_id,
+                                 MD5(CONCAT(MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(name, "__null__")), MD5(COALESCE(depth, "__null__")), MD5(COALESCE(reference_page_id, "__null__")), MD5(COALESCE(reference_page_key, "__null__")), MD5(COALESCE(reference_page_url, "__null__")))) AS checksum_val
+                            FROM {glbcfg.schema_ontology}.Nodes_N_Category o
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                           USING (object_type)
+                           WHERE to_process = 1;
+            """
+
+            # Execute query in shell
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            #------------------------#
+            # Page profile checksums #
+            #------------------------#
+
+            # Loop over registry, lectures, and ontology schemas
+            for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+
+                # Generate SQL query (Page profile checksum > All types)
+                sql_query = f"""
+                        REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsPageProfile
+                                    (object_type, object_id, checksum_val)
+                              SELECT object_type, object_id,
+                                     MD5(CONCAT(MD5(COALESCE(numeric_id_en, "__null__")), MD5(COALESCE(numeric_id_fr, "__null__")), MD5(COALESCE(numeric_id_de, "__null__")), MD5(COALESCE(numeric_id_it, "__null__")), MD5(COALESCE(short_code, "__null__")), MD5(COALESCE(subtype_en, "__null__")), MD5(COALESCE(subtype_fr, "__null__")), MD5(COALESCE(subtype_de, "__null__")), MD5(COALESCE(subtype_it, "__null__")), MD5(COALESCE(name_en_is_auto_generated, "__null__")), MD5(COALESCE(name_en_is_auto_corrected, "__null__")), MD5(COALESCE(name_en_is_auto_translated, "__null__")), MD5(COALESCE(name_en_translated_from, "__null__")), MD5(COALESCE(name_en_value, "__null__")), MD5(COALESCE(name_fr_is_auto_generated, "__null__")), MD5(COALESCE(name_fr_is_auto_corrected, "__null__")), MD5(COALESCE(name_fr_is_auto_translated, "__null__")), MD5(COALESCE(name_fr_translated_from, "__null__")), MD5(COALESCE(name_fr_value, "__null__")), MD5(COALESCE(name_de_is_auto_generated, "__null__")), MD5(COALESCE(name_de_is_auto_corrected, "__null__")), MD5(COALESCE(name_de_is_auto_translated, "__null__")), MD5(COALESCE(name_de_translated_from, "__null__")), MD5(COALESCE(name_de_value, "__null__")), MD5(COALESCE(name_it_is_auto_generated, "__null__")), MD5(COALESCE(name_it_is_auto_corrected, "__null__")), MD5(COALESCE(name_it_is_auto_translated, "__null__")), MD5(COALESCE(name_it_translated_from, "__null__")), MD5(COALESCE(name_it_value, "__null__")), MD5(COALESCE(description_short_en_is_auto_generated, "__null__")), MD5(COALESCE(description_short_en_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_en_is_auto_translated, "__null__")), MD5(COALESCE(description_short_en_translated_from, "__null__")), MD5(COALESCE(description_short_en_value, "__null__")), MD5(COALESCE(description_short_fr_is_auto_generated, "__null__")), MD5(COALESCE(description_short_fr_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_fr_is_auto_translated, "__null__")), MD5(COALESCE(description_short_fr_translated_from, "__null__")), MD5(COALESCE(description_short_fr_value, "__null__")), MD5(COALESCE(description_short_de_is_auto_generated, "__null__")), MD5(COALESCE(description_short_de_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_de_is_auto_translated, "__null__")), MD5(COALESCE(description_short_de_translated_from, "__null__")), MD5(COALESCE(description_short_de_value, "__null__")), MD5(COALESCE(description_short_it_is_auto_generated, "__null__")), MD5(COALESCE(description_short_it_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_it_is_auto_translated, "__null__")), MD5(COALESCE(description_short_it_translated_from, "__null__")), MD5(COALESCE(description_short_it_value, "__null__")), MD5(COALESCE(description_medium_en_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_en_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_en_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_en_translated_from, "__null__")), MD5(COALESCE(description_medium_en_value, "__null__")), MD5(COALESCE(description_medium_fr_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_fr_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_fr_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_fr_translated_from, "__null__")), MD5(COALESCE(description_medium_fr_value, "__null__")), MD5(COALESCE(description_medium_de_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_de_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_de_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_de_translated_from, "__null__")), MD5(COALESCE(description_medium_de_value, "__null__")), MD5(COALESCE(description_medium_it_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_it_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_it_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_it_translated_from, "__null__")), MD5(COALESCE(description_medium_it_value, "__null__")), MD5(COALESCE(description_long_en_is_auto_generated, "__null__")), MD5(COALESCE(description_long_en_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_en_is_auto_translated, "__null__")), MD5(COALESCE(description_long_en_translated_from, "__null__")), MD5(COALESCE(description_long_en_value, "__null__")), MD5(COALESCE(description_long_fr_is_auto_generated, "__null__")), MD5(COALESCE(description_long_fr_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_fr_is_auto_translated, "__null__")), MD5(COALESCE(description_long_fr_translated_from, "__null__")), MD5(COALESCE(description_long_fr_value, "__null__")), MD5(COALESCE(description_long_de_is_auto_generated, "__null__")), MD5(COALESCE(description_long_de_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_de_is_auto_translated, "__null__")), MD5(COALESCE(description_long_de_translated_from, "__null__")), MD5(COALESCE(description_long_de_value, "__null__")), MD5(COALESCE(description_long_it_is_auto_generated, "__null__")), MD5(COALESCE(description_long_it_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_it_is_auto_translated, "__null__")), MD5(COALESCE(description_long_it_translated_from, "__null__")), MD5(COALESCE(description_long_it_value, "__null__")), MD5(COALESCE(external_key_en, "__null__")), MD5(COALESCE(external_key_fr, "__null__")), MD5(COALESCE(external_key_de, "__null__")), MD5(COALESCE(external_key_it, "__null__")), MD5(COALESCE(external_url_en, "__null__")), MD5(COALESCE(external_url_fr, "__null__")), MD5(COALESCE(external_url_de, "__null__")), MD5(COALESCE(external_url_it, "__null__")), MD5(COALESCE(is_visible, "__null__")))) AS checksum_val
+                                FROM {schema_name}.Data_N_Object_T_PageProfile p
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                               USING (object_type)
+                               WHERE object_type NOT IN ('Slide', 'Transcript')
+                                 AND to_process = 1
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            #-------------------------#
+            # Custom fields checksums #
+            #-------------------------#
+
+            # Loop over registry, lectures, and ontology schemas
+            for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+
+                # Generate SQL query (Custom fields checksum > All types)
+                sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsCustomFields
+                                (object_type, object_id, checksum_val)
+                          SELECT object_type, object_id,
+                                 MD5(GROUP_CONCAT(MD5(CONCAT(
+                                    MD5(COALESCE(field_language, "__null__")), MD5(COALESCE(field_name, "__null__")), MD5(COALESCE(field_value, "__null__"))
+                                 )) ORDER BY field_language, field_name, field_value)) AS checksum_val
+                            FROM {schema_name}.Data_N_Object_T_CustomFields c
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                           USING (object_type)
+                           WHERE object_type NOT IN ('Slide', 'Transcript')
+                             AND to_process = 1
+                        GROUP BY object_type, object_id
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            #------------------------#
+            # Final object checksums #
+            #------------------------#
+
+            # Generate SQL query (Final checksum > All types)
+            sql_query = f"""
+                REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_Checksums
+                            (object_type, object_id, checksum_val)
+                      SELECT object_type, o.object_id,
+                             MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(p.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
+                        FROM {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject o
+                   LEFT JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsPageProfile p
+                       USING (object_type, object_id)
+                   LEFT JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsCustomFields c
+                       USING (object_type, object_id)
+                  INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                       USING (object_type)
+                       WHERE to_process = 1
+            """
+
+            # Execute query in shell
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            #=========================#
+            # Edges related checksums #
+            #=========================#
+
+            #------------------------------------#
+            # General object-to-object checksums #
+            #------------------------------------#
+
+            # Loop over registry and lectures schemas
+            for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+
+                # Generate SQL query (Object-to-object checksum > All types)
+                sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsObject
+                                (from_object_type, from_object_id, to_object_type, to_object_id, checksum_val)
+                          SELECT from_object_type, from_object_id, to_object_type, to_object_id,
+                                 MD5(CONCAT(
+                                    MD5(COALESCE(from_object_type, "__null__")), MD5(COALESCE(from_object_id, "__null__")),
+                                    MD5(COALESCE(  to_object_type, "__null__")), MD5(COALESCE(  to_object_id, "__null__")),
+                                    MD5(COALESCE(`context`, "__null__"))
+                                 )) AS checksum_val
+                            FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent e
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
+                           USING (from_object_type, to_object_type)
+                           WHERE to_process = 1
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            #---------------------------------------------#
+            # Custom fields in object-to-object checksums #
+            #---------------------------------------------#
+
+            # Loop over registry and lectures schemas
+            for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+
+                # Generate SQL query (Object-to-object custom fields checksum > All types)
+                sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsCustomFields
+                                (from_object_type, from_object_id, to_object_type, to_object_id, checksum_val)
+                          SELECT from_object_type, from_object_id, to_object_type, to_object_id,
+                                 MD5(GROUP_CONCAT(MD5(CONCAT(
+                                    MD5(COALESCE(field_language, "__null__")), MD5(COALESCE(field_name, "__null__")), MD5(COALESCE(field_value, "__null__"))
+                                 )) ORDER BY field_language, field_name, field_value)) AS checksum_val
+                            FROM {schema_name}.Data_N_Object_N_Object_T_CustomFields c
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
+                           USING (from_object_type, to_object_type)
+                           WHERE to_process = 1
+                        GROUP BY from_object_type, from_object_id, to_object_type, to_object_id
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
+            #----------------------------------#
+            # Final object-to-object checksums #
+            #----------------------------------#
+
+            # Generate SQL query (Final checksum > All types)
+            sql_query = f"""
+                REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_Checksums
+                            (from_object_type, from_object_id, to_object_type, to_object_id, checksum_val)
+                      SELECT o.from_object_type, o.from_object_id, o.to_object_type, o.to_object_id,
+                             MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
+                        FROM {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsObject o
+                   LEFT JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsCustomFields c
+                       USING (from_object_type, from_object_id, to_object_type, to_object_id)
+                  INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
+                       USING (from_object_type, to_object_type)
+                       WHERE to_process = 1
+            """
+
+            # Execute query in shell
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+
         # === Object Type Flags ===
         class TypeFlags():
 

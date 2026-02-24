@@ -29,6 +29,7 @@ from graphregistry.cli.cmd_airflow import (
     cmd_airflow_status,
     cmd_airflow_to_process,
     cmd_airflow_config,
+    cmd_airflow_update_checksums,
     cmd_airflow_reset,
     cmd_airflow_expire,
     cmd_airflow_refresh,
@@ -288,6 +289,14 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_config,
                 args = [
                     dict(flags=('--typeflags',), kwargs=dict(required=True, type=str, default=None, help="Typeflags configuration as a JSON string, or '@path/to/file.json' to load JSON from a file."))
+                ],
+                common_args = []
+            ),
+            'update_checksums' : dict(
+                help = "Update object checksums based on typeflag activation.",
+                func = cmd_airflow_update_checksums,
+                args = [
+                    dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []
             ),
