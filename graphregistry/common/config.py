@@ -77,6 +77,12 @@ class GlobalConfig:
             'Widget'         : self.schema_registry,
         }
 
+        # Also build the inverted mapping
+        from collections import defaultdict
+        self.schema_to_object_types = defaultdict(list)
+        for k, v in self.object_type_to_schema.items():
+            self.schema_to_object_types[v].append(k)
+
         # Object type to institution id mapping
         self.object_type_to_institution_id = {
             'Category'       : 'Ont',
