@@ -535,7 +535,7 @@ class GraphDB():
 
         # Which filter command to use?
         if has_filters is None:
-            if 'WHERE' in query:
+            if 'WHERE' in query.upper():
                 filter_command = 'AND'
             else:
                 filter_command = 'WHERE'
@@ -549,12 +549,12 @@ class GraphDB():
             row_id_name_no_alias = row_id_name
 
         # Get min and max row_id
-        row_num_min = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MIN({row_id_name_no_alias}), 0) FROM {schema_name}.{table_name}")[0][0] - 1
-        row_num_max = self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX({row_id_name_no_alias}), 0) FROM {schema_name}.{table_name}")[0][0] + 1
+        row_num_min = int(self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MIN({row_id_name_no_alias}), 0) FROM {schema_name}.{table_name}")[0][0] or 0) - 1
+        row_num_max = int(self.execute_query(engine_name=engine_name, query=f"SELECT COALESCE(MAX({row_id_name_no_alias}), 0) FROM {schema_name}.{table_name}")[0][0] or 0) + 1
         n_rows = row_num_max - row_num_min + 1
 
         # Process table in chunks
-        for offset in tqdm(range(row_num_min, row_num_max, chunk_size), total=round(n_rows/chunk_size)) if show_progress else range(row_num_min, row_num_max, chunk_size):
+        for offset in tqdm(range(row_num_min, row_num_max, chunk_size), total=round(n_rows/chunk_size)) if show_progress else range(row_num_min, row_num_max, int(chunk_size)):
 
             # Generate SQL query
             sql_query = f"{query} {filter_command} {row_id_name} BETWEEN {offset} AND {offset + chunk_size - 1};"
