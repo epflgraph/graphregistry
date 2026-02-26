@@ -240,30 +240,47 @@ class DynamicSQL():
                 return id_fields_wi + option_fields + custom_fields + ['degree_score', 'row_id']
             elif index_group=='elasticsearch':
                 return id_fields_woi + ['degree_score', 'short_code', 'subtype_en', 'subtype_fr', 'name_en', 'name_fr', 'short_description_en', 'short_description_fr', 'long_description_en', 'long_description_fr'] + custom_fields + ['row_id']
+            else:
+                return []
+        else:
+            return []
 
     # General simplified method to get all combined fields
     def get_all_doclink_fields(self, doc_type, link_type, link_subtype, index_group):
 
         # Get field list helpers
-        id_fields_wi  = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=True)
-        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=False)
+        id_fields_wi  = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=True,  include_link_subtype=link_subtype is not None)
+        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=False, include_link_subtype=link_subtype is not None)
         custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+
+        # print('==========>', "custom_fields ..... ", custom_fields)
 
         # Combine and return according to index group
         if type(id_fields_wi) is list and type(id_fields_woi) is list and type(custom_fields) is list:
-            if index_group=='graphsearch':
+            if index_group=='indexbuildup':
+                return id_fields_wi + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields + ['to_process', 'row_id']
+            elif index_group=='indexrollback':
+                return ['rollback_date'] + id_fields_wi + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields + ['to_process', 'row_id']
+            elif index_group=='graphsearch':
                 return id_fields_wi + custom_fields + [{'ORG':'degree_score', 'SEM':'semantic_score'}[link_subtype.upper()], 'row_score', 'row_rank', 'row_id']
             elif index_group=='elasticsearch':
                 return id_fields_woi + ['link_rank', 'link_name_en', 'link_name_fr', 'link_short_description_en', 'link_short_description_fr'] + custom_fields + ['row_id']
+            else:
+                return []
+        else:
+            return []
 
     #===== ID fields =====#
 
     # General simplified method to get id-defining fields
-    def get_id_fields(self, unit_type, convention, include_institution=True):
+    def get_id_fields(self, unit_type, convention, include_institution=True, include_link_subtype=False):
         if   unit_type=='node':
             return self.get_doc_id_fields(convention, include_institution)
         elif unit_type=='edge':
             return self.get_doclink_id_fields(convention, include_institution)
+        else:
+            print("❌ Critical error [je42J1]: DynamicSQL.get_id_fields()")
+            exit()
 
     # Export graphsearch doc id-defining fields for docs
     def get_doc_id_fields(self, convention, include_institution=True):
@@ -277,9 +294,12 @@ class DynamicSQL():
                 return ['doc_institution', 'doc_type', 'doc_id']
             else:
                 return ['doc_type', 'doc_id']
+        else:
+            print("❌ Critical error [F32gh3]: DynamicSQL.get_doc_id_fields()")
+            exit()
 
     # Export graphsearch doc id-defining fields for doclinks
-    def get_doclink_id_fields(self, convention, include_institution=True):
+    def get_doclink_id_fields(self, convention, include_institution=True, include_link_subtype=False):
         if convention=='node-edge':
             if include_institution:
                 return ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
@@ -287,9 +307,18 @@ class DynamicSQL():
                 return ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
         elif convention=='doc-link':
             if include_institution:
-                return ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
+                if include_link_subtype:
+                    return ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
+                else:
+                    return ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_id']
             else:
-                return ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
+                if include_link_subtype:
+                    return ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
+                else:
+                    return ['doc_type', 'doc_id', 'link_type', 'link_id']
+        else:
+            print("❌ Critical error [KJ24rF]: DynamicSQL.get_doclink_id_fields()")
+            exit()
 
     #===== Custom fields =====#
 
@@ -300,11 +329,27 @@ class DynamicSQL():
                 return self.get_doc_custom_fields_graphsearch(doc_type)
             elif index_group=='elasticsearch':
                 return self.get_doc_custom_fields_elasticsearch(doc_type)
+            else:
+                print("❌ Critical error [GrKw3-1]: DynamicSQL.get_custom_fields()")
+                print("doc_type .........", doc_type)
+                print("link_type ........", link_type)
+                print("link_subtype .....", link_subtype)
+                print("index_group ......", index_group)
+                exit()
         else:
-            if index_group=='graphsearch':
+            if index_group in ('indexbuildup', 'indexrollback'):
+                return self.get_doclink_custom_fields_indexbuildup(doc_type, link_type, link_subtype)
+            elif index_group=='graphsearch':
                 return self.get_doclink_custom_fields_graphsearch(doc_type, link_type, link_subtype)
             elif index_group=='elasticsearch':
                 return self.get_doclink_custom_fields_elasticsearch(doc_type, link_type)
+            else:
+                print("❌ Critical error [GrKw3-2]: DynamicSQL.get_custom_fields()")
+                print("doc_type .........", doc_type)
+                print("link_type ........", link_type)
+                print("link_subtype .....", link_subtype)
+                print("index_group ......", index_group)
+                exit()
 
     # Export graphsearch doc fields for a given doc type
     def get_doc_custom_fields_graphsearch(self, doc_type):
@@ -315,6 +360,13 @@ class DynamicSQL():
         return self.docs[doc_type].elasticsearch_obj_fields
 
     # Export graphsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
+    def get_doclink_custom_fields_indexbuildup(self, doc_type, link_type, link_subtype):
+        fields_list = []
+        if link_subtype.upper() == 'ORG':
+            fields_list = self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields
+        return fields_list
+
+    # Export graphsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
     def get_doclink_custom_fields_graphsearch(self, doc_type, link_type, link_subtype):
         fields_list = []
         if link_subtype.upper() == 'SEM':
@@ -322,7 +374,7 @@ class DynamicSQL():
         elif link_subtype.upper() == 'ORG':
             fields_list = self.doclinks_org[(doc_type, link_type)].graphsearch_obj_fields
             if (doc_type, link_type) in self.doclinks_org:
-                fields_list += self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields
+                fields_list += [x for x in self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields if x not in fields_list]
         return fields_list
 
     # Export elasticsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
@@ -361,6 +413,9 @@ class DynamicSQL():
                 return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Docs_{doc_type}"
             elif index_group=='indexrollback':
                 return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Docs_{doc_type}"
+            else:
+                print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
+                exit()
         else:
             if index_group=='graphsearch':
                 if link_subtype is None:
@@ -373,6 +428,9 @@ class DynamicSQL():
                 return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
             elif index_group=='indexrollback':
                 return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
+            else:
+                print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
+                exit()
 
     # Generate SQL create table
     def get_sql_create_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
@@ -383,8 +441,12 @@ class DynamicSQL():
         else:
             fields_list = self.get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
+        # print("*************>>>>", "fields_list ..... ", fields_list)
+
         # Convert fields list to datatypes list
         datatypes_list = self.get_datatypes_from_fields(fields_list)
+
+        # print("*************>>>>", "datatypes_list ..... ", datatypes_list)
 
         # Combine into list of "field datatype" strings
         if type(fields_list) is list and type(datatypes_list) is list and len(fields_list)==len(datatypes_list):
@@ -408,6 +470,9 @@ class DynamicSQL():
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
+        # print("*************>>>>", "id_fields ..... ", id_fields)
+        # print("*************>>>>", "doc_custom_fields ..... ", doc_custom_fields)
+
         # Typecheck
         if not (type(id_fields) is list and type(doc_custom_fields) is list):
             print(f"❌ Error: doc_id_fields and doc_custom_fields must be lists. Got {type(id_fields)} and {type(doc_custom_fields)}")
@@ -415,6 +480,10 @@ class DynamicSQL():
 
         # Create composite unique key from id fields
         sql_create_table += f",\n  UNIQUE KEY uid ({', '.join(id_fields)})"
+
+        # Add key for to_process field if exists
+        if 'to_process' in fields_list:
+            sql_create_table += f",\n  KEY to_process (to_process)"
 
         # Make all id fields keys
         for id_field_k in id_fields:
@@ -660,14 +729,44 @@ if __name__ == "__main__":
     schema_name = glbcfg.mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
 
     # Initialise table
-    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Exercise')
-    print('\n\n',tb.create_table_sql,'\n\n')
+    for t in sorted(['IndexBuildup_Fields_Links_ParentChild_Course_Lecture', 'IndexBuildup_Fields_Links_ParentChild_Course_Person', 'IndexBuildup_Fields_Links_ParentChild_Lecture_MOOC', 'IndexBuildup_Fields_Links_ParentChild_Lecture_Widget', 'IndexBuildup_Fields_Links_ParentChild_MOOC_Person', 'IndexBuildup_Fields_Links_ParentChild_Notebook_Person', 'IndexBuildup_Fields_Links_ParentChild_Person_Publication', 'IndexBuildup_Fields_Links_ParentChild_Person_Unit', 'IndexBuildup_Fields_Links_ParentChild_Unit_Unit']):
+        tb = GraphTable(schema_name='graph_cache', table_name=t)
+        print('\n\n')
+        print(f"""
+            {tb.create_table_sql.replace(';','')} AS
 
-    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Notebook')
-    print('\n\n',tb.create_table_sql,'\n\n')
+            SELECT {', '.join(tb.table_fields)}
+            FROM graph_cache.{t};
+        """.replace(' (\n', '_TEMP (\n').replace(', row_id\n', '\n'))
+        print('\n\n')
 
-    tb = GraphTable(schema_name=schema_name, table_name='Index_D_Widget')
-    print('\n\n',tb.create_table_sql,'\n\n')
+
+
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Notebook_L_Category')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+    # # Initialise table
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Exercise_L_Concept')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Notebook_L_Concept')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+    # # Initialise table
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Category_L_Exercise')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Category_L_Notebook')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+    # # Initialise table
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Concept_L_Exercise')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+    # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Concept_L_Notebook')
+    # print('\n\n',tb.create_table_sql,'\n\n')
+
+
 
 
     exit()
