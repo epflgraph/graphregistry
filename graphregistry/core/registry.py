@@ -5373,7 +5373,8 @@ class GraphRegistry():
 
                 # Return if no fields to process
                 if len(list_of_fields)==0:
-                    sysmsg.warning(f"No custom fields found in config JSON for parent-child doclink type '{doc_type} --> {link_type}'. Nothing to do.")
+                    if 'print' in actions:
+                        sysmsg.warning(f"No custom fields found in config JSON for parent-child doclink type '{doc_type} --> {link_type}'. Nothing to do.")
                     return
 
                 # Flip doc-link direction if needed
@@ -6826,7 +6827,8 @@ class GraphRegistry():
                 if   db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
 
                     # Print status
-                    sysmsg.trace(f"Using MIX table for {self.doc_type} --> {self.link_type}")
+                    if 'print' in actions:
+                        sysmsg.trace(f"Using MIX table for {self.doc_type} --> {self.link_type}")
 
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX"
