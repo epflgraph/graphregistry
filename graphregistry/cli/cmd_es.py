@@ -215,3 +215,51 @@ def cmd_es_copy(args):
 
     # Print footers
     print("🖥️  ~ Done.")
+
+
+
+# TODO: Keep correcting comments and descriptions
+# Also address the following:
+
+# explain
+#  SELECT *
+#    FROM graph_airflow.Operations_N_Object_T_FieldsChanged
+#   WHERE (object_type, object_id) NOT IN (SELECT object_type, object_id FROM graph_registry.Nodes_N_Object)
+#     AND (object_type, object_id) NOT IN (SELECT object_type, object_id FROM graph_lectures.Nodes_N_Object)
+#     AND (object_type, object_id) NOT IN (SELECT object_type, object_id FROM graph_ontology.Nodes_N_Object);
+ 
+#  explain
+#  SELECT *
+# FROM graph_airflow.Operations_N_Object_T_FieldsChanged o
+# WHERE NOT EXISTS (
+#         SELECT 1
+#         FROM graph_registry.Nodes_N_Object r
+#         WHERE r.object_type = o.object_type
+#           AND r.object_id   = o.object_id
+#       )
+#   AND NOT EXISTS (
+#         SELECT 1
+#         FROM graph_lectures.Nodes_N_Object l
+#         WHERE l.object_type = o.object_type
+#           AND l.object_id   = o.object_id
+#       )
+#   AND NOT EXISTS (
+#         SELECT 1
+#         FROM graph_ontology.Nodes_N_Object g
+#         WHERE g.object_type = o.object_type
+#           AND g.object_id   = o.object_id
+#       );
+      
+#       explain
+# SELECT *
+# FROM graph_airflow.Operations_N_Object_T_FieldsChanged o
+# LEFT JOIN graph_registry.Nodes_N_Object r
+#   ON r.object_type = o.object_type AND r.object_id = o.object_id
+# LEFT JOIN graph_lectures.Nodes_N_Object l
+#   ON l.object_type = o.object_type AND l.object_id = o.object_id
+# LEFT JOIN graph_ontology.Nodes_N_Object g
+#   ON g.object_type = o.object_type AND g.object_id = o.object_id
+# WHERE r.object_id IS NULL
+#   AND l.object_id IS NULL
+#   AND g.object_id IS NULL;
+ 
