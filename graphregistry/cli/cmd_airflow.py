@@ -261,11 +261,22 @@ def cmd_airflow_refresh(args):
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")
 
+    if args.doc_type or args.limit_per_type or args.verbose:
+        print("\nInput options:")
+        if args.doc_type:
+            print(f"  doc_type ............. {args.doc_type}")
+        if args.limit_per_type:
+            print(f"  limit_per_type ....... {args.limit_per_type}")
+        if args.verbose:
+            print(f"  verbose .............. {args.verbose}")
+        print('')
+
     # Execute command:
     # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
     registry.orchestrator.refresh(
         doc_type = args.doc_type,
         refresh_checksums = r,
+        limit_per_type = args.limit_per_type,
         verbose = v
     )
 

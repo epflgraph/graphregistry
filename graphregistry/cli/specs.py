@@ -316,7 +316,8 @@ cli_definitions: Dict[str, Any] = {
                 help = "Refresh 'to_process' flags based on changed checksums, expired dates, and/or objects being new.",
                 func = cmd_airflow_refresh,
                 args = [
-                    dict(flags=('--doc_type',), kwargs=dict(required=False, type=str, default=None, help="Restrict refresh to a single document type (default: all types).")),
+                    dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict refresh to a single document type (default: all types).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', default=False, help="Recompute and persist checksums for matching objects.")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
