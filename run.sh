@@ -50,14 +50,14 @@ run_step "airflow reset" \
 run_step "airflow config" \
   graphregistry airflow config --typeflags=@airflow_config.json
 
-run_step "airflow update_checksums" \
-  graphregistry airflow update_checksums
+# run_step "airflow update_checksums" \
+#   graphregistry airflow update_checksums
 
 run_step "airflow expire" \
-  graphregistry airflow expire --older_than=90 --limit_per_type=100000000000000000
+  graphregistry airflow expire --older_than=90 --limit_per_type=100
 
 run_step "airflow refresh" \
-  graphregistry airflow refresh
+  graphregistry airflow refresh --limit_per_type=100
 
 run_step "airflow status" \
   graphregistry airflow status
@@ -95,4 +95,4 @@ run_step "airflow reset (again)" \
 #     --input_folder=/home/dockerhost/data/es_exports/2026-02-19/es_fullindex_2026-02-19 \
 #     --rename_to=graphsearch_test_2026_02_19 -r
 
-echo "DONE" >&2
+echo "End of script." >&2
