@@ -5,6 +5,8 @@ from graphregistry.clients.mysql import GraphDB
 import rich, json, re
 from pathlib import Path
 
+# TODO: Check presence of column name "context" in all edge definitions
+
 # Initialize configuration objects
 glbcfg = GlobalConfig()
 idxcfg = IndexConfig()
