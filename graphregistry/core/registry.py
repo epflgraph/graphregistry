@@ -620,9 +620,9 @@ class GraphRegistry():
             self.scoresexpired.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, count_only=count_only, verbose=verbose)
 
         # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-        def refresh(self, doc_type=None, refresh_checksums=False, verbose=False):
-            self.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, verbose=verbose)
-            self.scoresexpired.refresh(doc_type=doc_type, verbose=verbose)
+        def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
+            self.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, limit_per_type=limit_per_type, verbose=verbose)
+            self.scoresexpired.refresh(doc_type=doc_type, limit_per_type=limit_per_type, verbose=verbose)
 
         # Rollover checksums (replace previous one with current)
         def rollover(self, doc_type=None, actions=('eval',)):
@@ -1679,26 +1679,6 @@ class GraphRegistry():
                         # Execute operation?
                         if not count_only:
 
-                            # # Generate SQL query
-                            # sql_query = f"""
-                            #     WITH ranked_rows AS (
-                            #         SELECT row_id
-                            #         FROM (
-                            #             SELECT row_id,
-                            #                    ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
-                            #               FROM {glbcfg.schema_airflow}.{table_name}
-                            #              WHERE has_expired IS NULL
-                            #                 OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                            #                 OR last_date_cached IS NULL
-                            #         ) AS ranked
-                            #         WHERE rn <= {limit_per_type}
-                            #     )
-                            #     UPDATE {glbcfg.schema_airflow}.{table_name}
-                            #       JOIN ranked_rows USING (row_id)
-                            #        SET has_expired = 1
-                            #      WHERE {where_conditions[table_name]}
-                            # """
-
                             sql_query = f"""
                               UPDATE {glbcfg.schema_airflow}.{table_name} t
                                 JOIN (SELECT row_id
@@ -1724,28 +1704,6 @@ class GraphRegistry():
 
                         # Else, only count number of rows affected
                         else:
-
-                            # # Generate evaluation SQL query
-                            # sql_query = f"""
-                            #     WITH ranked_rows AS (
-                            #         SELECT row_id
-                            #         FROM (
-                            #             SELECT row_id,
-                            #                    ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
-                            #               FROM {glbcfg.schema_airflow}.{table_name}
-                            #              WHERE has_expired IS NULL
-                            #                 OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                            #                 OR last_date_cached IS NULL
-                            #         ) AS ranked
-                            #         WHERE rn <= {limit_per_type}
-                            #     )
-                            #     SELECT {'object_type' if u=='n' else 'from_object_type, to_object_type'},
-                            #            COUNT(*) AS rows_to_be_set
-                            #       FROM {glbcfg.schema_airflow}.{table_name} t
-                            #       JOIN ranked_rows r USING (row_id)
-                            #      WHERE {where_conditions[table_name]}
-                            #   GROUP BY {'object_type' if u=='n' else 'from_object_type, to_object_type'}
-                            # """
 
                             # Generate evaluation SQL query (direct drop-in; no CTE)
                             sql_query = f"""
@@ -1775,8 +1733,7 @@ class GraphRegistry():
 
                             # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
                             out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
-                            # out = [('Notebook', 32), ('Course', 423), ('Person', 12)]
-                            
+
                             # Print as data frame
                             df = pd.DataFrame(out, columns=['object_type', 'rows_to_be_set'] if u=='n' else ['from_object_type', 'to_object_type', 'rows_to_be_set'])
                             if not df.empty:
@@ -1788,10 +1745,16 @@ class GraphRegistry():
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'FieldsChanged' airflow tables.\n")
 
             # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-            def refresh(self, doc_type=None, refresh_checksums=False, verbose=False):
+            def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
+
+                # Apply defaults
+                limit_per_type = limit_per_type if limit_per_type!=None else 100
 
                 # Print status
                 sysmsg.info("🧩 🏁 📝 Refresh checksums and set 'to_process' flags to 1 in 'FieldsChanged' airflow tables.")
+
+                # Print parameters
+                sysmsg.trace(f"Input parameters: limit_per_type={limit_per_type} (rows).")
 
                 # Generate Airflow WHERE conditions
                 where_conditions = generate_airflow_where_conditions(doc_type=doc_type)
@@ -1962,7 +1925,8 @@ class GraphRegistry():
                     sysmsg.trace(f"Set 'to_process' flags to 1.")
 
                     # Loop over airflow tables
-                    for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
+                    # for table_name in ['Operations_N_Object_T_FieldsChanged', 'Operations_N_Object_N_Object_T_FieldsChanged']:
+                    for u, table_name in [('n', 'Operations_N_Object_T_FieldsChanged'), ('e', 'Operations_N_Object_N_Object_T_FieldsChanged')]:
 
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
@@ -1984,11 +1948,30 @@ class GraphRegistry():
                         db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
 
                         # Generate SQL query
+                        # sql_query = f"""
+                        #     UPDATE {glbcfg.schema_airflow}.{table_name}
+                        #        SET to_process = 1
+                        #      WHERE (has_changed = 1 OR has_expired = 1 OR last_date_cached IS NULL)
+                        #        AND {where_conditions[table_name]}
+                        # """
+
+                        # Table key definitions
+                        table_type_key = "institution_id, object_type" if u=='n' else "from_institution_id, from_object_type, to_institution_id, to_object_type, context"
+                        table_full_key = "institution_id, object_type, object_id" if u=='n' else "from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context"
+
+                        # Generate SQL query
                         sql_query = f"""
-                            UPDATE {glbcfg.schema_airflow}.{table_name}
-                               SET to_process = 1
-                             WHERE (has_changed = 1 OR has_expired = 1 OR last_date_cached IS NULL)
-                               AND {where_conditions[table_name]}
+                                  UPDATE {glbcfg.schema_airflow}.{table_name} t2u
+                              INNER JOIN (SELECT {table_full_key}
+                                            FROM (SELECT {table_full_key}, ROW_NUMBER() OVER (PARTITION BY {table_type_key}) AS row_to_process
+                                                    FROM {glbcfg.schema_airflow}.{table_name}
+                                                   WHERE (has_changed = 1 OR has_expired = 1 OR last_date_cached IS NULL)
+                                                     AND ({where_conditions[table_name]})
+                                                 ) tA
+                                           WHERE row_to_process <= {limit_per_type}
+                                         ) tB
+                                   USING ({table_full_key})
+                                     SET t2u.to_process = 1
                         """
 
                         # Update to_process flags for nodes
@@ -2661,10 +2644,16 @@ class GraphRegistry():
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'ScoresExpired' airflow table.\n")
 
             # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-            def refresh(self, doc_type=None, verbose=False):
+            def refresh(self, doc_type=None, limit_per_type=None, verbose=False):
+
+                # Apply defaults
+                limit_per_type = limit_per_type if limit_per_type!=None else 100
 
                 # Print status
                 sysmsg.info("🏁 📝 Set 'to_process' flags to 1 in 'ScoresExpired' airflow tables.")
+
+                # Print parameters
+                sysmsg.trace(f"Input parameters: limit_per_type={limit_per_type} (rows).")
 
                 #------------------------------------------#
                 # Update 'to_process' flags in both tables #
@@ -2704,19 +2693,34 @@ class GraphRegistry():
                         sql_query = f"""
                             UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                SET to_process = 0
-                             WHERE to_process > 0.5
+                             WHERE to_process = 1
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
                         # Reset to_process flags for all nodes
                         db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
 
+                        # # Generate SQL query
+                        # sql_query = f"""
+                        #     UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
+                        #        SET to_process = 1
+                        #      WHERE (has_expired = 1 OR last_date_cached IS NULL)
+                        #        AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
+                        # """
+
                         # Generate SQL query
                         sql_query = f"""
-                            UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                               SET to_process = 1
-                             WHERE (has_expired > 0.5 OR last_date_cached IS NULL)
-                               AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
+                                  UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired t2u
+		                      INNER JOIN (SELECT institution_id, object_type, object_id
+					                        FROM (SELECT institution_id, object_type, object_id, ROW_NUMBER() OVER (PARTITION BY institution_id, object_type) AS row_to_process
+                                                    FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
+                                                   WHERE (has_expired = 1 OR last_date_cached IS NULL)
+                                                     AND ({where_conditions['Operations_N_Object_T_ScoresExpired']})
+                                                 ) tA
+                                           WHERE row_to_process <= {limit_per_type}
+                                         ) tB
+		                           USING (institution_id, object_type, object_id)
+                                     SET t2u.to_process = 1
                         """
 
                         # Update to_process flags for nodes
