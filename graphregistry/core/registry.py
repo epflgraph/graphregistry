@@ -1658,7 +1658,7 @@ class GraphRegistry():
                         sql_query = f"""
                             UPDATE {glbcfg.schema_airflow}.{table_name}
                                SET has_expired = 0
-                             WHERE has_expired > 0.5
+                             WHERE has_expired = 1
                                AND {where_conditions[table_name]}
                         """
 
@@ -1682,19 +1682,14 @@ class GraphRegistry():
                             sql_query = f"""
                               UPDATE {glbcfg.schema_airflow}.{table_name} t
                                 JOIN (SELECT row_id
-                                        FROM (SELECT row_id,
-                                                     ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
+                                        FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
                                                 FROM {glbcfg.schema_airflow}.{table_name}
                                                WHERE ({where_conditions[table_name]})
-                                                 AND (
-                                                         has_expired IS NULL
-                                                      OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                                                      OR last_date_cached IS NULL
-                                                     )
+                                                 AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
                                              ) ranked
                                        WHERE rn <= {limit_per_type}
                                      ) ranked_rows
-                                  ON ranked_rows.row_id = t.row_id
+                                  ON t.row_id = ranked_rows.row_id
                                  SET t.has_expired = 1
                                WHERE {where_conditions[table_name]}
                             """
@@ -1714,11 +1709,7 @@ class GraphRegistry():
                                           FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
                                                   FROM {glbcfg.schema_airflow}.{table_name}
                                                  WHERE ({where_conditions[table_name]})
-                                                   AND (
-                                                           has_expired IS NULL
-                                                        OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                                                        OR last_date_cached IS NULL
-                                                       )
+                                                   AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
                                                ) ranked
                                          WHERE rn <= {limit_per_type}
                                        ) ranked_rows
@@ -2520,7 +2511,7 @@ class GraphRegistry():
                         sql_query = f"""
                             UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                SET has_expired = 0
-                             WHERE has_expired > 0.5
+                             WHERE has_expired = 1
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
@@ -2537,26 +2528,6 @@ class GraphRegistry():
                         # Execute operation?
                         if not count_only:
 
-                            # # Generate SQL query
-                            # sql_query = f"""
-                            #     WITH ranked_rows AS (
-                            #         SELECT row_id
-                            #         FROM (
-                            #             SELECT row_id,
-                            #                    ROW_NUMBER() OVER (PARTITION BY object_type ORDER BY row_id) AS rn
-                            #               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                            #              WHERE has_expired IS NULL
-                            #                 OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                            #                 OR last_date_cached IS NULL
-                            #         ) AS ranked
-                            #         WHERE rn <= {limit_per_type}
-                            #     )
-                            #     UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                            #       JOIN ranked_rows USING (row_id)
-                            #        SET has_expired = 1
-                            #      WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
-                            # """
-
                             # Generate SQL query (direct drop-in; no CTE)
                             sql_query = f"""
                                 UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired t
@@ -2564,15 +2535,11 @@ class GraphRegistry():
                                           FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY object_type ORDER BY row_id) AS rn
                                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                                  WHERE ({where_conditions['Operations_N_Object_T_ScoresExpired']})
-                                                   AND (
-                                                           has_expired IS NULL
-                                                        OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                                                        OR last_date_cached IS NULL
-                                                       )
+                                                   AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
                                                ) ranked
                                          WHERE rn <= {limit_per_type}
                                        ) ranked_rows
-                                    ON ranked_rows.row_id = t.row_id
+                                    ON t.row_id = ranked_rows.row_id
                                    SET t.has_expired = 1
                                  WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
                             """
@@ -2583,27 +2550,6 @@ class GraphRegistry():
                         # Else, only count number of rows affected
                         else:
 
-                            # # Generate SQL query
-                            # sql_query = f"""
-                            #     WITH ranked_rows AS (
-                            #         SELECT row_id
-                            #         FROM (
-                            #             SELECT row_id,
-                            #                    ROW_NUMBER() OVER (PARTITION BY object_type ORDER BY row_id) AS rn
-                            #               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                            #              WHERE has_expired IS NULL
-                            #                 OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                            #                 OR last_date_cached IS NULL
-                            #         ) AS ranked
-                            #         WHERE rn <= {limit_per_type}
-                            #     )
-                            #     SELECT object_type, COUNT(*) AS rows_to_be_set
-                            #       FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired t
-                            #       JOIN ranked_rows r USING (row_id)
-                            #      WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
-                            #   GROUP BY object_type
-                            # """
-
                             # Generate SQL query (direct drop-in; no CTE)
                             sql_query = f"""
                                 SELECT object_type, COUNT(*) AS rows_to_be_set
@@ -2612,11 +2558,7 @@ class GraphRegistry():
                                           FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY object_type ORDER BY row_id) AS rn
                                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                                  WHERE ({where_conditions['Operations_N_Object_T_ScoresExpired']})
-                                                   AND (
-                                                           has_expired IS NULL
-                                                        OR last_date_cached < CURDATE() - INTERVAL {older_than} DAY
-                                                        OR last_date_cached IS NULL
-                                                       )
+                                                   AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
                                                ) ranked
                                          WHERE rn <= {limit_per_type}
                                        ) ranked_rows
@@ -2631,8 +2573,7 @@ class GraphRegistry():
 
                             # Set has_expired=1 for dates older than time_period
                             out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
-                            # out = [('Notebook', 32), ('Course', 423), ('Person', 12)]
-                            
+
                             # Print as data frame
                             df = pd.DataFrame(out, columns=['object_type', 'rows_to_be_set'])
                             if not df.empty:
@@ -4477,8 +4418,8 @@ class GraphRegistry():
             sql_eval_query, sql_commit_query = None, None
 
             # Ignore edge types: Object-to-Concept/Category/Curated area (not including Category-to-Category)
+            # These have already been calculated in Object-Concept and Object-Category tables, and can be used later
             if (from_object_type in ('Category','Concept','Curated area') or to_object_type in ('Category','Concept','Curated area')) and not (from_object_type, to_object_type) == ('Category', 'Category'):
-                sysmsg.info(f"Ignoring edge type: {from_object_type} -> {to_object_type}.")
                 return
 
             # Calculate all other edge types, including Category-to-Category
@@ -4592,7 +4533,6 @@ class GraphRegistry():
 
             # Ignore edge types: Object-to-Concept/Category/Curated area (not including Category-to-Category)
             if (from_object_type in ('Category', 'Concept', 'Curated area') or to_object_type in ('Category', 'Concept', 'Curated area')) and not (from_object_type, to_object_type) == ('Category', 'Category'):
-                sysmsg.warning(f"Ignoring edge type ({from_object_type}, {to_object_type}).")
                 return
 
             # Calculate all other edge types, including Category-to-Category (to fetch from GBC table)
@@ -4609,7 +4549,7 @@ class GraphRegistry():
                                  AVG(score) AS avg_score, COUNT(*) AS n_rows
                             FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc}
                            WHERE from_object_type = '{from_object_type}'
-                             AND to_object_type   = '{to_object_type}'                                  
+                             AND to_object_type   = '{to_object_type}'
                         GROUP BY from_object_type, to_object_type
                     """
 
@@ -4619,7 +4559,8 @@ class GraphRegistry():
 
                     # Execute average score calculation
                     if 'commit' in actions:
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions)
+                        pass # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+                        # db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions)
 
                 # Check first if an average score is available, return otherwise
                 sql_query_check = f"""
