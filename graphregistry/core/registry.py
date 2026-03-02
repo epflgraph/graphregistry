@@ -483,9 +483,9 @@ class GraphRegistry():
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
                                      USING (institution_id, object_type)
                                        SET  p.to_process = 1
-                                     WHERE fc.to_process > 0.5
-                                       AND tf.to_process > 0.5
-                                       AND  p.to_process < 0.5;
+                                     WHERE fc.to_process = 1
+                                       AND tf.to_process = 1
+                                       AND  p.to_process = 0;
                         """)
 
             # Build list for updates in edge tables
@@ -510,9 +510,9 @@ class GraphRegistry():
                                             ON ( p.{d1}_institution_id,  p.{d1}_object_type, p.{d2}_institution_id, p.{d2}_object_type)
                                              = (tf.from_institution_id, tf.from_object_type,  tf.to_institution_id,  tf.to_object_type)
                                            SET  p.to_process = 1
-                                         WHERE fc.to_process > 0.5
-                                           AND tf.to_process > 0.5
-                                           AND  p.to_process < 0.5;
+                                         WHERE fc.to_process = 1
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
                             """)
 
            # Build list for updates in edge tables
@@ -539,9 +539,9 @@ class GraphRegistry():
                                             ON ( p.from_institution_id,  p.from_object_type,  p.to_institution_id,  p.to_object_type)
                                              = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
                                            SET  p.to_process = 1
-                                         WHERE se.to_process > 0.5 
-                                           AND tf.to_process > 0.5
-                                           AND  p.to_process < 0.5;
+                                         WHERE se.to_process = 1
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
                             """)
 
             # Print status
@@ -561,9 +561,9 @@ class GraphRegistry():
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
                                      USING (institution_id, object_type)
                                        SET  p.to_process = 1
-                                     WHERE fc.to_process > 0.5
-                                       AND tf.to_process > 0.5
-                                       AND  p.to_process < 0.5;
+                                     WHERE fc.to_process = 1
+                                       AND tf.to_process = 1
+                                       AND  p.to_process = 0;
                         """)
 
             # Print status
@@ -587,9 +587,9 @@ class GraphRegistry():
                                         ON ( p.doc_institution,  p.doc_type, p.link_institution, p.link_type)
                                          = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
                                        SET  p.to_process = 1
-                                     WHERE fc.to_process > 0.5
-                                       AND tf.to_process > 0.5
-                                       AND  p.to_process < 0.5;
+                                     WHERE fc.to_process = 1
+                                       AND tf.to_process = 1
+                                       AND  p.to_process = 0;
                         """)
 
             # # Truncate table: Operations/ Object / ToProcess
@@ -1076,7 +1076,7 @@ class GraphRegistry():
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=f"""
                         UPDATE {glbcfg.schema_airflow}.{table_name}
                            SET to_process = 0
-                         WHERE to_process > 0.5
+                         WHERE to_process = 1
                     """)
 
             # Quick configuration for input list of node and edge types
@@ -1546,7 +1546,7 @@ class GraphRegistry():
                         sql_query = f"""
                             UPDATE {glbcfg.schema_airflow}.{table_name}
                                SET to_process = 0
-                             WHERE to_process > 0.5
+                             WHERE to_process = 1
                                AND {where_conditions[table_name]}
                         """
 
@@ -2399,7 +2399,7 @@ class GraphRegistry():
                         sql_query = f"""
                             UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                SET to_process = 0
-                             WHERE to_process > 0.5
+                             WHERE to_process = 1
                                AND {where_conditions['Operations_N_Object_T_ScoresExpired']}
                         """
 
@@ -5018,7 +5018,7 @@ class GraphRegistry():
             #         target_engine_name = 'xaas_prod',
             #         target_schema_name = glbcfg.schema_graph_cache_prod,
             #         keys_json  = table_keys_json[table_type],
-            #         filter_by  = 'to_process > 0.5',
+            #         filter_by  = 'to_process = 1',
             #         chunk_size = 100000,
             #         drop_table = True
             #     )
@@ -5259,8 +5259,8 @@ class GraphRegistry():
                         ON ( p.institution_id,  p.object_type)
                          = (tf.institution_id, tf.object_type)
                      WHERE (p.institution_id, p.object_type) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}')
-                       AND fc.to_process > 0.5
-                       AND tf.to_process > 0.5
+                       AND fc.to_process = 1
+                       AND tf.to_process = 1
                 """
 
                 # Target cache table
@@ -5359,7 +5359,7 @@ class GraphRegistry():
                          1 AS to_process
                     FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric s\n{sql_slice_joins_obj2obj}
                    WHERE (s.from_institution_id, s.from_object_type, s.to_institution_id, s.to_object_type) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}', '{glbcfg.object_type_to_institution_id[link_type]}', '{link_type}')
-                     AND s.to_process > 0.5
+                     AND s.to_process = 1
                 """
 
                 # Target cache table
@@ -5429,7 +5429,7 @@ class GraphRegistry():
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
                     SELECT institution_id, object_type, COUNT(*) AS n_to_process
                     FROM {glbcfg.schema_graph_cache_test}.{self.table_name}
-                    WHERE to_process > 0.5
+                    WHERE to_process = 1
                     GROUP BY institution_id, object_type
                 """)
                 df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
@@ -5617,7 +5617,7 @@ class GraphRegistry():
                                 FROM {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type} i
                             INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} b
                                 USING (doc_institution, doc_type, doc_id)
-                                WHERE b.to_process > 0.5
+                                WHERE b.to_process = 1
                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score)
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
@@ -5660,7 +5660,7 @@ class GraphRegistry():
                           ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
-                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                         AND (p.to_process = 1 OR n.to_process = 1)
                 """
 
                 # Execute the evaluation query.
@@ -5712,7 +5712,7 @@ class GraphRegistry():
                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
-                        AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                        AND (p.to_process = 1 OR n.to_process = 1)
                 """
 
                 # Print the commit query
@@ -5789,7 +5789,7 @@ class GraphRegistry():
                           ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
-                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                         AND (p.to_process = 1 OR n.to_process = 1)
                 """
 
                 # Execute the evaluation query.
@@ -5857,7 +5857,7 @@ class GraphRegistry():
                  INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
-                        AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                        AND (p.to_process = 1 OR n.to_process = 1)
                 """
 
                 # Print the commit query
@@ -5917,7 +5917,7 @@ class GraphRegistry():
                           ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE p.object_type = '{self.doc_type}'
-                         AND (p.to_process > 0.5 OR n.to_process > 0.5)
+                         AND (p.to_process = 1 OR n.to_process = 1)
                 """
 
                 # Execute the commit query
@@ -5931,7 +5931,7 @@ class GraphRegistry():
                       UPDATE {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile
                          SET to_process = 0
                        WHERE object_type = '{self.doc_type}'
-                         AND to_process > 0.5
+                         AND to_process = 1
                 """
 
                 # Execute the commit query
@@ -5941,7 +5941,7 @@ class GraphRegistry():
                 sql_query_commit = f"""
                       UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type}
                          SET to_process = 0
-                       WHERE to_process > 0.5
+                       WHERE to_process = 1
                 """
 
                 # Execute the commit query
@@ -6021,7 +6021,7 @@ class GraphRegistry():
                     #                         INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
                     #                                 ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
                     #                                 = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
-                    #                             WHERE b.to_process > 0.5
+                    #                             WHERE b.to_process = 1
                     #                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
                     #                 ) t1
                     #         INNER JOIN (SELECT DISTINCT i.link_institution AS doc_institution, i.link_type AS doc_type, i.link_id AS doc_id,
@@ -6031,7 +6031,7 @@ class GraphRegistry():
                     #                         INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
                     #                                 ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
                     #                                 = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
-                    #                             WHERE b.to_process > 0.5
+                    #                             WHERE b.to_process = 1
                     #                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
                     #                 ) t2
                     #             USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_id)
@@ -6065,7 +6065,7 @@ class GraphRegistry():
                       FROM {buildup_link_table_path} b
                 INNER JOIN {target_table_path} i
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
-                     WHERE b.to_process > 0.5;
+                     WHERE b.to_process = 1;
                 """
 
                 # Execute the evaluation query.
@@ -6104,7 +6104,7 @@ class GraphRegistry():
                 INNER JOIN {buildup_link_table_path} b
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                        SET {   ', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}
-                     WHERE b.to_process > 0.5
+                     WHERE b.to_process = 1
                        AND ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])});
                 """
 
@@ -6198,7 +6198,7 @@ class GraphRegistry():
                 INNER JOIN {target_table_path} i
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                            {obj2obj_placeholder}
-                     WHERE b.to_process > 0.5;
+                     WHERE b.to_process = 1;
                 """
 
                 # Execute the evaluation query.
@@ -6239,7 +6239,7 @@ class GraphRegistry():
                            {obj2obj_placeholder}
                        SET {', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}{',' if e else ''}
                            {', '.join([f'i.{c}  = l.{c}' for c in self.graphsearch_obj2obj_fields])}
-                     WHERE b.to_process > 0.5
+                     WHERE b.to_process = 1
                        AND       ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}){' OR ' if e else ''}
                 {'(' if e else ''}{' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}{')' if e else ''};
                 """
@@ -6303,7 +6303,7 @@ class GraphRegistry():
                           ON (t.link_type, t.link_id) = (l.doc_type, l.doc_id)
 
                        WHERE p.object_type = '{self.link_type}'
-                         AND (p.to_process > 0.5 OR l.to_process > 0.5)
+                         AND (p.to_process = 1 OR l.to_process = 1)
                 """
 
                 # Execute the evaluation query.
@@ -6353,7 +6353,7 @@ class GraphRegistry():
                            {', ' if len(self.elasticsearch_obj_fields)>0 else ''}{', '.join([f't.{c} = l.{c}' for c in self.elasticsearch_obj_fields])}
 
                      WHERE p.object_type = '{self.link_type}'
-                       AND (p.to_process > 0.5 OR l.to_process > 0.5)
+                       AND (p.to_process = 1 OR l.to_process = 1)
 
                        AND (    COALESCE(t.link_name_en, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_en_value), p.name_en_value), "__null__")
                              OR COALESCE(t.link_name_fr, "__null__") != COALESCE(IF(l.include_code_in_name=1, CONCAT(l.doc_id, ': ', p.name_fr_value), p.name_fr_value), "__null__")
@@ -6430,7 +6430,7 @@ class GraphRegistry():
                     #             SELECT 1
                     #             FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric 
                     #             WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                    #             AND to_process > 0.5 LIMIT 1"""
+                    #             AND to_process = 1 LIMIT 1"""
                     #         )) == 0:
                     #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
                     #         return
@@ -6442,7 +6442,7 @@ class GraphRegistry():
                     #             FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education}_AS
                     #             WHERE ((from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
                     #             OR     (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}"))
-                    #             AND to_process > 0.5 LIMIT 1"""
+                    #             AND to_process = 1 LIMIT 1"""
                     #         )) == 0:
                     #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
                     #         return
@@ -6463,7 +6463,7 @@ class GraphRegistry():
                     #             INNER JOIN (SELECT DISTINCT from_institution_id AS doc_institution, from_object_type AS doc_type, from_object_id AS doc_id
                     #                                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
                     #                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                    #                                     AND to_process > 0.5) c
+                    #                                     AND to_process = 1) c
                     #                  USING (doc_institution, doc_type, doc_id)
                     #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     #     """
@@ -6482,7 +6482,7 @@ class GraphRegistry():
                     #                              INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.link_type} i
                     #                                      ON (s.from_object_type,   s.to_object_type,   s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                     #                                      OR (  s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                    #                                   WHERE s.to_process > 0.5) c
+                    #                                   WHERE s.to_process = 1) c
                     #                  USING (doc_institution, doc_type, doc_id)
                     #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     #     """
@@ -6571,7 +6571,7 @@ class GraphRegistry():
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.to_process > 0.5
+                                 AND p.to_process = 1
                         """
 
                     # No buildup table
@@ -6590,7 +6590,7 @@ class GraphRegistry():
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.to_process > 0.5
+                                 AND p.to_process = 1
                         """
 
                     # Generate SQL query 3
@@ -6606,7 +6606,7 @@ class GraphRegistry():
                                                      FROM {parentchild_table_path}
                                                     WHERE from_object_type {colate_correct} = '{self.doc_type}'
                                                       AND to_object_type   {colate_correct} = '{self.link_type}'
-                                                      AND to_process > 0.5) t
+                                                      AND to_process = 1) t
                                    USING (doc_id)
                                  ) tt
                            WHERE row_rank <= {row_rank_thr}
@@ -6626,7 +6626,7 @@ class GraphRegistry():
                             FROM {scoresmatrix_table_path} s
                       INNER JOIN {buildup_link_table_path} i
                               ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                           WHERE s.to_process > 0.5
+                           WHERE s.to_process = 1
                     """
 
                     # Generate SQL query 2 (same as SQL query 1 but flipped)
@@ -6640,7 +6640,7 @@ class GraphRegistry():
                             FROM {scoresmatrix_table_path} s
                       INNER JOIN {buildup_link_table_path} i
                               ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                           WHERE s.to_process > 0.5
+                           WHERE s.to_process = 1
                     """
 
                     # Generate SQL query 3
@@ -6665,7 +6665,7 @@ class GraphRegistry():
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
                                                                 )
                                                           )
-                                                      AND to_process > 0.5
+                                                      AND to_process = 1
 
                                                     UNION
 
@@ -6681,7 +6681,7 @@ class GraphRegistry():
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
                                                                 )
                                                           )
-                                                      AND to_process > 0.5
+                                                      AND to_process = 1
                                          ) t
                                    USING (doc_id)
                                  ) tt
@@ -6786,7 +6786,7 @@ class GraphRegistry():
                         SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process > 0.5
+                                    AND to_process = 1
                         """
                     if scores_matrix_table_name_as is not None:
                         to_process_sql_statement += f"""
@@ -6794,12 +6794,12 @@ class GraphRegistry():
                         SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process > 0.5
+                                    AND to_process = 1
                                   UNION
                         SELECT DISTINCT to_object_type AS doc_type, to_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
                                   WHERE (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process > 0.5
+                                    AND to_process = 1
                     """
 
                 # Table type: ORG
@@ -6816,7 +6816,7 @@ class GraphRegistry():
                         SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process > 0.5
+                                    AND to_process = 1
                     """
 
                 # Table type: SEM
@@ -6833,12 +6833,12 @@ class GraphRegistry():
                         SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process > 0.5
+                                    AND to_process = 1
                                   UNION
                         SELECT DISTINCT to_object_type AS doc_type, to_object_id AS doc_id
                                    FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
                                   WHERE (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process > 0.5
+                                    AND to_process = 1
                     """
                 else:
                     return False
@@ -6990,7 +6990,7 @@ class GraphRegistry():
                   INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.link_type} b
                           ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
-                       WHERE b.to_process > 0.5
+                       WHERE b.to_process = 1
                 """
 
                 # Execute the commit query
@@ -7009,7 +7009,7 @@ class GraphRegistry():
                               ON (a.object_type, a.object_id) = (s.from_object_type, s.from_object_id)
                              SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                            WHERE (s.from_object_type, s.to_object_type) = ('{self.doc_type}', '{self.link_type}')
-                             AND s.to_process > 0.5
+                             AND s.to_process = 1
                     """
 
                     # Execute the commit query
@@ -7022,7 +7022,7 @@ class GraphRegistry():
                               ON (a.object_type, a.object_id) = (s.to_object_type, s.to_object_id)
                              SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                            WHERE (s.from_object_type, s.to_object_type) = ('{self.link_type}', '{self.doc_type}')
-                             AND s.to_process > 0.5
+                             AND s.to_process = 1
                     """
 
                     # Execute the commit query
