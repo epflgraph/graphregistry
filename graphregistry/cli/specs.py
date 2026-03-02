@@ -44,6 +44,7 @@ from graphregistry.cli.cmd_cache import (
 from graphregistry.cli.cmd_index import (
     cmd_index_build,
     cmd_index_patch,
+    cmd_index_mixed_views,
     cmd_index_generate
 )
 
@@ -397,6 +398,15 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_index_patch,
                 args = [
                     dict(flags=('--actions',), kwargs=dict(required=False, type=str, help="Comma-separated actions to perform: print,eval,commit (default=eval)."))
+                ],
+                common_args = []
+            ),
+            'mixed_views' : dict(
+                help = "Generate mixed views for ElasticSearch.",
+                func = cmd_index_mixed_views,
+                args = [
+                    dict(flags=('--replace_existing', '-r'), kwargs=dict(action='store_true', default=False, help="Replace existing views if they exist.")),
+                    dict(flags=('--test_mode',        '-t'), kwargs=dict(action='store_true', default=False, help="Execute in test mode only."))
                 ],
                 common_args = []
             ),

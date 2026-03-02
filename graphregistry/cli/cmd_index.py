@@ -6,7 +6,7 @@ import datetime
 def cmd_index_build(args):
     """
     Handle:
-      graphregistry cache build [...]
+      graphregistry index build [...]
     """
 
     # Fetch context objects
@@ -32,7 +32,7 @@ def cmd_index_build(args):
 def cmd_index_patch(args):
     """
     Handle:
-      graphregistry cache patch [...]
+      graphregistry index patch [...]
     """
 
     # Fetch context objects
@@ -48,6 +48,29 @@ def cmd_index_patch(args):
     # Execute commands #
     # -----------------#
     registry.indexdb.patch(actions=actions)
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+#-----------------------------------------#
+# Handler: Operations on to_process flags #
+#-----------------------------------------#
+def cmd_index_mixed_views(args):
+    """
+    Handle:
+      graphregistry index mixed_views [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+    r = args.replace_existing
+    t = args.test_mode
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Generate mixed views for ElasticSearch.")
+
+    # -----------------
+    registry.indexdb.create_mixed_views(drop_existing=r, test_mode=t)
 
     # Print footers
     print("🖥️  ~ Done.")
