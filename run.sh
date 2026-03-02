@@ -50,35 +50,35 @@ run_step "airflow reset" \
 run_step "airflow config" \
   graphregistry airflow config --typeflags=@airflow_config.json
 
-# run_step "airflow update_checksums" \
-#   graphregistry airflow update_checksums
+run_step "airflow update_checksums" \
+  graphregistry airflow update_checksums
 
 run_step "airflow expire" \
-  graphregistry airflow expire --older_than=90 --limit_per_type=100
+  graphregistry airflow expire --older_than=90 --limit_per_type=1000
 
 run_step "airflow refresh" \
-  graphregistry airflow refresh --limit_per_type=100
+  graphregistry airflow refresh --limit_per_type=1000
 
 run_step "airflow status" \
   graphregistry airflow status
 
 run_step "cache update (formulas)" \
-  graphregistry cache update --formulas=fields,views,traversals,scores --actions=eval,commit
+  graphregistry cache update --formulas=fields,views,traversals,scores --actions=commit
 
 run_step "cache update (matrix)" \
-  graphregistry cache update --matrix --actions=eval,commit
+  graphregistry cache update --matrix --actions=commit
 
 run_step "index build" \
-  graphregistry index build --actions=eval,commit
+  graphregistry index build --actions=commit
 
 run_step "index patch" \
-  graphregistry index patch --actions=eval,commit
+  graphregistry index patch --actions=commit
 
 run_step "airflow rollover" \
-  graphregistry airflow rollover --actions=eval,commit
+  graphregistry airflow rollover --actions=commit
 
 run_step "airflow update_dates" \
-  graphregistry airflow update_dates --actions=eval,commit
+  graphregistry airflow update_dates --actions=commit
 
 run_step "airflow reset (again)" \
   graphregistry airflow reset --options=typeflags,airflow
@@ -87,12 +87,12 @@ run_step "airflow reset (again)" \
 # ElasticSearch data update steps #
 #=================================#
 
-# run_step "index generate (elasticsearch)" \
-#   graphregistry index generate --target=elasticsearch --index_date=2026-02-19 -ifo -r
-#
-# run_step "es import" \
-#   graphregistry es import --env=xaas_coresrv \
-#     --input_folder=/home/dockerhost/data/es_exports/2026-02-19/es_fullindex_2026-02-19 \
-#     --rename_to=graphsearch_test_2026_02_19 -r
+run_step "index generate (elasticsearch)" \
+  graphregistry index generate --target=elasticsearch --index_date=2026-02-19 -r -f
+
+run_step "es import" \
+  graphregistry es import --env=xaas_coresrv \
+    --input_folder=/home/dockerhost/data/es_exports/2026-02-19/es_fullindex_2026-02-19 \
+    --rename_to=graphsearch_test_2026_02_19 -r -f
 
 echo "End of script." >&2
