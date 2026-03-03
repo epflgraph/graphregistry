@@ -123,7 +123,18 @@ def cmd_cache_debug(args):
     # registry.indexdb.idoclinks['Course']['Person']['ORG'].horizontal_patch_elasticsearch(actions=('eval', 'print', 'commit'))
     # registry.indexdb.create_mixed_views(drop_existing=True, test_mode=False)
 
-    registry.orchestrator.update_dates(actions=('commit',))
+    # registry.orchestrator.update_dates(actions=('commit',))
+
+    # db.execute_query_stream_to_file(
+    #     engine_name='xaas_coresrv',
+    #     query='SELECT * FROM elasticsearch_cache.Index_D_Concept',
+    #     schema_name='elasticsearch_cache',
+    #     output_file='./output.csv'
+    # )
+
+    print('Atempt 2RVGrr2')
+    registry.indexes.generate_local_cache_streaming( index_date='2026-03-03', ignore_warnings=False, replace_existing=True, force_replace=True)
+    registry.indexes.generate_index_from_local_cache(index_date='2026-03-03', ignore_warnings=False, replace_existing=True, force_replace=True)
 
     # Print footers
     print("🖥️  ~ Done.")

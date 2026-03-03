@@ -11,6 +11,15 @@ import numpy as np
 import pandas as pd
 import sys, os, re, subprocess, json, datetime, hashlib, random, glob, time, rich
 
+import json
+import os
+import tempfile
+from typing import Any, Dict, Optional
+
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError, DataError, IntegrityError
+
+
 # Initialize global config
 glbcfg = GlobalConfig()
 
@@ -382,6 +391,113 @@ class GraphDB():
         finally:
             connection.close()
         return rows
+
+    #----------------------------------------------------#
+    # Method: Executes query into a file using streaming #
+    #----------------------------------------------------#
+
+    def execute_query_stream_to_file_v1(self, engine_name, query, schema_name=None, params=None, *, fetch_size=1000, output_file=None):
+
+        if not output_file:
+            raise ValueError("output_file must be provided")
+
+        # Ensure parent directory exists
+        os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+
+        connection = self.engine[engine_name].connect()
+
+        try:
+            if schema_name:
+                connection.execute(text(f"USE {schema_name}"))
+
+            exec_conn = connection.execution_options(stream_results=True)
+            result = exec_conn.execute(text(query), parameters=params)
+
+            with open(output_file, "w", encoding="utf-8") as f:
+
+                while True:
+                    chunk = result.fetchmany(fetch_size)
+                    if not chunk:
+                        break
+
+                    for row in chunk:
+                        obj = dict(row._mapping)
+                        f.write(json.dumps(obj, ensure_ascii=False, default=str) + "\n")
+
+        except MemoryError:
+            # If OOM mid-stream, discard broken connection from pool
+            try:
+                connection.invalidate()
+            except Exception:
+                pass
+            raise
+
+        except (DataError, IntegrityError, SQLAlchemyError) as e:
+            print("\033[91mError executing query.\033[0m")
+            print(e)
+            raise
+
+        finally:
+            try:
+                connection.close()
+            except Exception:
+                pass
+
+    import os, json
+    from sqlalchemy import text
+    from sqlalchemy.exc import SQLAlchemyError, DataError, IntegrityError
+
+    def execute_query_stream_to_file(
+        self,
+        engine_name,
+        query,
+        schema_name=None,
+        params=None,
+        *,
+        fetch_size=1000,
+        output_file=None,
+    ):
+        if not output_file:
+            raise ValueError("output_file must be provided")
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
+
+        connection = self.engine[engine_name].connect()
+        try:
+            if schema_name:
+                connection.execute(text(f"USE {schema_name}"))
+
+            exec_conn = connection.execution_options(stream_results=True)
+            result = exec_conn.execute(text(query), parameters=params)
+
+            if not result.returns_rows:
+                raise ValueError("execute_query_stream_to_file only supports SELECT queries")
+
+            with open(output_file, "w", encoding="utf-8") as f:
+                while True:
+                    chunk = result.fetchmany(fetch_size)
+                    if not chunk:
+                        break
+                    for row in chunk:
+                        f.write(json.dumps(dict(row._mapping), ensure_ascii=False, default=str) + "\n")
+
+        except MemoryError:
+            try:
+                connection.invalidate()
+            except Exception:
+                pass
+            raise
+
+        except (DataError, IntegrityError, SQLAlchemyError) as e:
+            print("\033[91mError executing query.\033[0m")
+            print(e)
+            raise
+
+        finally:
+            try:
+                connection.close()
+            except Exception:
+                pass
 
     #------------------------------------------------------------------#
     # Method: Executes/Evaluates a query using ON DUPLICATE KEY UPDATE #
