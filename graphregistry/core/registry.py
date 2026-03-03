@@ -282,6 +282,40 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
             sysmsg.critical(f"❌ Failed to create table '{schema_name}.{table_name}'.")
             exit()
 
+
+
+
+
+import os, json, gzip
+from pathlib import Path
+
+def _iter_jsonl(path):
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                yield json.loads(line)
+
+def _write_pretty_value_at_indent(fp, obj, *, base_indent_spaces: int):
+    """
+    Write a JSON object with pretty indentation as if nested under:
+    ... "<doc_id>": <obj>
+    where <obj> is indented like json.dump(..., indent=4) would produce.
+    """
+    s = json.dumps(obj, ensure_ascii=False, default=str, indent=4)
+    lines = s.splitlines()
+    # first line is "{", written on the same line after ": "
+    fp.write(lines[0] + "\n")
+    # middle lines: add (base_indent_spaces - 4) so that inner "    " becomes base_indent
+    pad = " " * (base_indent_spaces - 4)
+    for mid in lines[1:-1]:
+        fp.write(pad + mid + "\n")
+    # last line "}" aligned to value indent (base_indent_spaces - 4 + 0) == base_indent_spaces - 4
+    fp.write(" " * (base_indent_spaces - 4) + lines[-1])
+
+
+
+
 #==================================#
 # Class definition: Graph Registry #
 #==================================#
@@ -7037,6 +7071,227 @@ class GraphRegistry():
         def __init__(self):
             pass
 
+
+        def generate_local_cache_streaming(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
+            """
+            Drop-in replacement.
+
+            Writes ONE file per doc_type:
+            es_splitindex_{index_date}_{doc_type}.jsonl.gz
+
+            Format: JSONL (one valid JSON object per line), where each line is the FULL doc JSON:
+            {
+                "doc_type": ...,
+                "doc_id": ...,
+                ...,
+                "links": [ ... ]
+            }
+
+            This avoids hand-crafted nested JSON and guarantees proper escaping of newlines, quotes, etc.
+            """
+            import os
+            import json
+            import gzip
+
+            sysmsg.info(f"🐙 📝 Generate local JSON cache for ElasticSearch index creation (index date: {index_date}).")
+
+            default_column_names_doc = [
+                "doc_type", "doc_id", "degree_score", "short_code", "subtype_en", "subtype_fr",
+                "name_en", "name_fr", "short_description_en", "short_description_fr",
+                "long_description_en", "long_description_fr",
+            ]
+            default_column_names_link = [
+                "doc_type", "doc_id", "link_type", "link_subtype", "link_id", "link_rank",
+                "link_name_en", "link_name_fr", "link_short_description_en", "link_short_description_fr",
+            ]
+
+            def _iter_jsonl(path):
+                with open(path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            yield json.loads(line)
+
+            list_of_doc_types = idxcfg.settings["doc_types"]
+            overwrite_flag = False
+
+            target_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}"
+            os.makedirs(target_folder, exist_ok=True)
+
+            with tqdm(list_of_doc_types, unit="doc type") as pb:
+                for doc_type in pb:
+                    pb.set_description(f"⚙️ [GLC-ES] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    target_output_path = f"{target_folder}/es_splitindex_{index_date}_{doc_type}.jsonl.gz"
+
+                    # -------------------------------------------
+                    # If file exists, handle according to flags
+                    # -------------------------------------------
+                    if os.path.exists(target_output_path):
+                        if not ignore_warnings:
+                            sysmsg.warning(f"File already exists: {target_output_path}")
+                        if not replace_existing:
+                            sysmsg.warning(
+                                f"Failed to generate local ElasticSearch cache. File already exists: {target_output_path}"
+                            )
+                            continue
+
+                        if not overwrite_flag:
+                            confirmation = "yes" if force_replace else input(
+                                "Are you sure you want to replace the existing files? (yes/no): "
+                            )
+                            if confirmation.lower() != "yes":
+                                sysmsg.error("❌ Operation cancelled by user.")
+                                return
+                            overwrite_flag = True
+                            if not ignore_warnings:
+                                sysmsg.warning("Replacing existing files ...")
+
+                        os.remove(target_output_path)
+
+                    # -------------------------
+                    # 1) Stream DOC rows to JSONL (temp)
+                    # -------------------------
+                    custom_doc_cols = idxcfg.settings["elasticsearch"]["fields"]["docs"].get(doc_type, [])
+                    column_names_doc = default_column_names_doc + custom_doc_cols
+
+                    docs_jsonl = f"{target_folder}/.tmp_docs_{index_date}_{doc_type}.jsonl"
+
+                    db.execute_query_stream_to_file(
+                        engine_name="xaas_coresrv",
+                        query=f"""
+                            SELECT {', '.join(column_names_doc)}
+                            FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}
+                        ORDER BY doc_id ASC
+                        """,
+                        fetch_size=2000,
+                        output_file=docs_jsonl,
+                    )
+
+                    # If no docs (empty file), skip
+                    if os.path.getsize(docs_jsonl) == 0:
+                        if not ignore_warnings:
+                            sysmsg.warning(f"No docs found for doc type '{doc_type}'. Skipping.")
+                        try:
+                            os.remove(docs_jsonl)
+                        except Exception:
+                            pass
+                        continue
+
+                    # -------------------------
+                    # 2) Stream each LINK table to JSONL (temp), only if table exists
+                    # -------------------------
+                    link_files = {}       # link_type -> temp jsonl path
+                    link_custom_cols = {} # link_type -> [custom cols]
+
+                    for link_type in list_of_doc_types:
+                        if not db.table_exists(
+                            engine_name="xaas_coresrv",
+                            schema_name=glbcfg.schema_es_cache,
+                            table_name=f"Index_D_{doc_type}_L_{link_type}",
+                        ):
+                            continue
+
+                        custom_link_cols = idxcfg.settings["elasticsearch"]["fields"]["links"].get(link_type, [])
+                        column_names_link = default_column_names_link + custom_link_cols
+
+                        links_jsonl = f"{target_folder}/.tmp_links_{index_date}_{doc_type}_L_{link_type}.jsonl"
+
+                        db.execute_query_stream_to_file(
+                            engine_name="xaas_coresrv",
+                            query=f"""
+                                SELECT {', '.join(column_names_link)}
+                                FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}_L_{link_type}
+                            ORDER BY doc_id ASC, link_rank ASC
+                            """,
+                            fetch_size=5000,
+                            output_file=links_jsonl,
+                        )
+
+                        link_files[link_type] = links_jsonl
+                        link_custom_cols[link_type] = custom_link_cols
+
+                    # Prepare link iterators and “current row” pointers (merge join)
+                    link_iters = {lt: _iter_jsonl(p) for lt, p in link_files.items()}
+                    link_curr = {lt: next(it, None) for lt, it in link_iters.items()}
+
+                    def collect_links_for_doc_id(doc_id_value):
+                        out = []
+                        for lt, it in link_iters.items():
+                            curr = link_curr[lt]
+                            while curr is not None and curr.get("doc_id") == doc_id_value:
+                                json_link = {
+                                    "doc_type": curr["doc_type"],
+                                    "doc_id": curr["doc_id"],
+                                    "link_type": curr["link_type"],
+                                    "link_subtype": curr["link_subtype"],
+                                    "link_id": curr["link_id"],
+                                    "link_rank": curr["link_rank"],
+                                    "link_name": {"en": curr["link_name_en"], "fr": curr["link_name_fr"]},
+                                    "link_short_description": {
+                                        "en": curr["link_short_description_en"],
+                                        "fr": curr["link_short_description_fr"],
+                                    },
+                                }
+
+                                # append custom link fields
+                                for c in link_custom_cols.get(lt, []):
+                                    if c in curr:
+                                        json_link[c] = curr[c]
+
+                                out.append(json_link)
+
+                                curr = next(it, None)
+                                link_curr[lt] = curr
+                        return out
+
+                    # -------------------------
+                    # 3) Write FINAL JSONL.GZ (one doc per line)
+                    # -------------------------
+                    with gzip.open(target_output_path, "wt", encoding="utf-8") as out_fp:
+                        for d in _iter_jsonl(docs_jsonl):
+                            doc_id = d["doc_id"]
+
+                            doc_json = {
+                                "doc_type": d["doc_type"],
+                                "doc_id": doc_id,
+                                "degree_score": d["degree_score"],
+                                "degree_score_factor": es_degree_score_factors[doc_type] * d["degree_score"],
+                                "short_code": d["short_code"],
+                                "subtype": {"en": d["subtype_en"], "fr": d["subtype_fr"]},
+                                "name": {"en": d["name_en"], "fr": d["name_fr"]},
+                                "short_description": {"en": d["short_description_en"], "fr": d["short_description_fr"]},
+                                "long_description": {"en": d["long_description_en"], "fr": d["long_description_fr"]},
+                                "links": [],  # filled below
+                            }
+
+                            # custom doc fields
+                            for c in custom_doc_cols:
+                                if c in d:
+                                    doc_json[c] = d[c]
+
+                            # attach links (streamed)
+                            doc_json["links"] = collect_links_for_doc_id(doc_id)
+
+                            # IMPORTANT: write the WHOLE dict via json.dumps to guarantee escaping (newlines, quotes, etc.)
+                            out_fp.write(json.dumps(doc_json, ensure_ascii=False, default=str))
+                            out_fp.write("\n")
+
+                    # cleanup temp files
+                    try:
+                        os.remove(docs_jsonl)
+                    except Exception:
+                        pass
+                    for p in link_files.values():
+                        try:
+                            os.remove(p)
+                        except Exception:
+                            pass
+
+            sysmsg.success("🐙 ✅ Done generating local JSON cache.\n")
+
+
+
         # Generate local JSON cache for ElasticSearch index creation
         def generate_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
 
@@ -7070,7 +7325,7 @@ class GraphRegistry():
                         os.makedirs(target_folder)
 
                     # Generate target output path
-                    target_output_path = f"{target_folder}/es_splitindex_{index_date}_{doc_type}.json.gz"
+                    target_output_path = f"{target_folder}/es_splitindex_{index_date}_{doc_type}.jsonl.gz"
 
                     #-------------------------------------------#
                     # If file exists, handle according to flags #
@@ -7469,29 +7724,56 @@ class GraphRegistry():
                         pb.set_description(f"⚙️ Loading doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Check if source JSON cache file exists for doc type
-                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.json.gz"
+                        source_file_path = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_splitindex_{index_date}_{doc_type}.jsonl.gz"
                         if not os.path.exists(source_file_path):
                             if not ignore_warnings:
                                 sysmsg.warning(f"Source file does not exist: {source_file_path}. Skipping doc type '{doc_type}'.")
                             continue
 
-                        # Stream over: { "<doc_type>": { "<doc_id>": <doc>, ... } }
-                        with gzip.open(source_file_path, "rb") as f:
+                        with gzip.open(source_file_path, "rt", encoding="utf-8", errors="strict") as f:
+                            for line in f:
+                                line = line.strip()
+                                if not line:
+                                    continue
+                                doc = json.loads(line)
 
-                            # Use ijson to stream over the JSON structure and write each document as a separate line in the output JSONL file
-                            for doc_id, doc in ijson.kvitems(f, f"{doc_type}"):
+                                # expect doc already has doc_id (or _id)
+                                doc_id = doc.get("doc_id") or doc.get("_id")
+                                if doc_id is None:
+                                    # fail fast; cache format violation
+                                    continue
 
-                                # Ensure shape compatible with import_index_from_folder()
+                                # Ensure importer shape
                                 if isinstance(doc, dict) and "_source" in doc:
                                     obj = doc
-                                    if "_id" not in obj:
-                                        obj["_id"] = doc_id
+                                    obj.setdefault("_id", doc_id)
                                 else:
                                     obj = {"_id": doc_id, "_source": doc}
 
-                                # Write JSON object to file (one per line)
                                 out.write(json.dumps(obj, ensure_ascii=False, default=_json_default))
                                 out.write("\n")
+
+                        # # Stream over: { "<doc_type>": { "<doc_id>": <doc>, ... } }
+                        # with gzip.open(source_file_path, "rb") as fbin:
+
+                        #     # Wrap the binary file with a text wrapper for ijson
+                        #     import io
+                        #     ftxt = io.TextIOWrapper(fbin, encoding="utf-8", errors="replace")
+
+                        #     # Use ijson to stream over the JSON structure and write each document as a separate line in the output JSONL file
+                        #     for doc_id, doc in ijson.kvitems(ftxt, f"{doc_type}"):
+
+                        #         # Ensure shape compatible with import_index_from_folder()
+                        #         if isinstance(doc, dict) and "_source" in doc:
+                        #             obj = doc
+                        #             if "_id" not in obj:
+                        #                 obj["_id"] = doc_id
+                        #         else:
+                        #             obj = {"_id": doc_id, "_source": doc}
+
+                        #         # Write JSON object to file (one per line)
+                        #         out.write(json.dumps(obj, ensure_ascii=True, default=_json_default))
+                        #         out.write("\n")
 
             # Print status
             sysmsg.success(f"🐙 ✅ Done generating import folder:\n  {output_folder}\n")

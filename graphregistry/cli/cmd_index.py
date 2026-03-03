@@ -106,7 +106,7 @@ def cmd_index_generate(args):
 
         # Generate local ES cache from MySQL
         if not ifo:
-            registry.indexes.generate_local_cache(index_date=index_date, ignore_warnings=i, replace_existing=r, force_replace=f)
+            registry.indexes.generate_local_cache_streaming(index_date=index_date, ignore_warnings=i, replace_existing=r, force_replace=f)
 
         # Generate ES index file from local cache
         if not lco:
