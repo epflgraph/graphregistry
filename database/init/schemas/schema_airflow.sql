@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
   UNIQUE KEY object_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
+  UNIQUE KEY uid (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,context),
   KEY from_institution_id (from_institution_id),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
@@ -112,5 +113,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_TypeFlags (
   KEY flag_type (flag_type),
   KEY full_type (institution_id,object_type),
   KEY idx_tf_filters (object_type,flag_type,to_process,institution_id),
-  KEY key2 (institution_id,object_type,flag_type,to_process)
+  KEY key2 (institution_id,object_type,flag_type,to_process),
+  KEY idx_tf_to_process_object_type (to_process,object_type),
+  KEY idx_tf_object_type_to_process (object_type,to_process)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_AllFieldsSymmetric (
   field_language enum('en','fr','de','it','n/a') NOT NULL,
   field_name varchar(64) NOT NULL,
   field_value text NOT NULL,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name),
+  row_id int(11) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name),
   KEY from_institution_id (from_institution_id),
   KEY from_object_type (from_object_type),
@@ -18,7 +19,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_AllFieldsSymmetric (
   KEY to_object_id (to_object_id),
   KEY field_language (field_language),
   KEY field_name (field_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   field_name varchar(255) NOT NULL,
   field_value text NOT NULL,
   row_id int(11) NOT NULL AUTO_INCREMENT,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name),
+  PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
   KEY from_institution_id (from_institution_id),
   KEY from_object_type (from_object_type),
@@ -41,7 +42,8 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   KEY to_object_id (to_object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id)
+  KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
+  KEY uid (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
@@ -51,14 +53,15 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
   field_language enum('en','fr','de','it','n/a') NOT NULL,
   field_name varchar(64) NOT NULL,
   field_value longtext NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id,field_language,field_name),
+  row_id int(11) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (institution_id,object_type,object_id,field_language,field_name),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY field_language (field_language),
   KEY field_name (field_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CalculatedFields (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
@@ -68,8 +71,9 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CalculatedFields (
   field_name varchar(255) NOT NULL,
   field_value text NOT NULL,
   row_id int(11) NOT NULL AUTO_INCREMENT,
-  PRIMARY KEY (institution_id,object_type,object_id,field_language,field_name),
+  PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
+  UNIQUE KEY uid (institution_id,object_type,object_id,field_language,field_name),
   KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
@@ -475,28 +479,6 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_FinalScores (
   KEY to_process (to_process)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_CalculatedScores (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
-  from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
-  to_object_id varchar(255) NOT NULL,
-  calculation_type varchar(255) NOT NULL,
-  score float NOT NULL,
-  row_id int(11) NOT NULL AUTO_INCREMENT,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,calculation_type),
-  UNIQUE KEY row_id (row_id),
-  KEY from_institution_id (from_institution_id),
-  KEY from_object_type (from_object_type),
-  KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
-  KEY to_object_type (to_object_type),
-  KEY to_object_id (to_object_id),
-  KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
-  KEY calculation_type (calculation_type)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_DegreeCombinations (
   from_institution_id varchar(5) NOT NULL DEFAULT '',
   from_object_type varchar(17) NOT NULL DEFAULT '',
@@ -789,82 +771,6 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_GBC (
   KEY idx_fot_foid_tot_toid_tp (from_object_type,from_object_id,to_object_type,to_object_id,to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS graph_lectures_Operations_N_Object_N_Object_T_FieldChecksums (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  to_object_id varchar(255) NOT NULL,
-  calculation_type enum('object fields','child to parent') NOT NULL,
-  field_language enum('en','fr','de','it','n/a') NOT NULL,
-  checksum char(32) NOT NULL,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,calculation_type,field_language),
-  KEY from_institution_id (from_institution_id),
-  KEY from_object_type (from_object_type),
-  KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
-  KEY to_object_type (to_object_type),
-  KEY to_object_id (to_object_id),
-  KEY calculation_type (calculation_type),
-  KEY field_language (field_language),
-  KEY checksum (checksum)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS graph_lectures_Operations_N_Object_T_FieldChecksums (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  object_id varchar(255) NOT NULL,
-  calculation_type enum('object fields','object node','page profile') NOT NULL,
-  field_language enum('en','fr','de','it','n/a') NOT NULL,
-  checksum char(32) NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id,calculation_type,field_language),
-  KEY institution_id (institution_id),
-  KEY object_type (object_type),
-  KEY object_id (object_id),
-  KEY calculation_type (calculation_type),
-  KEY field_language (field_language),
-  KEY checksum (checksum)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS graph_registry_Operations_N_Object_N_Object_T_FieldChecksums (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  to_object_id varchar(255) NOT NULL,
-  calculation_type enum('object fields','child to parent') NOT NULL,
-  field_language enum('en','fr','de','it','n/a') NOT NULL,
-  checksum char(32) NOT NULL,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,calculation_type,field_language),
-  KEY from_institution_id (from_institution_id),
-  KEY from_object_type (from_object_type),
-  KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
-  KEY to_object_type (to_object_type),
-  KEY to_object_id (to_object_id),
-  KEY calculation_type (calculation_type),
-  KEY field_language (field_language),
-  KEY checksum (checksum)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS graph_registry_Operations_N_Object_T_FieldChecksums (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  object_id varchar(255) NOT NULL,
-  calculation_type enum('object fields','object node','page profile') NOT NULL,
-  field_language enum('en','fr','de','it','n/a') NOT NULL,
-  checksum char(32) NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id,calculation_type,field_language),
-  KEY institution_id (institution_id),
-  KEY object_type (object_type),
-  KEY object_id (object_id),
-  KEY calculation_type (calculation_type),
-  KEY field_language (field_language),
-  KEY checksum (checksum)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Category (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   doc_institution enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
@@ -932,8 +838,9 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Exercise (
   UNIQUE KEY uid (doc_institution,doc_type,doc_id),
   KEY doc_institution (doc_institution),
   KEY doc_type (doc_type),
-  KEY doc_id (doc_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY doc_id (doc_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Lecture (
   row_id int(11) NOT NULL AUTO_INCREMENT,
@@ -1049,6 +956,22 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Publication (
   KEY publication_id_v1 (publication_id_v1)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Specialisation (
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  include_code_in_name tinyint(1) DEFAULT NULL,
+  degree_score float NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Startup (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   doc_institution enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
@@ -1065,6 +988,22 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Startup (
   KEY doc_id (doc_id),
   KEY to_process (to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_StudyPlan (
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  include_code_in_name tinyint(1) DEFAULT NULL,
+  degree_score float NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Unit (
   row_id int(11) NOT NULL AUTO_INCREMENT,
@@ -1124,18 +1063,57 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Docs_Widget (
   KEY vertical_id (vertical_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Course_Lecture (
-  row_id int(11) NOT NULL AUTO_INCREMENT,
-  doc_institution varchar(8) NOT NULL,
-  doc_type varchar(16) NOT NULL,
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Category_Category (
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
   doc_id varchar(255) NOT NULL,
-  link_institution varchar(8) NOT NULL,
-  link_type varchar(16) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY to_process (to_process),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Category_Concept (
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY to_process (to_process),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Course_Lecture (
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
   link_id varchar(255) NOT NULL,
   sort_number_per_academic_year varchar(255) DEFAULT NULL,
-  to_process tinyint(4) NOT NULL DEFAULT 0,
-  PRIMARY KEY (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
-  UNIQUE KEY row_id (row_id),
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
   KEY doc_institution (doc_institution),
   KEY doc_type (doc_type),
@@ -1143,22 +1121,21 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Course_Lecture 
   KEY link_institution (link_institution),
   KEY link_type (link_type),
   KEY link_id (link_id),
-  KEY latest_academic_year (sort_number_per_academic_year),
+  KEY sort_number_per_academic_year (sort_number_per_academic_year),
   KEY to_process (to_process)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Course_Person (
-  row_id int(11) NOT NULL AUTO_INCREMENT,
-  doc_institution varchar(8) NOT NULL,
-  doc_type varchar(16) NOT NULL,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
   doc_id varchar(255) NOT NULL,
-  link_institution varchar(8) NOT NULL,
-  link_type varchar(16) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
   link_id varchar(255) NOT NULL,
-  latest_teaching_assignment_year varchar(16) DEFAULT NULL,
-  to_process tinyint(4) NOT NULL DEFAULT 0,
-  PRIMARY KEY (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
-  UNIQUE KEY row_id (row_id),
+  latest_teaching_assignment_year varchar(255) DEFAULT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
   KEY doc_institution (doc_institution),
   KEY doc_type (doc_type),
@@ -1166,22 +1143,20 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Course_Person (
   KEY link_institution (link_institution),
   KEY link_type (link_type),
   KEY link_id (link_id),
-  KEY latest_academic_year (latest_teaching_assignment_year),
+  KEY latest_teaching_assignment_year (latest_teaching_assignment_year),
   KEY to_process (to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Lecture_MOOC (
-  row_id int(11) NOT NULL AUTO_INCREMENT,
-  doc_institution varchar(8) NOT NULL,
-  doc_type varchar(16) NOT NULL,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
   doc_id varchar(255) NOT NULL,
-  link_institution varchar(8) NOT NULL,
-  link_type varchar(16) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
   link_id varchar(255) NOT NULL,
-  sort_number_per_academic_year varchar(255) DEFAULT NULL,
-  to_process tinyint(4) NOT NULL DEFAULT 0,
-  PRIMARY KEY (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
-  UNIQUE KEY row_id (row_id),
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
   KEY doc_institution (doc_institution),
   KEY doc_type (doc_type),
@@ -1189,23 +1164,101 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Lecture_MOOC (
   KEY link_institution (link_institution),
   KEY link_type (link_type),
   KEY link_id (link_id),
-  KEY latest_academic_year (sort_number_per_academic_year),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Lecture_Widget (
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_MOOC_Person (
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Notebook_Person (
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Person_Publication (
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id),
   KEY to_process (to_process)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Person_Unit (
-  row_id int(11) NOT NULL AUTO_INCREMENT,
-  doc_institution varchar(8) NOT NULL,
-  doc_type varchar(16) NOT NULL,
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
   doc_id varchar(255) NOT NULL,
-  link_institution varchar(8) NOT NULL,
-  link_type varchar(16) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
   link_id varchar(255) NOT NULL,
   is_active_affiliation tinyint(1) DEFAULT NULL,
-  current_position_rank smallint(5) unsigned DEFAULT NULL,
-  to_process tinyint(4) DEFAULT 0,
-  PRIMARY KEY (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
-  UNIQUE KEY row_id (row_id),
+  current_position_rank tinyint(1) DEFAULT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
   UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
   KEY doc_institution (doc_institution),
   KEY doc_type (doc_type),
@@ -1217,6 +1270,26 @@ CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Person_Unit (
   KEY current_position_rank (current_position_rank),
   KEY to_process (to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS IndexBuildup_Fields_Links_ParentChild_Unit_Unit (
+  row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
+  doc_institution varchar(16) NOT NULL,
+  doc_type varchar(64) NOT NULL,
+  doc_id varchar(255) NOT NULL,
+  link_institution varchar(16) NOT NULL,
+  link_type varchar(64) NOT NULL,
+  link_id varchar(255) NOT NULL,
+  to_process tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (doc_institution,doc_type,doc_id,link_institution,link_type,link_id),
+  KEY doc_institution (doc_institution),
+  KEY doc_type (doc_type),
+  KEY doc_id (doc_id),
+  KEY link_institution (link_institution),
+  KEY link_type (link_type),
+  KEY link_id (link_id),
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS IndexRollback_Fields_Docs_Category (
   row_id int(11) NOT NULL AUTO_INCREMENT,
@@ -1615,30 +1688,10 @@ CREATE TABLE IF NOT EXISTS IndexRollback_ScoreRanks_Links (
   KEY link_id (link_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Migration_New_Infoscience_Ids (
-  old_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  new_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  idx_1 char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  idx_2 char(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  idx_3 char(3) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (old_id,new_id),
-  UNIQUE KEY old_id (old_id),
-  UNIQUE KEY new_id (new_id),
-  KEY idx_1 (idx_1),
-  KEY idx_2 (idx_2),
-  KEY idx_3 (idx_3)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE IF NOT EXISTS Nodes_N_Concept_T_InUse (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
-  object_id varchar(255) NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id),
-  UNIQUE KEY uid (institution_id,object_type,object_id),
-  KEY institution_id (institution_id),
-  KEY object_type (object_type),
-  KEY object_id (object_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS _lectures_already_processed (
+  lecture_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (lecture_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 CREATE TABLE IF NOT EXISTS Nodes_N_Object_T_DegreeScores (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
@@ -1655,90 +1708,79 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Object_T_DegreeScores (
   KEY to_process (to_process)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsRandomSet (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_Checksums (
+  from_object_type varchar(16) NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  to_object_type varchar(16) NOT NULL,
   to_object_id varchar(255) NOT NULL,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
-  KEY from_institution_id (from_institution_id),
-  KEY from_object_type (from_object_type),
-  KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
-  KEY to_object_type (to_object_type),
-  KEY to_object_id (to_object_id),
-  KEY full_type (from_institution_id,from_object_type,to_institution_id,to_object_type),
-  KEY from_full_type (from_institution_id,from_object_type),
-  KEY from_full_id (from_institution_id,from_object_type,from_object_id),
-  KEY to_full_type (to_institution_id,to_object_type),
-  KEY to_full_id (to_institution_id,to_object_type,to_object_id)
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id),
+  KEY object_type (from_object_type),
+  KEY object_id (from_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_ScoresRandomSet (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_ChecksumsCustomFields (
+  from_object_type varchar(16) NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  to_object_type varchar(16) NOT NULL,
   to_object_id varchar(255) NOT NULL,
-  PRIMARY KEY (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
-  KEY from_institution_id (from_institution_id),
-  KEY from_object_type (from_object_type),
-  KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
-  KEY to_object_type (to_object_type),
-  KEY to_object_id (to_object_id),
-  KEY full_type (from_institution_id,from_object_type,to_institution_id,to_object_type),
-  KEY from_full_type (from_institution_id,from_object_type),
-  KEY from_full_id (from_institution_id,from_object_type,from_object_id),
-  KEY to_full_type (to_institution_id,to_object_type),
-  KEY to_full_id (to_institution_id,to_object_type,to_object_id)
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id),
+  KEY object_type (from_object_type),
+  KEY object_id (from_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsRandomSet (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_ChecksumsObject (
+  from_object_type varchar(16) NOT NULL,
+  from_object_id varchar(255) NOT NULL,
+  to_object_type varchar(16) NOT NULL,
+  to_object_id varchar(255) NOT NULL,
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id),
+  KEY object_type (from_object_type),
+  KEY object_id (from_object_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS Operations_N_Object_T_Checksums (
+  object_type varchar(16) NOT NULL,
   object_id varchar(255) NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id),
-  KEY from_institution_id (institution_id),
-  KEY from_object_type (object_type),
-  KEY from_object_id (object_id),
-  KEY full_type (institution_id,object_type),
-  KEY from_full_type (institution_id,object_type),
-  KEY from_full_id (institution_id,object_type,object_id)
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (object_type,object_id),
+  KEY object_type (object_type),
+  KEY object_id (object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ScoresRandomSet (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ChecksumsCustomFields (
+  object_type varchar(16) NOT NULL,
   object_id varchar(255) NOT NULL,
-  PRIMARY KEY (institution_id,object_type,object_id),
-  KEY from_institution_id (institution_id),
-  KEY from_object_type (object_type),
-  KEY from_object_id (object_id),
-  KEY full_type (institution_id,object_type),
-  KEY from_full_type (institution_id,object_type),
-  KEY from_full_id (institution_id,object_type,object_id)
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (object_type,object_id),
+  KEY object_type (object_type),
+  KEY object_id (object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS _temp (
-  institution_id varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_type varchar(17) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
-  concept_id bigint(20) NOT NULL DEFAULT 0,
-  score1 float DEFAULT NULL,
-  score2 float DEFAULT NULL,
-  score3 float DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ChecksumsObject (
+  object_type varchar(16) NOT NULL,
+  object_id varchar(255) NOT NULL,
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (object_type,object_id),
+  KEY object_type (object_type),
+  KEY object_id (object_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS _TEMP_Map_Concept_To_Category (
-  concept_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  category_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  PRIMARY KEY (concept_id,category_id),
-  KEY concept_id (concept_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ChecksumsPageProfile (
+  object_type varchar(16) NOT NULL,
+  object_id varchar(255) NOT NULL,
+  checksum_val varchar(32) DEFAULT NULL,
+  PRIMARY KEY (object_type,object_id),
+  KEY object_type (object_type),
+  KEY object_id (object_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS _publications_already_processed (
+  publication_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (publication_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 
 CREATE TABLE IF NOT EXISTS Traversal_N_Concept_N_Concept_T_Depth2 (
   from_concept_id varchar(255) NOT NULL,
