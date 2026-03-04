@@ -962,7 +962,7 @@ class GraphES():
     #---------------------------------------#
     # Method: Import an index from a folder #
     #---------------------------------------#
-    def import_index_from_folder(self, engine_name:str, input_folder:str, *, rename_to:str|None=None, replace_existing:bool=False, force:bool=False, chunk_size:int=2000, request_timeout:int=120, refresh:bool=False):
+    def import_index_from_folder(self, engine_name:str, input_folder:str, *, rename_to:str|None=None, replace_existing:bool=False, force:bool=False, chunk_size:int=2000, request_timeout:int=3600, refresh:bool=False):
 
         # Get ElasticSearch connector object for selected engine
         es = self.engine[engine_name]
