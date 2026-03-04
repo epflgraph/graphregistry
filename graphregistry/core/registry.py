@@ -112,79 +112,6 @@ cast_mapping = {
     "MEDIUMINT UNSIGNED" : "CAST(%s AS UNSIGNED)"
 }
 
-#----------------------#
-# Temporary parameters #
-#----------------------#
-
-# Local cache
-local_cache = {
-    'checksums_calculation' : {
-        glbcfg.schema_lectures : {
-            'Data_N_Object_T_*' : {
-                "Lecture": {
-                    "CustomFields": [
-                        "available_end_date",
-                        "available_start_date",
-                        "is_restricted",
-                        "original_description",
-                        "original_tags",
-                        "original_title",
-                        "platform",
-                        "recording_date",
-                        "srt_subtitles",
-                        "video_duration",
-                        "video_modified_date",
-                        "video_stream_url",
-                        "video_upload_date"
-                    ],
-                    "CalculatedFields": [
-                        "n_slides"
-                    ]
-                },
-                "Slide": {
-                    "CustomFields": [
-                        "detected_language",
-                        "text_en",
-                        "text_original"
-                    ],
-                    "CalculatedFields": []
-                }
-            },
-            'Data_N_Object_N_Object_T_*' : {
-                "Course-Lecture": {
-                    "CustomFields": [
-                        "academic_year,sort_number"
-                    ],
-                    "CalculatedFields": [
-                        "latest_academic_year"
-                    ]
-                },
-                "Lecture-Slide": {
-                    "CustomFields": [
-                        "end_time_hms",
-                        "end_timestamp",
-                        "sort_number",
-                        "start_time_hms",
-                        "start_timestamp",
-                        "time_hms",
-                        "timestamp"
-                    ]
-                },
-                "Lecture-Transcript": {
-                    "CustomFields": [
-                        "sort_number"
-                    ]
-                },
-                "MOOC-Lecture": {
-                    "CustomFields": [
-                        "session_id,sort_number"
-                    ]
-                }
-            }
-        }
-    }
-}
-
 #---------------------------------------#
 # Auxiliary functions for GraphRegistry #
 #---------------------------------------#
@@ -2833,7 +2760,6 @@ class GraphRegistry():
             self.record_updated_date = None
             self.custom_fields = []
             self.page_profile = {}
-            self.checksum = None
             self.concepts_detection = None
             self.text_source = None
             self.manual_mapping = None
@@ -2856,7 +2782,6 @@ class GraphRegistry():
         # Print object info
         def info(self):
             out_json = self.to_json()
-            out_json['checksum'] = self.checksum
             rich.print_json(data=out_json)
 
         # Output object as JSON
@@ -2895,54 +2820,9 @@ class GraphRegistry():
             if page_profile is not None:
                 self.page_profile = {k: v for k, v in page_profile.items() if v is not None}
 
-            # Re-calculate checksum
-            self.update_checksum()
-
             # Detect concepts if requested
             if detect_concepts:
                 self.detect_concepts()
-
-        # Set object title field
-        def set_title(self, object_title):
-
-            # Set object title field
-            self.object_title = object_title
-
-            # Re-calculate checksum
-            self.update_checksum()
-
-        # Set raw text field
-        def set_text(self, raw_text):
-
-            # Set raw text field
-            self.raw_text = raw_text
-
-            # Re-calculate checksum
-            self.update_checksum()
-
-        # Set text source field for concept detection
-        def set_text_source(self, text_source):
-
-            # Set text source field for concept detection
-            self.text_source = text_source
-
-        # Set custom fields list
-        def set_custom_fields(self, custom_fields):
-
-            # Set custom fields list
-            self.custom_fields = custom_fields
-
-            # Re-calculate checksum
-            self.update_checksum()
-
-        # Set page profile field
-        def set_page_profile(self, page_profile):
-
-            # Set page profile field
-            self.page_profile = page_profile
-
-            # Re-calculate checksum
-            self.update_checksum()
 
         # Set inner fields from existing object in database
         def set_from_existing(self):
@@ -2996,9 +2876,6 @@ class GraphRegistry():
                     val = out[0][list_of_columns.index(column_name)]
                     if val is not None:
                         self.page_profile[column_name] = val if type(val)!=datetime.datetime else val.strftime('%Y-%m-%d %H:%M:%S')
-
-            # Re-calculate checksum
-            self.update_checksum()
 
         # Set object from JSON
         def set_from_json(self, doc_json, detect_concepts=False):
@@ -3082,39 +2959,9 @@ class GraphRegistry():
                         self.manual_mapping[k]['record_updated_date'] = out[0][1] if type(out[0][1]) != datetime.datetime else out[0][
                             1].strftime('%Y-%m-%d %H:%M:%S')
 
-            # Re-calculate checksum
-            self.update_checksum()
-
             # Detect concepts if requested
             if detect_concepts:
                 self.detect_concepts()
-
-        # Update global checksum
-        def update_checksum(self):
-            # Convert to JSON
-            doc_json = self.to_json()
-            # Drop all datetime fields
-            doc_json.pop('record_created_date', None)
-            doc_json.pop('record_updated_date', None)
-            for k in range(len(doc_json['custom_fields'])):
-                doc_json['custom_fields'][k].pop('record_created_date', None)
-                doc_json['custom_fields'][k].pop('record_updated_date', None)
-            doc_json['page_profile'].pop('record_created_date', None)
-            doc_json['page_profile'].pop('record_updated_date', None)
-
-            # the concepts detected by concept detections are invalidated by expiration, so we ignore them all here.
-            doc_json.pop('concepts_detection')
-            # same for manually mapped concepts
-            doc_json.pop('manual_mapping')
-
-            # Convert to a sorted JSON string
-            serialized = json.dumps(doc_json, sort_keys=True, separators=(',', ':'))
-
-            # Compute 32 char MD5 hash
-            self.checksum = hashlib.md5(serialized.encode()).hexdigest()
-
-            # Print object key and resulting checksum
-            # print(f"\n({self.institution_id}, {self.object_type}, {self.object_id}): {self.checksum}")
 
         # Commit basic node data to database
         def commit_node_object(self, actions=('eval',)):
@@ -3384,7 +3231,6 @@ class GraphRegistry():
         # Print object info
         def info(self):
             out_json = self.to_json()
-            out_json['checksum'] = self.checksum
             rich.print_json(data=out_json)
 
         # Output object as JSON
@@ -3411,18 +3257,6 @@ class GraphRegistry():
             if custom_fields is not None:
                 self.custom_fields = custom_fields
 
-            # Re-calculate checksum
-            self.update_checksum()
-
-        # Set custom fields list
-        def set_custom_fields(self, custom_fields):
-
-            # Set custom fields list
-            self.custom_fields = custom_fields
-
-            # Re-calculate checksum
-            self.update_checksum()
-
         # Set inner fields from existing object in database
         def set_from_existing(self):
             schema = self._get_schema()
@@ -3441,9 +3275,6 @@ class GraphRegistry():
                     val = doc[list_of_columns.index(column_name)]
                     doc_json[column_name] = val if type(val)!=datetime.datetime else val.strftime('%Y-%m-%d %H:%M:%S')
                 self.custom_fields.append(doc_json)
-
-            # Re-calculate checksum
-            self.update_checksum()
 
         # Set object from JSON
         def set_from_json(self, doc_json):
@@ -3482,35 +3313,11 @@ class GraphRegistry():
                     self.custom_fields[k]['record_created_date'] = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                     self.custom_fields[k]['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
 
-            # Re-calculate checksum
-            self.update_checksum()
-
-        # Update global checksum
-        def update_checksum(self):
-
-            # Convert to JSON
-            doc_json = self.to_json()
-
-            # Drop all datetime fields
-            doc_json.pop('record_created_date', None)
-            doc_json.pop('record_updated_date', None)
-            for k in range(len(doc_json['custom_fields'])):
-                doc_json['custom_fields'][k].pop('record_created_date', None)
-                doc_json['custom_fields'][k].pop('record_updated_date', None)
-
-            # Convert to a sorted JSON string
-            serialized = json.dumps(doc_json, sort_keys=True, separators=(',', ':'))
-
-            # Compute 32 char MD5 hash
-            self.checksum = hashlib.md5(serialized.encode()).hexdigest()
-
-            print(f"\n({self.from_object_type}, {self.from_object_id}, {self.to_object_type}, {self.to_object_id}): {self.checksum}")
-
         # Commit basic edge data to database
         def commit_edge_object(self, actions=('eval',)):
-            schema = self._get_schema()
+            # schema = self._get_schema()
             eval_results = rbridge.registry_insert(
-                schema_name=schema,
+                schema_name=glbcfg.schema_registry,
                 table_name='Edges_N_Object_N_Object_T_ChildToParent',
                 key_column_names=['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id',
                                   'to_object_type', 'to_object_id', 'context'],
@@ -3524,11 +3331,12 @@ class GraphRegistry():
 
         # Commit custom fields data to database
         def commit_custom_fields(self, actions=('eval',)):
-            schema = self._get_schema()
+            # schema = self._get_schema()
+            # return # $$$$$$$$$$$$$$$$$$$$
             eval_results = []
             for doc in self.custom_fields:
                 eval_results += [rbridge.registry_insert(
-                    schema_name=schema,
+                    schema_name=glbcfg.schema_registry,
                     table_name='Data_N_Object_N_Object_T_CustomFields',
                     key_column_names=['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id',
                                       'to_object_type', 'to_object_id', 'field_language', 'field_name', 'context'],
