@@ -27,7 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="domain", required=True)
 
     # Register commands for each domain
-    for cmd_name in ['config', 'db', 'es', 'ai', 'airflow', 'cache', 'index']:
+    for cmd_name in ['config', 'db', 'es', 'ai', 'data', 'airflow', 'cache', 'index']:
         register(subparsers, cmd_name)
 
     # Return the fully built parser

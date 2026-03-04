@@ -24,6 +24,9 @@ from graphregistry.cli.cmd_es import (
 from graphregistry.cli.cmd_ai import (
     cmd_ai_test,
 )
+from graphregistry.cli.cmd_data import (
+    cmd_data_import
+)
 from graphregistry.cli.cmd_airflow import (
     cmd_airflow_sync,
     cmd_airflow_status,
@@ -242,6 +245,27 @@ cli_definitions: Dict[str, Any] = {
                 help = "Test connectivity to the GraphAI server using a simple translation request.",
                 func = cmd_ai_test,
                 args = [],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
+    # Command: data       #
+    #---------------------#
+    'data' : dict(
+        help = "Manage base registry data.",
+        common_args = dict(),
+        commands = {
+            'import' : dict(
+                help = "Import data from json file.",
+                func = cmd_data_import,
+                args = [
+                    dict(flags=('--input_file',   ), kwargs=dict(required=True,  type=str, default=None,     help="Import data from file [=path/to/file.json]")),
+                    dict(flags=('--import_method',), kwargs=dict(required=False, type=str, default='object', help="Import objects one by one [=object] or as a list [=list] (default=object).")),
+                    dict(flags=('--actions',      ), kwargs=dict(required=False, type=str, default='eval',   help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
+                    dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on import.")),
+                ],
                 common_args = []
             )
         }
