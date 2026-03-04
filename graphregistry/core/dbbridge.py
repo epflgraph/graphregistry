@@ -33,7 +33,7 @@ class RegistryDB():
     # Function to execute an INSERT operation in the registry
     def registry_insert(self,
             schema_name, table_name, key_column_names, key_column_values, upd_column_names, upd_column_values, actions=(),
-            engine_name='test'
+            engine_name='xaas_coresrv'
     ):
         """
         Possible actions: 'print', 'eval', 'commit'
@@ -153,7 +153,7 @@ class RegistryDB():
 
         # Execute commit
         if 'commit' in actions:
-            out = db.execute_query(engine_name='test', query=sql_query_commit, params=sql_params, commit=True, return_exception=True)
+            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_commit, params=sql_params, commit=True, return_exception=True)
             if not type(out) is list:
                 error_type, error_msg, dbapi_code = out
                 if dbapi_code==1062: # Duplicate entry
@@ -168,7 +168,7 @@ class RegistryDB():
         return eval_results
 
     # Function to delete input list of concepts
-    def delete_concepts_for_nodes(self, table, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
+    def delete_concepts_for_nodes(self, table, institution_id, object_type, nodes_id: List[str], engine_name='xaas_coresrv', actions=()):
         schema_objects = glbcfg.object_type_to_schema.get(object_type, 'graph_registry')
         query_where = f'institution_id="{institution_id}" AND object_type="{object_type}" AND object_id IN :object_id'
         eval_results = None
@@ -190,7 +190,7 @@ class RegistryDB():
         return eval_results
 
     # Function to delete input list of nodes by id
-    def delete_nodes_by_ids(self, institution_id, object_type, nodes_id: List[str], engine_name='test', actions=()):
+    def delete_nodes_by_ids(self, institution_id, object_type, nodes_id: List[str], engine_name='xaas_coresrv', actions=()):
         schema_objects = glbcfg.object_type_to_schema.get(object_type, glbcfg.schema_registry)
         query_where_per_table = {}
         for table in (
@@ -248,7 +248,7 @@ class RegistryDB():
 
     # Function to delete input list of edges by id
     def delete_edges_by_ids(self, from_institution_id, from_object_type, to_institution_id, to_object_type,
-            edges_id: List[Tuple[str, str]], engine_name='test', actions=()
+            edges_id: List[Tuple[str, str]], engine_name='xaas_coresrv', actions=()
     ):
         schema_edges = get_schema(from_object_type, to_object_type)
         query_where_per_table = {}
@@ -282,7 +282,7 @@ class RegistryDB():
         return eval_results
 
     # Get the list of object_id from the existing nodes in the database
-    def get_existing_nodes_id(self, institution_id: str, object_type: str, engine_name='test'):
+    def get_existing_nodes_id(self, institution_id: str, object_type: str, engine_name='xaas_coresrv'):
         schema_name = glbcfg.object_type_to_schema.get(object_type, glbcfg.schema_registry)
         existing_nodes_id = db.execute_query(
             engine_name=engine_name,
@@ -294,7 +294,7 @@ class RegistryDB():
         return [object_id for object_id, in existing_nodes_id]
 
     # Get the list of ids from the existing edges in the database
-    def get_existing_edges_id(self, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str, engine_name='test'):
+    def get_existing_edges_id(self, from_institution_id: str, from_object_type: str, to_institution_id: str, to_object_type: str, engine_name='xaas_coresrv'):
         schema_name = get_schema(from_object_type, to_object_type)
         existing_edges_id = db.execute_query(
             engine_name=engine_name,
