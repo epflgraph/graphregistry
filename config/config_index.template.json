@@ -1,5 +1,5 @@
 {
-    "doc-types" : ["Category", "Concept", "Course", "Exercise", "Lecture", "MOOC", "Notebook", "Person", "Publication", "Startup", "Unit", "Widget"],
+    "doc-types" : ["Category", "Concept", "Course", "Exercise", "Lecture", "MOOC", "Notebook", "Person", "Publication", "Specialisation", "Startup", "StudyPlan", "Unit", "Widget"],
     "options" : {
         "docs" : {
             "Course" : {"include_code_in_name" : 1},
