@@ -12,7 +12,7 @@ def cmd_es_test(args):
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Test server connectivity.")
@@ -20,13 +20,13 @@ def cmd_es_test(args):
     # Execute command:
     # - Test connection to ElasticSearch server
     if args.env:
-        if index.test(engine_name=args.env) is True:
+        if es.test(engine_name=args.env) is True:
             print(f"✅ ElasticSearch server is up and running [env='{args.env}'].")
         else:
             print(f"❌ ElasticSearch server is down or unreachable [env='{args.env}'].")
     else:
-        for engine in index.engine.keys():
-            if index.test(engine_name=engine) is True:
+        for engine in es.engine.keys():
+            if es.test(engine_name=engine) is True:
                 print(f"✅ ElasticSearch server is up and running [env='{engine}'].")
             else:
                 print(f"❌ ElasticSearch server is down or unreachable [env='{engine}'].")
@@ -44,14 +44,14 @@ def cmd_es_info(args):
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Print server info.")
 
     # Execute command:
     # - Print info on ElasticSearch server
-    index.info(engine_name=args.env)
+    es.info(engine_name=args.env)
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -66,14 +66,14 @@ def cmd_es_health(args):
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Print server health.")
 
     # Execute command:
     # - Print health of ElasticSearch server
-    index.cluster_health(engine_name=args.env)
+    es.cluster_health(engine_name=args.env)
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -88,7 +88,7 @@ def cmd_es_list(args):
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. List indexes on the server.")
@@ -96,9 +96,9 @@ def cmd_es_list(args):
     # Execute command:
     # - List ElasticSearch indexes or aliases
     if args.aliases is True:
-        index.alias_list(engine_name=args.env)
+        es.alias_list(engine_name=args.env)
     else:
-        index.index_list(engine_name=args.env, display_size=args.display_size)
+        es.index_list(engine_name=args.env, display_size=args.display_size)
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -113,14 +113,14 @@ def cmd_es_export(args):
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Export index into local folder.")
 
     # Execute command:
     # - Export ElasticSearch index to local folder
-    index.export_index_to_folder(
+    es.export_index_to_folder(
         engine_name      = args.env,
         index_name       = args.index_name,
         output_folder    = args.output_folder,
@@ -143,7 +143,7 @@ def cmd_es_import(args):
     """
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
 
     # Fetch input parameters
     env              = args.env
@@ -162,7 +162,7 @@ def cmd_es_import(args):
     if rename_to is None:
         rename_to = os.path.basename(input_folder)
 
-    index.import_index_from_folder(
+    es.import_index_from_folder(
         engine_name      = env,
         input_folder     = input_folder,
         rename_to        = rename_to,
@@ -187,14 +187,14 @@ def cmd_es_copy(args):
     print("🖥️  ~ Graph Registry CLI. Copy index across servers.")
 
     # Fetch context objects
-    index = args.ctx.index
+    es = args.ctx.es
     gz = args.use_gzip
     r  = args.replace_existing
     f  = args.force
 
     # ...
     if args.alias_pattern is None:
-        index.copy_index_across_engines(
+        es.copy_index_across_engines(
             index_name       = args.index_name,
             source_engine    = args.from_env,
             target_engine    = args.to_env,
@@ -205,13 +205,38 @@ def cmd_es_copy(args):
             force            = f
         )
     else:
-        index.copy_aliases_across_engines(
+        es.copy_aliases_across_engines(
             source_engine    = args.from_env,
             target_engine    = args.to_env,
             alias_pattern    = args.alias_pattern,
             replace_existing = r,
             force            = f
         )
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+#---------------------------------#
+# Handler: Operations on an index #
+#---------------------------------#
+def cmd_es_index(args):
+    """
+    Usage:
+        graphregistry es index [...]
+    """
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Operations on an index.")
+
+    # Fetch context objects
+    es = args.ctx.es
+    engine_name = args.env
+    index_name  = args.index_name
+    alias_name  = args.create_alias
+    # r  = args.replace_existing
+    # f  = args.force
+
+    es.set_alias(engine_name=engine_name, alias_name=alias_name, index_name=index_name)
 
     # Print footers
     print("🖥️  ~ Done.")

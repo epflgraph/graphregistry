@@ -54,7 +54,7 @@ def main(argv=None) -> int:
     index_config  = IndexConfig()
     scores_config = ScoresConfig()
     db       = GraphDB()
-    index    = GraphES()
+    es       = GraphES()
     registry = GraphRegistry()
     ai       = GraphAI
 
@@ -77,7 +77,7 @@ def main(argv=None) -> int:
         index_config  = index_config,
         scores_config = scores_config,
         db       = db,
-        index    = index,
+        es       = es,
         registry = registry,
         ai       = ai, # type: ignore
         graphai_auth_token = graphai_auth_token # type: ignore
