@@ -17,7 +17,7 @@ class CLIContext:
     index_config  : "IndexConfig"
     scores_config : "ScoresConfig"
     db       : "GraphDB"
-    index    : "GraphES"
+    es       : "GraphES"
     registry : "GraphRegistry"
     ai       : "GraphAI" # type: ignore
     graphai_auth_token : str

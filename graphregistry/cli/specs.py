@@ -20,6 +20,7 @@ from graphregistry.cli.cmd_es import (
     cmd_es_copy,
     cmd_es_export,
     cmd_es_import,
+    cmd_es_index
 )
 from graphregistry.cli.cmd_ai import (
     cmd_ai_test,
@@ -230,6 +231,17 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags = ('--force'           ,  '-f'), kwargs = dict(action='store_true', help="Force replace without prompting for confirmation."))
                 ],
                 common_args = [],
+            ),
+            'index' : dict(
+                help = "Operations related to an individual index.",
+                func = cmd_es_index,
+                args = [
+                    dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, default=None, help="Name of the index to manage.")),
+                    dict(flags = ('--create_alias' ,), kwargs = dict(required=False, type=str, default=None, help="Create alias pointing to index.")),
+                    # dict(flags = ('--replace_existing', '-r'), kwargs = dict(action='store_true', default=False, help="Replace existing alias.")),
+                    # dict(flags = ('--force'           , '-f'), kwargs = dict(action='store_true', default=False, help="Force replace without prompting for confirmation."))
+                ],
+                common_args = ['env'],
             ),
         }
     ),
