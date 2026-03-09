@@ -4812,7 +4812,7 @@ class GraphRegistry():
                                           FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
                                       GROUP BY doc_institution, doc_type, doc_id) o
                                  USING (doc_institution, doc_type, doc_id)
-                                 WHERE doc_id IN (SELECT doc_id FROM graph_cache.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
+                                 WHERE doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
 
                              UNION ALL
 
@@ -4824,7 +4824,7 @@ class GraphRegistry():
                                  USING (doc_institution, doc_type, doc_id)
                                  WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
                                           NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
-                                   AND doc_id IN (SELECT doc_id FROM graph_cache.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
+                                   AND doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
 
                               ORDER BY doc_id ASC, adjusted_row_rank ASC;
                 """
