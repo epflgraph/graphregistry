@@ -4401,8 +4401,9 @@ class GraphRegistry():
 
                     # Execute average score calculation
                     if 'commit' in actions:
-                        pass # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
-                        # db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions)
+                        # pass # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
+                        # TODO: Add --no-avg-recalc flag
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions)
 
                 # Check first if an average score is available, return otherwise
                 sql_query_check = f"""
@@ -5409,6 +5410,10 @@ class GraphRegistry():
                 self.index_table_name   = f'Index_D_{doc_type}'
                 self.key_column_names   = ['doc_institution', 'doc_type', 'doc_id']
 
+                # Create buildup and graphsearch tables if they don't exist
+                create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_table_name)
+                create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graphsearch_test, table_name=self.index_table_name)
+
                 # Fetch column names to update
                 out = db.get_column_names(
                     engine_name = self.engine_name,
@@ -5809,6 +5814,11 @@ class GraphRegistry():
                 self.buildup_link_table_name = f'IndexBuildup_Fields_Docs_{link_type}'
                 self.index_table_name        = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}'
                 self.key_column_names        = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
+
+                # Create buildup and graphsearch tables if they don't exist
+                create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_doc_table_name)
+                create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_link_table_name)
+                create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graphsearch_test, table_name=self.index_table_name)
 
                 # Fetch doclink settings from index config
                 self.graphsearch_obj_fields     = idxcfg.settings['graphsearch'  ]['fields' ]['links']['default'].get(self.link_type, [])
