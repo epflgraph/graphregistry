@@ -3,7 +3,7 @@
            e.from_object_id      AS object_id,
            'n/a'                 AS field_language,
            'is_at_epfl'          AS field_name,
- 
+        -- TODO: Add context field to formulas
         -- Conditions for being at EPFL: no end date or end date in the future
         -- NOTE: the max() is needed to aggregate multiple affiliations and keep a zero value if
         -- all affiliations are expired.
