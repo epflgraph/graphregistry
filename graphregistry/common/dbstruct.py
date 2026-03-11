@@ -6,6 +6,7 @@ import rich, json, re
 from pathlib import Path
 
 # TODO: Check presence of column name "context" in all edge definitions
+# TODO: Some keys are not being created in elasticsearch cache schemas
 
 # Initialize configuration objects
 glbcfg = GlobalConfig()
