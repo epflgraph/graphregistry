@@ -197,9 +197,7 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
         sysmsg.warning(f"Target table '{schema_name}.{table_name}' does not exist. Creating table ...")
 
         # Create table
-        # print('-------------------->', schema_name, table_name)
         tb = GraphTable(schema_name=schema_name, table_name=table_name)
-        # print('\n\n', tb.create_table_sql, '\n\n')
         db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=True)
 
         # Check if table was created successfully
@@ -5207,6 +5205,9 @@ class GraphRegistry():
 
                 # Target cache table
                 target_table = f'IndexBuildup_Fields_Links_ParentChild_{doc_type}_{link_type}'
+
+                # Create target table if it doesn't exist
+                create_table_if_not_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=target_table)
 
                 # List of evaluation columns
                 eval_columns = ['doc_institution', 'doc_type', 'link_institution', 'link_type']
