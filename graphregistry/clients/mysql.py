@@ -728,30 +728,75 @@ class GraphDB():
     #--------------------------------------------------------------#
     def execute_query_from_file(self, engine_name, file_path, database=None, verbose=False):
 
-        # Start with the base command for the engine
+        # Get absolute file path
+        abs_file_path = os.path.abspath(file_path)
+
+        # Check if the file exists
+        if not os.path.isfile(abs_file_path):
+            print(f"SQL file does not exist: {abs_file_path}")
+            return False
+
+        # Define the shell command
         shell_command = list(self.base_command_mysql[engine_name])
 
-        # Add database selection if provided
-        if database:
-            shell_command += [database]
+        # Guard against a configured command that already forces mysql to use -e
+        if '-e' in shell_command or '--execute' in shell_command:
+            print("Configured mysql command already contains -e/--execute, so stdin SQL will be ignored.")
+            print(f"Command: {shell_command}")
+            return False
 
-        # Add verbosity and the SOURCE command
+        # Add the database to the command if specified
+        if database:
+            shell_command.append(database)
+
+        # If verbose is enabled, print the command being executed
         if verbose:
             shell_command.append('-v')
-        shell_command += ['-e', f"SOURCE {file_path}"]
 
-        # Run the command and capture output
-        result = subprocess.run(shell_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Run the command and capture stdout and stderr
+        try:
+            # Read the SQL file content
+            with open(abs_file_path, 'r', encoding='utf-8') as sql_file:
+                sql_text = sql_file.read()
 
-        # Check stderr for warnings/errors
-        if result.stderr:
-            warn = 'mysql: [Warning] Using a password on the command line interface can be insecure.'
-            if result.stderr.strip() != warn:
-                print(f"Error executing query from file: {file_path}")
-                print(result.stderr)
-                if 'ERROR' in result.stderr.upper():
-                    return False
+            # Execute the SQL command using subprocess, passing the SQL text via stdin
+            result = subprocess.run(
+                shell_command,
+                input=sql_text,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
 
+        # Handle file reading and subprocess exceptions
+        except OSError as exc:
+            print(f"Failed to open SQL file: {abs_file_path}")
+            print(str(exc))
+            return False
+
+        # broad exception catch to handle any unexpected errors during subprocess execution
+        except Exception as exc:
+            print(f"Failed to execute mysql command for file: {abs_file_path}")
+            print(str(exc))
+            return False
+
+        # Filter out the password warning
+        warn = 'mysql: [Warning] Using a password on the command line interface can be insecure.'
+        stderr_lines = [
+            line for line in result.stderr.splitlines()
+            if line.strip() and line.strip() != warn
+        ]
+
+        # Print any stderr lines that are not the password warning
+        if stderr_lines:
+            print(f"stderr for file: {abs_file_path}")
+            print("\n".join(stderr_lines))
+
+        # Check the return code to determine success
+        if result.returncode != 0:
+            return False
+
+        # If we got here, the command executed successfully
         return result
 
     #----------------------------------#
