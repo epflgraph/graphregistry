@@ -6,7 +6,7 @@
            e.to_object_id          AS to_object_id,
            'n/a'                   AS field_language,
            'is_active_affiliation' AS field_name,
- 
+
         -- Conditions for being an active Person-Unit affiliation: no end date or end date in the future
            (e.field_value IS NULL OR CAST(e.field_value AS DATETIME) > NOW()) AS field_value
 
