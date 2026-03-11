@@ -97,7 +97,7 @@ if True:
 #===========================================================================#
 
 # Schemas to process
-schemas_to_process = ['registry', 'lectures', 'airflow', 'graph_cache_test', 'graphsearch_test']
+schemas_to_process = ['registry', 'lectures', 'airflow', 'graph_cache_test', 'graphsearch_test', 'elasticsearch_cache']
 
 # Execute step?
 if True:
@@ -148,7 +148,7 @@ if True:
         schema_name = glbcfg.settings['mysql']['db_schema_names'][schema_key]
 
         # Print info message
-        sysmsg.trace(f"Processing database '{schema_name}' ...")
+        sysmsg.trace(f"\nProcessing database '{schema_name}' ...")
 
         # Get SQL file path
         sql_file_path = f'database/init/schemas/schema_{schema_key}.sql'
@@ -165,9 +165,8 @@ if True:
 
         # Check if any tables were found in the SQL file
         if not match:
-            sysmsg.critical(f"🗂️ ❌ No CREATE TABLE or VIEW statements found in SQL file.")
-            if exit_on_critical:
-                exit()
+            sysmsg.warning(f"🗂️  No CREATE TABLE or VIEW statements found in SQL file.")
+            required_tables = []
         else:
             sysmsg.trace(f"Found {len(match)} CREATE TABLE or VIEW statements in SQL file:")
             required_tables = [table_name for _, table_name in match]
