@@ -252,7 +252,7 @@ class DynamicSQL():
 
         # Get field list helpers
         id_fields_wi  = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=True,  include_link_subtype=link_subtype is not None)
-        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=False, include_link_subtype=link_subtype is not None)
+        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=False, include_link_subtype=link_subtype is not None or index_group=='elasticsearch')
         custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
         # print('==========>', "custom_fields ..... ", custom_fields)
@@ -277,9 +277,9 @@ class DynamicSQL():
     # General simplified method to get id-defining fields
     def get_id_fields(self, unit_type, convention, include_institution=True, include_link_subtype=False):
         if   unit_type=='node':
-            return self.get_doc_id_fields(convention, include_institution)
+            return self.get_doc_id_fields(convention=convention, include_institution=include_institution)
         elif unit_type=='edge':
-            return self.get_doclink_id_fields(convention, include_institution)
+            return self.get_doclink_id_fields(convention=convention, include_institution=include_institution, include_link_subtype=include_link_subtype)
         else:
             print("❌ Critical error [je42J1]: DynamicSQL.get_id_fields()")
             exit()
