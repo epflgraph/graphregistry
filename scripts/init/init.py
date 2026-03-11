@@ -16,7 +16,7 @@ import os, rich, glob, re
 db_env = 'xaas_coresrv'
 
 # Commit/execute flag
-commit = False
+commit = True
 
 # Exit on critical error?
 exit_on_critical = False
@@ -97,7 +97,7 @@ if True:
 #===========================================================================#
 
 # Schemas to process
-schemas_to_process = ['ontology', 'registry', 'lectures', 'airflow', 'elasticsearch_cache', 'graph_cache_test', 'graphsearch_test']
+schemas_to_process = ['registry', 'lectures', 'airflow', 'graph_cache_test', 'graphsearch_test']
 
 # Execute step?
 if True:
@@ -153,6 +153,12 @@ if True:
         # Get SQL file path
         sql_file_path = f'database/init/schemas/schema_{schema_key}.sql'
 
+        # Check if file exists
+        if not os.path.isfile(sql_file_path):
+            sysmsg.critical(f"🗂️ ❌ SQL file '{sql_file_path}' not found for database '{schema_name}'.")
+            if exit_on_critical:
+                exit()
+
         # Open SQL file and get all table names that should be created
         with open(sql_file_path, 'r') as sql_file:
             match = re.findall(r'CREATE (TABLE IF NOT EXISTS|OR REPLACE VIEW)\s*([^\s]*)\s*', sql_file.read())
@@ -165,7 +171,7 @@ if True:
         else:
             sysmsg.trace(f"Found {len(match)} CREATE TABLE or VIEW statements in SQL file:")
             required_tables = [table_name for _, table_name in match]
-            if False:
+            if True:
                 for table_name in required_tables:
                     print(f" - {table_name}")
 
