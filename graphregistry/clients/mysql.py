@@ -4,13 +4,21 @@ from graphregistry.common.auxfcn import print_dataframe, get_table_type_from_nam
 from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text, event
 from sqlalchemy.exc import DataError, IntegrityError, SQLAlchemyError
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Iterable
 from loguru import logger as sysmsg
 from tqdm import tqdm
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import sys, os, re, subprocess, json, datetime, hashlib, random, glob, time, rich
+import sys, os, re, subprocess, json, datetime, hashlib, random, glob, time, rich, textwrap
+
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.syntax import Syntax
+from rich.text import Text
+from rich.rule import Rule
+from rich.markup import escape
+from rich import box
 
 # Initialize global config
 glbcfg = GlobalConfig()
@@ -41,6 +49,213 @@ sysmsg.add(
 # Fetch index field datatypes from config file
 with open(REPO_ROOT / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
     datatypes_config = json.load(f)
+
+
+#------------------------------------------#
+# Pretty printing function for SQL queries #
+#------------------------------------------#
+
+console = Console()
+
+SQL_COMMANDS = [
+    "CREATE TABLE",
+    "CREATE TABLE IF NOT EXISTS",
+    "INSERT INTO",
+    "INSERT IGNORE INTO",
+    "REPLACE INTO",
+    "UNION",
+    "UNION ALL",
+    "LEFT OUTER JOIN",
+    "RIGHT OUTER JOIN",
+    "FULL OUTER JOIN",
+    "INNER JOIN",
+    "LEFT JOIN",
+    "RIGHT JOIN",
+    "FULL JOIN",
+    "GROUP BY",
+    "ORDER BY",
+    "PARTITION BY",
+    "INSERT INTO",
+    "DELETE FROM",
+    "CREATE TABLE",
+    "ALTER TABLE",
+    "SELECT",
+    "SELECT DISTINCT",
+    "FROM",
+    "WHERE",
+    "USING",
+    "HAVING",
+    "LIMIT",
+    "OFFSET",
+    "VALUES",
+    "UPDATE",
+    "DELETE",
+    "INSERT",
+    "JOIN",
+    "ON",
+    "SET",
+    "AND",
+    "OR",
+    "CAST",
+    "(",
+    ")",
+    "row_number()"
+]
+
+
+def _normalize_sql(sql: str):
+    sql = textwrap.dedent(sql).strip("\n")
+    return [line.rstrip() for line in sql.splitlines() if line.strip()]
+
+
+def _split_command(line: str, commands: Iterable[str]):
+    stripped = line.lstrip()
+
+    for cmd in sorted(commands, key=len, reverse=True):
+        m = re.match(rf"^{re.escape(cmd)}\b(.*)$", stripped, flags=re.IGNORECASE)
+        if m:
+            remainder = m.group(1).lstrip()
+            return stripped[: len(cmd)], remainder
+
+    return None, stripped
+
+
+def _align_sql(sql: str):
+    lines = _normalize_sql(sql)
+    parsed = [_split_command(line, SQL_COMMANDS) for line in lines]
+
+    width = max((len(cmd) for cmd, _ in parsed if cmd), default=0)
+
+    out = []
+    for cmd, rest in parsed:
+        if cmd:
+            out.append(f"{cmd.rjust(width)} {rest}".rstrip())
+        else:
+            out.append(rest)
+
+    return "\n".join(out)
+
+
+def print_sql(sql: str, *, params=None, elapsed_ms: float | None = None, db: str | None = None, title: str = "SQL", show_header: bool = True, box_style: str | None = "minimal", copyable: bool = False):
+
+    """
+    Pretty-print an SQL query to the terminal using Rich with optional syntax highlighting,
+    clause alignment, execution metadata, and configurable visual formatting.
+
+    The function formats SQL so that leading commands (e.g., SELECT, FROM, WHERE,
+    JOIN, ORDER BY) are right-aligned to a common vertical column, improving
+    readability for multi-line queries. Output can be rendered inside a styled
+    panel, or printed in a plain copy-pasteable format suitable for running
+    directly in a SQL client.
+
+    Parameters
+    ----------
+    sql : str
+        The SQL query to display. The query may be multi-line. Leading SQL clauses
+        will be aligned to a common vertical column for readability.
+
+    params : Any, optional
+        Query parameters associated with the SQL statement. These will be rendered
+        as metadata below the query for debugging purposes. Default is None.
+
+    elapsed_ms : float, optional
+        Execution time of the query in milliseconds. When provided, it will be
+        displayed in the metadata line beneath the SQL. Default is None.
+
+    db : str, optional
+        Name of the database, connection, or environment that executed the query.
+        Displayed as metadata beneath the SQL. Default is None.
+
+    title : str, optional
+        Title displayed above the SQL output. This is typically used to describe
+        the purpose of the query (e.g., "User Lookup", "Account Aggregation").
+        Default is "SQL".
+
+    show_header : bool, optional
+        If True, prints a horizontal rule header containing the title above the
+        query output. If False, the header rule is suppressed. Default is True.
+
+    box_style : str or None, optional
+        Determines the panel border style used to display the SQL. Supported values
+        include:
+
+            "rounded"  – rounded box border
+            "heavy"    – thick box border
+            "double"   – double-line box border
+            "minimal"  – subtle minimal border
+            "simple"   – simple single-line border
+            None       – no border panel
+
+        Default is "rounded".
+
+    copyable : bool, optional
+        If True, prints the formatted SQL without any panel, borders, or Rich
+        layout elements. This mode is intended for copy-paste use so the SQL can
+        be directly pasted into a database client. Metadata may still be printed
+        beneath the query. Default is False.
+
+    Notes
+    -----
+    This function is designed primarily for debugging, development logging, and
+    database tracing in CLI applications. It leverages the Rich library to provide
+    syntax highlighting and clean terminal formatting while keeping the output
+    human-readable and easy to copy when needed.
+    """
+
+    aligned = _align_sql(sql)
+
+    syntax = Syntax(
+        aligned,
+        "sql",
+        theme="monokai",
+        line_numbers=False,
+        word_wrap=False,
+    )
+
+    meta = Text()
+
+    if db:
+        meta.append(f"db={db}  ", style="dim")
+
+    if elapsed_ms is not None:
+        meta.append("time=", style="dim")
+        meta.append(f"{elapsed_ms:.2f} ms", style="bold magenta")
+
+    if params is not None:
+        meta.append("  params=", style="dim")
+        meta.append(repr(params), style="yellow")
+
+    group = Group(syntax, meta if meta.plain else Text())
+
+    if show_header:
+        console.print(Rule(f"[bold bright_blue]{escape(title)}"))
+
+    if copyable:
+        console.print(aligned)
+        if meta.plain:
+            console.print(meta)
+        return
+
+    box_map = {
+        "rounded": box.ROUNDED,
+        "heavy": box.HEAVY,
+        "double": box.DOUBLE,
+        "minimal": box.MINIMAL,
+        "simple": box.SIMPLE,
+        None: None,
+    }
+
+    console.print(
+        Panel(
+            group,
+            border_style="bright_cyan",
+            box=box_map.get(box_style),
+            padding=(1, 2),
+            expand=False,
+        )
+    )
+
+
 
 #-----------------------------------------#
 # Class definition for Graph MySQL engine #
@@ -360,9 +575,7 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"\n\033[96m⚙️ Executing query{f' [{query_id}]' if query_id else ''}:\033[0m")
-            formatted = query.strip().replace("\n", "\n\t")
-            print(f"\n\t{formatted}\n")
+            print_sql(query, title=f"Executing query{f' [{query_id}]' if query_id else ''}")
 
         connection = self.engine[engine_name].connect()
         try:
@@ -401,9 +614,7 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"\n\033[96m⚙️ Executing query in streaming mode{f' [{query_id}]' if query_id else ''}:\033[0m")
-            formatted = query.strip().replace("\n", "\n\t")
-            print(f"\n\t{formatted}\n")
+            print_sql(query, title=f"Executing query in streaming mode{f' [{query_id}]' if query_id else ''}")
 
         os.makedirs(os.path.dirname(os.path.abspath(output_file)), exist_ok=True)
 
@@ -451,9 +662,7 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"\n\033[96m⚙️ Executing query as safe inserts{f' [{query_id}]' if query_id else ''}:\033[0m")
-            formatted = query.strip().replace("\n", "\n\t")
-            print(f"\n\t{formatted}\n")
+            print_sql(query, title=f"Executing query as safe inserts{f' [{query_id}]' if query_id else ''}")
 
         # Target table path
         t = target_table_path = f'{schema_name}.{table_name}'
@@ -511,9 +720,7 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"\n\033[96m⚙️ Executing query as safe inserts in chunks{f' [{query_id}]' if query_id else ''}:\033[0m")
-            formatted = query.strip().replace("\n", "\n\t")
-            print(f"\n\t{formatted}\n")
+            print_sql(query, title=f"Executing query as safe inserts in chunks{f' [{query_id}]' if query_id else ''}")
 
         # Target table path
         t = target_table_path = f'{schema_name}.{table_name}'
@@ -604,9 +811,7 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"\n\033[96m⚙️ Executing query in chunks{f' [{query_id}]' if query_id else ''}:\033[0m")
-            formatted = query.strip().replace("\n", "\n\t")
-            print(f"\n\t{formatted}\n")
+            print_sql(query, title=f"Executing query in chunks{f' [{query_id}]' if query_id else ''}")
 
         # Remove trailing semicolon from the query
         if query.strip()[-1] == ';':
@@ -651,9 +856,7 @@ class GraphDB():
 
         # If verbose is enabled, print the command being executed
         if verbose:
-            print(f"\n\033[96m⚙️ Executing query in shell{f' [{query_id}]' if query_id else ''}:\033[0m")
-            formatted = query.strip().replace("\n", "\n\t")
-            print(f"\n\t{formatted}\n")
+            print_sql(query, title=f"Executing query in shell{f' [{query_id}]' if query_id else ''}")
 
         # Run the command and capture stdout and stderr
         result = subprocess.run(shell_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
