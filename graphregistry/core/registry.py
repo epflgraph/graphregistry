@@ -198,7 +198,7 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
 
         # Create table
         tb = GraphTable(schema_name=schema_name, table_name=table_name)
-        db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=True)
+        db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=True, query_id='v29zYeaA')
 
         # Check if table was created successfully
         if db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
@@ -378,7 +378,8 @@ class GraphRegistry():
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
                         db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;")
+                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;"
+                        , query_id='5LEjczg5', verbose=verbose)
 
                 # Print status
                 sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_airflow}' tables.")
@@ -408,7 +409,8 @@ class GraphRegistry():
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
                         db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;")
+                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;"
+                        , query_id='DFEkXX4A', verbose=verbose)
 
                 # Print status
                 sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_graph_cache_test}' tables.")
@@ -445,7 +447,8 @@ class GraphRegistry():
                                      WHERE fc.to_process = 1
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
-                        """)
+                        """
+                    , query_id='zv9J4K0r', verbose=False)
 
             # Build list for updates in edge tables
             list_of_tables = [
@@ -472,7 +475,8 @@ class GraphRegistry():
                                          WHERE fc.to_process = 1
                                            AND tf.to_process = 1
                                            AND  p.to_process = 0;
-                            """)
+                            """
+                        , query_id='ct6y8Gz2', verbose=False)
 
            # Build list for updates in edge tables
             list_of_tables = [
@@ -501,7 +505,8 @@ class GraphRegistry():
                                          WHERE se.to_process = 1
                                            AND tf.to_process = 1
                                            AND  p.to_process = 0;
-                            """)
+                            """
+                        , query_id='yzm93BqQ', verbose=False)
 
             # Print status
             sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc tables ...")
@@ -549,7 +554,8 @@ class GraphRegistry():
                                      WHERE fc.to_process = 1
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
-                        """)
+                        """
+                    , query_id='J4Djz3fW', verbose=False)
 
             # # Truncate table: Operations/ Object / ToProcess
             # db.execute_query_in_shell(engine_name='xaas_coresrv', query=f"TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ToProcess;")
@@ -637,7 +643,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='VBk3hp3Z')
 
             # Ontology tables exception
             # Check if there's something to process based on typeflags
@@ -661,7 +667,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='CmNTYc97')
 
                 # Generate SQL query (Object checksum > Category)
                 sql_query = f"""
@@ -676,7 +682,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='XUiwHdd6')
 
             #------------------------#
             # Page profile checksums #
@@ -707,7 +713,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5nVWX6nk')
 
             #-------------------------#
             # Custom fields checksums #
@@ -741,7 +747,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='oTWu6bBL')
 
             #------------------------#
             # Final object checksums #
@@ -767,7 +773,7 @@ class GraphRegistry():
             """
 
             # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='y0yFAafh')
 
             #----------------------------------#
             # Apply checksums to Airflow table #
@@ -788,7 +794,7 @@ class GraphRegistry():
             """
 
             # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='j65waWD2')
 
             # Print status
             sysmsg.trace(f"☑️ Done processing checksums for Object.")
@@ -829,7 +835,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='LnzeNnx1')
 
             #---------------------------------------------#
             # Custom fields in object-to-object checksums #
@@ -862,7 +868,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='WZ4gEw01')
 
             #----------------------------------#
             # Final object-to-object checksums #
@@ -886,7 +892,7 @@ class GraphRegistry():
             """
 
             # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='JJQ2pj3y')
 
             #----------------------------------#
             # Apply checksums to Airflow table #
@@ -907,7 +913,7 @@ class GraphRegistry():
             """
 
             # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Fpas6ysH')
 
             # Print status
             sysmsg.trace(f"☑️ Done processing checksums for Object-to-Object.")
@@ -934,7 +940,7 @@ class GraphRegistry():
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
                      WHERE to_process = 1
                   ORDER BY institution_id, object_type, flag_type;
-                """)
+                """, query_id='Ghx1Go9x')
                 df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'flag_type', 'to_process'])
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
@@ -945,7 +951,7 @@ class GraphRegistry():
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                      WHERE to_process = 1
                   ORDER BY from_institution_id, from_object_type, to_institution_id, to_object_type;
-                """)
+                """, query_id='NRWbEw5o')
                 df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'to_process'])
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object-to-Object')
@@ -1036,7 +1042,7 @@ class GraphRegistry():
                         UPDATE {glbcfg.schema_airflow}.{table_name}
                            SET to_process = 0
                          WHERE to_process = 1
-                    """)
+                    """, query_id='AUzikHX5')
 
             # Quick configuration for input list of node and edge types
             def config(self, config_json):
@@ -1096,7 +1102,7 @@ class GraphRegistry():
                 """
 
                 # Execute the query
-                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in db.execute_query(engine_name='xaas_coresrv', query=sql_query)]
+                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='4bcoW1KT')]
 
                 # Define SQL query for fetching edges config
                 sql_query = f"""
@@ -1109,7 +1115,7 @@ class GraphRegistry():
                 """
 
                 # Execute the query
-                config_json['edges'] = [[row[0], row[1], True] for row in db.execute_query(engine_name='xaas_coresrv', query=sql_query)]
+                config_json['edges'] = [[row[0], row[1], True] for row in db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='9K34TTeQ')]
 
                 # Return the config JSON
                 return config_json
@@ -1204,7 +1210,7 @@ class GraphRegistry():
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
 
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='UeM1cM6K')
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [by type or key]')
@@ -1216,7 +1222,7 @@ class GraphRegistry():
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                          WHERE to_process = 1
                       GROUP BY institution_id, object_type
-                    """)
+                    """, query_id='TDgw7fYz')
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [stats]')
@@ -1226,7 +1232,7 @@ class GraphRegistry():
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                          WHERE to_process = 1
                       GROUP BY from_institution_id, from_object_type, to_institution_id, to_object_type
-                    """)
+                    """, query_id='EqpDtL34')
                     df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'n_to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object-to-Object [stats]')
@@ -1384,7 +1390,7 @@ class GraphRegistry():
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                             GROUP BY cp.object_type
                     """
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='DY3x5PC8')
 
                     # Execute object sync
                     sql_query = f"""
@@ -1398,7 +1404,7 @@ class GraphRegistry():
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='2PbejfUm')
 
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
@@ -1414,7 +1420,7 @@ class GraphRegistry():
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='x5BdjGfN')
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing edges on schema '{schema_name}' ...")
@@ -1431,7 +1437,7 @@ class GraphRegistry():
                              AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                             GROUP BY cp.from_object_type, cp.to_object_type
                     """
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='Gk7dDRC0')
 
                     # Execute object sync
                     sql_query = f"""
@@ -1447,7 +1453,7 @@ class GraphRegistry():
                              AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='s1gXyPYb')
 
                     # Print status
                     sysmsg.trace(f"Done. New object tuples synched: {out}'")
@@ -1463,7 +1469,7 @@ class GraphRegistry():
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='dEE3eDPD')
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'FieldsChanged' airflow tables.\n")
@@ -1510,7 +1516,7 @@ class GraphRegistry():
                         """
 
                         # Execute query to reset to_process flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='RWCE1vkr')
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'FieldsChanged' airflow tables.\n")
@@ -1565,7 +1571,10 @@ class GraphRegistry():
                             schema_name = glbcfg.schema_airflow,
                             table_name  = table_name,
                             query       = sql_query,
-                            chunk_size  = 1000000) # TODO: add verbose
+                            chunk_size  = 1000000,
+                            verbose     = verbose,
+                            query_id    = '1GVbHk4y'
+                        )
 
                 # Print status
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'FieldsChanged' airflow tables.\n")
@@ -1626,7 +1635,7 @@ class GraphRegistry():
                             print(sql_query)
 
                         # Reset all expiration flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='MY52N1XY')
 
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' - setting 'has_expired' flags to 1 ...")
@@ -1654,7 +1663,7 @@ class GraphRegistry():
                             """
 
                             # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='10PxduJu')
 
                         # Else, only count number of rows affected
                         else:
@@ -1682,7 +1691,7 @@ class GraphRegistry():
                                 print(f"\nExecuting query:\n{sql_query}\n")
 
                             # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='d5GKbPVP')
 
                             # Print as data frame
                             df = pd.DataFrame(out, columns=['object_type', 'rows_to_be_set'] if u=='n' else ['from_object_type', 'to_object_type', 'rows_to_be_set'])
@@ -1853,7 +1862,7 @@ class GraphRegistry():
                     """
 
                     # Execute query in shell
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='iGojjBW7')
 
                     # Generate SQL query for object-to-objects
                     sql_query = f"""
@@ -1865,7 +1874,7 @@ class GraphRegistry():
                     """
 
                     # Execute query in shell
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Hy3LQ6tJ')
 
                     #------------------------------------------#
                     # Update 'to_process' flags in both tables #
@@ -1895,7 +1904,7 @@ class GraphRegistry():
                         """
 
                         # Reset to_process flags for all nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='MsnEuv05')
 
                         # Generate SQL query
                         # sql_query = f"""
@@ -1925,7 +1934,7 @@ class GraphRegistry():
                         """
 
                         # Update to_process flags for nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='ye472zFQ')
 
                     #--------------------------------#
                     # Fetch stats on what to process #
@@ -1950,7 +1959,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='4QF4Lh4y')
                         df = pd.DataFrame(out, columns=[['object_type'] if u=='n' else ['from_object_type', 'to_object_type']][0]+['new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
@@ -1965,7 +1974,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='CUytG62p')
                         df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
@@ -2028,7 +2037,7 @@ class GraphRegistry():
                                 print('\n')
 
                             # Execute evaluation query
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='D3YbxeVt')
                             if len(out) > 0:
                                 df = pd.DataFrame(out, columns=[['object_type'] if table_name == 'Operations_N_Object_T_FieldsChanged' else ['from_object_type', 'to_object_type']][0]+['n_to_rollover'])
                                 print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
@@ -2047,7 +2056,7 @@ class GraphRegistry():
 
                         # Reset all expiration flags
                         if 'commit' in actions:
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
+                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions, query_id='ht5AZcsE')
                         elif 'print' in actions:
                             print('\nSQL commit query:\n\n')
                             print(sql_query_commit)
@@ -2109,7 +2118,7 @@ class GraphRegistry():
                                 print('\n')
 
                             # Execute evaluation query
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='kpAX4Cft')
                             if len(out) > 0:
                                 df = pd.DataFrame(out, columns=[['object_type'] if table_name == 'Operations_N_Object_T_FieldsChanged' else ['from_object_type', 'to_object_type']][0]+['n_to_update'])
                                 print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
@@ -2125,7 +2134,7 @@ class GraphRegistry():
 
                         # Reset all expiration flags
                         if 'commit' in actions:
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
+                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions, query_id='Q2dracb0')
                         elif 'print' in actions:
                             print('\nSQL commit query:\n\n')
                             print(sql_query_commit)
@@ -2157,7 +2166,7 @@ class GraphRegistry():
                         msg = 'Invalid key length.'
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='xGQc0t7t')
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [by key or id]')
@@ -2167,7 +2176,7 @@ class GraphRegistry():
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                         WHERE to_process = 1
                     GROUP BY institution_id, object_type
-                    """)
+                    """, query_id='ts8NQExF')
                     df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [stats]')
@@ -2286,7 +2295,7 @@ class GraphRegistry():
                                  AND n.object_type != 'Slide'
                             GROUP BY n.object_type
                     """
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='7RNfE1fF')
 
                     # Execute object sync
                     sql_query = f"""
@@ -2300,7 +2309,7 @@ class GraphRegistry():
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5mhz4Uwr')
 
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
@@ -2316,7 +2325,7 @@ class GraphRegistry():
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='n2TKRWNV')
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'ScoresExpired' airflow tables.\n")
@@ -2363,7 +2372,7 @@ class GraphRegistry():
                         """
 
                         # Execute query to reset to_process flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='AhJepYi8')
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'ScoresExpired' airflow table.\n")
@@ -2418,7 +2427,10 @@ class GraphRegistry():
                             schema_name = glbcfg.schema_airflow,
                             table_name  = 'Operations_N_Object_T_ScoresExpired',
                             query       = sql_query,
-                            chunk_size  = 100000) # TODO: add verbose
+                            chunk_size  = 100000,
+                            verbose     = verbose,
+                            query_id    = 'q1kQA2gx'
+                        )
 
                 # Print status
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'ScoresExpired' airflow table.\n")
@@ -2475,7 +2487,7 @@ class GraphRegistry():
                         """
 
                         # Reset all expiration flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Zsz9iF13')
 
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - setting 'has_expired' flags to 1 ...")
@@ -2504,7 +2516,7 @@ class GraphRegistry():
                             """
 
                             # Set has_expired=1 for dates older than time_period
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='6nKcLVme')
 
                         # Else, only count number of rows affected
                         else:
@@ -2531,7 +2543,7 @@ class GraphRegistry():
                                 print(f"\nExecuting query:\n{sql_query}\n")
 
                             # Set has_expired=1 for dates older than time_period
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query)
+                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='46PNmQvh')
 
                             # Print as data frame
                             df = pd.DataFrame(out, columns=['object_type', 'rows_to_be_set'])
@@ -2598,7 +2610,7 @@ class GraphRegistry():
                         """
 
                         # Reset to_process flags for all nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='q4L84LJy')
 
                         # # Generate SQL query
                         # sql_query = f"""
@@ -2624,7 +2636,7 @@ class GraphRegistry():
                         """
 
                         # Update to_process flags for nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='tBKyps8J')
 
                         #--------------------------------#
                         # Fetch stats on what to process #
@@ -2644,7 +2656,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='JH9iFxCF')
                         df = pd.DataFrame(out, columns=['object_type', 'new_or_never_cached', 'cache_expired'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
@@ -2657,7 +2669,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='ZK89fhUA')
                         df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'cache_expired'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
@@ -2717,7 +2729,7 @@ class GraphRegistry():
                             print('\n')
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='y9GdvZ4W')
                         if len(out) > 0:
                             df = pd.DataFrame(out, columns=['object_type', 'n_to_update'])
                             print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
@@ -2771,7 +2783,7 @@ class GraphRegistry():
                 FROM {schema}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)
+            """, query_id='XU8GkjPa')
             if type(out) is list:
                 return out[0][0] > 0.5
             else:
@@ -2834,7 +2846,7 @@ class GraphRegistry():
                 FROM {schema_name}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)
+            """, query_id='dj7LVYuL')
             if len(out) > 0:
                 self.object_title        = out[0][0]
                 self.text_source         = out[0][1]
@@ -2851,7 +2863,7 @@ class GraphRegistry():
                 FROM {schema_name}.Data_N_Object_T_CustomFields
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)
+            """, query_id='U4ZwJ9LZ')
             self.custom_fields = []
             for doc in out:
                 doc_json = {}
@@ -2867,7 +2879,7 @@ class GraphRegistry():
                 FROM {schema_name}.Data_N_Object_T_PageProfile
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)
+            """, query_id='w9zrANeH')
             self.page_profile = {}
             if len(out) > 0:
                 for column_name in list_of_columns:
@@ -2897,7 +2909,7 @@ class GraphRegistry():
                 FROM {schema}.Nodes_N_Object
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)
+            """, query_id='KsWmNs2p')
             if len(out) > 0:
                 self.record_created_date = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                 self.record_updated_date = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
@@ -2920,7 +2932,7 @@ class GraphRegistry():
                 FROM {schema}.Data_N_Object_T_PageProfile
                 WHERE (institution_id, object_type, object_id)
                     = ("{self.institution_id}", "{self.object_type}", "{self.object_id}");
-            """)
+            """, query_id='WA2Lbvrp')
             if len(out) > 0:
                 self.page_profile['record_created_date'] = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                 self.page_profile['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
@@ -2934,7 +2946,7 @@ class GraphRegistry():
                         FROM {schema}.Edges_N_Object_N_Concept_T_ConceptDetection
                         WHERE (institution_id, object_type, object_id, concept_id)
                             = ('{self.institution_id}', '{self.object_type}', '{self.object_id}', '{self.concepts_detection[k]['concept_id']}');
-                    """)
+                    """, query_id='4R8dvUJE')
                     if len(out) > 0:
                         self.concepts_detection[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
                             0].strftime('%Y-%m-%d %H:%M:%S')
@@ -2950,7 +2962,7 @@ class GraphRegistry():
                         WHERE (institution_id, object_type, object_id, concept_id, text_source) = (
                             '{self.institution_id}', '{self.object_type}', '{self.object_id}', 
                             '{self.manual_mapping[k]["concept_id"]}', '{self.manual_mapping[k]["text_source"]}');
-                    """)
+                    """, query_id='Hkp17pHc')
                     if len(out) > 0:
                         self.manual_mapping[k]['record_created_date'] = out[0][0] if type(out[0][0]) != datetime.datetime else out[0][
                             0].strftime('%Y-%m-%d %H:%M:%S')
@@ -3223,7 +3235,7 @@ class GraphRegistry():
                 FROM {schema}.Edges_N_Object_N_Object_T_ChildToParent
                 WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
                     = ("{self.from_institution_id}", "{self.from_object_type}", "{self.from_object_id}", "{self.to_institution_id}", "{self.to_object_type}", "{self.to_object_id}", "{self.context}");
-            """)[0][0] > 0.5
+            """, query_id='WbT78q0i')[0][0] > 0.5
             return out
 
         # Print object info
@@ -3265,7 +3277,7 @@ class GraphRegistry():
                 FROM {schema}.Data_N_Object_N_Object_T_CustomFields
                 WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
                     = ("{self.from_institution_id}", "{self.from_object_type}", "{self.from_object_id}", "{self.to_institution_id}", "{self.to_object_type}", "{self.to_object_id}", "{self.context}");
-            """)
+            """, query_id='969RcjYG')
             self.custom_fields = []
             for doc in out:
                 doc_json = {}
@@ -3294,7 +3306,7 @@ class GraphRegistry():
                 FROM {schema}.Edges_N_Object_N_Object_T_ChildToParent
                 WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context)
                     = ("{self.from_institution_id}", "{self.from_object_type}", "{self.from_object_id}", "{self.to_institution_id}", "{self.to_object_type}", "{self.to_object_id}", "{self.context}");
-            """)
+            """, query_id='C11H49NC')
             if len(out) > 0:
                 self.record_created_date = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                 self.record_updated_date = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
@@ -3306,7 +3318,7 @@ class GraphRegistry():
                     FROM {schema}.Data_N_Object_N_Object_T_CustomFields
                     WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, field_language, field_name)
                         = ("{self.from_institution_id}", "{self.from_object_type}", "{self.from_object_id}", "{self.to_institution_id}", "{self.to_object_type}", "{self.to_object_id}", "{self.context}", "{self.custom_fields[k]['field_language']}", "{self.custom_fields[k]['field_name']}");
-                """)
+                """, query_id='ueyQMw2x')
                 if len(out) > 0:
                     self.custom_fields[k]['record_created_date'] = out[0][0] if type(out[0][0])!=datetime.datetime else out[0][0].strftime('%Y-%m-%d %H:%M:%S')
                     self.custom_fields[k]['record_updated_date'] = out[0][1] if type(out[0][1])!=datetime.datetime else out[0][1].strftime('%Y-%m-%d %H:%M:%S')
@@ -3978,7 +3990,7 @@ class GraphRegistry():
                     print(sql_query_eval)
 
                 # Execute evaluation query
-                out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='8nZVFGbc')
                 df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                 if len(df) > 0:
                     print_dataframe(df, title=f'\n🔍 Evaluation results for view: "{view_name}"')
@@ -4003,19 +4015,9 @@ class GraphRegistry():
                 if 'print' in actions:
                     print(sql_query_commit)
 
-                # Execute commit --> this doesn't work with UNIONs
-                # db.execute_query_in_chunks(
-                #     engine_name   = 'xaas_coresrv',
-                #     schema_name   = glbcfg.schema_graph_cache_test,
-                #     table_name    = target_table,
-                #     query         = sql_query_commit,
-                #     has_filters   = query_has_filters,
-                #     show_progress = True,
-                #     verbose       = True
-                # )
-
                 # Execute commit query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=False)
+                # Note: 'execute_query_in_chunks' doesn't work with UNIONs
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=False, query_id='Mn0to7TQ')
 
         # Apply formula from SQL file
         def apply_formulas_from_folder(self, local_path, verbose=False):
@@ -4100,14 +4102,16 @@ class GraphRegistry():
                     key_column_names  = key_column_names,
                     upd_column_names  = upd_column_names,
                     eval_column_names = eval_column_names,
-                    actions           = ('print', 'commit') if verbose else ('commit')
+                    actions           = ('print', 'commit') if verbose else ('commit'),
+                    verbose           = verbose,
+                    query_id          = 'D9NxAGY2'
                 )
 
             # Execute as direct execution?
             elif execution_type == 'direct execution':
 
                 # Execute the SQL formula
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=verbose)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=verbose, query_id='Neg00cQJ')
 
             # Unknown execution type
             else:
@@ -4129,7 +4133,7 @@ class GraphRegistry():
                 sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
 
             # Execute the SQL formula
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=verbose)
+            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=verbose, query_id='N5ABPyWm')
 
         # Update cache table from SQL calculated field formula
         def cache_update_from_calculated_field(self, object_type_key, field_name, verbose=False):
@@ -4186,7 +4190,9 @@ class GraphRegistry():
                 key_column_names  = key_column_names,
                 upd_column_names  = upd_column_names,
                 eval_column_names = ['institution_id', 'object_type'],
-                actions           = ('print', 'commit') if verbose else ('commit')
+                actions           = ('print', 'commit') if verbose else ('commit'),
+                verbose           = verbose,
+                query_id          = 'ApR0YLT2'
             )
 
         # Update cached lecture timestamps
@@ -4340,7 +4346,7 @@ class GraphRegistry():
                         print(sql_eval_query)
 
                     # Execute evaluation query
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_eval_query)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_eval_query, query_id='f3LmCRzV')
                     df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for ({from_object_type}, {to_object_type})')
@@ -4353,7 +4359,7 @@ class GraphRegistry():
             if 'commit' in actions and sql_commit_query is not None:
 
                 # Execute commit query
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_commit_query)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_commit_query, query_id='wAbL4D8i')
 
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
         def consolidate_scores_matrix(self, from_object_type, to_object_type, update_averages=False, score_thr=0.1, actions=()):
@@ -4401,7 +4407,7 @@ class GraphRegistry():
                     if 'commit' in actions:
                         # pass # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
                         # TODO: Add --no-avg-recalc flag
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions, query_id='gs1ieZYM')
 
                 # Check first if an average score is available, return otherwise
                 sql_query_check = f"""
@@ -4409,7 +4415,7 @@ class GraphRegistry():
                      WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
                          = ('{glbcfg.object_type_to_institution_id[from_object_type]}', '{from_object_type}', '{glbcfg.object_type_to_institution_id[to_object_type]}', '{to_object_type}');
                 """
-                out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_check)
+                out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_check, query_id='fTaH8sTj')
                 if len(out) == 0:
                     sysmsg.warning(f'\nNo average score calculation available for ({from_object_type}, {to_object_type})')
                     return
@@ -4439,7 +4445,7 @@ class GraphRegistry():
                 print(sql_query)
 
             if 'commit' in actions:
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query)
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, query_id='qHE7tP6J')
 
     #-----------------------------------------------------------#
     # Subclass definition: GraphIndex Management (SQL Database) #
@@ -4833,7 +4839,7 @@ class GraphRegistry():
                 if test_mode:
                     print(SQLQuery)
                 else:
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery, query_id='tb1Vdfyq')
 
             pass
 
@@ -5102,7 +5108,7 @@ class GraphRegistry():
                         print(sql_query_eval, '\n')
 
                     # Execute evaluation query
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval) # TODO: add verbose
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='hpFZ8RAT') # TODO: add verbose
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc type: "{doc_type}"')
@@ -5121,7 +5127,7 @@ class GraphRegistry():
                     sql_query_commit = f"\tREPLACE INTO {glbcfg.schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=('print' in actions))
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=('print' in actions), query_id='F1ArYGKd')
 
             # Update index buildup tables: link parent-child type
             def build_links_parentchild(self, doc_type, link_type, actions=()):
@@ -5199,7 +5205,7 @@ class GraphRegistry():
                 # Evaluate query
                 if 'eval' in actions:
                     sql_query_eval = f"SELECT {', '.join(eval_columns)}, COUNT(*) AS n_to_process FROM ({sql_query}) t GROUP BY {', '.join(eval_columns)}"
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval)
+                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='6D05nXQL')
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"')
@@ -5218,7 +5224,7 @@ class GraphRegistry():
                     sql_query_commit = f"\tREPLACE INTO {glbcfg.schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='gEzB7UwD')
 
         #----------------------------------------------#
         # Sub-subclass definition: Page Profiles Table #
@@ -5251,7 +5257,7 @@ class GraphRegistry():
                     FROM {glbcfg.schema_graph_cache_test}.{self.table_name}
                     WHERE to_process = 1
                     GROUP BY institution_id, object_type
-                """)
+                """, query_id='8ffjZPFr')
                 df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
                 print_dataframe(df, title=f'\n🔍 Evaluation results for page profile')
 
@@ -5294,9 +5300,9 @@ class GraphRegistry():
                     #     rich.print_json(data=keys_json)
 
                     # if 'commit' in actions:
-                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
-                    db.apply_datatypes(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
-                    db.apply_keys(     engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
+                    # db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_create_table)
+                    # db.apply_datatypes(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, datatypes_json=datatypes_json)
+                    # db.apply_keys(     engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'], table_name=self.index_table_name, keys_json=keys_json)
 
             #==================#
             # General patching #
@@ -5359,7 +5365,8 @@ class GraphRegistry():
                     key_column_names  = self.key_column_names,
                     upd_column_names  = self.upd_column_names,
                     eval_column_names = ['institution_id', 'object_type'],
-                    actions           = actions
+                    actions           = actions,
+                    query_id          = 'Mp7U7rMW'
                 )
 
                 # Print status
@@ -5493,7 +5500,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='Rj0R4w2q')
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -5562,8 +5569,8 @@ class GraphRegistry():
                             actions           = actions,
                             table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
                             chunk_size        = 100000,
-                            row_id_name       = 'p.row_id'
-
+                            row_id_name       = 'p.row_id',
+                            query_id          = 'T4VTvBv6'
                         )
 
             # Index > Docs > General patching > Insert new rows, update existing fields (elascticsearch cache)
@@ -5622,7 +5629,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='4KpdVwsE')
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -5708,7 +5715,7 @@ class GraphRegistry():
                             table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
                             chunk_size        = 100000,
                             row_id_name       = 'p.row_id'
-
+                            query_id          = 'vdEk9bpn'
                         )
 
             # Index > Docs > General patching > Roll back to previous state
@@ -5745,7 +5752,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='42vKAJcy')
 
             # Index > Docs > Flags cleanup > Update 'Data_N_Object_T_PageProfile' and 'IndexBuildup_Fields_Docs_*' [to_process=0]
             def flags_cleanup(self, verbose=False):
@@ -5759,7 +5766,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='P9Caiq8w')
 
                 # Generate commit query
                 sql_query_commit = f"""
@@ -5769,7 +5776,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='yJ74cRvU')
 
         #------------------------------------------------#
         # Sub-subclass definition: Index Doc-Links Table #
@@ -5903,7 +5910,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='hLdNx8Hb')
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -5956,7 +5963,8 @@ class GraphRegistry():
                             query         = sql_query_commit,
                             chunk_size    = 10000,
                             row_id_name   = 'i.row_id',
-                            show_progress = False
+                            show_progress = False,
+                            query_id      = 'FCQgBmb2'
                         )
 
             # Index > Doc-Links > Vertical patching > Update ORG-table specific custom fields
@@ -6036,7 +6044,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='of8T3uCG')
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6092,7 +6100,8 @@ class GraphRegistry():
                             query         = sql_query_commit,
                             chunk_size    = 10000,
                             row_id_name   = 'i.row_id',
-                            show_progress = False
+                            show_progress = False,
+                            query_id      = 'sxUZ7wER'
                         )
 
             # Index > Doc-Links > Vertical patching > Update ElasticSearch specific fields
@@ -6141,7 +6150,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='XL1265bE')
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6210,7 +6219,8 @@ class GraphRegistry():
                             table_name  = target_table_name,
                             query       = sql_query_commit,
                             chunk_size  = 10000,
-                            row_id_name = 't.row_id'
+                            row_id_name = 't.row_id',
+                            query_id    = 'Z16jRm9j'
                         )
 
             # ------- Rollbacks ------- #
@@ -6555,8 +6565,8 @@ class GraphRegistry():
                         # print(sql_query_eval_3)
 
                     # Execute the evaluation queries
-                    out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1)
-                    out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2)
+                    out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1, query_id='z0rFNfM5')
+                    out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2, query_id='oxyoF81R')
                     # out_3 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_3)
 
                     # Sum up the results
@@ -6582,11 +6592,11 @@ class GraphRegistry():
                 # Execute SQL query
                 if 'commit' in actions and not ('eval' in actions and np.sum(out)==0):
                     if SQLQuery1:
-                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions, query_id='8BV6hv6h')
                     if SQLQuery2:
-                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2, verbose='print' in actions, query_id='XG1EvKuT')
                     if SQLQuery3:
-                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions, query_id='uh3n6T1B')
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
@@ -6722,7 +6732,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='FJ9HVCLW')
                     out = [int(out[0][0]), int(out[0][1])] if type(out) is list else [[0,0]]
 
                     # Number of rows to patch
@@ -6741,7 +6751,7 @@ class GraphRegistry():
                         print(sql_query_eval)
 
                     # Execute the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval)
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='LLzeD3NV')
 
                     # Print the results
                     if np.sum(out) > 0:
@@ -6756,7 +6766,7 @@ class GraphRegistry():
                         print(sql_query_commit)
 
                     # Execute the commit SQL query
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit)
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='zwRx2b8a')
 
             # TODO: SELECT * FROM elasticsearch_cache.Index_D_Unit_L_Person WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG)
 
@@ -6823,7 +6833,7 @@ class GraphRegistry():
                 """
 
                 # Execute the commit query
-                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='4cYaPsAQ')
 
                 # Generate scores matrix table name
                 scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
@@ -6842,7 +6852,7 @@ class GraphRegistry():
                     """
 
                     # Execute the commit query
-                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='YtLVzrX7')
 
                     # Generate commit query
                     sql_query_commit = f"""
@@ -6855,7 +6865,7 @@ class GraphRegistry():
                     """
 
                     # Execute the commit query
-                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose)
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='LKw9ZyV1')
 
     #------------------------------------------------------------#
     # Subclass definition: GraphIndex Management (ElasticSearch) #
@@ -6961,6 +6971,7 @@ class GraphRegistry():
                         """,
                         fetch_size=2000,
                         output_file=docs_jsonl,
+                        query_id='wsg7uZ1k'
                     )
 
                     # If no docs (empty file), skip
@@ -7001,6 +7012,7 @@ class GraphRegistry():
                             """,
                             fetch_size=5000,
                             output_file=links_jsonl,
+                            query_id='fhLp0sNg'
                         )
 
                         link_files[link_type] = links_jsonl
@@ -7161,7 +7173,7 @@ class GraphRegistry():
                         SELECT {', '.join(column_names_doc)}
                             FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}
                         ORDER BY doc_id ASC
-                    """)
+                    """, query_id='aGn6e3kZ')
 
                     # Move on if no docs found for doc_type
                     if not list_of_docs or type(list_of_docs) is not list:
@@ -7220,7 +7232,7 @@ class GraphRegistry():
                             SELECT {', '.join(column_names_link)}
                               FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}_L_{link_type}
                           ORDER BY doc_id ASC, link_rank ASC
-                        """)
+                        """, query_id='tKPvnpZ1')
                         list_of_links = list_of_links if type(list_of_links) is list else []
 
                         # Loop over list of links
