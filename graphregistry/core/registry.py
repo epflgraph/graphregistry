@@ -4580,6 +4580,8 @@ class GraphRegistry():
             # Fetch typeflags config JSON
             doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
 
+            print("1 ========>", doc_types_in_config, doclink_types_in_config)
+
             # Check if empty
             if len(doc_types_in_config)==0 and len(doclink_types_in_config)==0:
                 sysmsg.warning(f"No type flags found for 'docs' nor 'doc-links'.")
@@ -4838,32 +4840,6 @@ class GraphRegistry():
         # TODO: Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
             return
-
-            # list_of_table = db.get_tables_in_schema(
-            #     engine_name   = 'xaas_coresrv',
-            #     schema_name   = glbcfg.schema_graph_cache_test,
-            #     include_views = False,
-            #     use_regex     = [r'^IndexBuildup_Fields_Docs_[^_]*', r'^IndexBuildup_Fields_Links_ParentChild_[^_]*_[^_]*']
-            # )
-
-            # list_of_table += ['Data_N_Object_T_PageProfile', 'Edges_N_Object_N_Object_T_ParentChildSymmetric', 'Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education}_AS']
-
-            # for table_name in list_of_table:
-
-            #     table_type = get_table_type_from_name(table_name)
-
-            #     db.copy_table_across_engines(
-            #         source_engine_name = 'xaas_coresrv',
-            #         source_schema_name = glbcfg.schema_graph_cache_test,
-            #         source_table_name  = table_name,
-            #         target_engine_name = 'xaas_prod',
-            #         target_schema_name = glbcfg.schema_graph_cache_prod,
-            #         keys_json  = table_keys_json[table_type],
-            #         filter_by  = 'to_process = 1',
-            #         chunk_size = 100000,
-            #         drop_table = True
-            #     )
-
         # TODO: Delete loose ends in index tables [NEEDS WORK]
         def delete_loose_ends(self):
             return
@@ -6036,7 +6012,7 @@ class GraphRegistry():
                     m = {False:'doc', True:'link'}
                     # Generate placeholder SQL chunk
                     obj2obj_placeholder = f"""
-                INNER JOIN {buildup_link_table_path_obj2obj} l
+                 LEFT JOIN {buildup_link_table_path_obj2obj} l
                         ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
                          = (l.{m[f]}_institution, l.{m[f]}_type, l.{m[f]}_id, l.{m[not f]}_institution, l.{m[not f]}_type, l.{m[not f]}_id)
                     """
@@ -6420,7 +6396,7 @@ class GraphRegistry():
                                 FROM {parentchild_table_path} p
                           INNER JOIN {buildup_link_table_path} bd
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
-                          INNER JOIN {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type if buildup_table_exists_direct else self.link_type}_{self.link_type if buildup_table_exists_direct else self.doc_type} bl
+                           LEFT JOIN {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type if buildup_table_exists_direct else self.link_type}_{self.link_type if buildup_table_exists_direct else self.doc_type} bl
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
@@ -6439,7 +6415,7 @@ class GraphRegistry():
                                      {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}
                                      bd.degree_score, 0 AS row_score, 99 AS row_rank
                                 FROM {parentchild_table_path} p
-                          INNER JOIN {buildup_link_table_path} bd
+                           LEFT JOIN {buildup_link_table_path} bd
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
