@@ -5714,7 +5714,7 @@ class GraphRegistry():
                             actions           = ('commit'),
                             table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
                             chunk_size        = 100000,
-                            row_id_name       = 'p.row_id'
+                            row_id_name       = 'p.row_id',
                             query_id          = 'vdEk9bpn'
                         )
 
@@ -6576,18 +6576,6 @@ class GraphRegistry():
                     if np.sum(out) > 0:
                         df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
-
-                # Print SQL query
-                if 'print' in actions and not ('eval' in actions and np.sum(out)==0):
-                    if SQLQuery1:
-                        print('')
-                        print(SQLQuery1)
-                    if SQLQuery2:
-                        print('')
-                        print(SQLQuery2)
-                    if SQLQuery3:
-                        print('')
-                        print(SQLQuery3)
 
                 # Execute SQL query
                 if 'commit' in actions and not ('eval' in actions and np.sum(out)==0):
