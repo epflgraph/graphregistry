@@ -8,7 +8,7 @@
 [![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
 [![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
 
-INSTALL
+Install
 =======
 1. (OPTIONAL) create a virtual environment with `python -m venv venv` and activate with `source venv/bin/activate`
 2. install the requirements with `pip install -r requirements.txt`
