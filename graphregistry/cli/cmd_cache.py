@@ -137,13 +137,16 @@ def cmd_cache_debug(args):
     # registry.indexes.generate_index_from_local_cache(index_date='2026-03-03', ignore_warnings=False, replace_existing=True, force_replace=True)
 
 
-    from graphregistry.common.config import GlobalConfig
-    glbcfg = GlobalConfig()
-    db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']   , re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
-    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['db_schema_names']['elasticsearch_cache'], re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise).*'])
+    # from graphregistry.common.config import GlobalConfig
+    # glbcfg = GlobalConfig()
+    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']   , re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
+    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['db_schema_names']['elasticsearch_cache'], re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
 
 
     # registry.indexdb.idoclinks['Category']['Course']['SEM'].horizontal_patch(actions=('print', 'commit'))
+
+    registry.indexdb.idoclinks['Concept']['Person']['SEM'].horizontal_patch_elasticsearch(actions=('print', 'commit'))
+
 
     # Print footers
     print("🖥️  ~ Done.")
