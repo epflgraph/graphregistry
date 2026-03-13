@@ -1,15 +1,66 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import warnings
+from elastic_transport import SecurityWarning
+from urllib3.exceptions import InsecureRequestWarning
+from typing import Any, Dict
+from pyparsing import Word, alphas
+
+# Elasticsearch client warning (verify_certs=False)
+warnings.filterwarnings(
+    "ignore",
+    category=SecurityWarning,
+    message=r".*verify_certs=False is insecure.*",
+)
+
+# urllib3 HTTPS warning
+warnings.filterwarnings(
+    "ignore",
+    category=InsecureRequestWarning,
+    message=r".*Adding certificate verification is strongly advised.*",
+)
+
+import logging
+logging.getLogger("elastic_transport").setLevel(logging.WARNING)
+
 from graphregistry.common.config import GlobalConfig
-from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers, ElasticsearchWarning
+from elasticsearch import Elasticsearch as ElasticSearchEngine, helpers
+from elasticsearch import exceptions as es_exceptions
 from loguru import logger as sysmsg
 from urllib.parse import quote
 from flatten_dict import flatten
+from datetime import datetime
+from tqdm import tqdm
 import numpy as np
-import os, sys, time, rich, gzip, json, subprocess, warnings, logging, random
+import os, shutil, sys, time, rich, gzip, json, subprocess, warnings, logging, random, tempfile
 
 # Initialize global config
 glbcfg = GlobalConfig()
+
+# Auxiliary function: Count lines in JSONL file
+def count_jsonl_lines(path: str) -> int:
+    opener = gzip.open if path.endswith(".gz") else open
+    mode = "rt" if path.endswith(".gz") else "r"
+    with opener(path, mode, encoding="utf-8") as f:
+        return sum(1 for _ in f)
+
+# Auxiliary function: Wait until count is visible
+def wait_until_count_visible(es, index: str, expected: int, timeout_s: int = 30, poll_s: float = 0.5) -> int:
+    """
+    Poll _count until it reaches expected (or timeout). Returns the last observed count.
+    Uses only count API (no refresh privilege needed).
+    """
+    deadline = time.time() + timeout_s
+    last = -1
+    while time.time() < deadline:
+        try:
+            last = es.count(index=index).get("count", last)
+        except Exception:
+            pass
+        if last >= expected:
+            return last
+        time.sleep(poll_s)
+    return last
 
 #-------------------------------#
 # ElasticSearch query templates #
@@ -340,16 +391,18 @@ es_settings_and_mappings = {
 
 # Define degree score factors
 es_degree_score_factors = {
+    'Category'   : 512,
+    'Concept'    : 512,
     'Course'     : 128,
+    'Exercise'   : 64,
     'Lecture'    : 128,
     'MOOC'       : 64,
+    'Notebook'   : 64,
     'Person'     : 128,
     'Publication': 1,
     'Startup'    : 64,
     'Unit'       : 64,
-    'Widget'     : 64,
-    'Category'   : 512,
-    'Concept'    : 512
+    'Widget'     : 64
 }
 
 # Index doc combinations
@@ -379,14 +432,10 @@ def es_write_progress(prog, total, status=''):
 #---------------------#
 #---------------------#
 
-# Suppress only the ElasticsearchWarning
-warnings.filterwarnings('ignore', category=ElasticsearchWarning)
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('elasticsearch')
 logger.setLevel(logging.DEBUG)
-
 
 #-------------------------------------------------#
 # Class definition for Graph ElasticSearch engine #
@@ -404,51 +453,62 @@ class GraphES():
         return cls._instance
 
     # Class constructor
-    def __init__(self, name="GraphIndex"):
+    def __init__(self, name="GraphIndex", use_ssl=False):
 
         # Check if the instance is already initialized
         if not self._initialized:
             self.name = name
             self._initialized = True
-            print(f"GraphIndex initialized with name: {self.name}")
 
         # Initiate the ElasticSearch engines
-        self.params_test, self.engine_test = self.initiate_engine(glbcfg.settings['elasticsearch']['server_test'])
-        self.params_prod, self.engine_prod = self.initiate_engine(glbcfg.settings['elasticsearch']['server_prod'])
-        self.params = {'test': self.params_test, 'prod': self.params_prod}
-        self.engine = {'test': self.engine_test, 'prod': self.engine_prod}
+        self.params_test        , self.engine_test         = self.initiate_engine('test')
+        self.params_prod        , self.engine_prod         = self.initiate_engine('prod')
+        self.params_xaas_prod   , self.engine_xaas_prod    = self.initiate_engine('xaas_prod')
+        self.params_xaas_coresrv, self.engine_xaas_coresrv = self.initiate_engine('xaas_coresrv')
+        self.params = {
+            'test'         : self.params_test,
+            'prod'         : self.params_prod,
+            'xaas_prod'    : self.params_xaas_prod,
+            'xaas_coresrv' : self.params_xaas_coresrv
+        }
+        self.engine = {
+            'test'         : self.engine_test,
+            'prod'         : self.engine_prod,
+            'xaas_prod'    : self.engine_xaas_prod,
+            'xaas_coresrv' : self.engine_xaas_coresrv
+        }
 
     #---------------------------------------------#
     # Method: Initialize the ElasticSearch engine #
     #---------------------------------------------#
-    def initiate_engine(self, server_name):
+    def initiate_engine(self, engine_name, use_ssl=False):
         """
         Initialize the ElasticSearch engine (no SSL) based on the server name provided.
         """
 
         # Check if the server name is in the global configuration
-        if server_name not in glbcfg.settings['elasticsearch']:
+        if f'{engine_name}_env' not in glbcfg.settings['elasticsearch']:
             raise ValueError(
-                f"Could not find configuration for Elasticsearch server '{server_name}' in global config."
+                f"Could not find configuration for Elasticsearch server '{engine_name}' in global config."
             )
 
         # Load parameters
-        params = glbcfg.settings['elasticsearch'][server_name]
+        params = glbcfg.settings['elasticsearch'][f'{engine_name}_env']
 
         # Build connection URL (HTTP only, no SSL)
         if "password" in params and params["password"]:
-            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['hostname']}:{params['port']}"
         elif "username" in params and params["username"]:
-            es_hosts = f"https://{params['username']}@{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['username']}@{params['hostname']}:{params['port']}"
         else:
-            es_hosts = f"https://{params['host']}:{params['port']}"
+            es_hosts = f"https://{params['hostname']}:{params['port']}"
 
-        # Initialize Elasticsearch engine (no SSL)
+        # Initialize Elasticsearch engine
         engine = ElasticSearchEngine(
             hosts           = [es_hosts],
             http_compress   = True,
-            verify_certs    = True,
-            ca_certs        = glbcfg.settings['elasticsearch']['graph_engine_test']['cert_file'],
+            verify_certs    = False, # use_ssl,
+            ca_certs        = '', # glbcfg.settings['elasticsearch']['graph_engine_test']['cert_file'] if use_ssl else '',
             request_timeout = 3600
         )
 
@@ -763,6 +823,565 @@ class GraphES():
             print(f"Error during bulk index operation: {e}")
             exit()
 
+    #--------------------------------------#
+    # Method: Export an index to a folder  #
+    #--------------------------------------#
+    def export_index_to_folder(self,
+        engine_name:str, index_name:str, output_folder:str, *,
+        replace_existing:bool=False, force:bool=False, use_gzip:bool=True,
+        chunk_size:int=2000, request_timeout:int=120):
+        """
+        Export an ElasticSearch index to a folder:
+        - settings + mappings -> settings_mappings.json
+        - documents (JSONL)   -> documents.jsonl(.gz)
+
+        Flags:
+        - replace_existing: if True, will replace existing output_folder
+        - force: if replace_existing=True and force=False, prompts user confirmation
+        """
+
+        # Get ElasticSearch connector object for selected engine
+        es = self.engine[engine_name]
+
+        # ---------------------------
+        # 0) Basic checks
+        # ---------------------------
+        if not es.indices.exists(index=index_name):
+            raise ValueError(f"Index '{index_name}' does not exist on engine '{engine_name}'.")
+
+        # ---------------------------
+        # 1) Handle output directory
+        # ---------------------------
+
+        # Append index name to output folder
+        output_folder = os.path.join(output_folder, index_name)
+
+        if os.path.exists(output_folder):
+            if not replace_existing:
+                raise FileExistsError(
+                    f"Output folder already exists: {output_folder}\n"
+                    f"Use replace_existing=True to overwrite."
+                )
+
+            if not force:
+                confirmation = input(
+                    f"Folder '{output_folder}' already exists. Replace it? (yes/no): "
+                ).strip().lower()
+                if confirmation != "yes":
+                    print("Export cancelled.")
+                    return
+
+            shutil.rmtree(output_folder)
+
+        os.makedirs(output_folder, exist_ok=True)
+
+        # ---------------------------
+        # 2) Export settings + mappings
+        # ---------------------------
+        index_info = es.indices.get(index=index_name)
+
+        # NOTE: ES returns a bunch of settings. Usually you want the ones you can reapply.
+        settings = index_info[index_name].get("settings", {}).get("index", {})
+        mappings = index_info[index_name].get("mappings", {})
+
+        # Drop noisy / non-portable settings unless explicitly requested
+        drop_keys = {
+            "uuid",
+            "version",
+            "provided_name",
+            "creation_date",
+            "creation_date_string",
+            "routing",
+            "store",
+            "frozen",
+            "history_uuid",
+            "lifecycle",          # ILM policies might not exist elsewhere
+            "shard",
+            "resize",
+        }
+        settings = {k: v for k, v in settings.items() if k not in drop_keys}
+
+        settings_and_mappings = {
+            "index": index_name,
+            "exported_at": datetime.utcnow().isoformat() + "Z",
+            "settings": {"index": settings},
+            "mappings": mappings,
+        }
+
+        settings_path = os.path.join(output_folder, "settings_mappings.json")
+        with open(settings_path, "w", encoding="utf-8") as f:
+            json.dump(settings_and_mappings, f, ensure_ascii=False, indent=2)
+
+        # ---------------------------
+        # 3) Export documents as JSONL
+        # ---------------------------
+        docs_filename = "documents.jsonl.gz" if use_gzip else "documents.jsonl"
+        docs_path = os.path.join(output_folder, docs_filename)
+
+        query = {"query": {"match_all": {}}}
+
+        # Stream docs via scan (scroll)
+        scan_iter = helpers.scan(
+            client=es,
+            index=index_name,
+            query=query,
+            size=chunk_size,
+            preserve_order=False,
+            request_timeout=request_timeout,
+        )
+
+        # Write JSON Lines:
+        # each line is one document with _id and _source (and optionally anything else you want)
+        opener = gzip.open if use_gzip else open
+        mode = "wt"
+
+        total = es.count(index=index_name)["count"]
+
+        count = 0
+        with opener(docs_path, mode, encoding="utf-8") as f, tqdm(
+            total=total,
+            unit="docs",
+            desc=f"Exporting ← {index_name}",
+            dynamic_ncols=True,
+        ) as pbar:
+
+            for hit in scan_iter:
+                doc = {
+                    "_id": hit.get("_id"),
+                    "_source": hit.get("_source", {}),
+                }
+                f.write(json.dumps(doc, ensure_ascii=False) + "\n")
+
+                count += 1
+                pbar.update(1)
+
+        print(f"✅ Export complete: {count:,} docs")
+        print(f"   - {settings_path}")
+        print(f"   - {docs_path}")
+
+    #---------------------------------------#
+    # Method: Import an index from a folder #
+    #---------------------------------------#
+    def import_index_from_folder(self, engine_name:str, input_folder:str, *, rename_to:str|None=None, replace_existing:bool=False, force:bool=False, chunk_size:int=2000, request_timeout:int=3600, refresh:bool=False):
+
+        # Get ElasticSearch connector object for selected engine
+        es = self.engine[engine_name]
+
+        # ---------------------------
+        # 0) Resolve target index name
+        # ---------------------------
+
+        # Extract index name from input folder if not renaming
+        if rename_to is None:
+            target_index = os.path.basename(os.path.normpath(input_folder))
+        else:
+            target_index = rename_to
+
+        # ---------------------------
+        # 1) Validate input folder + files
+        # ---------------------------
+        if not os.path.isdir(input_folder):
+            raise FileNotFoundError(f"Input folder does not exist: {input_folder}")
+
+        settings_path = os.path.join(input_folder, "settings_mappings.json")
+        if not os.path.isfile(settings_path):
+            raise FileNotFoundError(f"Missing settings file: {settings_path}")
+
+        docs_path_gz = os.path.join(input_folder, "documents.jsonl.gz")
+        docs_path = os.path.join(input_folder, "documents.jsonl")
+
+        if os.path.isfile(docs_path_gz):
+            docs_path_final = docs_path_gz
+            use_gzip = True
+        elif os.path.isfile(docs_path):
+            docs_path_final = docs_path
+            use_gzip = False
+        else:
+            raise FileNotFoundError(
+                "Missing documents file (documents.jsonl or documents.jsonl.gz)"
+            )
+
+        # ---------------------------
+        # 2) Handle existing target index
+        # ---------------------------
+        if es.indices.exists(index=target_index):
+            if not replace_existing:
+                raise FileExistsError(
+                    f"Index '{target_index}' already exists on engine '{engine_name}'. "
+                    f"Use replace_existing=True to overwrite."
+                )
+
+            if not force:
+                confirmation = input(
+                    f"Index '{target_index}' already exists on '{engine_name}'. Replace it? (yes/no): "
+                ).strip().lower()
+                if confirmation != "yes":
+                    print("Import cancelled.")
+                    return
+
+            es.indices.delete(index=target_index)
+            print(f"🗑️  Deleted existing index: {target_index}")
+
+        # ---------------------------
+        # 3) Read settings + mappings
+        # ---------------------------
+        with open(settings_path, "r", encoding="utf-8") as f:
+            settings_and_mappings = json.load(f)
+
+        body = {
+            "settings": settings_and_mappings.get("settings", {}),
+            "mappings": settings_and_mappings.get("mappings", {}),
+        }
+
+        print(f"📦 Creating index '{target_index}'...")
+        es.indices.create(index=target_index, body=body)
+        es.indices.put_settings(
+            index=target_index,
+            body={"index": {"blocks": {"write": False, "read_only_allow_delete": False}}}
+        )
+        print(f"✅ Index created: {target_index}")
+
+        # ---------------------------
+        # 4) Bulk import documents
+        # ---------------------------
+        opener = gzip.open if use_gzip else open
+        mode = "rt" if use_gzip else "r"
+
+        def gen_actions():
+            with opener(docs_path_final, mode, encoding="utf-8") as f:
+                for line_no, line in enumerate(f, start=1):
+                    line = line.strip()
+                    if not line:
+                        continue
+
+                    try:
+                        obj = json.loads(line)
+                    except json.JSONDecodeError as e:
+                        raise ValueError(
+                            f"Invalid JSON on line {line_no} in {docs_path_final}: {e}"
+                        )
+
+                    action = {
+                        "_op_type": "index",
+                        "_index": target_index,
+                        "_source": obj.get("_source", {}),
+                    }
+
+                    if "_id" in obj:
+                        action["_id"] = obj["_id"]
+
+                    yield action
+
+        # Optional: show percentage by counting docs first
+        total = count_jsonl_lines(docs_path_final)
+
+        success = 0
+        errors = []
+
+        with tqdm(
+            total=total,
+            unit="docs",
+            desc=f"Importing → {target_index}",
+            dynamic_ncols=True,
+        ) as pbar:
+
+            for ok, info in helpers.streaming_bulk(
+                client=es,
+                actions=gen_actions(),
+                chunk_size=chunk_size,
+                request_timeout=request_timeout,
+                raise_on_error=False,
+                raise_on_exception=False,
+                refresh=refresh,
+            ):
+                if ok:
+                    success += 1
+                else:
+                    errors.append(info)
+
+                pbar.update(1)
+
+        if errors:
+            error_count = len(errors) if isinstance(errors, list) else (errors if isinstance(errors, int) else 0)
+            print(
+                f"⚠️  Import completed with errors. "
+                f"Indexed: {success:,}, Errors: {error_count:,}"
+            )
+            if isinstance(errors, list):
+                for e in errors[:5]:
+                    print("  Error:", e)
+        else:
+            print(f"✅ Import complete. Indexed: {success:,} documents.")
+
+        try:
+            # cnt = es.count(index=target_index)["count"]
+            visible = wait_until_count_visible(es, target_index, expected=success, timeout_s=30)
+            print(f"📊 Index '{target_index}' doc count (visible): {visible:,}")
+        except Exception:
+            sysmsg.warning("Failed to retrieve document count.")
+            pass
+
+    #----------------------------------------------#
+    # Method: Copy an index across two ES servers  #
+    #----------------------------------------------#
+    def copy_index_across_engines(self,
+        source_engine:str, target_engine:str, index_name:str, *,
+        rename_to:str|None=None, replace_existing:bool=False, force:bool=False, use_gzip:bool=True, chunk_size:int=2000, request_timeout:int=120, refresh:bool=False, temp_folder:str|None='/tmp', keep_temp:bool=False):
+        """
+        Copy an index from one ElasticSearch engine to another by:
+        1) exporting index_name from source_engine into a temp folder
+        2) importing that folder into target_engine
+
+        Parameters
+        ----------
+        source_engine : str
+            Engine key for the source ES connection (self.engine[source_engine])
+        target_engine : str
+            Engine key for the target ES connection (self.engine[target_engine])
+        index_name : str
+            Source index name to export.
+        rename_to : str | None
+            If provided, the target index name on the destination.
+            If None, uses the folder basename logic in import_index_from_folder()
+            (which will be index_name).
+
+        Flags (mirrors export/import)
+        ----------------------------
+        replace_existing : bool
+            If True, replaces existing export folder AND destination index (if exists).
+        force : bool
+            If replace_existing=True and force=False, prompt before replacing.
+        use_gzip : bool
+            Export documents.jsonl.gz instead of documents.jsonl.
+        chunk_size : int
+            Scan/bulk chunk size (used in export scan + import bulk).
+        request_timeout : int
+            Timeout passed to ES operations.
+        refresh : bool
+            Passed to streaming_bulk refresh (import).
+        temp_folder : str | None
+            If provided, use this directory as the temp base folder.
+            Otherwise uses system temp.
+        keep_temp : bool
+            If True, do not delete the temp folder after completion.
+
+        Returns
+        -------
+        dict with paths and target index name
+        """
+
+        # Create a unique temp base directory
+        if temp_folder is None:
+            base_tmp = tempfile.mkdtemp(prefix="graphregistry_es_copy_")
+        else:
+            # Create temp folder if needed
+            base_tmp = os.path.abspath(temp_folder)
+            os.makedirs(base_tmp, exist_ok=True)
+            # Use a unique subfolder to avoid collisions
+            stamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+            base_tmp = os.path.join(base_tmp, f"graphregistry_es_copy_{stamp}_{index_name}")
+            os.makedirs(base_tmp, exist_ok=True)
+
+        # IMPORTANT:
+        # Your export_index_to_folder() appends index_name to output_folder itself.
+        # So if we pass base_tmp, it will export into: base_tmp/index_name
+        exported_folder = os.path.join(base_tmp, index_name)
+
+        try:
+            # 1) Export from source
+            self.export_index_to_folder(
+                engine_name=source_engine,
+                index_name=index_name,
+                output_folder=base_tmp,
+                replace_existing=True,   # safe: base_tmp is unique; also avoids prompts
+                force=True,
+                use_gzip=use_gzip,
+                chunk_size=chunk_size,
+                request_timeout=request_timeout,
+            )
+
+            # 2) Import into target
+            self.import_index_from_folder(
+                engine_name=target_engine,
+                input_folder=exported_folder,
+                rename_to=rename_to,
+                replace_existing=replace_existing,
+                force=force,
+                chunk_size=chunk_size,
+                request_timeout=request_timeout,
+                refresh=refresh,
+            )
+
+            target_index = rename_to or os.path.basename(os.path.normpath(exported_folder))
+
+            return {
+                "source_engine": source_engine,
+                "target_engine": target_engine,
+                "source_index": index_name,
+                "target_index": target_index,
+                "temp_base": base_tmp,
+                "exported_folder": exported_folder,
+                "kept_temp": keep_temp,
+            }
+
+        finally:
+            if not keep_temp:
+                # Clean up temp folder (best effort)
+                try:
+                    pass
+                    # shutil.rmtree(base_tmp)
+                except Exception:
+                    pass
+
+    #---------------------------------------------------------#
+    # Method: Copy one or more aliases across two ES servers  #
+    #---------------------------------------------------------#
+    def copy_aliases_across_engines(
+        self,
+        source_engine: str,
+        target_engine: str,
+        *,
+        index_pattern: str = "*",
+        alias_pattern: str = "*",
+        index_map: dict[str, str] | None = None,
+        replace_existing: bool = False,
+        force: bool = False,
+        ignore_missing_target_index: bool = False,
+        include_write_index: bool = False,
+    ):
+        """
+        Copy index aliases from source_engine to target_engine.
+
+        Typical use
+        -----------
+        - After copying indices across engines, run this to recreate aliases on the target.
+
+        Parameters
+        ----------
+        source_engine, target_engine:
+            Keys for self.engine[...] connections.
+
+        index_pattern:
+            Which source indices to consider (default "*").
+
+        alias_pattern:
+            Which aliases to copy (default "*").
+
+        index_map:
+            Optional mapping {source_index: target_index}. Useful when you renamed indices
+            during migration/copy. If None, uses the same index name on target.
+
+            Example:
+                {"myindex_v1": "myindex_v2"}
+
+        replace_existing:
+            If True, remove aliases on target before re-adding them (for the affected alias/index pairs).
+
+        force:
+            If replace_existing=True and force=False, prompt before making changes.
+
+        ignore_missing_target_index:
+            If True, skip alias actions when the target index doesn't exist.
+            If False, raise.
+
+        include_write_index:
+            If True, preserve is_write_index when present.
+            If False, do not set it (ES may infer / or keep existing behavior).
+        """
+
+        src = self.engine[source_engine]
+        dst = self.engine[target_engine]
+
+        index_map = index_map or {}
+
+        # Get aliases from source
+        # Returns: { "indexA": {"aliases": {"alias1": {...}, "alias2": {...}}}, ... }
+        src_aliases = src.indices.get_alias(index=index_pattern, name=alias_pattern)
+
+        # Build target actions
+        actions = []
+        skipped = []  # (source_index, target_index, alias, reason)
+
+        for src_index, payload in src_aliases.items():
+            aliases = (payload or {}).get("aliases", {}) or {}
+            if not aliases:
+                continue
+
+            tgt_index = index_map.get(src_index, src_index)
+
+            # Validate target index exists
+            if not dst.indices.exists(index=tgt_index):
+                msg = "target index missing"
+                if ignore_missing_target_index:
+                    for a in aliases.keys():
+                        skipped.append((src_index, tgt_index, a, msg))
+                    continue
+                raise ValueError(
+                    f"Target index '{tgt_index}' does not exist on '{target_engine}' "
+                    f"(source '{src_index}' on '{source_engine}')."
+                )
+
+            for alias_name, alias_body in aliases.items():
+                # alias_body can contain: filter, routing, index_routing, search_routing, is_write_index, etc.
+                add_action = {
+                    "add": {
+                        "index": tgt_index,
+                        "alias": alias_name,
+                    }
+                }
+
+                if isinstance(alias_body, dict):
+                    # Preserve supported alias options
+                    for k in ("filter", "routing", "index_routing", "search_routing"):
+                        if k in alias_body:
+                            add_action["add"][k] = alias_body[k]
+                    if include_write_index and "is_write_index" in alias_body:
+                        add_action["add"]["is_write_index"] = alias_body["is_write_index"]
+
+                if replace_existing:
+                    actions.append({"remove": {"index": tgt_index, "alias": alias_name}})
+                actions.append(add_action)
+
+        if not actions:
+            return {
+                "source_engine": source_engine,
+                "target_engine": target_engine,
+                "index_pattern": index_pattern,
+                "alias_pattern": alias_pattern,
+                "actions_applied": 0,
+                "skipped": skipped,
+            }
+
+        if replace_existing and not force:
+            confirmation = input(
+                f"This will update aliases on '{target_engine}' (replace_existing=True). Continue? (yes/no): "
+            ).strip().lower()
+            if confirmation != "yes":
+                print("Alias copy cancelled.")
+                return {
+                    "source_engine": source_engine,
+                    "target_engine": target_engine,
+                    "index_pattern": index_pattern,
+                    "alias_pattern": alias_pattern,
+                    "actions_applied": 0,
+                    "skipped": skipped,
+                    "cancelled": True,
+                }
+
+        # Apply in one call (atomic-ish)
+        resp = dst.indices.update_aliases(body={"actions": actions})
+
+        return {
+            "source_engine": source_engine,
+            "target_engine": target_engine,
+            "index_pattern": index_pattern,
+            "alias_pattern": alias_pattern,
+            "actions_applied": len(actions),
+            "skipped": skipped,
+            "acknowledged": bool(resp.get("acknowledged", False)) if isinstance(resp, dict) else None,
+        }
+
+
     #-------------------------------------#
     # Method: Execute a query on an index #
     #-------------------------------------#
@@ -786,22 +1405,53 @@ class GraphES():
     #-----------------------------------#
     # Method: Copy index across engines #
     #-----------------------------------#
-    def copy_index_across_engines(self, source_engine_name, target_engine_name, index_name, rename_to=None, chunk_size=1000):
+    def copy_index_across_engines_LEGACY(self, source_engine_name, target_engine_name, index_name, rename_to=None, chunk_size=1000):
 
         # Define the index names
         index_name_source = index_name
         index_name_target = index_name
         if rename_to is not None:
             index_name_target = rename_to
+            sysmsg.info(f"Renaming index from '{index_name_source}' to '{index_name_target}' on target server.")
 
         # Define the parameters for the ElasticDump command
-        params_server_source = f"https://{self.params[source_engine_name]['username']}:{quote(self.params[source_engine_name]['password'])}@{self.params[source_engine_name]['host']}:{self.params[source_engine_name]['port']}/{index_name_source}"
-        params_server_target = f"https://{self.params[target_engine_name]['username']}:{quote(self.params[target_engine_name]['password'])}@{self.params[target_engine_name]['host']}:{self.params[target_engine_name]['port']}/{index_name_target}"
-        base_command = [glbcfg.settings['elasticsearch']['dump_bin'], f"--input={params_server_source}", f"--output={params_server_target}", f"--input-ca={self.params[source_engine_name]['cert_file']}", f"--output-ca={self.params[target_engine_name]['cert_file']}", f"--limit={chunk_size}"]
+        params_server_source = f"https://{self.params[source_engine_name]['username']}:{quote(self.params[source_engine_name]['password'])}@{self.params[source_engine_name]['hostname']}:{self.params[source_engine_name]['port']}/{index_name_source}"
+        params_server_target = f"https://{self.params[target_engine_name]['username']}:{quote(self.params[target_engine_name]['password'])}@{self.params[target_engine_name]['hostname']}:{self.params[target_engine_name]['port']}/{index_name_target}"
+        # base_command = ["npx", "elasticdump", f"--input={params_server_source}", f"--output={params_server_target}", f"--input-ca={self.params[source_engine_name]['cert_file']}", f"--output-ca={self.params[target_engine_name]['cert_file']}", f"--limit={chunk_size}"]
+
+        # Create the target index if it does not exist
+        try:
+            self.engine[target_engine_name].indices.create(index=index_name_target)
+            sysmsg.success(f"✅ Created index '{index_name_target}' on '{target_engine_name}'.")
+        except es_exceptions.BadRequestError as e:
+            if "resource_already_exists_exception" in str(e):
+                sysmsg.warning(f"Index '{index_name_target}' already exists on '{target_engine_name}'. Proceeding with data copy...")
+                pass
+            else:
+                sysmsg.error(f"❌ Failed to create index '{index_name_target}' on '{target_engine_name}'. ")
+                print(e)
+                raise
+
+        # Disable index blocks on target index (to prevent read-only errors)
+        self.engine[target_engine_name].indices.put_settings(
+            index = index_name_target,
+            body  = {
+                "index.blocks.read_only": False,
+                "index.blocks.read_only_allow_delete": False,
+                "index.blocks.write": False
+            }
+        )
+
+        # Generate base command for data transfer
+        base_command = ["npx", "elasticdump", f"--input={params_server_source}", f"--output={params_server_target}", f"--limit={chunk_size}"]
 
         # Copy the index from test to prod
         for type in ['settings', 'mapping', 'data']:
+            print(f"\n⚙️  Copying {type} from '{source_engine_name}:{index_name_source}' to '{target_engine_name}:{index_name_target}' ...")
             subprocess.run(base_command + [f"--type={type}"], env={**os.environ, "NODE_TLS_REJECT_UNAUTHORIZED": "0"})
+
+        # Print completion message
+        sysmsg.success(f"\n✅ Index was successfully copied.")
 
     #--------------------------------------------------#
     # Method: Generate a random sample of document IDs #
@@ -1271,3 +1921,13 @@ class GraphES():
         time.sleep(1)
 
         return
+
+#================#
+# Main execution #
+#================#
+if __name__ == "__main__":
+    es = GraphES()
+    if es.test(engine_name='test') is True:
+        sysmsg.success("✅ ElasticSearch client test passed.")
+    else:
+        sysmsg.error("❌ ElasticSearch client test failed.")

@@ -1,0 +1,11 @@
+{
+  "name": "elasticdump-project",
+  "version": "1.0.0",
+  "description": "Utility project for copying and backing up Elasticsearch indexes using elasticdump.",
+  "scripts": {
+    "dump": "elasticdump"
+  },
+  "dependencies": {
+    "elasticdump": "^6.116.0"
+  }
+}

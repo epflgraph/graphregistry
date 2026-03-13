@@ -44,6 +44,8 @@ class GlobalConfig:
                 'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
             }
         }
+        self.mysql_schema_names['xaas_coresrv'] = self.mysql_schema_names['test']
+        self.mysql_schema_names['xaas_prod']    = self.mysql_schema_names['prod']
 
         # Assign to local variables (to act as aliases)
         self.schema_ontology = self.mysql_schema_names['test']['ontology']
@@ -63,6 +65,7 @@ class GlobalConfig:
             'Course'         : self.schema_registry,
             'Lecture'        : self.schema_lectures,
             'MOOC'           : self.schema_registry,
+            'Notebook'       : self.schema_registry,
             'Person'         : self.schema_registry,
             'Publication'    : self.schema_registry,
             'Slide'          : self.schema_lectures,
@@ -74,13 +77,22 @@ class GlobalConfig:
             'Widget'         : self.schema_registry,
         }
 
+        # Also build the inverted mapping
+        from collections import defaultdict
+        self.schema_to_object_types = defaultdict(list)
+        for k, v in self.object_type_to_schema.items():
+            self.schema_to_object_types[v].append(k)
+
         # Object type to institution id mapping
         self.object_type_to_institution_id = {
             'Category'       : 'Ont',
             'Concept'        : 'Ont',
+            'Curated area'   : 'Ont',
             'Course'         : 'EPFL',
+            'Exercise'       : 'EPFL',
             'Lecture'        : 'EPFL',
             'MOOC'           : 'EPFL',
+            'Notebook'       : 'EPFL',
             'Person'         : 'EPFL',
             'Publication'    : 'EPFL',
             'Slide'          : 'EPFL',
@@ -117,6 +129,9 @@ class IndexConfig:
 
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types
+
+        # Fetch data types for SQL field definitions
+        self.settings['data_types'] = index_config['data-types']
 
         #--------------------#
         # Fetch doc settings #
@@ -243,11 +258,13 @@ class IndexConfig:
 
                 # Fetch list of additional organisational-specific fields to display on the 'link' side of doc-links
                 # There are additional fields, so there's no defaulting to other fields
+                p2c_exists = False
                 list_of_fields = []
                 if doc_type               in index_config['fields']['links']['parent-child']:
                     if link_type          in index_config['fields']['links']['parent-child'][doc_type]:
                         if 'obj2obj'      in index_config['fields']['links']['parent-child'][doc_type][link_type]:
                             list_of_fields = index_config['fields']['links']['parent-child'][doc_type][link_type]['obj2obj']
+                        p2c_exists = True
 
                 # Assign list of fields to object's internal variables
                 graphsearch_obj2obj_fields = [
@@ -256,7 +273,7 @@ class IndexConfig:
                 ]
 
                 # Assign to parsed options dictionary
-                if len(graphsearch_obj2obj_fields)>0:
+                if p2c_exists: # len(graphsearch_obj2obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_fields
 
                 #--------------------------------------------------------------------#
@@ -271,7 +288,7 @@ class IndexConfig:
                             graphsearch_obj2obj_order_by = index_config['fields']['links']['parent-child'][doc_type][link_type]['order']
 
                 # Assign to parsed options dictionary
-                if len(graphsearch_obj2obj_order_by)>0:
+                if p2c_exists: # len(graphsearch_obj2obj_order_by)>0
                     self.settings['graphsearch']['order_by']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_order_by
 
                 #----------------------------------------------------------#
@@ -453,6 +470,12 @@ class ScoresConfig:
 
         # Fetch score edge tuples
         self.settings['scored_edge_tuples'] = scores_config['scored-edge-tuples']
+
+        # Create reverse mapping too
+        self.settings['scored_edge_tuple_to_class_mapping'] = {}
+        for edge_class in self.settings['scored_edge_tuples']:
+            for edge_tuple in self.settings['scored_edge_tuples'][edge_class]:
+                self.settings['scored_edge_tuple_to_class_mapping'][tuple(edge_tuple)] = edge_class
 
     # Print method
     def print(self):
