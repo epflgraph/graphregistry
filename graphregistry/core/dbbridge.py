@@ -305,4 +305,4 @@ class RegistryDB():
                     from_institution_id='{from_institution_id}' AND from_object_type='{from_object_type}'
                     AND to_institution_id='{to_institution_id}' AND to_object_type='{to_object_type}';"""
         )
-        return existing_edges_id
+        return [(from_id, to_id) for from_id, to_id in existing_edges_id]
