@@ -97,11 +97,11 @@ run_step "airflow reset (again)" \
 #=================================#
 
 # run_step "index generate (elasticsearch)" \
-#   graphregistry index generate --target=elasticsearch --index_date=2026_03_03 -r
+#   graphregistry index generate --target=elasticsearch --index_date=2026-03-13 -r
 
 # run_step "es import" \
 #   graphregistry es import --env=xaas_coresrv \
-#     --input_folder=/home/dockerhost/data/es_exports/2026-03-03/es_fullindex_2026-03-03 \
-#     --rename_to=graphsearch_test_2026_03_03 -r
+#     --input_folder=/home/dockerhost/data/es_exports/2026-03-13/es_fullindex_2026-03-13 \
+#     --rename_to=graphsearch_test_2026-03-13_sample -r
 
 echo "End of script." >&2
