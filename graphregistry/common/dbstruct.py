@@ -493,8 +493,13 @@ class DynamicSQL():
             sql_create_table += f",\n  KEY ({id_field_k})"
 
         # Make all custom fields keys
+        # for custom_field in doc_custom_fields:
+        #     sql_create_table += f",\n  KEY ({custom_field})"
         for custom_field in doc_custom_fields:
-            sql_create_table += f",\n  KEY ({custom_field})"
+            # MySQL does not allow indexing of TEXT fields without a subset length
+            subset = "(255)" if datatypes_list[fields_list.index(custom_field)] in ['MEDIUMTEXT', 'LONGTEXT'] else ""  # Add subset length for TEXT fields to allow indexing  
+            sql_create_table += f",\n  KEY ({custom_field}{subset})"
+
 
         # Make row_id the primary key if it is included in the fields list
         if 'row_id' in fields_list:
