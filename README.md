@@ -1,3 +1,8 @@
+
+# Graph Registry
+
+<img src="assets/icon.png" alt="Project logo" height="96">
+
 INSTALL
 =======
 1. (OPTIONAL) create a virtual environment with `python -m venv venv` and activate with `source venv/bin/activate`
