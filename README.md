@@ -1,6 +1,4 @@
-<br/>
 <img src="assets/icon.png" alt="Project logo" height="64">
-<br/>
 
 [![License](https://img.shields.io/github/license/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
 [![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver)](https://github.com/epflgraph/graphregistry/releases/latest)
@@ -10,16 +8,20 @@
 [![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
 [![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
 
----
+Description
+===========
+GraphRegistry is the first layer in your graph data infrastructure. It ingests data in JSON format from an ETL pipeline, and generates the knowledge graph that feeds the GraphSearch and GraphChat applications.
 
-Install
-=======
+Data can be added to the registry through direct JSON file imports, or through a REST API. The actions steps in the knowledge graph construction are executed through a command line interface (CLI).
+
+Installation
+============
 1. (OPTIONAL) create a virtual environment with `python -m venv venv` and activate with `source venv/bin/activate`
 2. install the requirements with `pip install -r requirements.txt`
 3. you will also need to install vlc with `sudo apt install vlc`
 
-CONFIGURE
-===========
+Configuration
+=============
 Copy the example_config.yaml file to config.yaml and edit it to give your graphai, elasticsearch and mysql credentials.
 
 You may also need to copy the certificates for connecting to elasticsearch (by default in `resources/certificates/`).
