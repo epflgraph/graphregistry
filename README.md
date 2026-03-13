@@ -1,3 +1,4 @@
+<br/>
 <img src="assets/icon.png" alt="Project logo" height="64">
 <br/>
 
@@ -8,6 +9,8 @@
 [![Last Commit](https://img.shields.io/github/last-commit/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/commits/master)
 [![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
 [![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
+
+---
 
 Install
 =======
