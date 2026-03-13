@@ -1,5 +1,4 @@
-
-# Graph Registry
+<img src="assets/icon.png" alt="Project logo" height="64">
 
 [![License](https://img.shields.io/github/license/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/blob/main/LICENSE)
 [![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver)](https://github.com/epflgraph/graphregistry/releases/latest)
@@ -8,8 +7,6 @@
 [![Last Commit](https://img.shields.io/github/last-commit/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/commits/main)
 [![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
 [![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
-
-<img src="assets/icon.png" alt="Project logo" height="64">
 
 INSTALL
 =======
