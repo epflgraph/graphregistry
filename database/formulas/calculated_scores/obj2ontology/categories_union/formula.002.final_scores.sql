@@ -1,9 +1,10 @@
 -- ========= Formula: 'concept sum-scores aggregation (bounded)'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_FinalScores
-             (institution_id, object_type, object_id, category_id, score)
+             (institution_id, object_type, object_id, category_id, score, to_process)
 
       SELECT cs.institution_id, cs.object_type, cs.object_id, cs.category_id,
-             (2/(1 + EXP(-cs.score/(4*av.avg_score))) - 1) AS score
+             (2/(1 + EXP(-cs.score/(4*av.avg_score))) - 1) AS score,
+             1 AS to_process
 
           -- Check type flags
         FROM [[airflow]].Operations_N_Object_T_TypeFlags tf

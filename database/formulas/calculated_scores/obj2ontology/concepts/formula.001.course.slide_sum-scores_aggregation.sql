@@ -2,11 +2,11 @@
 -- ========= Object type: Course
 -- ========= Formula: 'slide sum-scores aggregation'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (institution_id, object_type, object_id, concept_id, calculation_type, score)
+            (institution_id, object_type, object_id, concept_id, calculation_type, score, to_process)
 
       SELECT t4.institution_id, t4.object_type, t4.object_id, t1.concept_id,
              'slide sum-scores aggregation' AS calculation_type,
-             SUM(t1.score) AS score
+             SUM(t1.score) AS score, 1 AS to_process
 
         FROM [[lectures]].Edges_N_Object_N_Concept_T_ConceptDetection t1
 
@@ -21,7 +21,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
   INNER JOIN [[airflow]].Operations_N_Object_T_ScoresExpired t4
           ON (t3.to_institution_id, t3.to_object_type, t3.to_object_id)
            = (   t4.institution_id,    t4.object_type,    t4.object_id)
-           
+
   INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
           ON (t4.institution_id, t4.object_type)
            = (tf.institution_id, tf.object_type)
@@ -47,13 +47,13 @@ SET @avg_score = (
         AND tf.flag_type  = 'scores'
         AND tf.to_process = 1
 );
-        
+
 -- ========= Formula: 'slide sum-scores aggregation (bounded)'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (institution_id, object_type, object_id, concept_id, calculation_type, score)
+            (institution_id, object_type, object_id, concept_id, calculation_type, score, to_process)
       SELECT institution_id, object_type, object_id, concept_id,
              'slide sum-scores aggregation (bounded)' AS calculation_type,
-             (2/(1 + EXP(-t2.score/(4*@avg_score))) - 1) AS score
+             (2/(1 + EXP(-t2.score/(4*@avg_score))) - 1) AS score, 1 AS to_process
         FROM [[airflow]].Operations_N_Object_T_ScoresExpired t1
   INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
        USING (institution_id, object_type)
