@@ -6993,6 +6993,17 @@ class GraphRegistry():
 
                     docs_jsonl = f"{target_folder}/.tmp_docs_{index_date}_{doc_type}.jsonl"
 
+
+                    # Check first if {glbcfg.schema_es_cache}.Index_D_{doc_type} table exists, ignore if it doesn't
+                    if not db.table_exists(
+                        engine_name="xaas_coresrv",
+                        schema_name=glbcfg.schema_es_cache,
+                        table_name=f"Index_D_{doc_type}",
+                    ):
+                        if not ignore_warnings:
+                            sysmsg.warning(f"Table '{glbcfg.schema_es_cache}.Index_D_{doc_type}' does not exist. Skipping doc type '{doc_type}'.")
+                        continue
+
                     db.execute_query_stream_to_file(
                         engine_name="xaas_coresrv",
                         query=f"""
