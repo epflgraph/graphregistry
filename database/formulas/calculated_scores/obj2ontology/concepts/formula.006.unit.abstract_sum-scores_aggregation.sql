@@ -2,18 +2,20 @@
 -- ========= Object type: Unit
 -- ========= Formula: 'abstract sum-scores aggregation'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (institution_id, object_type, object_id, concept_id, calculation_type, score)
+            (institution_id, object_type, object_id, concept_id, calculation_type, score, to_process)
       SELECT t2.institution_id AS institution_id,
              'Unit'            AS object_type,
              t2.unit_id        AS object_id,
              t2.concept_id     AS concept_id,
              'abstract sum-scores aggregation' AS calculation_type,
-             SUM(t2.score)     AS score
+             SUM(t2.score)     AS score,
+             1 AS to_process
+
         FROM [[airflow]].Operations_N_Object_T_ScoresExpired t1
-        
+
   INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
        USING (institution_id, object_type)
-        
+
   INNER JOIN [[graph_cache]].Traversal_N_Unit_N_Publication_N_Concept_T_ConceptDetection t2
           ON (t1.institution_id, t1.object_id)
            = (t2.institution_id, t2.unit_id)
@@ -43,10 +45,10 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
 
 -- ========= Formula: 'abstract sum-scores aggregation (bounded)'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (institution_id, object_type, object_id, concept_id, calculation_type, score)
+            (institution_id, object_type, object_id, concept_id, calculation_type, score, to_process)
       SELECT institution_id, object_type, object_id, concept_id,
              'abstract sum-scores aggregation (bounded)' AS calculation_type,
-             (2/(1 + EXP(-t2.score/(4*@avg_score))) - 1) AS score
+             (2/(1 + EXP(-t2.score/(4*@avg_score))) - 1) AS score, 1 AS to_process
         FROM [[airflow]].Operations_N_Object_T_ScoresExpired t1
   INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
        USING (institution_id, object_type)
