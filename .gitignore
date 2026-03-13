@@ -259,3 +259,5 @@ example_config_dict.json
 pyrightconfig.json
 memhog.py
 scripts/init/sample_sets/epfl_graph_sample_set.json
+config/config_global.prod.yaml
+test_delete_orphans.py
