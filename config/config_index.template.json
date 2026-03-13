@@ -42,6 +42,13 @@
                 }
             },
             "parent-child" : {
+                "Category" : {
+                    "Category" : {},
+                    "Concept" : {}
+                },
+                "Concept" : {
+                    "Category" : {}
+                },
                 "Course" : {
                     "Lecture" : {
                         "obj2obj" : ["sort_number_per_academic_year"],
