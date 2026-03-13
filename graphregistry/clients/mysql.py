@@ -97,9 +97,14 @@ SQL_COMMANDS = [
     "AND",
     "OR",
     "CAST",
+    "AVG",
     "(",
     ")",
-    "row_number()"
+    "row_number()",
+    "KEY",
+    "UNIQUE KEY",
+    "PRIMARY KEY",
+    "ENGINE"
 ]
 
 
@@ -210,6 +215,7 @@ def print_sql(sql: str, *, params=None, elapsed_ms: float | None = None, db: str
         theme="monokai",
         line_numbers=False,
         word_wrap=False,
+        background_color="black"
     )
 
     meta = Text()
