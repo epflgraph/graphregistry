@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graphregistry"
+version = "0.1.0"
+description = "EPFL Graph Registry"
+requires-python = ">=3.10"
+dependencies = [
+    "uvicorn",
+    "fastapi",
+    "sqlalchemy",
+    "tqdm",
+    "loguru",
+    "rich",
+    "elasticsearch==8.15.1",
+    "Levenshtein",
+    "requests",
+    "termcolor",
+    "numpy",
+    "pandas",
+    "tabulate",
+    "pyyaml",
+    "pymysql",
+    "flatten_dict",
+    "dictdiffer",
+    # Git dependency (PEP 508 syntax)
+    "graphai-client @ git+https://github.com/epflgraph/graphai-client.git",
+]
+
+[project.scripts]
+# CLI entrypoint – note the path: graphregistry/core/cli.py -> main()
+graphregistry = "graphregistry.cli.main:main"
+
+# Tell setuptools what to package (and what to ignore)
+[tool.setuptools.packages.find]
+include = ["graphregistry*"]
+exclude = [
+    "config*",
+    "database*",
+    "resources*",
+    "node_modules*",
+    "scripts*",
+    "tests*",
+]

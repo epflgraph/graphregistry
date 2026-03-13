@@ -7,6 +7,17 @@ from graphregistry.common.config import GlobalConfig
 from loguru import logger as sysmsg
 import rich, json
 
+#-------------------------------#
+# Custom environment parameters #
+#-------------------------------#
+
+# Database environment
+db_env = 'xaas_coresrv'
+
+#-----------------------#
+# Object initialisation #
+#-----------------------#
+
 # Initialize global config
 glbcfg = GlobalConfig()
 
@@ -40,7 +51,7 @@ detect_concepts = False
 import_method = 'object'
 
 # Execute step?
-if True:
+if False:
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
@@ -89,7 +100,7 @@ if False:
         sql_query = sql_query.replace(f'[[{placeholder}]]', value)
 
     # Execute SQL query in shell
-    gr.db.execute_query_in_shell(engine_name='test', query=sql_query, verbose=True)
+    gr.db.execute_query_in_shell(engine_name=db_env, query=sql_query, verbose=True)
 
 #=====================================================#
 # Step 3: Sync new data into Airflow and set up flags #
@@ -104,21 +115,21 @@ if True:
     # Config type flags to process everything
     gr.orchestrator.typeflags.config(config_json={
         'nodes': [
-            ['Category'   , True, True],
-            ['Concept'    , True, True],
-            ['Course'     , True, True],
-            ['Person'     , True, True],
-            ['Publication', True, True],
-            ['Startup'    , True, True],
+            ['Category'   , False, False],
+            ['Concept'    , False, False],
+            ['Course'     , False, False],
+            ['Person'     , False, False],
+            ['Publication', False, False],
+            ['Startup'    , False, False],
             ['Unit'       , True, True]
         ],
         'edges': [
-            ['Category'   , 'Category', True],
-            ['Concept'    , 'Category', True],
-            ['Course'     , 'Person'  , True],
-            ['Person'     , 'Unit'    , True],
-            ['Publication', 'Person'  , True],
-            ['Startup'    , 'Person'  , True],
+            ['Category'   , 'Category', False],
+            ['Concept'    , 'Category', False],
+            ['Course'     , 'Person'  , False],
+            ['Person'     , 'Unit'    , False],
+            ['Publication', 'Person'  , False],
+            ['Startup'    , 'Person'  , False],
             ['Unit'       , 'Unit'    , True]
         ]
     })
@@ -134,19 +145,20 @@ if True:
 if True:
     gr.cachemanager.apply_calculated_field_formulas(verbose=False)
     gr.cachemanager.materialize_views(actions=('commit'))
-    gr.cachemanager.apply_traversal_and_scoring_formulas(verbose=False)
-    gr.cachemanager.update_scores(score_thr=0.01, actions=('commit'))
-    gr.indexdb.build(actions=('commit'))
-    gr.indexdb.patch(actions=('commit'))
-    db.print_database_stats(engine_name='test', schema_name='test_graphsearch_test'   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
-    db.print_database_stats(engine_name='test', schema_name='test_elasticsearch_cache', re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
+    gr.cachemanager.apply_traversals(verbose=False)
+    gr.cachemanager.apply_scoring_formulas(verbose=False)
+    gr.cachemanager.update_scores_matrix(score_thr=0.01, actions=('eval', 'commit'))
+    gr.indexdb.build(actions=('eval', 'commit'))
+    gr.indexdb.patch(actions=('eval', 'commit'))
+    db.print_database_stats(engine_name=db_env, schema_name=glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']   , re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
+    db.print_database_stats(engine_name=db_env, schema_name=glbcfg.settings['mysql']['db_schema_names']['elasticsearch_cache'], re_exclude=[r'.*(MOOC|Lecture|Widget).*'])
 
 #======================================#
 # Step 5: Generate ElasticSearch index #
 #======================================#
 
 # Execute step?
-if True:
+if False:
 
     # Fetch index parameters from config
     index_date = str(glbcfg.settings['elasticsearch']['index_date'])
@@ -165,17 +177,17 @@ if True:
 
     # With index date (index name generated automatically)
     print(f"\nMETHOD 1: Importing index date '{index_date}' into ElasticSearch engine...\n")
-    gr.indexes.import_index(engine_name='test', index_date=index_date, replace_existing=True, force_replace=True)
+    gr.indexes.import_index(engine_name=db_env, index_date=index_date, replace_existing=True, force_replace=True)
 
     # With explicit index file and name
     # print(f"\nMETHOD 2: Importing index file '{index_file}' as index name '{index_name}' into ElasticSearch engine...\n")
-    # gr.indexes.import_index(engine_name='test', index_file=index_file, index_name=index_name, replace_existing=True, force_replace=True)
+    # gr.indexes.import_index(engine_name=db_env, index_file=index_file, index_name=index_name, replace_existing=True, force_replace=True)
 
     #-------------------------------------------------------------#
 
     # List indexes and aliases in ElasticSearch engine
-    es.index_list(engine_name='test')
-    es.alias_list(engine_name='test')
+    es.index_list(engine_name=db_env)
+    es.alias_list(engine_name=db_env)
 
     # Direct link to Kibana
     print(f"\nList of indexes in Kibana:\n - http://localhost:5601/app/enterprise_search/content/search_indices/\n")

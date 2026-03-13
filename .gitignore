@@ -218,7 +218,8 @@ config.ini
 .env
 .certs
 .vscode
-
+.vscode
+.trash
 
 .DS_Store
 __pycache__
@@ -230,16 +231,11 @@ __pycache__
 .idea/
 _trash/
 _local_data/
-venv/
 resources/certificates/*.crt
 resources/credentials/*
-config.yaml
-config_*.yaml
 geckodriver.log
 database/init/data_patches/
 database/tests/
-
-.python_version
 
 config/config_global.yaml
 config/config_index.json
@@ -253,3 +249,16 @@ config_scores.json
 .gitleaks.toml
 security_scan.sh
 setup.sh
+node_modules/
+*.crt
+./setup.sh
+package-lock.json
+docker-compose.yml
+config/config_graphai_client.json
+example_config_dict.json
+pyrightconfig.json
+memhog.py
+scripts/init/sample_sets/epfl_graph_sample_set.json
+config/config_global.prod.yaml
+test_delete_orphans.py
+payload.json

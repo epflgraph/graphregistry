@@ -1,12 +1,12 @@
 -- ========= Object type: Unit
 -- ========= Formula: 'concept sum-scores aggregation'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
-             (institution_id, object_type, object_id, category_id, calculation_type, score)
+             (institution_id, object_type, object_id, category_id, calculation_type, score, to_process)
 
       SELECT se.institution_id, se.object_type, se.object_id,
              l.from_id AS category_id,
              'concept sum-scores aggregation' AS calculation_type,
-             SUM(t.score) AS score
+             SUM(t.score) AS score, 1 AS to_process
 
           -- Check type flags
         FROM [[airflow]].Operations_N_Object_T_TypeFlags tf
