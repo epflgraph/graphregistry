@@ -4377,9 +4377,57 @@ class GraphRegistry():
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
-            # Ignore edge types: Object-to-Concept/Category/Curated area (not including Category-to-Category)
-            if (from_object_type in ('Category', 'Concept', 'Curated area') or to_object_type in ('Category', 'Concept', 'Curated area')) and not (from_object_type, to_object_type) == ('Category', 'Category'):
-                return
+            # If edge types: Object-to-Concept/Category/Curated area (not including Category-to-Category),
+            # Copy from pre-calculated tables
+            if (from_object_type in ('Category', 'Concept', 'Curated area') or to_object_type in ('Category', 'Concept', 'Curated area')) and not (from_object_type, to_object_type) in (('Category', 'Category'), ('Concept', 'Concept'), ('Curated area', 'Curated area')):
+
+                # Get ontology type and object type
+                ontology_type = from_object_type if from_object_type in ('Category', 'Concept', 'Curated area') else to_object_type
+
+                # Generate SQL query
+                sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
+                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
+                          SELECT institution_id AS from_institution_id,
+                                 object_type    AS from_object_type,
+                                 object_id      AS from_object_id,
+                                 'Ont'          AS to_institution_id,
+                                 '{ontology_type}' AS to_object_type,
+                                 {ontology_type.lower().replace(' ','_')}_id AS to_object_id,
+                                 score, to_process
+                            FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_{ontology_type.title().replace(' ','')}_T_FinalScores
+                           WHERE to_process = 1
+                             AND score >= {score_thr}
+                """
+
+            # Concept-to-concept tables
+            elif (from_object_type, to_object_type) == ('Concept', 'Concept'):
+
+                # Generate SQL query
+                sql_query = f"""
+                    REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
+                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
+                          SELECT 'Ont'            AS from_institution_id,
+                                 'Concept'        AS from_object_type,
+                                 from_id          AS from_object_id,
+                                 'Ont'            AS to_institution_id,
+                                 'Concept'        AS to_object_type,
+                                 to_id            AS to_object_id,
+                                 normalised_score AS score,
+                                 s1.to_process OR s2.to_process AS to_process
+                            FROM {glbcfg.schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected c
+
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s1
+                              ON s1.object_id = c.from_id
+
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s2
+                              ON s2.object_id = c.to_id
+
+                           WHERE s1.object_type = 'Concept'
+                             AND s2.object_type = 'Concept'
+                             AND (s1.to_process = 1 OR s2.to_process = 1)
+                             AND normalised_score >= {score_thr}
+                """
 
             # Calculate all other edge types, including Category-to-Category (to fetch from GBC table)
             else:
@@ -4424,7 +4472,7 @@ class GraphRegistry():
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
                                  (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
-                          SELECT x.from_institution_id, x.from_object_type, x.from_object_id, x.to_institution_id, x.to_object_type, x.to_object_id, x.score, x.to_process
+                          SELECT t.from_institution_id, t.from_object_type, t.from_object_id, t.to_institution_id, t.to_object_type, t.to_object_id, t.score, t.to_process
                             FROM (SELECT gb.from_institution_id, gb.from_object_type, gb.from_object_id,
                                            gb.to_institution_id,   gb.to_object_type,   gb.to_object_id,
                                          (2/(1 + EXP(-gb.score/(4 * av.avg_score))) - 1) AS score, gb.to_process
@@ -4435,17 +4483,12 @@ class GraphRegistry():
                                    WHERE gb.to_process = 1
                                      AND gb.from_object_type = '{from_object_type}'
                                      AND gb.to_object_type   = '{to_object_type}'
-                                 ) x
-                           WHERE x.score >= {score_thr}
+                                 ) t
+                           WHERE t.score >= {score_thr}
                 """
 
-            # Print commit query
-            if 'print' in actions:
-                print('Executing query:')
-                print(sql_query)
-
             if 'commit' in actions:
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, query_id='qHE7tP6J')
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose='print' in actions, query_id='qHE7tP6J')
 
     #-----------------------------------------------------------#
     # Subclass definition: GraphIndex Management (SQL Database) #
