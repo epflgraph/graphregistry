@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from graphregistry.common.auxfcn import print_colour
-from graphregistry.clients.mysql import GraphDB
 from graphregistry.common.config import GlobalConfig
+from graphdb.core.config import GraphDBConfig
+from graphdb.core.graphdb import GraphDB
 from sqlalchemy import text
 from sqlalchemy.dialects import mysql
 from loguru import logger as sysmsg
@@ -12,7 +13,8 @@ from typing import List, Tuple
 glbcfg = GlobalConfig()
 
 # Initialise MySQL client
-db = GraphDB()
+db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+db = GraphDB(config=db_cfg)
 
 # Auxiliary function to get schema name from a (from,to) tuple
 def get_schema(from_object_type, to_object_type):

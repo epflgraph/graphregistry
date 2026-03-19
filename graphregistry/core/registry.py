@@ -3,7 +3,9 @@
 from graphregistry.common.auxfcn import print_dataframe, print_colour
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.common.dbstruct import DynamicSQL, GraphTable
-from graphregistry.clients.mysql import GraphDB
+from graphdb.core.config import GraphDBConfig
+from graphdb.core.graphdb import GraphDB
+from graphdb.models.sqlquery import SQLQuery, print_sql
 from graphregistry.clients.elasticsearch import GraphES, es_degree_score_factors
 from graphregistry.core.dbbridge import RegistryDB
 from graphai_client.client import login as graphai_login
@@ -16,7 +18,7 @@ from pathlib import Path
 from decimal import Decimal
 import numpy as np
 import pandas as pd
-import os, re, sys, json, ijson, datetime, itertools, gzip, os, glob, rich, hashlib
+import os, re, sys, json, datetime, itertools, gzip, os, glob, rich
 
 #------------------------------#
 # Class objects initialisation #
@@ -30,8 +32,11 @@ scrcfg = ScoresConfig()
 # Initialise dynamic sql object
 dynsql = DynamicSQL()
 
+# Initialise MySQL client
+db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+db = GraphDB(config=db_cfg)
+
 # Initialise clients
-db = GraphDB()
 es = GraphES()
 
 # Initalise Registry db bridge
@@ -207,39 +212,32 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
             sysmsg.critical(f"❌ Failed to create table '{schema_name}.{table_name}'.")
             exit()
 
+# import os, json, gzip
+# from pathlib import Path
 
+# def _iter_jsonl(path):
+#     with open(path, "r", encoding="utf-8") as f:
+#         for line in f:
+#             line = line.strip()
+#             if line:
+#                 yield json.loads(line)
 
-
-
-import os, json, gzip
-from pathlib import Path
-
-def _iter_jsonl(path):
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                yield json.loads(line)
-
-def _write_pretty_value_at_indent(fp, obj, *, base_indent_spaces: int):
-    """
-    Write a JSON object with pretty indentation as if nested under:
-    ... "<doc_id>": <obj>
-    where <obj> is indented like json.dump(..., indent=4) would produce.
-    """
-    s = json.dumps(obj, ensure_ascii=False, default=str, indent=4)
-    lines = s.splitlines()
-    # first line is "{", written on the same line after ": "
-    fp.write(lines[0] + "\n")
-    # middle lines: add (base_indent_spaces - 4) so that inner "    " becomes base_indent
-    pad = " " * (base_indent_spaces - 4)
-    for mid in lines[1:-1]:
-        fp.write(pad + mid + "\n")
-    # last line "}" aligned to value indent (base_indent_spaces - 4 + 0) == base_indent_spaces - 4
-    fp.write(" " * (base_indent_spaces - 4) + lines[-1])
-
-
-
+# def _write_pretty_value_at_indent(fp, obj, *, base_indent_spaces: int):
+#     """
+#     Write a JSON object with pretty indentation as if nested under:
+#     ... "<doc_id>": <obj>
+#     where <obj> is indented like json.dump(..., indent=4) would produce.
+#     """
+#     s = json.dumps(obj, ensure_ascii=False, default=str, indent=4)
+#     lines = s.splitlines()
+#     # first line is "{", written on the same line after ": "
+#     fp.write(lines[0] + "\n")
+#     # middle lines: add (base_indent_spaces - 4) so that inner "    " becomes base_indent
+#     pad = " " * (base_indent_spaces - 4)
+#     for mid in lines[1:-1]:
+#         fp.write(pad + mid + "\n")
+#     # last line "}" aligned to value indent (base_indent_spaces - 4 + 0) == base_indent_spaces - 4
+#     fp.write(" " * (base_indent_spaces - 4) + lines[-1])
 
 #==================================#
 # Class definition: Graph Registry #
@@ -4629,8 +4627,6 @@ class GraphRegistry():
             # Fetch typeflags config JSON
             doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
 
-            print("1 ========>", doc_types_in_config, doclink_types_in_config)
-
             # Check if empty
             if len(doc_types_in_config)==0 and len(doclink_types_in_config)==0:
                 sysmsg.warning(f"No type flags found for 'docs' nor 'doc-links'.")
@@ -4884,13 +4880,137 @@ class GraphRegistry():
                 else:
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery, query_id='tb1Vdfyq')
 
-            pass
-
         # TODO: Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
             return
+
         # TODO: Delete loose ends in index tables [NEEDS WORK]
-        def delete_loose_ends(self):
+        def delete_loose_ends(self, include_scores_matrix=False, actions=()):
+
+
+            # Execute:
+            # TRUNCATE TABLE graph_cache.Operations_N_Object_T_NoLooseEnds;
+            #    INSERT INTO graph_cache.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_registry.Data_N_Object_T_PageProfile;
+            #    INSERT INTO graph_cache.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_lectures.Data_N_Object_T_PageProfile;
+            #    INSERT INTO graph_cache.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_ontology.Data_N_Object_T_PageProfile;
+
+            # self.mysql_schema_names = {
+            #     'test' : {
+            #         'ontology'    : self.settings['mysql']['db_schema_names']['ontology'],
+            #         'registry'    : self.settings['mysql']['db_schema_names']['registry'],
+            #         'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
+            #         'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
+            #         'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
+            #         'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
+            #         'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
+            #     },
+            #     'prod' : {
+            #         'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
+            #         'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
+            #     }
+            # }
+
+            # Get list of schemas in core services database
+
+            regex_mapping = {
+                'airflow'     : [r'Operations_.*'],
+                'graph_cache' : [r'Data_.*', r'IndexBuildup_.*', r'Operations_N_Object_T_Checksums.*', r'Operations_N_Object_N_Object_T_Checksums.*'],
+                'graphsearch' : False,
+                'es_cache'    : False,
+            }
+
+            if include_scores_matrix:
+                regex_mapping['graph_cache'] += [r'Nodes_N_Object_.*', r'Edges_N_Object_.*']
+
+            for schema_key in ['airflow', 'graph_cache', 'graphsearch', 'es_cache']:
+
+                schema_name = glbcfg.mysql_schema_names['test'][schema_key]
+
+                list_of_tables = db.get_tables_in_schema(
+                    engine_name = 'xaas_coresrv',
+                    schema_name = schema_name,
+                    use_regex   = regex_mapping[schema_key]
+                )
+                # print(list_of_tables)
+
+                for table_name in list_of_tables:
+
+                    if table_name.startswith('_'):
+                        continue
+
+                    list_of_columns = db.get_column_names(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = schema_name,
+                        table_name  = table_name
+                    )
+                    # print(list_of_columns)
+
+
+                    sql_query_obj_template = """
+                              {eval_or_commit}
+                         FROM {schema_name}.{table_name} t
+                    LEFT JOIN graph_cache.Operations_N_Object_T_NoLooseEnds n
+                           ON t.{col_prefix}_type = n.object_type
+                          AND t.{col_prefix}_id   = n.object_id
+                        WHERE n.object_id IS NULL
+                    """
+
+                    sql_query_obj2obj_template = """
+                              {eval_or_commit}
+                         FROM {schema_name}.{table_name} t
+                    LEFT JOIN graph_cache.Operations_N_Object_T_NoLooseEnds n_from
+                           ON n_from.object_type = t.{from_prefix}_type
+                          AND n_from.object_id   = t.{from_prefix}_id
+                    LEFT JOIN graph_cache.Operations_N_Object_T_NoLooseEnds n_to
+                           ON n_to.object_type = t.{to_prefix}_type
+                          AND n_to.object_id   = t.{to_prefix}_id
+                        WHERE n_from.object_id IS NULL
+                          AND n_to.object_id   IS NULL
+                    """
+
+                    sql_query_obj_addkey_template     = "ALTER TABLE {schema_name}.{table_name} ADD UNIQUE KEY IF NOT EXISTS object_type_and_id ({col_prefix}_type, {col_prefix}_id);"
+                    sql_query_obj2obj_addkey_template = "ALTER TABLE {schema_name}.{table_name} ADD UNIQUE KEY IF NOT EXISTS object_type_and_id ({from_prefix}_type, {from_prefix}_id, {to_prefix}_type, {to_prefix}_id);"
+
+                    if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
+                        # print('edges    : ', f"{schema_name}.{table_name}")
+                        from_prefix, to_prefix = 'from_object', 'to_object'
+                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_addkey = sql_query_obj2obj_addkey_template.format(schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+
+                    elif len(set(['doc_type', 'doc_id', 'link_type', 'link_id']) & set(list_of_columns))==4:
+                        # print('doclinks : ', f"{schema_name}.{table_name}")
+                        from_prefix, to_prefix = 'doc', 'link'
+                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_addkey = sql_query_obj2obj_addkey_template.format(schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+
+                    elif len(set(['object_type', 'object_id']) & set(list_of_columns))==2:
+                        # print('nodes    : ', f"{schema_name}.{table_name}")
+                        col_prefix = 'object'
+                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+                        sql_query_addkey = sql_query_obj_addkey_template.format(schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+
+                    elif len(set(['doc_type', 'doc_id']) & set(list_of_columns))==2:
+                        # print('docs     : ', f"{schema_name}.{table_name}")
+                        col_prefix = 'doc'
+                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+                        sql_query_addkey = sql_query_obj_addkey_template.format(schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+
+                    else:
+                        continue
+
+                    print(sql_query_addkey)
+                    continue
+
+                    if 'eval' in actions:
+                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='DFSHG4tf', verbose='print' in actions)
+                        df = pd.DataFrame(out, columns=['n_to_delete'])
+                        if len(df) > 0:
+                            print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{schema_name}.{table_name}"')
+
             return
 
             # sql_template_docs = """
@@ -6007,7 +6127,8 @@ class GraphRegistry():
                             chunk_size    = 10000,
                             row_id_name   = 'i.row_id',
                             show_progress = False,
-                            query_id      = 'FCQgBmb2'
+                            query_id      = 'FCQgBmb2',
+                            verbose       = 'print' in actions
                         )
 
             # Index > Doc-Links > Vertical patching > Update ORG-table specific custom fields
@@ -6068,7 +6189,7 @@ class GraphRegistry():
                          = (l.{m[f]}_institution, l.{m[f]}_type, l.{m[f]}_id, l.{m[not f]}_institution, l.{m[not f]}_type, l.{m[not f]}_id)
                     """
 
-                # Generate evaluation query
+                # Generate evaluation query [of8T3uCG]
                 sql_query_eval = f"""
                     SELECT COUNT(*) AS n_total,
                            COALESCE(SUM(                      {' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}), 0){' OR ' if e and ec else ''}
@@ -6087,7 +6208,7 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='of8T3uCG')
+                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='of8T3uCG', verbose='print' in actions)
                     out = out if type(out) is list else [[0,0]]
 
                     # Extract evalutation parameters
@@ -6100,10 +6221,6 @@ class GraphRegistry():
                 # Evaluate the patch operation
                 if 'eval' in actions:
 
-                    # Print the evaluation query
-                    if 'print' in actions:
-                        print(sql_query_eval)
-
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
                         df = pd.DataFrame(out, columns=['rows to process', 'rows to patch'])
@@ -6111,22 +6228,18 @@ class GraphRegistry():
                     if rows_to_patch == 0 and 'print' in actions:
                         sysmsg.warning(f"No rows to patch in table '{target_table_name}'.")
 
-                # Generate commit query
+                # Generate commit query [sxUZ7wER]
                 sql_query_commit = f"""
                     UPDATE {target_table_path} i
                 INNER JOIN {buildup_link_table_path_obj} b
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                            {obj2obj_placeholder}
-                       SET {', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}{',' if e else ''}
+                       SET {', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}{',' if ec else ''}
                            {', '.join([f'i.{c}  = l.{c}' for c in self.graphsearch_obj2obj_fields])}
                      WHERE b.to_process = 1
-                       AND       ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}){' OR ' if e else ''}
-                {'(' if e else ''}{' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}{')' if e else ''};
+                       AND        ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}){' OR ' if ec else ''}
+                {'(' if ec else ''}{' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}{')' if ec else ''};
                 """
-
-                # Print the commit query
-                if 'print' in actions:
-                    print(sql_query_commit)
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -6144,7 +6257,8 @@ class GraphRegistry():
                             chunk_size    = 10000,
                             row_id_name   = 'i.row_id',
                             show_progress = False,
-                            query_id      = 'sxUZ7wER'
+                            query_id      = 'sxUZ7wER',
+                            verbose       = 'print' in actions
                         )
 
             # Index > Doc-Links > Vertical patching > Update ElasticSearch specific fields
@@ -6263,7 +6377,8 @@ class GraphRegistry():
                             query       = sql_query_commit,
                             chunk_size  = 10000,
                             row_id_name = 't.row_id',
-                            query_id    = 'Z16jRm9j'
+                            query_id    = 'Z16jRm9j',
+                            verbose       = 'print' in actions
                         )
 
             # ------- Rollbacks ------- #

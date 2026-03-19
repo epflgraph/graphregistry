@@ -3,7 +3,8 @@ import sys, argparse
 from graphregistry.cli.context           import CLIContext
 from graphregistry.cli.register          import register
 from graphregistry.common.config         import GlobalConfig, IndexConfig, ScoresConfig
-from graphregistry.clients.mysql         import GraphDB
+from graphdb.core.config                 import GraphDBConfig
+from graphdb.core.graphdb                import GraphDB
 from graphregistry.clients.elasticsearch import GraphES
 from graphregistry.core.registry         import GraphRegistry
 
@@ -27,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="domain", required=True)
 
     # Register commands for each domain
-    for cmd_name in ['config', 'db', 'es', 'ai', 'data', 'airflow', 'cache', 'index']:
+    for cmd_name in ['config', 'es', 'ai', 'data', 'airflow', 'cache', 'index']:
         register(subparsers, cmd_name)
 
     # Return the fully built parser
@@ -53,10 +54,13 @@ def main(argv=None) -> int:
     global_config = GlobalConfig()
     index_config  = IndexConfig()
     scores_config = ScoresConfig()
-    db       = GraphDB()
     es       = GraphES()
     registry = GraphRegistry()
     ai       = GraphAI
+
+    # Initialise MySQL client
+    db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+    db = GraphDB(config=db_cfg)
 
     # Login to GraphAI and get auth token
     graphai_auth_token = GraphAIClient.login(global_config.settings['graphai']['client_config_file'])

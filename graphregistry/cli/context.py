@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
     from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
-    from graphregistry.clients.mysql import GraphDB
+    from graphdb.core.graphdb import GraphDB
     from graphregistry.clients.elasticsearch import GraphES
     from graphregistry.core.registry import GraphRegistry
     import graphai_client as GraphAI

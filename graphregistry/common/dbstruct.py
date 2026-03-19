@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
-from graphregistry.clients.mysql import GraphDB
+from graphdb.core.config import GraphDBConfig
+from graphdb.core.graphdb import GraphDB
 import rich, json, re
 from pathlib import Path
 
@@ -13,8 +14,9 @@ glbcfg = GlobalConfig()
 idxcfg = IndexConfig()
 scrcfg = ScoresConfig()
 
-# Initialize GraphDB
-db = GraphDB()
+# Initialise MySQL client
+db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+db = GraphDB(config=db_cfg)
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -403,8 +405,7 @@ class DynamicSQL():
             elif idxcfg.settings['data_types'].get(field_name) is not None:
                 datatypes_list += [sql_data_type_mapping[idxcfg.settings['data_types'][field_name]]]
             else:
-                print(f"❌ No datatype found in config: {field_name}")
-                exit()
+                raise Exception(f"❌ No datatype found in config: {field_name}")
         return datatypes_list
 
     # Get SQL table name for a given doc type, link type, link subtype, and index group
