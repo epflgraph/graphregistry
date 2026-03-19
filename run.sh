@@ -50,8 +50,8 @@ run_step() {
 run_step "airflow reset" \
   graphregistry airflow reset --options=typeflags,airflow,cache
 
-run_step "airflow sync"
-  graphregistry airflow sync
+# run_step "airflow sync"
+#   graphregistry airflow sync
 
 run_step "airflow config" \
   graphregistry airflow config --typeflags=@airflow_config.json
@@ -60,7 +60,7 @@ run_step "airflow update_checksums" \
   graphregistry airflow update_checksums
 
 run_step "airflow expire" \
-  graphregistry airflow expire --older_than=90 --limit_per_type=1000
+  graphregistry airflow expire --older_than=1 --limit_per_type=1000
 
 run_step "airflow refresh" \
   graphregistry airflow refresh --limit_per_type=1000
@@ -72,7 +72,7 @@ run_step "cache update (formulas)" \
   graphregistry cache update --formulas=fields,views,traversals,scores --actions=commit
 
 run_step "cache update (matrix)" \
-  graphregistry cache update --matrix --actions=commit,eval,print
+  graphregistry cache update --matrix --actions=commit,eval
 
 run_step "index build" \
   graphregistry index build --actions=commit,eval
@@ -83,14 +83,14 @@ run_step "index generate mixed views" \
 run_step "index patch" \
   graphregistry index patch --actions=commit,eval
 
-run_step "airflow rollover" \
-  graphregistry airflow rollover --actions=commit
+# run_step "airflow rollover" \
+#   graphregistry airflow rollover --actions=commit
 
-run_step "airflow update_dates" \
-  graphregistry airflow update_dates --actions=commit
+# run_step "airflow update_dates" \
+#   graphregistry airflow update_dates --actions=commit
 
-run_step "airflow reset (again)" \
-  graphregistry airflow reset --options=typeflags,airflow
+# run_step "airflow reset (again)" \
+#   graphregistry airflow reset --options=typeflags,airflow
 
 #=================================#
 # ElasticSearch data update steps #
