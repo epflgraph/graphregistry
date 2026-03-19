@@ -31,7 +31,7 @@ def cmd_cache_update(args):
     if 'scores' in formulas and 'commit' in actions:
         registry.cachemanager.apply_scoring_formulas(verbose='print' in actions)
     if matrix is True:
-        registry.cachemanager.update_scores_matrix(score_thr=0.01, actions=actions)
+        registry.cachemanager.update_scores_matrix(score_thr=0.1, actions=actions)
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -145,7 +145,9 @@ def cmd_cache_debug(args):
 
     # registry.indexdb.idoclinks['Category']['Course']['SEM'].horizontal_patch(actions=('print', 'commit'))
 
-    registry.indexdb.idoclinks['Concept']['Person']['SEM'].horizontal_patch_elasticsearch(actions=('print', 'commit'))
+    # registry.indexdb.idoclinks['Publication']['Person']['ORG'].vertical_patch_parentchild(actions=('print', 'commit'))
+
+    registry.indexdb.delete_loose_ends(include_scores_matrix=True, actions=('print', 'eval'))
 
 
     # Print footers
