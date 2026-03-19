@@ -11,7 +11,7 @@
             "Category"    : ["depth"],
             "Course"      : ["latest_academic_year"],
             "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
-            "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
+            "MOOC"        : ["courses_info"],
             "Notebook"    : ["notebook_type", "language", "repository_id", "html_document_url"],
             "Person"      : ["is_at_epfl", "gender"],
             "Publication" : ["year", "published_in", "publisher", "publication_id_v1"],
@@ -29,6 +29,9 @@
                 "Lecture"     : {
                     "obj"   : ["video_stream_url", "video_duration", "is_restricted"],
                     "order" : [["is_restricted", "DESC"]]
+                },
+                 "MOOC"     : {
+                    "obj"   : []
                 },
                 "Person"      : {
                     "order" : [["is_at_epfl", "DESC"]]
@@ -64,12 +67,18 @@
                         "obj2obj" : ["sort_number_per_academic_year"],
                         "order"   : [["latest_academic_year", "DESC"]]
                     },
-                    "MOOC" : {},
+                    "MOOC" : {
+                        "obj2obj" : ["sort_number_per_data_package_id"],
+                        "order"   : []
+                    },
                     "Widget" : {}
                 },
                 "MOOC" : {
                     "Person" : {},
-                    "Lecture" : {}
+                    "Lecture" : {
+                        "obj2obj" : ["sort_number_per_data_package_id"],
+                        "order"   : []
+                    }
                 },
                 "Notebook" : {
                     "Person" : {}
@@ -167,6 +176,8 @@
         "sort_number_per_academic_year" : "char",
         "latest_teaching_assignment_year" : "char",
         "is_active_affiliation" : "bool",
-        "current_position_rank" : "bool"
+        "current_position_rank" : "bool",
+        "sort_number_per_data_package_id" : "char",
+        "courses_info" : "text"
     }
 }

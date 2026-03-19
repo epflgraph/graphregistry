@@ -6117,11 +6117,11 @@ class GraphRegistry():
                 INNER JOIN {buildup_link_table_path_obj} b
                         ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
                            {obj2obj_placeholder}
-                       SET {', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}{',' if e else ''}
+                       SET {', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}{',' if e and ec else ''}
                            {', '.join([f'i.{c}  = l.{c}' for c in self.graphsearch_obj2obj_fields])}
                      WHERE b.to_process = 1
-                       AND       ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}){' OR ' if e else ''}
-                {'(' if e else ''}{' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}{')' if e else ''};
+                       AND              ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}){' OR ' if e and ec else ''}
+                {'(' if e and ec else ''}{' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}{')' if e and ec else ''};
                 """
 
                 # Print the commit query
@@ -6133,6 +6133,8 @@ class GraphRegistry():
 
                     # Return if there are no rows to patch
                     if rows_to_patch == 0:
+                        if 'print' in actions:
+                            sysmsg.warning(f"No rows to patch in table '{target_table_name}'. Commit query not executed.")
                         return
                     # Else, execute the query in chunks
                     else:
