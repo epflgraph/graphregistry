@@ -262,3 +262,5 @@ scripts/init/sample_sets/epfl_graph_sample_set.json
 config/config_global.prod.yaml
 test_delete_orphans.py
 payload.json
+config/config_db.yaml
+config/config_global.dev.yaml
