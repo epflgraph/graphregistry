@@ -1,3 +1,3 @@
-from graphregistry.models.registry_models import Edge, EdgeList, Node, NodeList
+from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
 
-__all__ = ["Node", "NodeList", "Edge", "EdgeList"]
+__all__ = ["ConceptGateway"]

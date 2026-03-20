@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from graphregistry.domain.models.mdl_node import NodeKey
+from graphregistry.domain.models.mdl_node import Node, NodeKey
 
 
 # ------------------ #
@@ -22,7 +22,7 @@ class NodeExistsResponse(BaseModel):
 # ------------------ #
 
 class NodeInsertRequest(BaseModel):
-    key: NodeKey
+    node: Node
 
 
 class NodeInsertResponse(BaseModel):
@@ -34,7 +34,7 @@ class NodeInsertResponse(BaseModel):
 # ------------------ #
 
 class NodeUpdateRequest(BaseModel):
-    key: NodeKey
+    node: Node
 
 
 class NodeUpdateResponse(BaseModel):
@@ -46,7 +46,7 @@ class NodeUpdateResponse(BaseModel):
 # ------------------ #
 
 class NodeUpsertRequest(BaseModel):
-    key: NodeKey
+    node: Node
 
 
 class NodeUpsertResponse(BaseModel):

@@ -1,3 +1,47 @@
-from graphregistry.models.registry_models import Edge, EdgeList, Node, NodeList
+from graphregistry.workflows.messages.msg_edge import (
+    EdgeDeleteRequest,
+    EdgeDeleteResponse,
+    EdgeExistsRequest,
+    EdgeExistsResponse,
+    EdgeInsertRequest,
+    EdgeInsertResponse,
+    EdgeUpdateRequest,
+    EdgeUpdateResponse,
+    EdgeUpsertRequest,
+    EdgeUpsertResponse,
+)
+from graphregistry.workflows.messages.msg_node import (
+    NodeDeleteRequest,
+    NodeDeleteResponse,
+    NodeExistsRequest,
+    NodeExistsResponse,
+    NodeInsertRequest,
+    NodeInsertResponse,
+    NodeUpdateRequest,
+    NodeUpdateResponse,
+    NodeUpsertRequest,
+    NodeUpsertResponse,
+)
 
-__all__ = ["Node", "NodeList", "Edge", "EdgeList"]
+__all__ = [
+    "NodeExistsRequest",
+    "NodeExistsResponse",
+    "NodeInsertRequest",
+    "NodeInsertResponse",
+    "NodeUpdateRequest",
+    "NodeUpdateResponse",
+    "NodeUpsertRequest",
+    "NodeUpsertResponse",
+    "NodeDeleteRequest",
+    "NodeDeleteResponse",
+    "EdgeExistsRequest",
+    "EdgeExistsResponse",
+    "EdgeInsertRequest",
+    "EdgeInsertResponse",
+    "EdgeUpdateRequest",
+    "EdgeUpdateResponse",
+    "EdgeUpsertRequest",
+    "EdgeUpsertResponse",
+    "EdgeDeleteRequest",
+    "EdgeDeleteResponse",
+]

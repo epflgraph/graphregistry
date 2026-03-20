@@ -1,3 +1,4 @@
-from graphregistry.models.registry_models import Edge, EdgeList, Node, NodeList
+from graphregistry.workflows.operations.ops_edge import EdgeOperations
+from graphregistry.workflows.operations.ops_node import NodeOperations
 
-__all__ = ["Node", "NodeList", "Edge", "EdgeList"]
+__all__ = ["NodeOperations", "EdgeOperations"]

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from graphregistry.domain.models.edge import EdgeKey
+from graphregistry.domain.models.mdl_edge import Edge, EdgeKey
 
 
 # ------------------ #
@@ -22,7 +22,7 @@ class EdgeExistsResponse(BaseModel):
 # ------------------ #
 
 class EdgeInsertRequest(BaseModel):
-    key: EdgeKey
+    edge: Edge
 
 
 class EdgeInsertResponse(BaseModel):
@@ -34,7 +34,7 @@ class EdgeInsertResponse(BaseModel):
 # ------------------ #
 
 class EdgeUpdateRequest(BaseModel):
-    key: EdgeKey
+    edge: Edge
 
 
 class EdgeUpdateResponse(BaseModel):
@@ -46,7 +46,7 @@ class EdgeUpdateResponse(BaseModel):
 # ------------------ #
 
 class EdgeUpsertRequest(BaseModel):
-    key: EdgeKey
+    edge: Edge
 
 
 class EdgeUpsertResponse(BaseModel):

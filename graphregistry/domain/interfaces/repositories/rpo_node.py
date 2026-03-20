@@ -13,18 +13,6 @@ class NodeRepository(Protocol):
     def exists_many(self, key_list: list[NodeKey]) -> list[bool]:
         ...
 
-    # Insert new node
-    def insert(self, key: NodeKey) -> bool:
-        ...
-
-    # Upsert new node
-    def update(self, key: NodeKey) -> bool:
-        ...
-
-    # Upsert new node
-    def upsert(self, key: NodeKey) -> bool:
-        ...
-
     # Load one node from persistence
     def get_by_key(self, key: NodeKey) -> Node | None:
         ...
@@ -42,8 +30,8 @@ class NodeRepository(Protocol):
         ...
 
     # Optional delete operations
-    def delete(self, key: NodeKey, actions: tuple[str, ...] = ("eval",)) -> Any:
+    def delete(self, key: NodeKey, actions: tuple[str, ...] = ("eval",)) -> bool:
         ...
 
-    def delete_many(self, key_list: list[NodeKey], actions: tuple[str, ...] = ("eval",)) -> list[Any]:
+    def delete_many(self, key_list: list[NodeKey], actions: tuple[str, ...] = ("eval",)) -> list[bool]:
         ...

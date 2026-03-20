@@ -1,5 +1,13 @@
-from graphregistry.domain.models.edge import EdgeKey
+from dataclasses import dataclass
+
+from graphregistry.domain.models.mdl_edge import Edge, EdgeKey
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
+
+
+@dataclass(frozen=True)
+class UpsertResult:
+    success: bool
+    created: bool
 
 
 class EdgeOperations:
@@ -10,18 +18,20 @@ class EdgeOperations:
     def exists(self, key: EdgeKey) -> bool:
         return self.repo.exists(key)
 
-    def insert(self, key: EdgeKey) -> bool:
-        if self.repo.exists(key):
+    def insert(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> bool:
+        if self.repo.exists(edge.key):
             raise ValueError("Edge already exists")
-        return self.repo.insert(key)
+        return bool(self.repo.save(edge, actions=actions))
 
-    def update(self, key: EdgeKey) -> bool:
-        return self.repo.update(key)
+    def update(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> bool:
+        if not self.repo.exists(edge.key):
+            raise ValueError("Edge does not exist")
+        return bool(self.repo.save(edge, actions=actions))
 
-    def upsert(self, key: EdgeKey) -> bool:
-        if self.repo.exists(key):
-            return self.repo.update(key)
-        return self.repo.insert(key)
+    def upsert(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> UpsertResult:
+        created = not self.repo.exists(edge.key)
+        success = bool(self.repo.save(edge, actions=actions))
+        return UpsertResult(success=success, created=created)
 
     def delete(self, key: EdgeKey) -> bool:
-        return self.repo.delete(key)
+        return bool(self.repo.delete(key))

@@ -1,32 +1,42 @@
-from graphregistry.domain.models.mdl_node import NodeKey
+from dataclasses import dataclass
+
+from graphregistry.domain.models.mdl_node import Node, NodeKey
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
-from graphregistry.domain.interfaces.gateways.conceptgateway import ConceptGateway
+from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
+
+
+@dataclass(frozen=True)
+class UpsertResult:
+    success: bool
+    created: bool
 
 
 class NodeOperations:
 
-    def __init__(self, repo: NodeRepository):
+    def __init__(self, repo: NodeRepository, concept_gateway: ConceptGateway | None = None):
         self.repo = repo
         self.concept_gateway = concept_gateway
 
     def exists(self, key: NodeKey) -> bool:
         return self.repo.exists(key)
 
-    def insert(self, key: NodeKey) -> bool:
-        if self.repo.exists(key):
+    def insert(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> bool:
+        if self.repo.exists(node.key):
             raise ValueError("Node already exists")
-        return self.repo.insert(key)
+        return bool(self.repo.save(node, actions=actions))
 
-    def update(self, key: NodeKey) -> bool:
-        return self.repo.update(key)
+    def update(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> bool:
+        if not self.repo.exists(node.key):
+            raise ValueError("Node does not exist")
+        return bool(self.repo.save(node, actions=actions))
 
-    def upsert(self, key: NodeKey) -> bool:
-        if self.repo.exists(key):
-            return self.repo.update(key)
-        return self.repo.insert(key)
+    def upsert(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> UpsertResult:
+        created = not self.repo.exists(node.key)
+        success = bool(self.repo.save(node, actions=actions))
+        return UpsertResult(success=success, created=created)
 
     def delete(self, key: NodeKey) -> bool:
-        return self.repo.delete(key)
+        return bool(self.repo.delete(key))
 
     def detect_concepts(self, text: str):
         if self.concept_gateway is None:
