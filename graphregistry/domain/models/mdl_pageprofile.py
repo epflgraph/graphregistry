@@ -1,10 +1,8 @@
 from __future__ import annotations
-
 from typing import Any
-
 from pydantic import BaseModel, Field
 
-
+# Model definition
 class PageProfile(BaseModel):
     values: dict[str, Any] = Field(default_factory=dict)
 

@@ -7,6 +7,12 @@ from graphregistry.domain.models.mdl_edge import (
     EdgeKey,
     EdgeList,
 )
+from graphregistry.domain.models.mdl_gentext import (
+    DescriptionSet,
+    GeneratedText,
+    MultilingualGeneratedText,
+    MultilingualText,
+)
 from graphregistry.domain.models.mdl_subgraph import SubGraph
 from graphregistry.domain.models.mdl_node import (
     Node,
@@ -33,6 +39,10 @@ __all__ = [
     "EdgeList",
     "DetectedConcept",
     "DetectedConceptList",
+    "MultilingualText",
+    "GeneratedText",
+    "MultilingualGeneratedText",
+    "DescriptionSet",
     "PageProfile",
     "SubGraph",
 ]

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Any
 
-from graphregistry.domain.models.mdl_edge import Edge, EdgeKey
+from graphregistry.domain.models.mdl_edge import Edge, EdgeKey, EdgeList
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 
 
@@ -35,3 +36,19 @@ class EdgeOperations:
 
     def delete(self, key: EdgeKey) -> bool:
         return bool(self.repo.delete(key))
+
+    # Draft lifecycle/use-case methods migrated from legacy model-centric flow.
+    def get_by_key(self, key: EdgeKey) -> Edge | None:
+        return self.repo.get_by_key(key)
+
+    def get_by_keys(self, key_list: list[EdgeKey]) -> EdgeList:
+        return self.repo.get_by_keys(key_list)
+
+    def save_many(self, edge_list: EdgeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:
+        return self.repo.save_many(edge_list, actions=actions)
+
+    def commit_edge_object(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> Any:
+        raise NotImplementedError("Use-case draft: map legacy edge-object commit to repository save semantics.")
+
+    def commit_custom_fields(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> Any:
+        raise NotImplementedError("Use-case draft: map legacy custom-fields commit to repository save semantics.")

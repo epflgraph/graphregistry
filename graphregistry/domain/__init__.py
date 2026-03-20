@@ -1,6 +1,7 @@
 from graphregistry.domain.models import (
     DetectedConcept,
     DetectedConceptList,
+    DescriptionSet,
     Edge,
     EdgeField,
     EdgeFieldKey,
@@ -14,6 +15,9 @@ from graphregistry.domain.models import (
     NodeKey,
     NodeList,
     PageProfile,
+    GeneratedText,
+    MultilingualGeneratedText,
+    MultilingualText,
 )
 
 __all__ = [
@@ -30,6 +34,10 @@ __all__ = [
     "Edge",
     "DetectedConcept",
     "DetectedConceptList",
+    "MultilingualText",
+    "GeneratedText",
+    "MultilingualGeneratedText",
+    "DescriptionSet",
     "PageProfile",
     "SubGraph",
 ]
