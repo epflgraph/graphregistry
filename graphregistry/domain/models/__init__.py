@@ -7,7 +7,7 @@ from graphregistry.domain.models.mdl_edge import (
     EdgeKey,
     EdgeList,
 )
-from graphregistry.domain.models.mdl_gentext import (
+from graphregistry.domain.models.mdl_text import (
     DescriptionSet,
     GeneratedText,
     MultilingualGeneratedText,

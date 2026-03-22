@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any, Callable
 
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
-from graphregistry.domain.interfaces.gateways.gtw_texttranslate import TextTranslationGateway
-from graphregistry.domain.models.mdl_gentext import MultilingualText
+from graphregistry.domain.interfaces.gateways.gtw_texttrans import TextTranslationGateway
+from graphregistry.domain.models.mdl_text import MultilingualText
 
 
 LoginFn = Callable[[str], dict[str, Any]]

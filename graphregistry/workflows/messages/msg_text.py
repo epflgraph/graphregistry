@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel
 
-from graphregistry.domain.models.mdl_gentext import (
+from graphregistry.domain.models.mdl_text import (
     GeneratedText,
     MultilingualGeneratedText,
     MultilingualText,

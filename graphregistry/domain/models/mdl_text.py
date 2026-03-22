@@ -1,20 +1,21 @@
 from __future__ import annotations
+from typing import Any
 from pydantic import BaseModel, Field
 
 # Model definition
 class MultilingualText(BaseModel):
-    en: str | None = None
-    fr: str | None = None
-    de: str | None = None
-    it: str | None = None
+    en: str = ""
+    fr: str = ""
+    de: str = ""
+    it: str = ""
 
 # Model definition
 class GeneratedText(BaseModel):
-    is_auto_generated:  bool | None = None
-    is_auto_corrected:  bool | None = None
-    is_auto_translated: bool | None = None
-    translated_from: str | None = None
-    value: str | None = None
+    is_auto_generated:  bool = False
+    is_auto_corrected:  bool = False
+    is_auto_translated: bool = False
+    translated_from: str = ""
+    value: str = ""
 
 # Model definition
 class MultilingualGeneratedText(BaseModel):

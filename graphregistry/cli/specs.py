@@ -19,7 +19,9 @@ from graphregistry.cli.cmd_ai import (
     cmd_ai_test,
 )
 from graphregistry.cli.cmd_data import (
-    cmd_data_import
+    cmd_data_import,
+    cmd_data_insert,
+    cmd_data_fetch
 )
 from graphregistry.cli.cmd_airflow import (
     cmd_airflow_sync,
@@ -201,7 +203,29 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on import.")),
                 ],
                 common_args = []
-            )
+            ),
+            'insert' : dict(
+                help = "Import data from input or json file.",
+                func = cmd_data_insert,
+                args = [
+                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="Insert node from input or json file.")),
+                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="Insert edge from input or json file.")),
+                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Insert node list from input or json file.")),
+                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Insert edge list from input or json file.")),
+                    dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="Insert node and edge list (subgraph) from input or json file.")),
+                    dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on insert.")),
+                ],
+                common_args = []
+            ),
+            'fetch' : dict(
+                help = "Import data from input or json file.",
+                func = cmd_data_fetch,
+                args = [
+                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
+                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
+                ],
+                common_args = []
+            ),
         }
     ),
 

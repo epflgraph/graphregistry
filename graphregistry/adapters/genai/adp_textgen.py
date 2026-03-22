@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
-from graphregistry.domain.models.mdl_gentext import GeneratedText
+from graphregistry.domain.models.mdl_text import GeneratedText
 
 
 class GenAITextGenerationGateway(TextGenerationGateway):

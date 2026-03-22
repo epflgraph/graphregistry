@@ -1,7 +1,7 @@
 import unittest
 
-from graphregistry.domain.models.mdl_gentext import GeneratedText, MultilingualText
-from graphregistry.workflows.operations.ops_gentext import GeneratedTextOperations
+from graphregistry.domain.models.mdl_text import GeneratedText, MultilingualText
+from graphregistry.workflows.operations.ops_text import GeneratedTextOperations
 
 
 class FakeTranslationGateway:

@@ -1,7 +1,7 @@
 import unittest
 
 from graphregistry.adapters.graphai.adp_translationgatw import GraphAITextTranslationGateway
-from graphregistry.domain.models.mdl_gentext import MultilingualText
+from graphregistry.domain.models.mdl_text import MultilingualText
 
 
 class GraphAITextTranslationGatewayTests(unittest.TestCase):

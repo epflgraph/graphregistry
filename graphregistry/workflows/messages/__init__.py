@@ -10,7 +10,7 @@ from graphregistry.workflows.messages.msg_edge import (
     EdgeUpsertRequest,
     EdgeUpsertResponse,
 )
-from graphregistry.workflows.messages.msg_gentext import (
+from graphregistry.workflows.messages.msg_text import (
     GenerateAndTranslateRequest,
     GenerateAndTranslateResponse,
     GenerateTextRequest,

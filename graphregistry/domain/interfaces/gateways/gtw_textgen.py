@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from graphregistry.domain.models.mdl_gentext import GeneratedText
+from graphregistry.domain.models.mdl_text import GeneratedText
 
 
 class TextGenerationGateway(Protocol):

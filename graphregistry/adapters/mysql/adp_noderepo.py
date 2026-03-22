@@ -7,13 +7,7 @@ from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldKey, 
 
 
 class MySQLNodeRepository:
-    def __init__(
-        self,
-        db=None,
-        registry_db=None,
-        glbcfg: GlobalConfig | None = None,
-        engine_name: str = "xaas_coresrv",
-    ) -> None:
+    def __init__(self, db=None, registry_db=None, glbcfg: GlobalConfig | None = None, engine_name: str = "xaas_coresrv") -> None:
         if db is None or registry_db is None:
             from graphregistry.core.dbbridge import RegistryDB, db as default_db
 

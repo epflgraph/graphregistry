@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from graphregistry.domain.models.mdl_gentext import MultilingualText
+from graphregistry.domain.models.mdl_text import MultilingualText
 
 
 class TextTranslationGateway(Protocol):
