@@ -1,5 +1,8 @@
 from graphregistry.domain.models.mdl_base import NodeKey
 from graphregistry.domain.models.mdl_node import Node
+from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.workflows.operations.ops_node import NodeOperations
+from graphregistry.adapters.mysql.adp_noderepo import MySQLNodeRepository
 import json, rich
 
 #-----------------------------------------#
@@ -100,6 +103,12 @@ def cmd_data_fetch(args):
 
     # Create node object
     node = Node(key=node_key)
+
+    node_repo: NodeRepository = MySQLNodeRepository()
+    node_ops = NodeOperations(repo=node_repo)
+    node_ops.insert(node, actions=('eval',))
+
+    return
 
     # Set page profile from JSON data
     node.title        = json_data["object_title"]

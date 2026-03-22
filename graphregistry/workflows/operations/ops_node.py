@@ -22,13 +22,9 @@ class NodeOperations:
         return self.repo.exists(key)
 
     def insert(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> bool:
-        if self.repo.exists(node.key):
-            raise ValueError("Node already exists")
         return bool(self.repo.save(node, actions=actions))
 
     def update(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> bool:
-        if not self.repo.exists(node.key):
-            raise ValueError("Node does not exist")
         return bool(self.repo.save(node, actions=actions))
 
     def upsert(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> UpsertResult:
