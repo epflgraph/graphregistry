@@ -70,48 +70,6 @@ def cmd_data_import(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-# Handler: Insert node or edge in Registry
-def cmd_data_insert(args):
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Insert node or edge in Registry.")
-
-    # Fetch input options
-    node_input = args.node
-
-    # Case 1: --typeflags=@path/to/file.json
-    if node_input.startswith("@"):
-
-        # Extract path from input
-        path_str = node_input[1:]
-        node_json_path = Path(path_str)
-
-        # Check if file exists
-        if not node_json_path.exists():
-            raise FileNotFoundError(f"Typeflags config file not found: {node_json_path}")
-
-        # Open JSON file and load data
-        with node_json_path.open("r") as fp:
-
-            # Load JSON data from file
-            node_json_data = json.load(fp)
-
-            # Create node key from JSON data
-            node_key = NodeKey(institution_id=node_json_data["institution_id"], object_type=node_json_data["object_type"], object_id=node_json_data["object_id"])
-
-            # Create node object from JSON data
-            node = Node(key=node_key)
-            node.from_simplified_dict(node_json_data)
-
-            # Insert node into registry
-            node_repo: NodeRepository = MySQLNodeRepository()
-            node_repo.save(node, actions=('eval', 'commit'))
-            # rich.print_json(data=node.to_simplified_dict())
-
-    # Print footers
-    print("🖥️  ~ Done.")
-
-
 # Handler: Check if node or edge exists in Registry
 def cmd_data_exists(args):
 
@@ -170,6 +128,97 @@ def cmd_data_fetch(args):
             rich.print_json(data=edge.to_simplified_dict())
         else:
             print(f"❌ Not found: Edge{edge_key_tuple}")
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+# Handler: Insert node or edge in Registry
+def cmd_data_insert(args):
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Insert node or edge in Registry.")
+
+    # Fetch input options
+    node_input = args.node
+    edge_input = args.edge
+
+    # Process node input
+    if node_input:
+
+        # Case 1: --typeflags=@path/to/file.json
+        if node_input.startswith("@"):
+
+            # Extract path from input
+            path_str = node_input[1:]
+            node_json_path = Path(path_str)
+
+            # Check if file exists
+            if not node_json_path.exists():
+                raise FileNotFoundError(f"Node data file not found: {node_json_path}")
+
+            # Open JSON file and load data
+            with node_json_path.open("r") as fp:
+
+                # Load JSON data from file
+                node_json_data = json.load(fp)
+
+        # Case 2: --typeflags='<json>'
+        else:
+            print("Parsing inline JSON typeflags configuration.")
+            try:
+                node_json_data = json.loads(node_input)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON passed to --node: {e}") from e
+
+        # Create node key from JSON data
+        node_key = NodeKey(institution_id=node_json_data["institution_id"], object_type=node_json_data["object_type"], object_id=node_json_data["object_id"])
+
+        # Create node object from JSON data
+        node = Node(key=node_key)
+        node.from_simplified_dict(node_json_data)
+
+        # Insert node into registry
+        node_repo: NodeRepository = MySQLNodeRepository()
+        node_repo.save(node, actions=('eval', 'commit'))
+
+    # Process edge input
+    if edge_input:
+
+        # Case 1: --typeflags=@path/to/file.json
+        if edge_input.startswith("@"):
+
+            # Extract path from input
+            path_str = edge_input[1:]
+            edge_json_path = Path(path_str)
+
+            # Check if file exists
+            if not edge_json_path.exists():
+                raise FileNotFoundError(f"Edge data file not found: {edge_json_path}")
+
+            # Open JSON file and load data
+            with edge_json_path.open("r") as fp:
+
+                # Load JSON data from file
+                edge_json_data = json.load(fp)
+
+        # Case 2: --typeflags='<json>'
+        else:
+            print("Parsing inline JSON typeflags configuration.")
+            try:
+                edge_json_data = json.loads(edge_input)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON passed to --edge: {e}") from e
+
+        # Create edge key from JSON data
+        edge_key = EdgeKey(from_institution_id=edge_json_data["from_institution_id"], from_object_type=edge_json_data["from_object_type"], from_object_id=edge_json_data["from_object_id"], to_institution_id=edge_json_data["to_institution_id"], to_object_type=edge_json_data["to_object_type"], to_object_id=edge_json_data["to_object_id"], context=edge_json_data["context"])
+
+        # Create edge object from JSON data
+        edge = Edge(key=edge_key)
+        edge.from_simplified_dict(edge_json_data)
+
+        # Insert edge into registry
+        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        edge_repo.save(edge, actions=('eval', 'commit'))
 
     # Print footers
     print("🖥️  ~ Done.")

@@ -119,17 +119,51 @@ class MySQLNodeRepository:
 
     # Save (insert) node data to persistence
     def save(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> Any:
+
+        # Get registry schema name based on object type
         schema_registry = self.glbcfg.schema_registry
-        eval_results = self.db.execute_upsert_row(
+
+        # Upsert basic node data (without custom fields)
+        self.db.execute_upsert_row(
+            engine_name       = self.engine_name,
+            schema_name       = schema_registry,
+            table_name        = 'Nodes_N_Object',
+            key_column_names  = ['institution_id', 'object_type', 'object_id'],
+            key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
+            upd_column_names  = ['object_title', 'text_source', 'raw_text'],
+            upd_column_values = [node.title, node.text_source, node.raw_text],
+            actions           = actions
+        )
+
+        # Upsert custom fields for the node
+        for field in node.field_list.field_list:
+            field_key = field.key
+            self.db.execute_upsert_row(
                 engine_name       = self.engine_name,
                 schema_name       = schema_registry,
-                table_name        = 'Nodes_N_Object',
-                key_column_names  = ['institution_id', 'object_type', 'object_id'],
-                key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
-                upd_column_names  = ['object_title', 'text_source', 'raw_text'],
-                upd_column_values = [node.title, node.text_source, node.raw_text],
-                actions           = actions)
-        return eval_results
+                table_name        = 'Data_N_Object_T_CustomFields',
+                key_column_names  = ['institution_id', 'object_type', 'object_id', 'field_language', 'field_name'],
+                key_column_values = [field_key.key.institution_id, field_key.key.object_type, field_key.key.object_id, field_key.field_language, field_key.field_name],
+                upd_column_names  = ['field_value'],
+                upd_column_values = [field.field_value],
+                actions           = actions
+            )
+
+        # Build simplified page profile dict for the node (only include fields that are present in the page profile JSON)
+        page_profile_json = node.page_profile.to_simplified_dict()
+        page_profile_json_keys, page_profile_json_values = zip(*page_profile_json.items()) if page_profile_json else ([], [])
+
+        # Upsert page profile data for the node
+        self.db.execute_upsert_row(
+            engine_name       = self.engine_name,
+            schema_name       = schema_registry,
+            table_name        = 'Data_N_Object_T_PageProfile',
+            key_column_names  = ['institution_id', 'object_type', 'object_id'],
+            key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
+            upd_column_names  = page_profile_json_keys,
+            upd_column_values = page_profile_json_values,
+            actions           = actions
+        )
 
     def save_many(self, node_list: NodeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:
         return [self.save(node, actions=actions) for node in node_list.node_list]

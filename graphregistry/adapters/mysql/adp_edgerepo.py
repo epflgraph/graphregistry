@@ -49,12 +49,12 @@ class MySQLEdgeRepository:
         if not self.exists(key):
             return None
 
-        schema = self._get_schema(key)
+        schema_name = self._get_schema(key)
         rows = self.db.execute_query(
             engine_name=self.engine_name,
             query=f"""
                 SELECT field_language, field_name, field_value
-                FROM {schema}.Data_N_Object_N_Object_T_CustomFields
+                FROM {schema_name}.Data_N_Object_N_Object_T_CustomFields
                 WHERE (
                     from_institution_id, from_object_type, from_object_id,
                     to_institution_id, to_object_type, to_object_id, context
@@ -75,72 +75,36 @@ class MySQLEdgeRepository:
         out = [edge for edge in (self.get_by_key(key) for key in key_list) if edge is not None]
         return EdgeList(edge_list=out)
 
+    # Method: Save (insert or update) edge data to persistence
     def save(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> Any:
-        key = edge.key
-        schema = self._get_schema(key)
-        eval_results = {
-            "edge_object": self.registry_db.registry_insert(
-                schema_name=schema,
-                table_name="Edges_N_Object_N_Object_T_ChildToParent",
-                key_column_names=[
-                    "from_institution_id",
-                    "from_object_type",
-                    "from_object_id",
-                    "to_institution_id",
-                    "to_object_type",
-                    "to_object_id",
-                    "context",
-                ],
-                key_column_values=[
-                    key.from_institution_id,
-                    key.from_object_type,
-                    key.from_object_id,
-                    key.to_institution_id,
-                    key.to_object_type,
-                    key.to_object_id,
-                    key.context,
-                ],
-                upd_column_names=[],
-                upd_column_values=[],
-                actions=actions,
-                engine_name=self.engine_name,
-            ),
-            "custom_fields": [],
-        }
+
+        # Get schema name based on edge key
+        schema_name = self.glbcfg.schema_registry
+
+        # Upsert edge record
+        self.db.execute_upsert_row(
+            engine_name       = self.engine_name,
+            schema_name       = schema_name,
+            table_name        = "Edges_N_Object_N_Object_T_ChildToParent",
+            key_column_names  = ["from_institution_id", "from_object_type", "from_object_id", "to_institution_id", "to_object_type", "to_object_id", "context"],
+            key_column_values = [edge.key.from_institution_id, edge.key.from_object_type, edge.key.from_object_id, edge.key.to_institution_id, edge.key.to_object_type, edge.key.to_object_id, edge.key.context],
+            upd_column_names  = [],
+            upd_column_values = [],
+            actions           = actions
+        )
+
+        # Upsert custom field records
         for field in edge.field_list.field_list:
-            eval_results["custom_fields"].append(
-                self.registry_db.registry_insert(
-                    schema_name=schema,
-                    table_name="Data_N_Object_N_Object_T_CustomFields",
-                    key_column_names=[
-                        "from_institution_id",
-                        "from_object_type",
-                        "from_object_id",
-                        "to_institution_id",
-                        "to_object_type",
-                        "to_object_id",
-                        "field_language",
-                        "field_name",
-                        "context",
-                    ],
-                    key_column_values=[
-                        key.from_institution_id,
-                        key.from_object_type,
-                        key.from_object_id,
-                        key.to_institution_id,
-                        key.to_object_type,
-                        key.to_object_id,
-                        field.key.field_language,
-                        field.key.field_name,
-                        key.context,
-                    ],
-                    upd_column_names=["field_value"],
-                    upd_column_values=[field.field_value],
-                    actions=actions,
-                    engine_name=self.engine_name,
-                )
+            self.db.execute_upsert_row(
+                engine_name       = self.engine_name,
+                schema_name       = schema_name,
+                table_name        = "Data_N_Object_N_Object_T_CustomFields",
+                key_column_names  = ["from_institution_id", "from_object_type", "from_object_id", "to_institution_id", "to_object_type", "to_object_id", "field_language", "field_name", "context"],
+                key_column_values = [edge.key.from_institution_id, edge.key.from_object_type, edge.key.from_object_id, edge.key.to_institution_id, edge.key.to_object_type, edge.key.to_object_id, field.key.field_language, field.key.field_name, edge.key.context],
+                upd_column_names  = ["field_value"],
+                upd_column_values = [field.field_value],
+                actions           = actions
             )
-        return eval_results
 
     def save_many(self, edge_list: EdgeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:
         return [self.save(edge, actions=actions) for edge in edge_list.edge_list]
@@ -149,7 +113,7 @@ class MySQLEdgeRepository:
         if not self.exists(key):
             return False
 
-        schema = self._get_schema(key)
+        schema_name = self._get_schema(key)
         query_where = """
             (
                 from_institution_id = :from_institution_id
@@ -162,8 +126,8 @@ class MySQLEdgeRepository:
             )
         """
         tables = [
-            f"{schema}.Edges_N_Object_N_Object_T_ChildToParent",
-            f"{schema}.Data_N_Object_N_Object_T_CustomFields",
+            f"{schema_name}.Edges_N_Object_N_Object_T_ChildToParent",
+            f"{schema_name}.Data_N_Object_N_Object_T_CustomFields",
         ]
 
         if "commit" in actions:

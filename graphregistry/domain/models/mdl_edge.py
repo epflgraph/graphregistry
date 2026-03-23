@@ -88,6 +88,18 @@ class Edge(BaseModel):
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
 
+    def from_simplified_dict(self, json_data: dict[str, Any]) -> None:
+        self.key = EdgeKey(
+             from_institution_id = json_data["from_institution_id"],
+             from_object_type    = json_data["from_object_type"],
+             from_object_id      = json_data["from_object_id"],
+             to_institution_id   = json_data["to_institution_id"],
+             to_object_type      = json_data["to_object_type"],
+             to_object_id        = json_data["to_object_id"],
+             context             = json_data["context"]
+        )
+        self.field_list.set_from_json(json_data=json_data.get("field_list", []), edge_key=self.key)
+
     def to_simplified_dict(self) -> dict[str, Any]:
         return {
             "from_institution_id" : self.key.from_institution_id,
