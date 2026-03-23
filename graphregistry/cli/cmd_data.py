@@ -76,6 +76,12 @@ def cmd_data_exists(args):
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Check if node or edge exists.")
 
+    # Fetch context objects
+    db = args.ctx.db
+
+    # Fetch environment from input options
+    env = args.env
+
     # Fetch input options
     node_key_tuple = tuple(args.node.split(',')) if args.node else None
     edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
@@ -86,12 +92,12 @@ def cmd_data_exists(args):
 
     # Check if node and print results
     if node_key:
-        node_repo: NodeRepository = MySQLNodeRepository()
+        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
         print(f"""{"✅ Exists" if node_repo.exists(node_key) else "❌ Not found"}: Node{node_key_tuple}""")
 
     # Check if edge and print results
     if edge_key:
-        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
         print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge{edge_key_tuple}""")
 
     # Print footers
@@ -103,6 +109,12 @@ def cmd_data_fetch(args):
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Check if node or edge exists.")
 
+    # Fetch context objects
+    db = args.ctx.db
+
+    # Fetch environment from input options
+    env = args.env
+
     # Fetch input options
     node_key_tuple = tuple(args.node.split(',')) if args.node else None
     edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
@@ -113,7 +125,7 @@ def cmd_data_fetch(args):
 
     # Fetch node and print results
     if node_key:
-        node_repo: NodeRepository = MySQLNodeRepository()
+        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
         node = node_repo.get(node_key)
         if node:
             rich.print_json(data=node.to_simplified_dict())
@@ -137,6 +149,12 @@ def cmd_data_insert(args):
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Insert node or edge in Registry.")
+
+    # Fetch context objects
+    db = args.ctx.db
+
+    # Fetch environment from input options
+    env = args.env
 
     # Fetch input options
     node_input = args.node
@@ -178,7 +196,7 @@ def cmd_data_insert(args):
         node.from_simplified_dict(node_json_data)
 
         # Insert node into registry
-        node_repo: NodeRepository = MySQLNodeRepository()
+        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
         node_repo.save(node, actions=('eval', 'commit'))
 
     # Process edge input
@@ -217,7 +235,7 @@ def cmd_data_insert(args):
         edge.from_simplified_dict(edge_json_data)
 
         # Insert edge into registry
-        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
         edge_repo.save(edge, actions=('eval', 'commit'))
 
     # Print footers
@@ -229,7 +247,11 @@ def cmd_data_delete(args):
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Delete node or edge from Registry.")
 
+    # Fetch context objects
+    db = args.ctx.db
+
     # Fetch input options
+    env = args.env
     node_key_tuple = tuple(args.node.split(',')) if args.node else None
     edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
 
@@ -239,13 +261,13 @@ def cmd_data_delete(args):
 
     # Fetch node and print results
     if node_key:
-        node_repo: NodeRepository = MySQLNodeRepository()
-        node_repo.delete(node_key)
+        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
+        node_repo.delete(node_key, actions=('eval',))
 
     # Fetch edge and print results
     if edge_key:
-        edge_repo: EdgeRepository = MySQLEdgeRepository()
-        edge_repo.delete(edge_key)
+        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
+        edge_repo.delete(edge_key, actions=('eval',))
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -259,11 +281,13 @@ def cmd_data_debug(args):
 
     # Fetch context objects
     registry = args.ctx.registry
+    db = args.ctx.db
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Fetch node or edge from Registry.")
 
     # Get input options
+    env = args.env
     node_key_tuple = tuple(args.node.split(',')) if args.node else None
     edge_key = tuple(args.edge.split(',')) if args.edge else None
 
@@ -281,7 +305,7 @@ def cmd_data_debug(args):
     # Create node object
     node = Node(key=node_key)
 
-    node_repo: NodeRepository = MySQLNodeRepository()
+    node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
     node_ops = NodeOperations(repo=node_repo)
     node_ops.insert(node, actions=('eval',))
 

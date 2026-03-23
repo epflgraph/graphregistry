@@ -1,19 +1,18 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeKey, EdgeList
 
+# If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
+if TYPE_CHECKING:
+    from graphdb.core.graphdb import GraphDB
+
 class MySQLEdgeRepository:
 
-    def __init__(self, db=None, registry_db=None, glbcfg: GlobalConfig | None = None, engine_name: str = "xaas_coresrv") -> None:
-        if db is None or registry_db is None:
-            from graphregistry.core.dbbridge import RegistryDB, db as default_db
-            db = db or default_db
-            registry_db = registry_db or RegistryDB()
-        self.db = db
-        self.registry_db = registry_db
-        self.glbcfg = glbcfg or GlobalConfig()
+    def __init__(self, engine_name: str, db: GraphDB, glbcfg: GlobalConfig | None = None) -> None:
         self.engine_name = engine_name
+        self.db = db
+        self.glbcfg = glbcfg or GlobalConfig()
 
     def _get_schema(self, key: EdgeKey) -> str:
         schema_from = self.glbcfg.object_type_to_schema.get(key.from_object_type, self.glbcfg.schema_registry)

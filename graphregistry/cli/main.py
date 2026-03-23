@@ -59,8 +59,8 @@ def main(argv=None) -> int:
     ai       = GraphAI
 
     # Initialise MySQL client
-    db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
-    db = GraphDB(config=db_cfg)
+    db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    db = GraphDB(config=db_config)
 
     # Login to GraphAI and get auth token
     graphai_auth_token = GraphAIClient.login(global_config.settings['graphai']['client_config_file'])
@@ -80,10 +80,11 @@ def main(argv=None) -> int:
         global_config = global_config,
         index_config  = index_config,
         scores_config = scores_config,
-        db       = db,
-        es       = es,
-        registry = registry,
-        ai       = ai, # type: ignore
+        db        = db,
+        db_config = db_config,
+        es        = es,
+        registry  = registry,
+        ai        = ai, # type: ignore
         graphai_auth_token = graphai_auth_token # type: ignore
     )
 

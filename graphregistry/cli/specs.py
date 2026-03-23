@@ -22,7 +22,8 @@ from graphregistry.cli.cmd_data import (
     cmd_data_import,
     cmd_data_insert,
     cmd_data_exists,
-    cmd_data_fetch
+    cmd_data_fetch,
+    cmd_data_delete,
 )
 from graphregistry.cli.cmd_airflow import (
     cmd_airflow_sync,
@@ -48,14 +49,18 @@ from graphregistry.cli.cmd_index import (
     cmd_index_generate
 )
 
+# Import db config
+from graphdb.core.config import GraphDBConfig
+db_config = GraphDBConfig.from_file("config/config_db.yaml")
+
 # Global common arguments
 global_common_args = {
     'env' : dict(
         flags = ('--env',),
         kwargs = dict(
             help = "Specify environment (default=test).",
-            choices = ('test', 'prod', 'xaas_prod', 'xaas_coresrv'),
-            # default = 'test'
+            choices = tuple(db_config.environments.keys()),
+            default = db_config.default_env
         )
     )
 }
@@ -192,7 +197,9 @@ cli_definitions: Dict[str, Any] = {
     #---------------------#
     'data' : dict(
         help = "Manage base registry data.",
-        common_args = dict(),
+        common_args = {
+            'env': global_common_args['env']
+        },
         commands = {
             'import' : dict(
                 help = "Import data from json file.",
@@ -203,7 +210,25 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--actions',      ), kwargs=dict(required=False, type=str, default='eval',   help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
                     dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on import.")),
                 ],
-                common_args = []
+                common_args = ['env']
+            ),
+            'exists' : dict(
+                help = "Check if node or edge exists.",
+                func = cmd_data_exists,
+                args = [
+                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
+                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
+                ],
+                common_args = ['env']
+            ),
+            'fetch' : dict(
+                help = "Import data from input or json file.",
+                func = cmd_data_fetch,
+                args = [
+                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
+                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
+                ],
+                common_args = ['env']
             ),
             'insert' : dict(
                 help = "Import data from input or json file.",
@@ -216,25 +241,19 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="Insert node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
                     dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on insert.")),
                 ],
-                common_args = []
+                common_args = ['env']
             ),
-            'exists' : dict(
-                help = "Check if node or edge exists.",
-                func = cmd_data_exists,
+            'delete' : dict(
+                help = "Delete data from Registry.",
+                func = cmd_data_delete,
                 args = [
-                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
-                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
+                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="Delete node by comma-separated node key.")),
+                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="Delete edge by comma-separated edge key.")),
+                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Delete node list by comma-separated node keys.")),
+                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Delete edge list by comma-separated edge keys.")),
+                    dict(flags=('--actions',      ), kwargs=dict(required=False, type=str, default='eval',   help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
                 ],
-                common_args = []
-            ),
-            'fetch' : dict(
-                help = "Import data from input or json file.",
-                func = cmd_data_fetch,
-                args = [
-                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
-                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
-                ],
-                common_args = []
+                common_args = ['env']
             ),
         }
     ),
@@ -417,6 +436,5 @@ cli_definitions: Dict[str, Any] = {
                 common_args = []
             )
         }
-    ),
-
+    )
 }

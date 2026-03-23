@@ -1,16 +1,19 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldKey, NodeFieldList, NodeKey, NodeList
 from graphregistry.domain.models.mdl_pageprofile import PageProfile
 
+# If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
+if TYPE_CHECKING:
+    from graphdb.core.graphdb import GraphDB
 
 class MySQLNodeRepository:
 
-    def __init__(self, db=None, glbcfg: GlobalConfig | None = None, engine_name: str = "xaas_coresrv") -> None:
+    def __init__(self, engine_name: str, db: GraphDB, glbcfg: GlobalConfig | None = None) -> None:
+        self.engine_name = engine_name
         self.db = db
         self.glbcfg = glbcfg or GlobalConfig()
-        self.engine_name = engine_name
 
     def _get_schema(self, object_type: str) -> str:
         return self.glbcfg.object_type_to_schema.get(object_type, self.glbcfg.schema_registry)
@@ -163,19 +166,95 @@ class MySQLNodeRepository:
         return [self.save(node, actions=actions) for node in node_list.node_list]
 
     def delete(self, key: NodeKey, actions: tuple[str, ...] = ("eval",)) -> bool:
+
+        # Check if node exists first (return False if not found)
         if not self.exists(key):
             return False
-        
 
-        # if "commit" in actions:
-        #     self.registry_db.delete_nodes_by_ids(
-        #         institution_id=key.institution_id,
-        #         object_type=key.object_type,
-        #         nodes_id=[key.object_id],
-        #         engine_name=self.engine_name,
-        #         actions=actions,
-        #     )
-        return False
+        # Get registry schema name based on object type
+        schema_objects = self.glbcfg.schema_registry
+
+        # Build params dict for SQL queries
+        params = {
+            "institution_id" : key.institution_id,
+            "object_type"    : key.object_type,
+            "object_id"      : key.object_id,
+        }
+
+        # Build dict of SQL WHERE clauses for each relevant table (for both node and edge related tables)
+        query_where_per_table: dict[str, str] = {}
+        for table_name in ("Nodes_N_Object", "Data_N_Object_T_PageProfile", "Data_N_Object_T_CustomFields"):
+            query_where_per_table[f"{schema_objects}.{table_name}"] = ("institution_id=:institution_id AND object_type=:object_type AND object_id=:object_id")
+
+        # For edge related tables, we need to consider that the node can be either the source or target of the edge,
+        # so we need to build a more complex WHERE clause that checks both the "from" and "to" sides of the edge
+        edge_where = """
+            (
+                from_institution_id=:institution_id
+                AND from_object_type=:object_type
+                AND from_object_id=:object_id
+            ) OR (
+                to_institution_id=:institution_id
+                AND to_object_type=:object_type
+                AND to_object_id=:object_id
+            )
+        """
+
+        # Add edge related tables to the dict with the same WHERE clause (since they all have the same structure for referencing nodes in edges)
+        for schema in (self.glbcfg.schema_registry, self.glbcfg.schema_lectures):
+            for table_name in ("Edges_N_Object_N_Object_T_ChildToParent", "Data_N_Object_N_Object_T_CustomFields"):
+                query_where_per_table[f"{schema}.{table_name}"] = edge_where
+
+        # If "eval" action is specified, evaluate the number of records that would be deleted for each table based on the constructed WHERE clauses, and print the results if "print" action is also specified
+        if "eval" in actions:
+            for table_name, where_sql in query_where_per_table.items():
+                query_eval = f"SELECT COUNT(*) FROM {table_name} WHERE {where_sql};"
+                if "print" in actions:
+                    print(query_eval)
+                out = self.db.execute_query(engine_name=self.engine_name, query=query_eval, params=params)
+                n_to_delete = out[0][0] if isinstance(out, list) and len(out) > 0 else 0
+                if n_to_delete > 0:
+                    print(table_name, n_to_delete)
+
+        # If "commit" action is specified, delete the records for each table based on the constructed WHERE clauses
+        if "commit" in actions:
+
+            # Iterate over the dict of tables and their corresponding WHERE clauses, and execute the delete query for each table with the constructed WHERE clause and params
+            for table_name, where_sql in query_where_per_table.items():
+
+                # Build the delete query for the table with the constructed WHERE clause
+                query_delete = f"DELETE FROM {table_name} WHERE {where_sql};"
+
+                # If "print" action is also specified, print the delete query for each table before executing it
+                if "print" in actions:
+                    print(query_delete)
+
+                # Execute the delete query for the table with the constructed WHERE clause and params
+                self.db.execute_query(engine_name=self.engine_name, query=query_delete, params=params, commit=True)
+
+            # For concept mapping tables, we need to check if the tables exist first (since they may not exist for all object types), and then delete records based on the same node reference parameters (since they also reference nodes in edges in the same way)
+            for concept_table in ("Edges_N_Object_N_Concept_T_ConceptDetection", "Edges_N_Object_N_Concept_T_ManualMapping"):
+
+                # Check if the concept mapping table exists before trying to delete records from it (since not all object types may have concept mappings, and the tables may not exist for those object types)
+                if self.db.table_exists(self.engine_name, schema_objects, concept_table):
+
+                    # Build the delete query for the concept mapping table with the same params (since the concept mapping tables also reference nodes in edges in the same way)
+                    query_delete_concepts = f"""
+                        DELETE FROM {schema_objects}.{concept_table}
+                        WHERE institution_id=:institution_id
+                          AND object_type=:object_type
+                          AND object_id=:object_id;
+                    """
+
+                    # If "print" action is also specified, print the delete query for the concept mapping table before executing it
+                    if "print" in actions:
+                        print(query_delete_concepts)
+
+                    # Execute the delete query for the concept mapping table with the same params (since the concept mapping tables also reference nodes in edges in the same way)
+                    self.db.execute_query(engine_name=self.engine_name, query=query_delete_concepts, params=params, commit=True)
+
+        # If we reach this point, it means the delete operation was successful (either evaluated or committed), so we can return True
+        return True
 
     def delete_many(self, key_list: list[NodeKey], actions: tuple[str, ...] = ("eval",)) -> list[bool]:
         return [self.delete(key, actions=actions) for key in key_list]

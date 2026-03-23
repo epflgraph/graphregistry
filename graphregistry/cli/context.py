@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
     from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+    from graphdb.core.config import GraphDBConfig
     from graphdb.core.graphdb import GraphDB
     from graphregistry.clients.elasticsearch import GraphES
     from graphregistry.core.registry import GraphRegistry
@@ -16,8 +17,9 @@ class CLIContext:
     global_config : "GlobalConfig"
     index_config  : "IndexConfig"
     scores_config : "ScoresConfig"
-    db       : "GraphDB"
-    es       : "GraphES"
-    registry : "GraphRegistry"
-    ai       : "GraphAI" # type: ignore
+    db        : "GraphDB"
+    db_config : "GraphDBConfig"
+    es        : "GraphES"
+    registry  : "GraphRegistry"
+    ai        : "GraphAI" # type: ignore
     graphai_auth_token : str
