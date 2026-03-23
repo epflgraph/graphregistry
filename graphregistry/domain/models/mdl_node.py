@@ -10,20 +10,20 @@ class NodeField(BaseModel):
     field_value: Any = ""
 
     @classmethod
-    def from_json(cls, doc_json: dict[str, Any], node_key: NodeKey) -> "NodeField":
+    def from_json(cls, json_data: dict[str, Any], node_key: NodeKey) -> "NodeField":
         return cls(
             key=NodeFieldKey(
                 key = node_key,
-                field_language = doc_json["field_language"],
-                field_name = doc_json["field_name"]
+                field_language = json_data["field_language"],
+                field_name = json_data["field_name"]
             ),
-            field_value = doc_json["field_value"]
+            field_value = json_data["field_value"]
         )
 
-    def set_from_json(self, doc_json: dict[str, Any]) -> None:
-        self.key.field_language = str(doc_json.get("field_language", self.key.field_language))
-        self.key.field_name     = str(doc_json.get("field_name"    , self.key.field_name))
-        self.field_value        =     doc_json.get("field_value"   , self.field_value)
+    def set_from_json(self, json_data: dict[str, Any]) -> None:
+        self.key.field_language = str(json_data.get("field_language", self.key.field_language))
+        self.key.field_name     = str(json_data.get("field_name"    , self.key.field_name))
+        self.field_value        =     json_data.get("field_value"   , self.field_value)
 
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
@@ -50,15 +50,15 @@ class NodeFieldList(BaseModel):
     field_list: list[NodeField] = Field(default_factory=list)
 
     @classmethod
-    def from_json(cls, json_data: list[dict[str, Any]], node_key: NodeKey) -> "NodeFieldList":
+    def from_json(cls, data: list[dict[str, Any]], key: NodeKey) -> "NodeFieldList":
         return cls(
             field_list=[
-                NodeField.from_json(field_json, node_key=node_key)
-                for field_json in (json_data or [])
+                NodeField.from_json(field_json, node_key=key)
+                for field_json in (data or [])
             ]
         )
 
-    def set_from_json(self, json_data: list[dict[str, Any]], node_key: NodeKey) -> None:
+    def set_from_list(self, json_data: list[dict[str, Any]], node_key: NodeKey) -> None:
         self.field_list = [
             NodeField.from_json(field_json, node_key=node_key)
             for field_json in (json_data or [])
@@ -91,11 +91,18 @@ class Node(BaseModel):
         return self
 
     @classmethod
-    def from_json(cls, doc_json: dict[str, Any]) -> "Node":
-        return cls.model_validate(doc_json)
+    def from_json(cls, json_data: dict[str, Any]) -> "Node":
+        return cls.model_validate(json_data)
 
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
+
+    def from_simplified_dict(self, json_data: dict[str, Any]) -> None:
+        self.title        = str(json_data.get("object_title", self.title))
+        self.text_source  = str(json_data.get("text_source", self.text_source))
+        self.raw_text     = str(json_data.get("raw_text", self.raw_text))
+        self.field_list.set_from_list(  json_data=json_data.get("custom_fields", []), node_key=self.key)
+        self.page_profile.set_from_json(json_data=json_data.get("page_profile", {}))
 
     def to_simplified_dict(self) -> dict[str, Any]:
         return {
@@ -106,7 +113,7 @@ class Node(BaseModel):
             "text_source"    : self.text_source,
             "raw_text"       : self.raw_text,
             "custom_fields"  : self.field_list.to_simplified_list(),
-            "page_profile"   : self.page_profile.to_json(),
+            "page_profile"   : self.page_profile.to_simplified_dict()
         }
 
 # Model definition

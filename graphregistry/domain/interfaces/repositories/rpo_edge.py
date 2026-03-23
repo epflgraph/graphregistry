@@ -14,11 +14,11 @@ class EdgeRepository(Protocol):
         ...
 
     # Load one edge from persistence
-    def get_by_key(self, key: EdgeKey) -> Edge | None:
+    def get(self, key: EdgeKey) -> Edge | None:
         ...
 
     # Load many edges from persistence
-    def get_by_keys(self, key_list: list[EdgeKey]) -> EdgeList:
+    def get_many(self, key_list: list[EdgeKey]) -> EdgeList:
         ...
 
     # Save one edge to persistence

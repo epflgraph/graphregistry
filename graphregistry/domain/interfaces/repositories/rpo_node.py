@@ -14,11 +14,11 @@ class NodeRepository(Protocol):
         ...
 
     # Load one node from persistence
-    def get_by_key(self, key: NodeKey) -> Node | None:
+    def get(self, key: NodeKey) -> Node | None:
         ...
 
     # Load many nodes from persistence
-    def get_by_keys(self, key_list: list[NodeKey]) -> NodeList:
+    def get_many(self, key_list: list[NodeKey]) -> NodeList:
         ...
 
     # Save one node to persistence

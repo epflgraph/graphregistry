@@ -1,25 +1,15 @@
 from __future__ import annotations
-
 from typing import Any
-
 from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeKey, EdgeList
 
-
 class MySQLEdgeRepository:
-    def __init__(
-        self,
-        db=None,
-        registry_db=None,
-        glbcfg: GlobalConfig | None = None,
-        engine_name: str = "xaas_coresrv",
-    ) -> None:
+
+    def __init__(self, db=None, registry_db=None, glbcfg: GlobalConfig | None = None, engine_name: str = "xaas_coresrv") -> None:
         if db is None or registry_db is None:
             from graphregistry.core.dbbridge import RegistryDB, db as default_db
-
             db = db or default_db
             registry_db = registry_db or RegistryDB()
-
         self.db = db
         self.registry_db = registry_db
         self.glbcfg = glbcfg or GlobalConfig()
@@ -35,12 +25,11 @@ class MySQLEdgeRepository:
         return self.glbcfg.schema_registry
 
     def exists(self, key: EdgeKey) -> bool:
-        schema = self._get_schema(key)
+        schema_name = self.glbcfg.schema_registry
         out = self.db.execute_query(
             engine_name=self.engine_name,
             query=f"""
-                SELECT COUNT(*)
-                FROM {schema}.Edges_N_Object_N_Object_T_ChildToParent
+                SELECT COUNT(*) FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent
                 WHERE (
                     from_institution_id, from_object_type, from_object_id,
                     to_institution_id, to_object_type, to_object_id, context
@@ -56,7 +45,7 @@ class MySQLEdgeRepository:
     def exists_many(self, key_list: list[EdgeKey]) -> list[bool]:
         return [self.exists(key) for key in key_list]
 
-    def get_by_key(self, key: EdgeKey) -> Edge | None:
+    def get(self, key: EdgeKey) -> Edge | None:
         if not self.exists(key):
             return None
 
@@ -82,7 +71,7 @@ class MySQLEdgeRepository:
             field_list.append(EdgeField(key=field_key, field_value=field_value))
         return Edge(key=key, field_list={"field_list": field_list})
 
-    def get_by_keys(self, key_list: list[EdgeKey]) -> EdgeList:
+    def get_many(self, key_list: list[EdgeKey]) -> EdgeList:
         out = [edge for edge in (self.get_by_key(key) for key in key_list) if edge is not None]
         return EdgeList(edge_list=out)
 

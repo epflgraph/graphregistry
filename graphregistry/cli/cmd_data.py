@@ -1,13 +1,18 @@
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.domain.models.mdl_node import Node
+# graphregistry/cli/cmd_data.py
+# This module defines command handlers for the 'data' subcommands of the Graph Registry CLI.
+from graphregistry.domain.models.mdl_base import NodeKey, EdgeKey
+from graphregistry.domain.models.mdl_node import Node, NodeList
+from graphregistry.domain.models.mdl_edge import Edge, EdgeList
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.workflows.operations.ops_node import NodeOperations
+from graphregistry.workflows.operations.ops_edge import EdgeOperations
 from graphregistry.adapters.mysql.adp_noderepo import MySQLNodeRepository
+from graphregistry.adapters.mysql.adp_edgerepo import MySQLEdgeRepository
+from pathlib import Path
 import json, rich
 
-#-----------------------------------------#
-# Handler: ... #
-#-----------------------------------------#
+# Handler: Import data from JSON file into Registry
 def cmd_data_import(args):
     """
     Handle:
@@ -65,16 +70,112 @@ def cmd_data_import(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-#-----------------------------------------#
-# Handler: ... #
-#-----------------------------------------#
+# Handler: Insert node or edge in Registry
 def cmd_data_insert(args):
-    pass
 
-#-----------------------------------------#
-# Handler: ... #
-#-----------------------------------------#
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Insert node or edge in Registry.")
+
+    # Fetch input options
+    node_input = args.node
+
+    # Case 1: --typeflags=@path/to/file.json
+    if node_input.startswith("@"):
+
+        # Extract path from input
+        path_str = node_input[1:]
+        node_json_path = Path(path_str)
+
+        # Check if file exists
+        if not node_json_path.exists():
+            raise FileNotFoundError(f"Typeflags config file not found: {node_json_path}")
+
+        # Open JSON file and load data
+        with node_json_path.open("r") as fp:
+
+            # Load JSON data from file
+            node_json_data = json.load(fp)
+
+            # Create node key from JSON data
+            node_key = NodeKey(institution_id=node_json_data["institution_id"], object_type=node_json_data["object_type"], object_id=node_json_data["object_id"])
+
+            # Create node object from JSON data
+            node = Node(key=node_key)
+            node.from_simplified_dict(node_json_data)
+
+            # Insert node into registry
+            node_repo: NodeRepository = MySQLNodeRepository()
+            node_repo.save(node, actions=('eval', 'commit'))
+            # rich.print_json(data=node.to_simplified_dict())
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+
+# Handler: Check if node or edge exists in Registry
+def cmd_data_exists(args):
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Check if node or edge exists.")
+
+    # Fetch input options
+    node_key_tuple = tuple(args.node.split(',')) if args.node else None
+    edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
+
+    # Get input options
+    node_key = NodeKey.from_tuple(node_key_tuple) if node_key_tuple else None
+    edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
+
+    # Check if node and print results
+    if node_key:
+        node_repo: NodeRepository = MySQLNodeRepository()
+        print(f"""{"✅ Exists" if node_repo.exists(node_key) else "❌ Not found"}: Node{node_key_tuple}""")
+
+    # Check if edge and print results
+    if edge_key:
+        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge{edge_key_tuple}""")
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+# Handler: Fetch node or edge from Registry
 def cmd_data_fetch(args):
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Check if node or edge exists.")
+
+    # Fetch input options
+    node_key_tuple = tuple(args.node.split(',')) if args.node else None
+    edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
+
+    # Get input options
+    node_key = NodeKey.from_tuple(node_key_tuple) if node_key_tuple else None
+    edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
+
+    # Fetch node and print results
+    if node_key:
+        node_repo: NodeRepository = MySQLNodeRepository()
+        node = node_repo.get(node_key)
+        if node:
+            rich.print_json(data=node.to_simplified_dict())
+        else:
+            print(f"❌ Not found: Node{node_key_tuple}")
+
+    # Fetch edge and print results
+    if edge_key:
+        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        edge = edge_repo.get(edge_key)
+        if edge:
+            rich.print_json(data=edge.to_simplified_dict())
+        else:
+            print(f"❌ Not found: Edge{edge_key_tuple}")
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
+# Handler: Genereal debug command for data operations
+def cmd_data_debug(args):
     """
     Handle:
       graphregistry data fetch [...]
@@ -84,7 +185,7 @@ def cmd_data_fetch(args):
     registry = args.ctx.registry
 
     # Print headers
-    print("🖥️  ~ Graph Registry CLI. Import data from json file.")
+    print("🖥️  ~ Graph Registry CLI. Fetch node or edge from Registry.")
 
     # Get input options
     node_key_tuple = tuple(args.node.split(',')) if args.node else None
