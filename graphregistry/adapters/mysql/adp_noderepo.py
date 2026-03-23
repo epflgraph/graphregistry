@@ -6,15 +6,9 @@ from graphregistry.domain.models.mdl_pageprofile import PageProfile
 
 
 class MySQLNodeRepository:
-    def __init__(self, db=None, registry_db=None, glbcfg: GlobalConfig | None = None, engine_name: str = "xaas_coresrv") -> None:
-        if db is None or registry_db is None:
-            from graphregistry.core.dbbridge import RegistryDB, db as default_db
 
-            db = db or default_db
-            registry_db = registry_db or RegistryDB()
-
+    def __init__(self, db=None, glbcfg: GlobalConfig | None = None, engine_name: str = "xaas_coresrv") -> None:
         self.db = db
-        self.registry_db = registry_db
         self.glbcfg = glbcfg or GlobalConfig()
         self.engine_name = engine_name
 
@@ -171,16 +165,17 @@ class MySQLNodeRepository:
     def delete(self, key: NodeKey, actions: tuple[str, ...] = ("eval",)) -> bool:
         if not self.exists(key):
             return False
+        
 
-        if "commit" in actions:
-            self.registry_db.delete_nodes_by_ids(
-                institution_id=key.institution_id,
-                object_type=key.object_type,
-                nodes_id=[key.object_id],
-                engine_name=self.engine_name,
-                actions=actions,
-            )
-        return True
+        # if "commit" in actions:
+        #     self.registry_db.delete_nodes_by_ids(
+        #         institution_id=key.institution_id,
+        #         object_type=key.object_type,
+        #         nodes_id=[key.object_id],
+        #         engine_name=self.engine_name,
+        #         actions=actions,
+        #     )
+        return False
 
     def delete_many(self, key_list: list[NodeKey], actions: tuple[str, ...] = ("eval",)) -> list[bool]:
         return [self.delete(key, actions=actions) for key in key_list]

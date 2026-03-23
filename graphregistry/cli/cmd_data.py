@@ -223,6 +223,33 @@ def cmd_data_insert(args):
     # Print footers
     print("🖥️  ~ Done.")
 
+# Handler: Check if node or edge exists in Registry
+def cmd_data_delete(args):
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Delete node or edge from Registry.")
+
+    # Fetch input options
+    node_key_tuple = tuple(args.node.split(',')) if args.node else None
+    edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
+
+    # Get input options
+    node_key = NodeKey.from_tuple(node_key_tuple) if node_key_tuple else None
+    edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
+
+    # Fetch node and print results
+    if node_key:
+        node_repo: NodeRepository = MySQLNodeRepository()
+        node_repo.delete(node_key)
+
+    # Fetch edge and print results
+    if edge_key:
+        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        edge_repo.delete(edge_key)
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
 # Handler: Genereal debug command for data operations
 def cmd_data_debug(args):
     """
