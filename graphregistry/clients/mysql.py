@@ -897,7 +897,178 @@ class GraphDB():
     #--------------------------------------------------------------#
     # Method: Executes a query in the MySQL shell from an SQL file #
     #--------------------------------------------------------------#
-    def execute_query_from_file(self, engine_name, file_path, database=None, verbose=False):
+    def execute_query_from_file(self, engine_name, file_path, database=None, verbose=False, debug=False):
+
+        import os
+        import shlex
+        import subprocess
+
+        # Get absolute file path
+        abs_file_path = os.path.abspath(file_path)
+
+        # Check if the file exists
+        if not os.path.isfile(abs_file_path):
+            print(f"SQL file does not exist: {abs_file_path}")
+            return False
+
+        # Build base shell command
+        shell_command = list(self.base_command_mysql[engine_name])
+
+        # Guard against a configured command that already forces mysql to use -e
+        if '-e' in shell_command or '--execute' in shell_command:
+            print("Configured mysql command already contains -e/--execute, so stdin SQL will be ignored.")
+            print(f"Command: {shell_command}")
+            return False
+
+        # Add mysql verbosity flags for easier debugging
+        # --show-warnings helps surface SQL warnings
+        # --comments preserves comments if useful
+        if '--show-warnings' not in shell_command:
+            shell_command.append('--show-warnings')
+
+        # Add the database to the command if specified
+        if database:
+            shell_command.append(database)
+
+        # If verbose is enabled, print the command being executed
+        if verbose and '-v' not in shell_command:
+            shell_command.append('-v')
+
+        try:
+            # Read SQL file content
+            with open(abs_file_path, 'r', encoding='utf-8') as sql_file:
+                sql_text = sql_file.read()
+
+            if debug:
+                print("=" * 80)
+                print("DEBUG: execute_query_from_file")
+                print(f"Engine name        : {engine_name}")
+                print(f"SQL file           : {abs_file_path}")
+                print(f"File exists        : {os.path.isfile(abs_file_path)}")
+                print(f"Working directory  : {os.getcwd()}")
+                print(f"Target database    : {database!r}")
+                print(f"SQL length         : {len(sql_text)} characters")
+                print(f"SQL line count     : {len(sql_text.splitlines())}")
+                print("Command list       :", shell_command)
+                print("Command printable  :", " ".join(shlex.quote(part) for part in shell_command))
+                print("-" * 80)
+                print("SQL preview (first 1000 chars):")
+                print(sql_text[:1000])
+                if len(sql_text) > 1000:
+                    print("... [truncated]")
+                print("=" * 80)
+
+            # Add a debug preamble so mysql tells us what DB/user/session it's using
+            debug_sql_prefix = ""
+            if debug:
+                debug_sql_prefix = """
+                SELECT 'DEBUG:mysql connected' AS msg;
+                SELECT DATABASE() AS current_database;
+                SELECT @@hostname AS mysql_hostname;
+                SELECT @@port AS mysql_port;
+                SELECT USER() AS mysql_user;
+                """
+
+            final_sql = debug_sql_prefix + "\n" + sql_text
+
+            # Execute the SQL command using subprocess, passing the SQL text via stdin
+            result = subprocess.run(
+                shell_command,
+                input=final_sql,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                cwd=os.getcwd()
+            )
+
+        except OSError as exc:
+            print(f"Failed to open SQL file: {abs_file_path}")
+            print(str(exc))
+            return False
+
+        except Exception as exc:
+            print(f"Failed to execute mysql command for file: {abs_file_path}")
+            print(str(exc))
+            return False
+
+        # Filter out the password warning
+        warn = 'mysql: [Warning] Using a password on the command line interface can be insecure.'
+        stderr_lines = [
+            line for line in result.stderr.splitlines()
+            if line.strip() and line.strip() != warn
+        ]
+
+        if debug:
+            print("=" * 80)
+            print("DEBUG: subprocess result")
+            print(f"Return code        : {result.returncode}")
+            print("-" * 80)
+            print("STDOUT:")
+            print(result.stdout if result.stdout.strip() else "[empty]")
+            print("-" * 80)
+            print("STDERR:")
+            print("\n".join(stderr_lines) if stderr_lines else "[empty]")
+            print("=" * 80)
+
+        # Print any stderr lines that are not the password warning
+        if stderr_lines:
+            print(f"stderr for file: {abs_file_path}")
+            print("\n".join(stderr_lines))
+
+        # Check the return code to determine success
+        if result.returncode != 0:
+            print(f"MySQL command failed for file: {abs_file_path}")
+            return False
+
+        # Optional post-check: verify tables exist
+        if debug and database:
+            try:
+                verify_command = list(self.base_command_mysql[engine_name])
+
+                if '-e' in verify_command or '--execute' in verify_command:
+                    print("Skipping verification because configured mysql command already contains -e/--execute.")
+                else:
+                    verify_sql = """
+                    SELECT DATABASE() AS current_database;
+                    SHOW TABLES;
+                    """
+                    if '--show-warnings' not in verify_command:
+                        verify_command.append('--show-warnings')
+                    verify_command.append(database)
+
+                    verify_result = subprocess.run(
+                        verify_command,
+                        input=verify_sql,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        cwd=os.getcwd()
+                    )
+
+                    verify_stderr_lines = [
+                        line for line in verify_result.stderr.splitlines()
+                        if line.strip() and line.strip() != warn
+                    ]
+
+                    print("=" * 80)
+                    print("DEBUG: post-execution verification")
+                    print(f"Verification return code: {verify_result.returncode}")
+                    print("Verification STDOUT:")
+                    print(verify_result.stdout if verify_result.stdout.strip() else "[empty]")
+                    print("Verification STDERR:")
+                    print("\n".join(verify_stderr_lines) if verify_stderr_lines else "[empty]")
+                    print("=" * 80)
+
+            except Exception as exc:
+                print("Post-execution verification failed:")
+                print(str(exc))
+
+        # If we got here, the command executed successfully
+        return result
+
+
+
+    def execute_query_from_file_DEPRECATED(self, engine_name, file_path, database=None, verbose=False):
 
         # Get absolute file path
         abs_file_path = os.path.abspath(file_path)
