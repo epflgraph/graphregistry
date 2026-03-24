@@ -11,7 +11,7 @@
             "Category"    : ["depth"],
             "Course"      : ["latest_academic_year"],
             "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
-            "MOOC"        : ["courses_info"],
+            "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url", "courses_info"],
             "Notebook"    : ["notebook_type", "language", "repository_id", "html_document_url"],
             "Person"      : ["is_at_epfl", "gender"],
             "Publication" : ["year", "published_in", "publisher", "publication_id_v1"],
@@ -31,7 +31,7 @@
                     "order" : [["is_restricted", "DESC"]]
                 },
                  "MOOC"     : {
-                    "obj"   : []
+                    "obj"   : ["domain", "language", "level", "platform", "thumbnail_image_url"]
                 },
                 "Person"      : {
                     "order" : [["is_at_epfl", "DESC"]]
