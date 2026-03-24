@@ -37,7 +37,9 @@ run_step() {
     ( ulimit -v "${MEM_LIMIT_KIB}" && "$@" )
   fi
 
+  sleep 1
   printf "%s" "$SEP"
+  sleep 1
 }
 
 #=========================#
@@ -69,19 +71,19 @@ run_step "airflow status" \
   graphregistry airflow status
 
 run_step "cache update (formulas)" \
-  graphregistry cache update --formulas=fields,views,traversals,scores --actions=commit
+  graphregistry cache update --formulas=fields,views,traversals,scores --actions=commit,eval
 
 run_step "cache update (matrix)" \
-  graphregistry cache update --matrix --actions=commit,eval,print
+  graphregistry cache update --matrix --actions=commit
 
 run_step "index build" \
-  graphregistry index build --actions=commit,eval
+  graphregistry index build --actions=commit
 
 run_step "index generate mixed views" \
   graphregistry index mixed_views
 
 run_step "index patch" \
-  graphregistry index patch --actions=commit,eval
+  graphregistry index patch --actions=commit
 
 run_step "airflow rollover" \
   graphregistry airflow rollover --actions=commit
@@ -100,8 +102,6 @@ run_step "airflow reset (again)" \
 #   graphregistry index generate --target=elasticsearch --index_date=2026-03-13 -r
 
 # run_step "es import" \
-#   graphregistry es import --env=xaas_coresrv \
-#     --input_folder=/home/dockerhost/data/es_exports/2026-03-13/es_fullindex_2026-03-13 \
-#     --rename_to=graphsearch_test_2026-03-13_sample -r
+#   graphregistry es import --env=xaas_coresrv --input_folder=/home/dockerhost/data/es_exports/2026-03-13/es_fullindex_2026-03-13 --rename_to=graphsearch_test_2026-03-13_sample -r
 
 echo "End of script." >&2
