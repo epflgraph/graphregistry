@@ -25,6 +25,7 @@
         ["Exercise"    , "Person"         , true],
         ["Lecture"     , "Course"         , true],
         ["Lecture"     , "MOOC"           , true],
+        ["Lecture"     , "Person"         , true],
         ["MOOC"        , "Person"         , true],
         ["Notebook"    , "Person"         , true],
         ["Person"      , "Unit"           , true],
