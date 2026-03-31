@@ -73,9 +73,6 @@ def cmd_data_import(args):
 # Handler: Check if node or edge exists in Registry
 def cmd_data_exists(args):
 
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Check if node or edge exists.")
-
     # Fetch context objects
     db = args.ctx.db
 
@@ -93,21 +90,15 @@ def cmd_data_exists(args):
     # Check if node and print results
     if node_key:
         node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
-        print(f"""{"✅ Exists" if node_repo.exists(node_key) else "❌ Not found"}: Node{node_key_tuple}""")
+        print(f"""{"✅ Exists" if node_repo.exists(node_key) else "❌ Not found"}: Node ~ ({node_key.institution_id}, {node_key.object_type}, {node_key.object_id})""")
 
     # Check if edge and print results
     if edge_key:
         edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
-        print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge{edge_key_tuple}""")
-
-    # Print footers
-    print("🖥️  ~ Done.")
+        print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge ~ ({edge_key.from_institution_id}, {edge_key.from_object_type}, {edge_key.from_object_id}, {edge_key.to_institution_id}, {edge_key.to_object_type}, {edge_key.to_object_id}, {edge_key.context})""")
 
 # Handler: Fetch node or edge from Registry
 def cmd_data_fetch(args):
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Check if node or edge exists.")
 
     # Fetch context objects
     db = args.ctx.db
@@ -134,21 +125,15 @@ def cmd_data_fetch(args):
 
     # Fetch edge and print results
     if edge_key:
-        edge_repo: EdgeRepository = MySQLEdgeRepository()
+        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
         edge = edge_repo.get(edge_key)
         if edge:
             rich.print_json(data=edge.to_simplified_dict())
         else:
             print(f"❌ Not found: Edge{edge_key_tuple}")
 
-    # Print footers
-    print("🖥️  ~ Done.")
-
 # Handler: Insert node or edge in Registry
 def cmd_data_insert(args):
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Insert node or edge in Registry.")
 
     # Fetch context objects
     db = args.ctx.db
@@ -159,6 +144,7 @@ def cmd_data_insert(args):
     # Fetch input options
     node_input = args.node
     edge_input = args.edge
+    actions = tuple(args.actions.split(',')) if args.actions else ()
 
     # Process node input
     if node_input:
@@ -197,7 +183,7 @@ def cmd_data_insert(args):
 
         # Insert node into registry
         node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
-        node_repo.save(node, actions=('eval', 'commit'))
+        node_repo.save(node, actions=actions)
 
     # Process edge input
     if edge_input:
@@ -236,16 +222,10 @@ def cmd_data_insert(args):
 
         # Insert edge into registry
         edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
-        edge_repo.save(edge, actions=('eval', 'commit'))
-
-    # Print footers
-    print("🖥️  ~ Done.")
+        edge_repo.save(edge, actions=actions)
 
 # Handler: Check if node or edge exists in Registry
 def cmd_data_delete(args):
-
-    # Print headers
-    print("🖥️  ~ Graph Registry CLI. Delete node or edge from Registry.")
 
     # Fetch context objects
     db = args.ctx.db
@@ -258,19 +238,17 @@ def cmd_data_delete(args):
     # Get input options
     node_key = NodeKey.from_tuple(node_key_tuple) if node_key_tuple else None
     edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
+    actions  = tuple(args.actions.split(','))  if args.actions  else ()
 
     # Fetch node and print results
     if node_key:
         node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
-        node_repo.delete(node_key, actions=('eval',))
+        node_repo.delete(node_key, actions=actions)
 
     # Fetch edge and print results
     if edge_key:
         edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
-        edge_repo.delete(edge_key, actions=('eval',))
-
-    # Print footers
-    print("🖥️  ~ Done.")
+        edge_repo.delete(edge_key, actions=actions)
 
 # Handler: Genereal debug command for data operations
 def cmd_data_debug(args):

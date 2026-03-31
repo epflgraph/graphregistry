@@ -82,8 +82,8 @@ class Edge(BaseModel):
     field_list: EdgeFieldList = Field(default_factory=EdgeFieldList)
 
     @classmethod
-    def from_json(cls, doc_json: dict[str, Any]) -> "Edge":
-        return cls.model_validate(doc_json)
+    def from_json(cls, json_data: dict[str, Any]) -> "Edge":
+        return cls.model_validate(json_data)
 
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")

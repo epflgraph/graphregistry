@@ -3,6 +3,23 @@
 from tabulate import tabulate
 import sys, re, termios, tty, Levenshtein
 
+#----------------------#
+# Set up sysmsg logger #
+#----------------------#
+from loguru import logger as sysmsg
+sysmsg.remove()
+sysmsg.add(
+    sys.stdout,
+    level="TRACE",
+    colorize=True,      # FORCE ANSI colors
+    enqueue=True,       # REQUIRED for Celery / multiprocessing
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
+           "<level>{level: <8}</level> | "
+           "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - "
+           "{message}",
+)
+#----------------------#
+
 # Print in colour
 def print_colour(msg, colour='white', background='black', style='normal', display_method=False):
     colour_codes = {

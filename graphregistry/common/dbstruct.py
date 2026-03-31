@@ -43,6 +43,47 @@ cast_mapping = {
     "MEDIUMINT UNSIGNED" : "CAST(%s AS UNSIGNED)"
 }
 
+#--------------------------------------------------------#
+# Get list of SQL queries paths and store them as a dict #
+#--------------------------------------------------------#
+
+# Initialize empty dict to store SQL query paths
+sql_queries_paths = {}
+
+# Loop through all SQL query files in the "database/queries" folder and subfolders and store their paths in the dict
+for file_path in (Path(__file__).resolve().parents[2] / 'database/queries').rglob('*.sql'):
+
+    # Get subfolders
+    subfolder_2, subfolder_1 = file_path.parent.name, file_path.parent.parent.name
+
+    # Initialize nested dicts if they don't exist
+    if subfolder_1 not in sql_queries_paths:
+        sql_queries_paths[subfolder_1] = {}
+    if subfolder_2 not in sql_queries_paths[subfolder_1]:
+        sql_queries_paths[subfolder_1][subfolder_2] = {}
+
+    # Store file path in dict using subfolder names and file stem as keys
+    sql_queries_paths[subfolder_1][subfolder_2][file_path.stem] = file_path
+
+#---------------------#
+# Auxiliary functions #
+#---------------------#
+
+# Function that takes a query template with placeholders and replaces them with values from kwargs
+def resolve_sql_query(file_path, **kwargs):
+
+    # Open SQL query template file and read as string
+    with open(file_path, 'r', encoding="utf-8") as f:
+        query_template = f.read()
+
+    # Replace placeholders in the query template with values from kwargs
+    for key, value in kwargs.items():
+        placeholder = f"[[{key}]]"
+        query_template = query_template.replace(placeholder, str(value))
+
+    # Return resolved query
+    return query_template
+
 # Function to flatten config schema and remove duplicates
 def flatten_schema_remove_duplicates(schema: dict) -> dict:
     """

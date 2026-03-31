@@ -77,6 +77,26 @@ class GlobalConfig:
             'Widget'         : self.schema_registry,
         }
 
+        # Object-to-object type to schema mapping
+        self.object2object_type_to_schema = {
+            ('Course'     , 'Person')         : self.schema_registry,
+            ('Course'     , 'Specialisation') : self.schema_registry,
+            ('Course'     , 'StudyPlan')      : self.schema_registry,
+            ('Exercise'   , 'Person')         : self.schema_registry,
+            ('MOOC'       , 'Person')         : self.schema_registry,
+            ('Notebook'   , 'Person')         : self.schema_registry,
+            ('Person'     , 'Unit')           : self.schema_registry,
+            ('Publication', 'Person')         : self.schema_registry,
+            ('Unit'       , 'Unit')           : self.schema_registry,
+            ('Lecture'    , 'Course')         : self.schema_lectures,
+            ('Lecture'    , 'MOOC')           : self.schema_lectures,
+            ('Slide'      , 'Lecture')        : self.schema_lectures,
+            ('Transcript' , 'Lecture')        : self.schema_lectures,
+            ('Widget'     , 'Lecture')        : self.schema_lectures,
+            ('Category'   , 'Category')       : self.schema_ontology,
+            ('Concept'    , 'Category')       : self.schema_ontology
+        }
+
         # Also build the inverted mapping
         from collections import defaultdict
         self.schema_to_object_types = defaultdict(list)

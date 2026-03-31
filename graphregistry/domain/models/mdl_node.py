@@ -98,6 +98,11 @@ class Node(BaseModel):
         return self.model_dump(mode="json")
 
     def from_simplified_dict(self, json_data: dict[str, Any]) -> None:
+        self.key = NodeKey(
+            institution_id = json_data["institution_id"],
+            object_type    = json_data["object_type"],
+            object_id      = json_data["object_id"]
+        )
         self.title        = str(json_data.get("object_title", self.title))
         self.text_source  = str(json_data.get("text_source", self.text_source))
         self.raw_text     = str(json_data.get("raw_text", self.raw_text))

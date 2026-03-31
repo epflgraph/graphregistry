@@ -231,7 +231,7 @@ cli_definitions: Dict[str, Any] = {
                 common_args = ['env']
             ),
             'insert' : dict(
-                help = "Import data from input or json file.",
+                help = "Insert data from input or json file.",
                 func = cmd_data_insert,
                 args = [
                     dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="Insert node from JSON string, or '@path/to/file.json' to load JSON from a file.")),
@@ -239,6 +239,7 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Insert node list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
                     dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Insert edge list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
                     dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="Insert node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--actions',   ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
                     dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on insert.")),
                 ],
                 common_args = ['env']

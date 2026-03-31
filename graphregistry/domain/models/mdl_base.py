@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel, model_validator
+from graphregistry.common.auxfcn import sysmsg
 
 # Model definition
 class NodeKey(BaseModel):
@@ -12,6 +13,7 @@ class NodeKey(BaseModel):
     def parse_tuple(cls, data):
         if isinstance(data, tuple):
             if len(data) != 3:
+                sysmsg.error(f"Failure to parse edge key.")
                 raise ValueError("NodeKey tuple must have 3 elements")
             return {
                 "institution_id" : data[0],
@@ -73,6 +75,7 @@ class EdgeKey(BaseModel):
     def parse_tuple(cls, data):
         if isinstance(data, tuple):
             if len(data) != 7:
+                sysmsg.error(f"Failure to parse edge key.")
                 raise ValueError("EdgeKey tuple must have 7 elements")
             return {
                 "from_institution_id" : data[0],
