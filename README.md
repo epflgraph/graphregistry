@@ -14,12 +14,13 @@ The *Graph Data Platform* - developed by the AI engineering team at the [EPFL Ce
 
 **List of Graph services:**<br/>
 Registry |
-[AI](https://github.com/epflgraph/graphai/) |
+[AI](https://github.com/epflgraph/graphai) |
 [Ontology](https://github.com/epflgraph/graphontology) |
-[Search](https://github.com/epflgraph/graphsearch_ui/) | [Chat](https://github.com/epflgraph/graphregistry/) |
-[Dash](https://github.com/epflgraph/) |
-[DB client](https://github.com/epflgraph/) |
-[ES client](https://github.com/epflgraph/)
+[Search](https://github.com/epflgraph/graphsearch_ui) |
+[Chat](https://github.com/epflgraph/graphregistry) |
+[Dash](https://github.com/epflgraph/graphdashboard) |
+[DB client](https://github.com/epflgraph/graphdb-client) |
+[ES client](https://github.com/epflgraph/graphes-client)
 
 Graph Registry
 ==============
