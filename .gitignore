@@ -265,3 +265,4 @@ payload.json
 config/config_db.yaml
 config/config_global.dev.yaml
 config/config_index.prod.json
+config/config_es.yaml
