@@ -15,5 +15,5 @@
     ```bash
     graphregistry data insert --node_list=@scripts/init/sample_sets/epfl_graph_sample_set_NODEs.json --actions=commit
     ```
-    but `NULL` fields in Nodes are being set as `None`.
-- Edge custom fields are not being imported.
+    but `NULL` fields in Nodes are being set as `None`. [FIXED]
+- Edge custom fields are not being imported. [FIXED]
