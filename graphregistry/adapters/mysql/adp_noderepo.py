@@ -7,6 +7,7 @@ from graphregistry.common.auxfcn import sysmsg
 from graphregistry.domain.models.mdl_node import NodeKey, NodeFieldKey, NodeField, NodeFieldList, Node, NodeList
 from graphregistry.domain.models.mdl_pageprofile import PageProfile
 from graphdb.models.sqlquery import print_sql
+import rich
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
@@ -174,8 +175,17 @@ class MySQLNodeRepository:
             actions           = actions
         )
 
-        # Print status
-        print(f"💾 Node ~ ({node.key.institution_id}, {node.key.object_type}, {node.key.object_id}) saved.")
+        # Print status message with edge details using rich library for better formatting
+        rich.print(
+            f"💾 [green]Saved: [/green]"
+            f"[yellow]Node[/yellow] "
+            f"[cyan]~[/cyan] "
+            f"("
+            f"[cyan]{node.key.institution_id}[/cyan], "
+            f"[cyan]{node.key.object_type}[/cyan], "
+            f"[bold][cyan]{node.key.object_id}[/cyan][/bold]"
+            ")"
+        )
 
     # Method: Save (insert or update) multiple nodes data to persistence from a NodeList object
     def save_many(self, node_list: NodeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:

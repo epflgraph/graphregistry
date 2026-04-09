@@ -144,12 +144,14 @@ def cmd_data_insert(args):
     # Fetch input options
     node_input = args.node
     edge_input = args.edge
+    node_list_input = args.node_list
+    edge_list_input = args.edge_list
     actions = tuple(args.actions.split(',')) if args.actions else ()
 
     # Process node input
     if node_input:
 
-        # Case 1: --typeflags=@path/to/file.json
+        # Case 1: --node=@path/to/file.json
         if node_input.startswith("@"):
 
             # Extract path from input
@@ -166,9 +168,9 @@ def cmd_data_insert(args):
                 # Load JSON data from file
                 node_json_data = json.load(fp)
 
-        # Case 2: --typeflags='<json>'
+        # Case 2: --node='<json>'
         else:
-            print("Parsing inline JSON typeflags configuration.")
+            print("Parsing inline JSON node.")
             try:
                 node_json_data = json.loads(node_input)
             except json.JSONDecodeError as e:
@@ -188,7 +190,7 @@ def cmd_data_insert(args):
     # Process edge input
     if edge_input:
 
-        # Case 1: --typeflags=@path/to/file.json
+        # Case 1: --edge=@path/to/file.json
         if edge_input.startswith("@"):
 
             # Extract path from input
@@ -205,9 +207,9 @@ def cmd_data_insert(args):
                 # Load JSON data from file
                 edge_json_data = json.load(fp)
 
-        # Case 2: --typeflags='<json>'
+        # Case 2: --edge='<json>'
         else:
-            print("Parsing inline JSON typeflags configuration.")
+            print("Parsing inline JSON edge.")
             try:
                 edge_json_data = json.loads(edge_input)
             except json.JSONDecodeError as e:
@@ -223,6 +225,76 @@ def cmd_data_insert(args):
         # Insert edge into registry
         edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
         edge_repo.save(edge, actions=actions)
+
+    # Process node list input
+    if node_list_input:
+
+        # Case 1: --node_list=@path/to/file.json
+        if node_list_input.startswith("@"):
+
+            # Extract path from input
+            path_str = node_list_input[1:]
+            node_list_json_path = Path(path_str)
+
+            # Check if file exists
+            if not node_list_json_path.exists():
+                raise FileNotFoundError(f"Node list data file not found: {node_list_json_path}")
+
+            # Open JSON file
+            with node_list_json_path.open("r") as fp:
+
+                # Load JSON data from file
+                node_list_json_data = json.load(fp)
+
+        # Case 2: --node_list='<json>'
+        else:
+            print("Parsing inline JSON node list.")
+            try:
+                node_list_json_data = json.loads(node_list_input)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON passed to --node_list: {e}") from e
+
+        # Create node list object from JSON data
+        node_list = NodeList()
+        node_list.from_simplified_dict_list(node_list_json_data)
+
+        # Insert node list into registry
+        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
+        node_repo.save_many(node_list, actions=actions)
+
+    # Process edge list input
+    if edge_list_input:
+
+        # Case 1: --edge_list=@path/to/file.json
+        if edge_list_input.startswith("@"):
+
+            # Extract path from input
+            path_str = edge_list_input[1:]
+            edge_list_json_path = Path(path_str)
+
+            # Check if file exists
+            if not edge_list_json_path.exists():
+                raise FileNotFoundError(f"Edge list data file not found: {edge_list_json_path}")
+
+            # Open JSON file and load data
+            with edge_list_json_path.open("r") as fp:
+                edge_list_json_data = json.load(fp)
+
+        # Case 2: --edge_list='<json>'
+        else:
+            print("Parsing inline JSON edge list.")
+            try:
+                edge_list_json_data = json.loads(edge_list_input)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON passed to --edge_list: {e}") from e
+
+        # Create edge list object from JSON data
+        edge_list = EdgeList()
+        edge_list.from_simplified_dict_list(edge_list_json_data)
+
+        # Insert edge list into registry
+        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
+        edge_repo.save_many(edge_list, actions=actions)
 
 # Handler: Check if node or edge exists in Registry
 def cmd_data_delete(args):

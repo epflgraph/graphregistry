@@ -6,6 +6,7 @@ from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.auxfcn import sysmsg
 from graphregistry.domain.models.mdl_edge import EdgeKey, EdgeFieldKey, EdgeField, EdgeFieldList, Edge, EdgeList
 from graphdb.models.sqlquery import print_sql
+import rich
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
@@ -119,12 +120,28 @@ class MySQLEdgeRepository:
                 engine_name       = self.engine_name,
                 schema_name       = schema_name,
                 table_name        = 'Data_N_Object_N_Object_T_CustomFields',
-                key_column_names  = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id', 'field_language', 'field_name', 'context'],
-                key_column_values = [edge.key.from_institution_id, edge.key.from_object_type, edge.key.from_object_id, edge.key.to_institution_id, edge.key.to_object_type, edge.key.to_object_id, field.key.field_language, field.key.field_name, edge.key.context],
+                key_column_names  = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id', 'context', 'field_language', 'field_name'],
+                key_column_values = [field.key.key.from_institution_id, field.key.key.from_object_type, field.key.key.from_object_id, field.key.key.to_institution_id, field.key.key.to_object_type, field.key.key.to_object_id, field.key.key.context, field.key.field_language, field.key.field_name],
                 upd_column_names  = ['field_value'],
                 upd_column_values = [field.field_value],
                 actions           = actions
             )
+
+        # Print status message with edge details using rich library for better formatting
+        rich.print(
+            f"💾 [green]Saved: [/green]"
+            f"[yellow]Edge[/yellow] "
+            f"[cyan]~[/cyan] "
+            f"("
+            f"[cyan]{edge.key.from_institution_id}[/cyan], "
+            f"[cyan]{edge.key.from_object_type}[/cyan], "
+            f"[bold][cyan]{edge.key.from_object_id}[/cyan][/bold], "
+            f"[cyan]{edge.key.to_institution_id}[/cyan], "
+            f"[cyan]{edge.key.to_object_type}[/cyan], "
+            f"[bold][cyan]{edge.key.to_object_id}[/cyan][/bold], "
+            f"[cyan]{edge.key.context}[/cyan]"
+            ")"
+        )
 
     # Method: Save (insert or update) multiple edges data to persistence from an EdgeList object
     def save_many(self, edge_list: EdgeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:

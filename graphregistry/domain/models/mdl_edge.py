@@ -1,4 +1,5 @@
 from __future__ import annotations
+from platform import node
 from typing import Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.models.mdl_base import EdgeKey, EdgeFieldKey
@@ -122,6 +123,21 @@ class EdgeList(BaseModel):
 
     def to_json(self) -> list[dict[str, Any]]:
         return self.model_dump(mode="json")["edge_list"]
+
+    def from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
+        self.edge_list = []
+        for edge_json in (json_data or []):
+            edge = Edge(key=EdgeKey(
+                from_institution_id = edge_json["from_institution_id"],
+                from_object_type    = edge_json["from_object_type"],
+                from_object_id      = edge_json["from_object_id"],
+                to_institution_id   = edge_json["to_institution_id"],
+                to_object_type      = edge_json["to_object_type"],
+                to_object_id        = edge_json["to_object_id"],
+                context             = edge_json["context"]
+            ))
+            edge.from_simplified_dict(edge_json)
+            self.edge_list.append(edge)
 
     def to_simplified_dict_list(self) -> list[dict[str, Any]]:
         return [edge.to_simplified_dict() for edge in self.edge_list]

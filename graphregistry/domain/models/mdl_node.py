@@ -132,5 +132,16 @@ class NodeList(BaseModel):
     def to_json(self) -> list[dict[str, Any]]:
         return self.model_dump(mode="json")["node_list"]
 
+    def from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
+        self.node_list = []
+        for node_json in (json_data or []):
+            node = Node(key=NodeKey(
+                institution_id = node_json["institution_id"],
+                object_type    = node_json["object_type"],
+                object_id      = node_json["object_id"]
+            ))
+            node.from_simplified_dict(node_json)
+            self.node_list.append(node)
+
     def to_simplified_dict_list(self) -> list[dict[str, Any]]:
         return [node.to_simplified_dict() for node in self.node_list]
