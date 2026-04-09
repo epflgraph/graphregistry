@@ -99,7 +99,7 @@ class Edge(BaseModel):
              to_object_id        = json_data["to_object_id"],
              context             = json_data["context"]
         )
-        self.field_list.set_from_json(json_data=json_data.get("field_list", []), edge_key=self.key)
+        self.field_list.set_from_json(json_data=json_data.get("custom_fields", []), edge_key=self.key)
 
     def to_simplified_dict(self) -> dict[str, Any]:
         return {
