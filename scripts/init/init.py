@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-from graphregistry.clients.mysql import GraphDB
+from graphdb.core.graphdb import GraphDB
 from graphregistry.clients.elasticsearch import GraphES
 from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text
@@ -18,8 +18,11 @@ db_env = 'xaas_coresrv'
 # Commit/execute flag
 commit = True
 
+# Verbose mode
+verbose = False
+
 # Exit on critical error?
-exit_on_critical = False
+exit_on_critical = True
 
 #-----------------------#
 # Object initialisation #
@@ -179,7 +182,7 @@ if True:
 
         # ‼️ Execute SQL file
         if commit:
-            db.execute_query_from_file(engine_name=db_env, file_path=sql_file_path, database=schema_name, verbose=True)
+            db.execute_query_from_file(engine_name=db_env, file_path=sql_file_path, database=schema_name, verbose=verbose)
 
         # Print info message
         sysmsg.trace(f"Verifying that all required tables were created ...")
