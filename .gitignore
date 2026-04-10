@@ -266,3 +266,7 @@ config/config_db.yaml
 config/config_global.dev.yaml
 config/config_index.prod.json
 config/config_es.yaml
+sample_course_test.sh
+scripts/init/sample_sets/epfl_graph_sample_set_EDGEs.json
+scripts/init/sample_sets/epfl_graph_sample_set_NODEs.json
+scripts/init/sample_sets/MATH-132_Lecture_01_Method_1.json
