@@ -272,3 +272,5 @@ scripts/init/sample_sets/epfl_graph_sample_set_NODEs.json
 scripts/init/sample_sets/MATH-132_Lecture_01_Method_1.json
 config/config_graphai_client copy.json
 scripts/init/sample_sets/*.json
+config/config_graphai_client.rcp.json
+config/config_graphai_client.switch.json
