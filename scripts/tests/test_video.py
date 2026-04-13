@@ -6,10 +6,12 @@ from graphai_client.client_api.text import extract_concepts_from_text
 import rich, json
 
 # Streamable MP4 video URL
-video_url = 'https://raw.githubusercontent.com/epflgraph/graphregistry/master/scripts/init/sample_sets/MATH-132_Lecture_01.mp4'
+# video_url = 'https://raw.githubusercontent.com/epflgraph/graphregistry/master/scripts/init/sample_sets/MATH-132_Lecture_01.mp4'
+video_url = "https://graphsearch-b5hebkezaxb7hmbz.a01.azurefd.net/videos/1CM160%20-%20Manufacturing%20technology/1CM160---Week-1.4-Engineering-materials.mp4"
 
 # Output file base path
-output_file_base_path = 'scripts/init/sample_sets/MATH-132_Lecture_01'
+# output_file_base_path = 'scripts/init/sample_sets/MATH-132_Lecture_01'
+output_file_base_path = 'scripts/init/sample_sets/TUE-Manufacturing-Technology'
 
 # Initialize global config
 glbcfg = GlobalConfig()
@@ -35,7 +37,9 @@ def main():
             video_url      = video_url,
             graph_api_json = graph_api_json,
             ocr_model      = 'tesseract',
-            destination_languages = ['en']
+            destination_languages = ['en'],
+            force          = False,
+            force_download = False
         )
 
         # Apply concept detection and append to slides
@@ -54,7 +58,9 @@ def main():
         # Fetch video by URL
         video_token, video_size, streams = graphai.download_url(
             video_url  = video_url,
-            login_info = login_info
+            login_info = login_info,
+            force          = False,
+            force_download = False
         )
 
         # Apply slide detection and OCR
@@ -62,7 +68,8 @@ def main():
             video_token = video_token,
             login_info  = login_info,
             ocr_model   = 'tesseract',
-            destination_languages = ['en']
+            destination_languages = ['en'],
+            force = True
         )
 
         # Apply concept detection and append to slides
@@ -73,7 +80,8 @@ def main():
         audio_language, audio_fingerprint, segments = graphai.process_audio(
             video_token = video_token,
             login_info  = login_info,
-            destination_languages = ['en']
+            destination_languages = ['en'],
+            force = True
         )
 
         # Construct final video info
