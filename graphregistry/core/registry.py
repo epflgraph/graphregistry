@@ -202,7 +202,7 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
 
         # Create table
         tb = GraphTable(schema_name=schema_name, table_name=table_name)
-        db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=True, query_id='v29zYeaA')
+        db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=False, query_id='v29zYeaA')
 
         # Check if table was created successfully
         if db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
