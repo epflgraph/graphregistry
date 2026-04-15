@@ -1,9 +1,10 @@
+# graphregistry/domain/models/mdl_base.py
 from __future__ import annotations
 from pydantic import BaseModel, model_validator
-from graphregistry.common.auxfcn import sysmsg
 
 # Model definition
 class NodeKey(BaseModel):
+    model_config = {"frozen": True}
     institution_id: str
     object_type: str
     object_id: str
@@ -13,7 +14,6 @@ class NodeKey(BaseModel):
     def parse_tuple(cls, data):
         if isinstance(data, tuple):
             if len(data) != 3:
-                sysmsg.error(f"Failure to parse edge key.")
                 raise ValueError("NodeKey tuple must have 3 elements")
             return {
                 "institution_id" : data[0],
@@ -38,6 +38,7 @@ class NodeKey(BaseModel):
 
 # Model definition
 class NodeFieldKey(BaseModel):
+    model_config = {"frozen": True}
     key: NodeKey
     field_language: str = ""
     field_name: str = ""
@@ -62,6 +63,7 @@ class NodeFieldKey(BaseModel):
 
 # Model definition
 class EdgeKey(BaseModel):
+    model_config = {"frozen": True}
     from_institution_id: str
     from_object_type: str
     from_object_id: str
@@ -75,7 +77,6 @@ class EdgeKey(BaseModel):
     def parse_tuple(cls, data):
         if isinstance(data, tuple):
             if len(data) != 7:
-                sysmsg.error(f"Failure to parse edge key.")
                 raise ValueError("EdgeKey tuple must have 7 elements")
             return {
                 "from_institution_id" : data[0],
@@ -116,6 +117,7 @@ class EdgeKey(BaseModel):
 
 # Model definition
 class EdgeFieldKey(BaseModel):
+    model_config = {"frozen": True}
     key: EdgeKey
     field_language: str
     field_name: str

@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/common/auxfcn.py
 from tabulate import tabulate
 import sys, re, termios, tty, Levenshtein
 

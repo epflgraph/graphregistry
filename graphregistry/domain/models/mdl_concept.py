@@ -1,7 +1,8 @@
+# graphregistry/domain/models/mdl_concept.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
-from graphregistry.domain.models.mdl_node import NodeKey
+from graphregistry.domain.models.mdl_base import NodeKey
 
 # Model definition
 class DetectedConcept(BaseModel):

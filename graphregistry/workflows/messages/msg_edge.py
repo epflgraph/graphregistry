@@ -1,66 +1,53 @@
+# graphregistry/workflows/messages/msg_edge.py
 from __future__ import annotations
-
 from pydantic import BaseModel
-
 from graphregistry.domain.models.mdl_edge import Edge, EdgeKey
 
-
-# ------------------ #
-# EXISTS
-# ------------------ #
-
+# Class definition
 class EdgeExistsRequest(BaseModel):
     key: EdgeKey
 
-
+# Class definition
 class EdgeExistsResponse(BaseModel):
     exists: bool
 
-
-# ------------------ #
-# INSERT
-# ------------------ #
-
+# Class definition
 class EdgeInsertRequest(BaseModel):
     edge: Edge
 
-
+# Class definition
 class EdgeInsertResponse(BaseModel):
     success: bool
 
-
-# ------------------ #
-# UPDATE
-# ------------------ #
-
+# Class definition
 class EdgeUpdateRequest(BaseModel):
     edge: Edge
 
-
+# Class definition
 class EdgeUpdateResponse(BaseModel):
     success: bool
 
-
-# ------------------ #
-# UPSERT
-# ------------------ #
-
+# Class definition
 class EdgeUpsertRequest(BaseModel):
     edge: Edge
 
-
+# Class definition
 class EdgeUpsertResponse(BaseModel):
     success: bool
-    created: bool  # True = inserted, False = updated
+    created: bool
 
-
-# ------------------ #
-# DELETE
-# ------------------ #
-
+# Class definition
 class EdgeDeleteRequest(BaseModel):
     key: EdgeKey
 
-
+# Class definition
 class EdgeDeleteResponse(BaseModel):
+    success: bool
+
+# Class definition
+class EdgeSaveRequest(BaseModel):
+    edge: Edge
+
+# Class definition
+class EdgeSaveResponse(BaseModel):
     success: bool

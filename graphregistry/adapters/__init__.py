@@ -1,3 +1,4 @@
+# graphregistry/adapters/__init__.py
 from graphregistry.adapters.genai import GenAITextGenerationGateway
 from graphregistry.adapters.graphai import GraphAIConceptGateway, GraphAITextTranslationGateway
 

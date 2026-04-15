@@ -1,3 +1,4 @@
+# graphregistry/adapters/graphai/adp_conceptgatw.py
 from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
@@ -5,11 +6,11 @@ from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
 from graphregistry.domain.models.mdl_concept import DetectedConcept, DetectedConceptList
 
-
+# Type aliases for better readability
 LoginFn = Callable[[str], dict[str, Any]]
 ExtractFn = Callable[[str, dict[str, Any]], list[dict[str, Any]]]
 
-
+# Class definition
 class GraphAIConceptGateway(ConceptGateway):
     """
     Gateway adapter that bridges the domain `ConceptGateway` protocol to GraphAI.

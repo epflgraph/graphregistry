@@ -1,3 +1,4 @@
+# gregistry/domain/__init__.py
 from graphregistry.domain.models import (
     DetectedConcept,
     DetectedConceptList,

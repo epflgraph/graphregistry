@@ -1,4 +1,4 @@
-# Graph Registry CLI: airflow
+# graphregistry/cli/cmd_airflow.py
 import json
 from pathlib import Path
 

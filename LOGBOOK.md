@@ -17,6 +17,6 @@
     ```
     but `NULL` fields in Nodes are being set as `None`. [FIXED]
 - Edge custom fields are not being imported. [FIXED]
-- Test full run with new structure [NEXT]
+- Test full run with new structure [DONE]
 - Think about where to store custom print functions (eg, print_node_saved(), print_edge_saved())
 - Implement data file structure analyser/inspector

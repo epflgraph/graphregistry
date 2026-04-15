@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/common/dbstruct.py
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB

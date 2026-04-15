@@ -1,3 +1,5 @@
+
+# graphregistry/domain/models/mdl_node.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field, model_validator
@@ -80,14 +82,14 @@ class Node(BaseModel):
     text_source  : str = ""
     raw_text     : str = ""
     field_list   : NodeFieldList = Field(default_factory=NodeFieldList)
-    page_profile : PageProfile   = Field(default_factory=lambda data: PageProfile(key=data["key"]))
+    page_profile : PageProfile | None = None
 
     @model_validator(mode="after")
     def set_default_page_profile(self) -> "Node":
         if self.page_profile is None:
             self.page_profile = PageProfile(key=self.key)
         elif self.page_profile.key != self.key:
-            self.page_profile.key = self.key
+            self.page_profile = self.page_profile.model_copy(update={"key": self.key})
         return self
 
     @classmethod
@@ -97,7 +99,7 @@ class Node(BaseModel):
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
 
-    def from_simplified_dict(self, json_data: dict[str, Any]) -> None:
+    def set_from_simplified_dict(self, json_data: dict[str, Any]) -> None:
         self.key = NodeKey(
             institution_id = json_data["institution_id"],
             object_type    = json_data["object_type"],
@@ -106,8 +108,8 @@ class Node(BaseModel):
         self.title        = str(json_data.get("object_title", self.title))
         self.text_source  = str(json_data.get("text_source", self.text_source))
         self.raw_text     = str(json_data.get("raw_text", self.raw_text))
-        self.field_list.set_from_list(  json_data=json_data.get("custom_fields", []), node_key=self.key)
-        self.page_profile.set_from_json(json_data=json_data.get("page_profile", {}))
+        self.field_list.set_from_list(json_data=json_data.get("custom_fields", []), node_key=self.key)
+        self.page_profile = PageProfile.from_json(data=json_data.get("page_profile", {}), key=self.key)
 
     def to_simplified_dict(self) -> dict[str, Any]:
         return {
@@ -132,7 +134,7 @@ class NodeList(BaseModel):
     def to_json(self) -> list[dict[str, Any]]:
         return self.model_dump(mode="json")["node_list"]
 
-    def from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
+    def set_from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
         self.node_list = []
         for node_json in (json_data or []):
             node = Node(key=NodeKey(
@@ -140,7 +142,7 @@ class NodeList(BaseModel):
                 object_type    = node_json["object_type"],
                 object_id      = node_json["object_id"]
             ))
-            node.from_simplified_dict(node_json)
+            node.set_from_simplified_dict(node_json)
             self.node_list.append(node)
 
     def to_simplified_dict_list(self) -> list[dict[str, Any]]:

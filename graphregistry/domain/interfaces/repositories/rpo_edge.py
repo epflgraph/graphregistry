@@ -1,3 +1,4 @@
+# graphregistry/domain/interfaces/repositories/rpo_edge.py
 from __future__ import annotations
 from typing import Any, Protocol, runtime_checkable
 from graphregistry.domain.models.mdl_edge import Edge, EdgeKey, EdgeList

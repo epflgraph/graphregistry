@@ -1,5 +1,4 @@
 # graphregistry/cli/cmd_config.py
-# Inspect and validate Registry configuration files.
 
 #---------------------------------#
 # Handler: Print out index config #

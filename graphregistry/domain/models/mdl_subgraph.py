@@ -1,3 +1,4 @@
+# graphregistry/domain/models/mdl_subgraph.py
 from __future__ import annotations
 from pydantic import BaseModel, Field
 from graphregistry.domain.models.mdl_edge import EdgeList

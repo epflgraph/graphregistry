@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/common/config.py
 import json, rich
 from collections import defaultdict
 from pathlib import Path

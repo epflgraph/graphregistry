@@ -1,17 +1,16 @@
+# graphregistry/adapters/graphai/adp_translationgatw.py
 from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Callable
-
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.domain.interfaces.gateways.gtw_texttrans import TextTranslationGateway
 from graphregistry.domain.models.mdl_text import MultilingualText
 
-
+# Type aliases for better readability
 LoginFn = Callable[[str], dict[str, Any]]
 TranslateFn = Callable[[str, str, str, dict[str, Any]], str]
 
-
+# Class definition
 class GraphAITextTranslationGateway(TextTranslationGateway):
     def __init__(
         self,

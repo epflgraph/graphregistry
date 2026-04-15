@@ -1,9 +1,9 @@
+# graphregistry/adapters/genai/adp_textgen.py
 from __future__ import annotations
-
 from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
 from graphregistry.domain.models.mdl_text import GeneratedText
 
-
+# Class definitio
 class GenAITextGenerationGateway(TextGenerationGateway):
     """
     Placeholder adapter for future GenAI API integration.

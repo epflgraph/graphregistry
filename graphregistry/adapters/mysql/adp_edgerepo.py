@@ -1,10 +1,11 @@
 # graphregistry/adapters/mysql/adp_edgerepo.py
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
-from graphregistry.common.auxfcn import sysmsg
 from graphregistry.domain.models.mdl_edge import EdgeKey, EdgeFieldKey, EdgeField, EdgeFieldList, Edge, EdgeList
+from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.common.logger import GraphLogger
 from graphdb.models.sqlquery import print_sql
 import rich
 
@@ -20,6 +21,7 @@ class MySQLEdgeRepository:
         self.engine_name = engine_name
         self.db = db
         self.glbcfg = glbcfg or GlobalConfig()
+        self.msg = GraphLogger()
 
     # Method: Check if an edge exists in persistence based on the edge key
     def exists(self, key: EdgeKey) -> bool:
@@ -29,8 +31,8 @@ class MySQLEdgeRepository:
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
-            file_path      = sql_queries_paths['registry']['commit']['edge_exists'],
-            registry       = schema_name,
+            file_path           = sql_queries_paths['registry']['commit']['edge_exists'],
+            registry            = schema_name,
             from_institution_id = key.from_institution_id,
             from_object_type    = key.from_object_type,
             from_object_id      = key.from_object_id,
@@ -53,38 +55,41 @@ class MySQLEdgeRepository:
     # Method: Fetch edge data and construct Edge object
     def get(self, key: EdgeKey) -> Edge | None:
 
-        # First check if the edge exists, if not return None
+        # Check if edge exists first (return None if not found)
         if not self.exists(key):
-            print(f"❌ Edge ~ ({key.from_institution_id}, {key.from_object_type}, {key.from_object_id}, {key.to_institution_id}, {key.to_object_type}, {key.to_object_id}, {key.context}) not found.")
+            self.msg.not_found(key)
             return None
 
         # Get schema name from object-to-object type
         schema_name = self.glbcfg.object2object_type_to_schema[tuple(sorted([key.from_object_type, key.to_object_type]))]  # type: ignore[index]
 
-        # Fetch custom fields for the edge
-        rows = self.db.execute_query(
-            engine_name=self.engine_name,
-            query=f"""
-                SELECT field_language, field_name, field_value
-                FROM {schema_name}.Data_N_Object_N_Object_T_CustomFields
-                WHERE (
-                    from_institution_id, from_object_type, from_object_id,
-                    to_institution_id, to_object_type, to_object_id, context
-                ) = (
-                    :from_institution_id, :from_object_type, :from_object_id,
-                    :to_institution_id, :to_object_type, :to_object_id, :context
-                );
-            """,
-            params=key.model_dump(mode="python"),
+        #--------------------------#
+        # Get edge's custom fields #
+        #--------------------------#
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path           = sql_queries_paths['registry']['commit']['edge_get_custom'],
+            registry            = schema_name,
+            from_institution_id = key.from_institution_id,
+            from_object_type    = key.from_object_type,
+            from_object_id      = key.from_object_id,
+            to_institution_id   = key.to_institution_id,
+            to_object_type      = key.to_object_type,
+            to_object_id        = key.to_object_id,
+            context             = key.context
         )
 
+        # Execute query and fetch result
+        custom_fields = self.db.execute_query(engine_name=self.engine_name, query=sql_query)
+
         # If no custom fields are found, return an Edge object with an empty field list
-        if not isinstance(rows, list) or len(rows) == 0:
+        if not isinstance(custom_fields, list) or len(custom_fields) == 0:
             return Edge(key=key)
 
         # Construct EdgeField objects from the query results and assemble the Edge object
         field_list = []
-        for field_language, field_name, field_value in rows:
+        for field_language, field_name, field_value in custom_fields:
             field_key = EdgeFieldKey(key=key, field_language=field_language, field_name=field_name)
             field_list.append(EdgeField(key=field_key, field_value=field_value))
 
@@ -93,11 +98,11 @@ class MySQLEdgeRepository:
 
     # Method: Fetch multiple edges data and construct EdgeList object from a list of edge keys
     def get_many(self, key_list: list[EdgeKey]) -> EdgeList:
-        out = [edge for edge in (self.get_by_key(key) for key in key_list) if edge is not None]
+        out = [edge for edge in (self.get(key) for key in key_list) if edge is not None]
         return EdgeList(edge_list=out)
 
     # Method: Save (insert or update) edge data to persistence
-    def save(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> Any:
+    def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
 
         # Get schema name from object-to-object type
         schema_name = self.glbcfg.object2object_type_to_schema[tuple(sorted([edge.key.from_object_type, edge.key.to_object_type]))]  # type: ignore[index]
@@ -127,58 +132,55 @@ class MySQLEdgeRepository:
                 actions           = actions
             )
 
-        # Print status message with edge details using rich library for better formatting
-        rich.print(
-            f"💾 [green]Saved: [/green]"
-            f"[yellow]Edge[/yellow] "
-            f"[cyan]~[/cyan] "
-            f"("
-            f"[cyan]{edge.key.from_institution_id}[/cyan], "
-            f"[cyan]{edge.key.from_object_type}[/cyan], "
-            f"[bold][cyan]{edge.key.from_object_id}[/cyan][/bold], "
-            f"[cyan]{edge.key.to_institution_id}[/cyan], "
-            f"[cyan]{edge.key.to_object_type}[/cyan], "
-            f"[bold][cyan]{edge.key.to_object_id}[/cyan][/bold], "
-            f"[cyan]{edge.key.context}[/cyan]"
-            ")"
-        )
+        # Print status message
+        self.msg.saved(edge.key)
+
+        # Return edge for chaining
+        return edge
 
     # Method: Save (insert or update) multiple edges data to persistence from an EdgeList object
-    def save_many(self, edge_list: EdgeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:
+    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> list[bool]:
         return [self.save(edge, actions=actions) for edge in edge_list.edge_list]
 
     # Method: Delete edge data from persistence based on the edge key
-    def delete(self, key: EdgeKey, actions: tuple[str, ...] = ("eval",)) -> bool:
+    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
+
+        # Check if edge exists first (return None if not found)
         if not self.exists(key):
-            return False
+            self.msg.not_found(key)
+            return None
 
-        schema_name = self._get_schema(key)
-        query_where = """
-            (
-                from_institution_id = :from_institution_id
-                AND from_object_type = :from_object_type
-                AND from_object_id = :from_object_id
-                AND to_institution_id = :to_institution_id
-                AND to_object_type = :to_object_type
-                AND to_object_id = :to_object_id
-                AND context = :context
+        # Get schema name from object-to-object type
+        schema_name = self.glbcfg.object2object_type_to_schema[tuple(sorted([key.from_object_type, key.to_object_type]))]  # type: ignore[index]
+
+        # Execute in commit mode
+        if 'commit' in actions:
+
+            # Resolve placeholdes in template query
+            sql_query = resolve_sql_query(
+                file_path           = sql_queries_paths['registry']['commit']['delete_edge'],
+                registry            = schema_name,
+                from_institution_id = key.from_institution_id,
+                from_object_type    = key.from_object_type,
+                from_object_id      = key.from_object_id,
+                to_institution_id   = key.to_institution_id,
+                to_object_type      = key.to_object_type,
+                to_object_id        = key.to_object_id,
+                context             = key.context
             )
-        """
-        tables = [
-            f"{schema_name}.Edges_N_Object_N_Object_T_ChildToParent",
-            f"{schema_name}.Data_N_Object_N_Object_T_CustomFields",
-        ]
 
-        if "commit" in actions:
-            for table in tables:
-                self.db.execute_query(
-                    engine_name=self.engine_name,
-                    query=f"DELETE FROM {table} WHERE {query_where};",
-                    params=key.model_dump(mode="python"),
-                    commit=True,
-                )
-        return True
+            # Execute commit query
+            self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query, verbose='print' in actions)
+
+            # Print status message
+            self.msg.deleted(key)
+
+            # Return True if edge existed and was deleted
+            return True
+
+        # Return False if edge exists but was not deleted
+        return False
 
     # Method: Delete multiple edges data from persistence based on a list of edge keys
-    def delete_many(self, key_list: list[EdgeKey], actions: tuple[str, ...] = ("eval",)) -> list[bool]:
+    def delete_many(self, key_list: list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
         return [self.delete(key, actions=actions) for key in key_list]

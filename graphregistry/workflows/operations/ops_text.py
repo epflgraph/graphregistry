@@ -1,5 +1,5 @@
+# graphregistry/workflows/operations/ops_text.py
 from __future__ import annotations
-
 from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
 from graphregistry.domain.interfaces.gateways.gtw_texttrans import TextTranslationGateway
 from graphregistry.domain.models.mdl_text import (
@@ -8,7 +8,7 @@ from graphregistry.domain.models.mdl_text import (
     MultilingualText,
 )
 
-
+# Class definition
 class GeneratedTextOperations:
     """
     Use-case layer for generated/translatable text.
@@ -45,9 +45,9 @@ class GeneratedTextOperations:
     ) -> MultilingualGeneratedText:
         base = self.generate_text(prompt=prompt, language=source_language)
 
-        # Build seed multilingual text from generated base value.
         seed = MultilingualText()
         setattr(seed, source_language, base.value)
+
         translated = self.translate_multilingual(
             text=seed,
             source_language=source_language,
@@ -64,7 +64,7 @@ class GeneratedTextOperations:
                     is_auto_generated=(lang == source_language),
                     is_auto_translated=(lang != source_language),
                     translated_from=(source_language if lang != source_language else None),
-                    value=value,
+                    value=(value or ""),
                 ),
             )
         return out

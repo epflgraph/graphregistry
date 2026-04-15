@@ -99,7 +99,7 @@ class MySQLEdgeRepositoryTests(unittest.TestCase):
         self.assertEqual(bridge.inserts[0]["table_name"], "Edges_N_Object_N_Object_T_ChildToParent")
         self.assertEqual(bridge.inserts[1]["table_name"], "Data_N_Object_N_Object_T_CustomFields")
 
-    def test_get_by_key_loads_custom_fields(self) -> None:
+    def test_get_loads_custom_fields(self) -> None:
         key = EdgeKey(
             from_institution_id="EPFL",
             from_object_type="Course",
@@ -113,7 +113,7 @@ class MySQLEdgeRepositoryTests(unittest.TestCase):
         db = FakeDB(counts={exists_key: 1})
         repo = MySQLEdgeRepository(db=db, registry_db=FakeRegistryDB(), glbcfg=_fake_config())
 
-        edge = repo.get_by_key(key)
+        edge = repo.get(key)
 
         self.assertIsNotNone(edge)
         assert edge is not None

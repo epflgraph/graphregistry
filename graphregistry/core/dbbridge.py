@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/core/dbbridge.py
 from graphregistry.common.auxfcn import print_colour
 from graphregistry.common.config import GlobalConfig
 from graphdb.core.config import GraphDBConfig

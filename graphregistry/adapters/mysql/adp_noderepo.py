@@ -1,11 +1,12 @@
 # graphregistry/adapters/mysql/adp_noderepo.py
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
-from graphregistry.common.auxfcn import sysmsg
-from graphregistry.domain.models.mdl_node import NodeKey, NodeFieldKey, NodeField, NodeFieldList, Node, NodeList
+from graphregistry.domain.models.mdl_node import NodeKey, NodeFieldList, Node, NodeList
 from graphregistry.domain.models.mdl_pageprofile import PageProfile
+from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.common.logger import GraphLogger
 from graphdb.models.sqlquery import print_sql
 import rich
 
@@ -21,6 +22,7 @@ class MySQLNodeRepository:
         self.engine_name = engine_name
         self.db = db
         self.glbcfg = glbcfg or GlobalConfig()
+        self.msg = GraphLogger()
 
     # Method: Check if a node exists in persistence from the node key
     def exists(self, key: NodeKey) -> bool:
@@ -52,62 +54,82 @@ class MySQLNodeRepository:
 
         # Check if node exists first (return None if not found)
         if not self.exists(key):
-            print(f"❌ Node ~ ({key.institution_id}, {key.object_type}, {key.object_id}) not found.")
+            self.msg.not_found(key)
             return None
 
         # Get schema name from object type
         schema_name = self.glbcfg.object_type_to_schema[key.object_type]
 
-        # Fetch basic node data (without custom fields)
-        out = self.db.execute_query(
-            engine_name=self.engine_name,
-            query=f"""
-                SELECT object_title, text_source, raw_text
-                  FROM {schema_name}.Nodes_N_Object
-                 WHERE (institution_id, object_type, object_id)
-                     = (:institution_id, :object_type, :object_id);
-            """,
-            params=key.model_dump(mode="python"),
+        #-------------------------#
+        # Get node's basic fields #
+        #-------------------------#
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path      = sql_queries_paths['registry']['commit']['node_get_basic'],
+            registry       = schema_name,
+            institution_id = key.institution_id,
+            object_type    = key.object_type,
+            object_id      = key.object_id
         )
-        if len(out) > 0:
-            object_title, text_source, raw_text = out[0]
+
+        # Execute query and fetch result
+        basic_data = self.db.execute_query(engine_name=self.engine_name, query=sql_query)
+
+        # Any rows returned?
+        if len(basic_data) > 0:
+            # Get fields from query output
+            object_title, text_source, raw_text = basic_data[0]
         else:
+            # -> raise error
             return None
 
-        # Fetch custom fields for the node
-        custom_fields = self.db.execute_query(
-            engine_name=self.engine_name,
-            query=f"""
-                SELECT field_language, field_name, field_value
-                  FROM {schema_name}.Data_N_Object_T_CustomFields
-                 WHERE (institution_id, object_type, object_id)
-                     = (:institution_id, :object_type, :object_id);
-            """,
-            params=key.model_dump(mode="python"),
+        #--------------------------#
+        # Get node's custom fields #
+        #--------------------------#
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path      = sql_queries_paths['registry']['commit']['node_get_custom'],
+            registry       = schema_name,
+            institution_id = key.institution_id,
+            object_type    = key.object_type,
+            object_id      = key.object_id
         )
+
+        # Execute query and fetch result
+        custom_fields = self.db.execute_query(engine_name=self.engine_name, query=sql_query)
+
+        # Build custom fields list of dics from query output
         custom_fields_dict = [
             {
                 "field_language" : field_language,
                 "field_name"     : field_name,
                 "field_value"    : field_value
             }
-            for field_language, field_name, field_value in custom_fields
-        ]
+            for field_language, field_name, field_value in custom_fields]
 
-        # Fetch page profile data for the node (if exists)
-        out = self.db.execute_query(
-            engine_name=self.engine_name,
-            query=f"""
-                SELECT numeric_id_en, numeric_id_fr, numeric_id_de, numeric_id_it, short_code, subtype_en, subtype_fr, subtype_de, subtype_it, name_en_is_auto_generated, name_en_is_auto_corrected, name_en_is_auto_translated, name_en_translated_from, name_en_value, name_fr_is_auto_generated, name_fr_is_auto_corrected, name_fr_is_auto_translated, name_fr_translated_from, name_fr_value, name_de_is_auto_generated, name_de_is_auto_corrected, name_de_is_auto_translated, name_de_translated_from, name_de_value, name_it_is_auto_generated, name_it_is_auto_corrected, name_it_is_auto_translated, name_it_translated_from, name_it_value, description_short_en_is_auto_generated, description_short_en_is_auto_corrected, description_short_en_is_auto_translated, description_short_en_translated_from, description_short_en_value, description_short_fr_is_auto_generated, description_short_fr_is_auto_corrected, description_short_fr_is_auto_translated, description_short_fr_translated_from, description_short_fr_value, description_short_de_is_auto_generated, description_short_de_is_auto_corrected, description_short_de_is_auto_translated, description_short_de_translated_from, description_short_de_value, description_short_it_is_auto_generated, description_short_it_is_auto_corrected, description_short_it_is_auto_translated, description_short_it_translated_from, description_short_it_value, description_medium_en_is_auto_generated, description_medium_en_is_auto_corrected, description_medium_en_is_auto_translated, description_medium_en_translated_from, description_medium_en_value, description_medium_fr_is_auto_generated, description_medium_fr_is_auto_corrected, description_medium_fr_is_auto_translated, description_medium_fr_translated_from, description_medium_fr_value, description_medium_de_is_auto_generated, description_medium_de_is_auto_corrected, description_medium_de_is_auto_translated, description_medium_de_translated_from, description_medium_de_value, description_medium_it_is_auto_generated, description_medium_it_is_auto_corrected, description_medium_it_is_auto_translated, description_medium_it_translated_from, description_medium_it_value, description_long_en_is_auto_generated, description_long_en_is_auto_corrected, description_long_en_is_auto_translated, description_long_en_translated_from, description_long_en_value, description_long_fr_is_auto_generated, description_long_fr_is_auto_corrected, description_long_fr_is_auto_translated, description_long_fr_translated_from, description_long_fr_value, description_long_de_is_auto_generated, description_long_de_is_auto_corrected, description_long_de_is_auto_translated, description_long_de_translated_from, description_long_de_value, description_long_it_is_auto_generated, description_long_it_is_auto_corrected, description_long_it_is_auto_translated, description_long_it_translated_from, description_long_it_value, external_key_en, external_key_fr, external_key_de, external_key_it, external_url_en, external_url_fr, external_url_de, external_url_it, is_visible
-                  FROM {schema_name}.Data_N_Object_T_PageProfile
-                 WHERE (institution_id, object_type, object_id)
-                     = (:institution_id, :object_type, :object_id);
-            """,
-            params=key.model_dump(mode="python"),
+        #-------------------------#
+        # Get node's page profile #
+        #-------------------------#
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path      = sql_queries_paths['registry']['commit']['node_get_profile'],
+            registry       = schema_name,
+            institution_id = key.institution_id,
+            object_type    = key.object_type,
+            object_id      = key.object_id
         )
-        if len(out) > 0:
-            page_profile_dict = dict(zip(self.glbcfg.page_profile_columns, out[0]))
+
+        # Execute query and fetch result
+        page_profile = self.db.execute_query(engine_name=self.engine_name, query=sql_query)
+
+        # Any rows returned?
+        if len(page_profile) > 0:
+            page_profile_dict = dict(zip(self.glbcfg.page_profile_columns, page_profile[0]))
         else:
+            # -> raise warning
             page_profile_dict = {}
 
         # Construct Node object from fetched data
@@ -129,7 +151,7 @@ class MySQLNodeRepository:
         return NodeList(node_list=out)
 
     # Method: Save (insert or update) node data to persistence
-    def save(self, node: Node, actions: tuple[str, ...] = ("eval",)) -> Any:
+    def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
 
         # Get schema name from object type
         schema_name = self.glbcfg.object_type_to_schema[node.key.object_type]  # type: ignore[index]
@@ -175,29 +197,23 @@ class MySQLNodeRepository:
             actions           = actions
         )
 
-        # Print status message with edge details using rich library for better formatting
-        rich.print(
-            f"💾 [green]Saved: [/green]"
-            f"[yellow]Node[/yellow] "
-            f"[cyan]~[/cyan] "
-            f"("
-            f"[cyan]{node.key.institution_id}[/cyan], "
-            f"[cyan]{node.key.object_type}[/cyan], "
-            f"[bold][cyan]{node.key.object_id}[/cyan][/bold]"
-            ")"
-        )
+        # Print status message
+        self.msg.saved(node.key)
+
+        # Return node for chaining
+        return node
 
     # Method: Save (insert or update) multiple nodes data to persistence from a NodeList object
-    def save_many(self, node_list: NodeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:
+    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[bool]:
         return [self.save(node, actions=actions) for node in node_list.node_list]
 
     # Method: Delete node data from persistence based on the node key
-    def delete(self, key: NodeKey, actions: tuple[str, ...] = ("eval",)) -> bool:
+    def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:
 
-        # Check if node exists first (return False if not found)
+        # Check if node exists first (return None if not found)
         if not self.exists(key):
-            print(f"❌ Node ~ ({key.institution_id}, {key.object_type}, {key.object_id}) not found.")
-            return False
+            self.msg.not_found(key)
+            return None
 
         # Get schema name from object type
         schema_name = self.glbcfg.object_type_to_schema[key.object_type]
@@ -207,7 +223,7 @@ class MySQLNodeRepository:
 
             # Resolve placeholdes in template query
             sql_query = resolve_sql_query(
-                file_path      = sql_queries_paths['registry']['commit']['delete_node'],
+                file_path      = sql_queries_paths['registry']['commit']['node_delete'],
                 registry       = schema_name,
                 institution_id = key.institution_id,
                 object_type    = key.object_type,
@@ -217,12 +233,15 @@ class MySQLNodeRepository:
             # Execute commit query
             self.db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query, verbose='print' in actions)
 
-            # Print status
-            print(f"🗑️  Node ~ ({key.institution_id}, {key.object_type}, {key.object_id}) deleted.")
+            # Print status message
+            self.msg.deleted(key)
 
-        # Return True if node existed and was deleted, otherwise return False
-        return True
+            # Return True if node existed and was deleted
+            return True
+
+        # Return False if node exists but was not deleted
+        return False
 
     # Method: Delete multiple nodes data from persistence based on a list of node keys
-    def delete_many(self, key_list: list[NodeKey], actions: tuple[str, ...] = ("eval",)) -> list[bool]:
+    def delete_many(self, key_list: list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
         return [self.delete(key, actions=actions) for key in key_list]

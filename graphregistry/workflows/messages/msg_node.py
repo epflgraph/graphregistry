@@ -1,66 +1,53 @@
+# graphregistry/workflows/messages/msg_node.py
 from __future__ import annotations
-
 from pydantic import BaseModel
-
 from graphregistry.domain.models.mdl_node import Node, NodeKey
 
-
-# ------------------ #
-# EXISTS
-# ------------------ #
-
+# Class definition
 class NodeExistsRequest(BaseModel):
     key: NodeKey
 
-
+# Class definition
 class NodeExistsResponse(BaseModel):
     exists: bool
 
-
-# ------------------ #
-# INSERT
-# ------------------ #
-
+# Class definition
 class NodeInsertRequest(BaseModel):
     node: Node
 
-
+# Class definition
 class NodeInsertResponse(BaseModel):
     success: bool
 
-
-# ------------------ #
-# UPDATE
-# ------------------ #
-
+# Class definition
 class NodeUpdateRequest(BaseModel):
     node: Node
 
-
+# Class definition
 class NodeUpdateResponse(BaseModel):
     success: bool
 
-
-# ------------------ #
-# UPSERT
-# ------------------ #
-
+# Class definition
 class NodeUpsertRequest(BaseModel):
     node: Node
 
-
+# Class definition
 class NodeUpsertResponse(BaseModel):
     success: bool
-    created: bool  # True = inserted, False = updated
+    created: bool
 
-
-# ------------------ #
-# DELETE
-# ------------------ #
-
+# Class definition
 class NodeDeleteRequest(BaseModel):
     key: NodeKey
 
-
+# Class definition
 class NodeDeleteResponse(BaseModel):
+    success: bool
+
+# Class definition
+class NodeSaveRequest(BaseModel):
+    node: Node
+
+# Class definition
+class NodeSaveResponse(BaseModel):
     success: bool

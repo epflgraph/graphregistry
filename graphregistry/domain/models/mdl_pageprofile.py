@@ -1,3 +1,4 @@
+# graphregistry/domain/models/mdl_pageprofile.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
@@ -89,7 +90,7 @@ class PageProfile(BaseModel):
                             setattr(target, attr, str(value or ""))
 
     def to_json(self) -> dict[str, Any]:
-        return self.model_dump()
+        return self.model_dump(mode="json")
 
     def to_simplified_dict(self) -> dict[str, Any]:
 
@@ -123,7 +124,7 @@ class PageProfile(BaseModel):
         # Sort keys for consistent ordering
         flattened = dict(sorted(flattened.items()))
 
-        # Remove object key
+        # Remove identity fields; these are already carried by Node.key
         flattened.pop("institution_id", None)
         flattened.pop("object_type", None)
         flattened.pop("object_id", None)

@@ -1,5 +1,4 @@
 # graphregistry/cli/cmd_data.py
-# This module defines command handlers for the 'data' subcommands of the Graph Registry CLI.
 from graphregistry.domain.models.mdl_base import NodeKey, EdgeKey
 from graphregistry.domain.models.mdl_node import Node, NodeList
 from graphregistry.domain.models.mdl_edge import Edge, EdgeList

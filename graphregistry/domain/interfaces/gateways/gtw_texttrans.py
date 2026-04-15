@@ -1,18 +1,17 @@
+# graphregistry/domain/interfaces/gateways/gtw_texttrans.py
 from __future__ import annotations
-
 from typing import Protocol
+from graphregistry.domain.models.mdl_text import LanguageCode, MultilingualText
 
-from graphregistry.domain.models.mdl_text import MultilingualText
-
-
+# Model definition
 class TextTranslationGateway(Protocol):
-    def translate_text(self, text: str, source_language: str, target_language: str) -> str:
+    def translate_text(self, text: str, source_language: LanguageCode, target_language: LanguageCode) -> str:
         ...
 
     def translate_multilingual(
         self,
         text: MultilingualText,
-        source_language: str,
-        target_languages: tuple[str, ...] = ("en", "fr", "de", "it"),
+        source_language: LanguageCode,
+        target_languages: tuple[LanguageCode, ...] = ("en", "fr", "de", "it"),
     ) -> MultilingualText:
         ...

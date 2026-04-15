@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/core/registry.py
 from graphregistry.common.auxfcn import print_dataframe, print_colour
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.common.dbstruct import DynamicSQL, GraphTable

@@ -1,5 +1,5 @@
+# graphregistry/domain/models/mdl_edge.py
 from __future__ import annotations
-from platform import node
 from typing import Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.models.mdl_base import EdgeKey, EdgeFieldKey
@@ -62,7 +62,7 @@ class EdgeFieldList(BaseModel):
             ]
         )
 
-    def set_from_json(self, json_data: list[dict[str, Any]], edge_key: EdgeKey) -> None:
+    def set_from_list(self, json_data: list[dict[str, Any]], edge_key: EdgeKey) -> None:
         self.field_list = [
             EdgeField.from_json(field_json, edge_key=edge_key)
             for field_json in (json_data or [])
@@ -89,7 +89,7 @@ class Edge(BaseModel):
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
 
-    def from_simplified_dict(self, json_data: dict[str, Any]) -> None:
+    def set_from_simplified_dict(self, json_data: dict[str, Any]) -> None:
         self.key = EdgeKey(
              from_institution_id = json_data["from_institution_id"],
              from_object_type    = json_data["from_object_type"],
@@ -99,7 +99,7 @@ class Edge(BaseModel):
              to_object_id        = json_data["to_object_id"],
              context             = json_data["context"]
         )
-        self.field_list.set_from_json(json_data=json_data.get("custom_fields", []), edge_key=self.key)
+        self.field_list.set_from_list(json_data=json_data.get("custom_fields", []), edge_key=self.key)
 
     def to_simplified_dict(self) -> dict[str, Any]:
         return {
@@ -110,7 +110,7 @@ class Edge(BaseModel):
             "to_object_type"      : self.key.to_object_type,
             "to_object_id"        : self.key.to_object_id,
             "context"             : self.key.context,
-            "field_list"          : self.field_list.to_simplified_list()
+            "custom_fields"       : self.field_list.to_simplified_list()
         }
 
 # Model definition
@@ -124,7 +124,7 @@ class EdgeList(BaseModel):
     def to_json(self) -> list[dict[str, Any]]:
         return self.model_dump(mode="json")["edge_list"]
 
-    def from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
+    def set_from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
         self.edge_list = []
         for edge_json in (json_data or []):
             edge = Edge(key=EdgeKey(
@@ -136,7 +136,7 @@ class EdgeList(BaseModel):
                 to_object_id        = edge_json["to_object_id"],
                 context             = edge_json["context"]
             ))
-            edge.from_simplified_dict(edge_json)
+            edge.set_from_simplified_dict(edge_json)
             self.edge_list.append(edge)
 
     def to_simplified_dict_list(self) -> list[dict[str, Any]]:

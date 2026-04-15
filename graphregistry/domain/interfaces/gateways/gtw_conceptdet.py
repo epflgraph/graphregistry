@@ -1,3 +1,4 @@
+# graphregistry/domain/interfaces/gateways/gtw_conceptdet.py
 from __future__ import annotations
 from typing import Protocol
 from graphregistry.domain.models.mdl_concept import DetectedConceptList

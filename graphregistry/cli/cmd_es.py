@@ -1,5 +1,4 @@
 # graphregistry/cli/cmd_es.py
-# Manage ElasticSearch server operations.
 import os
 
 #-----------------------------------#

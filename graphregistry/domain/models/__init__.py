@@ -1,4 +1,11 @@
+# graphregistry/domain/models/__init__.py
 from graphregistry.domain.models.mdl_concept import DetectedConcept, DetectedConceptList
+from graphregistry.domain.models.mdl_base import (
+    EdgeFieldKey,
+    EdgeKey,
+    NodeFieldKey,
+    NodeKey,
+)
 from graphregistry.domain.models.mdl_edge import (
     Edge,
     EdgeField,

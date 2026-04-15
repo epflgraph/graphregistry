@@ -1,3 +1,4 @@
+# graphregistry/workflows/__init__.py
 from graphregistry.workflows.messages import (
     EdgeDeleteRequest,
     EdgeDeleteResponse,

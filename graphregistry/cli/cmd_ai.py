@@ -1,3 +1,4 @@
+# graphregistry/cli/cmd_ai.py
 
 #-------------------------------#
 # Handler: Test GraphAI service #
