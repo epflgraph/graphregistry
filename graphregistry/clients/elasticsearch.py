@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/clients/elasticsearch.py
 import warnings
 from elastic_transport import SecurityWarning
 from urllib3.exceptions import InsecureRequestWarning

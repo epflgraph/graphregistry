@@ -1,6 +1,6 @@
 # graphregistry/adapters/__init__.py
-from graphregistry.adapters.genai import GenAITextGenerationGateway
-from graphregistry.adapters.graphai import GraphAIConceptGateway, GraphAITextTranslationGateway
+from graphregistry.adapters.gateways.genai import GenAITextGenerationGateway
+from graphregistry.adapters.gateways.graphai import GraphAIConceptGateway, GraphAITextTranslationGateway
 
 __all__ = [
     "GraphAIConceptGateway",

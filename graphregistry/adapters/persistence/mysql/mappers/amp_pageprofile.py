@@ -1,0 +1,150 @@
+# graphregistry/adapters/persistence/mysql/mappers/amp_pageprofile.py
+from __future__ import annotations
+from typing import Any
+from graphregistry.domain.models.mdl_base import NodeKey
+from graphregistry.domain.models.mdl_pageprofile import PageProfile
+
+# Class definition
+class MySQLPageProfileMapper:
+    """
+    Maps between the domain PageProfile model and the flattened
+    Data_N_Object_T_PageProfile MySQL row shape.
+    """
+
+    LANGUAGES: tuple[str, ...] = ("en", "fr", "de", "it")
+    GENERATED_ATTRS: tuple[str, ...] = (
+        "is_auto_generated",
+        "is_auto_corrected",
+        "is_auto_translated",
+        "translated_from",
+        "value",
+    )
+    DESCRIPTION_SIZES: tuple[str, ...] = ("short", "medium", "long")
+
+    @classmethod
+    def from_row(cls, row: dict[str, Any] | None, key: NodeKey) -> PageProfile:
+        """
+        Build a domain PageProfile from a flattened database row dict.
+        Missing / None row returns a default PageProfile.
+        """
+        profile = PageProfile(key=key)
+
+        if not row:
+            return profile
+
+        # Simple scalar field
+        profile.short_code = str(row.get("short_code") or "")
+
+        # DB may return 0/1 or bool
+        if "is_visible" in row and row.get("is_visible") is not None:
+            profile.is_visible = bool(row["is_visible"])
+
+        # Simple multilingual text fields
+        for lang in cls.LANGUAGES:
+            numeric_id_key = f"numeric_id_{lang}"
+            subtype_key = f"subtype_{lang}"
+            external_key_key = f"external_key_{lang}"
+            external_url_key = f"external_url_{lang}"
+
+            if numeric_id_key in row and row[numeric_id_key] is not None:
+                setattr(profile.numeric_id, lang, str(row[numeric_id_key]))
+
+            if subtype_key in row and row[subtype_key] is not None:
+                setattr(profile.subtype, lang, str(row[subtype_key]))
+
+            if external_key_key in row and row[external_key_key] is not None:
+                setattr(profile.external_key, lang, str(row[external_key_key]))
+
+            if external_url_key in row and row[external_url_key] is not None:
+                setattr(profile.external_url, lang, str(row[external_url_key]))
+
+        # Multilingual generated text: name
+        for lang in cls.LANGUAGES:
+            target = getattr(profile.name, lang)
+            for attr in cls.GENERATED_ATTRS:
+                flat_key = f"name_{lang}_{attr}"
+                if flat_key not in row or row[flat_key] is None:
+                    continue
+
+                value = row[flat_key]
+                if attr.startswith("is_auto_"):
+                    setattr(target, attr, bool(value))
+                elif attr == "translated_from":
+                    setattr(target, attr, str(value) if value else None)
+                else:
+                    setattr(target, attr, str(value or ""))
+
+        # Descriptions: short / medium / long
+        for size in cls.DESCRIPTION_SIZES:
+            size_obj = getattr(profile.description, size)
+            for lang in cls.LANGUAGES:
+                target = getattr(size_obj, lang)
+                for attr in cls.GENERATED_ATTRS:
+                    flat_key = f"description_{size}_{lang}_{attr}"
+                    if flat_key not in row or row[flat_key] is None:
+                        continue
+
+                    value = row[flat_key]
+                    if attr.startswith("is_auto_"):
+                        setattr(target, attr, bool(value))
+                    elif attr == "translated_from":
+                        setattr(target, attr, str(value) if value else None)
+                    else:
+                        setattr(target, attr, str(value or ""))
+
+        return profile
+
+    @classmethod
+    def to_row(cls, profile: PageProfile) -> dict[str, Any]:
+        """
+        Flatten a domain PageProfile into a dict suitable for
+        Data_N_Object_T_PageProfile upsert/update columns.
+
+        Identity columns are intentionally omitted:
+        institution_id, object_type, object_id
+        """
+        row: dict[str, Any] = {
+            "short_code": profile.short_code,
+            "is_visible": int(profile.is_visible),
+        }
+
+        # Flatten multilingual text fields
+        for lang in cls.LANGUAGES:
+            row[f"numeric_id_{lang}"] = cls._empty_to_none(getattr(profile.numeric_id, lang))
+            row[f"subtype_{lang}"] = cls._empty_to_none(getattr(profile.subtype, lang))
+            row[f"external_key_{lang}"] = cls._empty_to_none(getattr(profile.external_key, lang))
+            row[f"external_url_{lang}"] = cls._empty_to_none(getattr(profile.external_url, lang))
+
+            name_lang_obj = getattr(profile.name, lang)
+            for attr in cls.GENERATED_ATTRS:
+                value = getattr(name_lang_obj, attr)
+                row[f"name_{lang}_{attr}"] = cls._normalize_generated_attr(attr, value)
+
+            for size in cls.DESCRIPTION_SIZES:
+                desc_lang_obj = getattr(getattr(profile.description, size), lang)
+                for attr in cls.GENERATED_ATTRS:
+                    value = getattr(desc_lang_obj, attr)
+                    row[f"description_{size}_{lang}_{attr}"] = cls._normalize_generated_attr(attr, value)
+
+        # Remove keys with None or empty string values
+        return {
+            key: value
+            for key, value in sorted(row.items())
+            if value not in (None, "")
+        }
+
+    @staticmethod
+    def _empty_to_none(value: Any) -> Any:
+        if value == "":
+            return None
+        return value
+
+    @staticmethod
+    def _normalize_generated_attr(attr: str, value: Any) -> Any:
+        if attr.startswith("is_auto_"):
+            return int(bool(value))
+        if attr == "translated_from":
+            return value or None
+        if value == "":
+            return None
+        return value

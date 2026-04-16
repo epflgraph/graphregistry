@@ -13,8 +13,8 @@ def _edge_tuple(key: EdgeKey) -> str:
     return f"([cyan]{key.from_institution_id}[/cyan], [cyan]{key.from_object_type}[/cyan], [bold][cyan]{key.from_object_id}[/cyan][/bold], [cyan]{key.to_institution_id}[/cyan], [cyan]{key.to_object_type}[/cyan], [bold][cyan]{key.to_object_id}[/cyan][/bold], [cyan]{key.context}[/cyan])"
 
 def _node_or_edge_action(key: NodeKey | EdgeKey, action) -> str:
-    icon = {'exists':'✅', 'not found':'❌', 'saved':'💾', 'deleted':'🗑️'}[action]
-    return f"{icon} [green]{action.title()}:[/green] [yellow]{'Node' if isinstance(key, NodeKey) else 'Edge'}[/yellow] [cyan]~[/cyan] {_node_tuple(key)}"
+    icon = {'exists':'✅', 'not found':'❌', 'saved':'💾', 'deleted':'🗑️ '}[action]
+    return f"{icon} [green]{action.title()}:[/green] [yellow]{'Node' if isinstance(key, NodeKey) else 'Edge'}[/yellow] [cyan]~[/cyan] {_node_tuple(key) if isinstance(key, NodeKey) else _edge_tuple(key)}"
 
 
 # Class definition

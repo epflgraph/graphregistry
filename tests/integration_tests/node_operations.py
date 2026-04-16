@@ -1,0 +1,141 @@
+# test/integration_tests/node_operations.py
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
+from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
+from graphregistry.common.config import GlobalConfig
+from graphregistry.domain.models.mdl_base import NodeKey
+
+# Adjust this import if your actual DB class lives elsewhere
+from graphdb.core.graphdb import GraphDB
+
+# Resolve the fixture path relative to this test file, going up to the project root and then into tests/fixtures
+FIXTURE_PATH = Path("./tests/fixtures/node_course_test_101.json")
+
+# Use a dedicated schema for integration tests to avoid conflicts with other data
+SCHEMA_NAME = "_0_integration_tests_graph_registry"
+
+def load_fixture() -> dict[str, Any]:
+    with FIXTURE_PATH.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def real_repo() -> MySQLNodeRepository:
+    """
+    Real integration repository using the actual DB connection.
+
+    Adjust engine_name if needed for your environment.
+    Recommended: use a dedicated test DB / test schema.
+    """
+    glbcfg = GlobalConfig()
+    db = GraphDB()
+
+    return MySQLNodeRepository(
+        engine_name="xaas_coresrv",
+        db=db,
+        glbcfg=glbcfg,
+    )
+
+
+@pytest.mark.integration
+def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -> None:
+    data = load_fixture()
+
+    key = NodeKey(
+        institution_id=data["institution_id"],
+        object_type=data["object_type"],
+        object_id=data["object_id"],
+    )
+
+    # Build the domain object from the simplified JSON fixture
+    node = MySQLNodeMapper.from_simplified_dict(data)
+
+    # Defensive cleanup before test in case a prior failed run left state behind
+    if real_repo.exists(key, schema_override=SCHEMA_NAME):
+        real_repo.delete(key, actions=("eval", "commit"), schema_override=SCHEMA_NAME)
+
+    try:
+        # 1) Initial state
+        print('')
+        assert real_repo.exists(key, schema_override=SCHEMA_NAME) is False
+        assert real_repo.get(key, schema_override=SCHEMA_NAME) is None
+
+        # 2) Save
+        print('\nSaving node to repository...')
+        saved = real_repo.save(node, actions=("eval", "commit"), schema_override=SCHEMA_NAME)
+        assert saved.key == key
+
+        # 3) Exists after save
+        assert real_repo.exists(key, schema_override=SCHEMA_NAME) is True
+
+        # 4) Get after save
+        loaded = real_repo.get(key, schema_override=SCHEMA_NAME)
+        assert loaded is not None
+        import rich
+        print("\nNode object content:")
+        rich.print_json(data=loaded.model_dump(mode="json"))
+        assert loaded is not None
+        assert loaded.key == key
+        assert loaded.title == data["object_title"]
+        assert loaded.text_source == data["text_source"]
+        assert loaded.raw_text == data["raw_text"]
+
+        # 5) Custom fields verification
+        assert len(loaded.field_list.field_list) == len(data["custom_fields"])
+        field_map = {
+            (field.key.field_language, field.key.field_name): field.field_value
+            for field in loaded.field_list.field_list
+        }
+
+        for row in data["custom_fields"]:
+            k = (row["field_language"], row["field_name"])
+            assert k in field_map
+            assert field_map[k] == row["field_value"]
+
+        # 6) Page profile verification
+        assert loaded.page_profile is not None
+        assert loaded.page_profile.key == key
+        assert loaded.page_profile.short_code == data["page_profile"]["short_code"]
+        assert loaded.page_profile.name.en.value == data["page_profile"]["name_en_value"]
+        assert loaded.page_profile.name.fr.value == data["page_profile"]["name_fr_value"]
+        assert loaded.page_profile.description.short.en.value == data["page_profile"]["description_short_en_value"]
+        assert loaded.page_profile.description.medium.en.value == data["page_profile"]["description_medium_en_value"]
+        assert loaded.page_profile.description.long.en.value == data["page_profile"]["description_long_en_value"]
+        assert loaded.page_profile.external_key.en == data["page_profile"]["external_key_en"]
+        assert loaded.page_profile.external_url.en == data["page_profile"]["external_url_en"]
+        assert loaded.page_profile.is_visible is True
+
+        # 7) Serialization round-trip check through mapper
+        simplified = MySQLNodeMapper.to_simplified_dict(loaded)
+        rehydrated = MySQLNodeMapper.from_simplified_dict(simplified)
+
+        assert rehydrated.key == loaded.key
+        assert rehydrated.title == loaded.title
+        assert rehydrated.text_source == loaded.text_source
+        assert rehydrated.raw_text == loaded.raw_text
+        assert len(rehydrated.field_list.field_list) == len(loaded.field_list.field_list)
+
+        assert rehydrated.page_profile is not None
+        assert loaded.page_profile is not None
+        assert rehydrated.page_profile.short_code == loaded.page_profile.short_code
+        assert rehydrated.page_profile.name.en.value == loaded.page_profile.name.en.value
+        assert rehydrated.page_profile.external_url.en == loaded.page_profile.external_url.en
+
+        # 8) Delete
+        assert real_repo.delete(key, actions=("eval", "commit"), schema_override=SCHEMA_NAME) is True
+
+        # 9) Final state
+        assert real_repo.exists(key, schema_override=SCHEMA_NAME) is False
+        assert real_repo.get(key, schema_override=SCHEMA_NAME) is None
+
+    finally:
+        # Always clean up even if an assertion fails
+        if real_repo.exists(key, schema_override=SCHEMA_NAME):
+            real_repo.delete(key, actions=("eval", "commit"), schema_override=SCHEMA_NAME)
