@@ -154,7 +154,6 @@ class MySQLEdgeFieldMapper:
             for field in field_list.field_list
         ]
 
-
 # Class definition
 class MySQLEdgeMapper:
     """

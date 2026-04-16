@@ -5,7 +5,6 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MyS
 from graphregistry.domain.models.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldList
 
-
 # Class definition
 class MySQLNodeFieldMapper:
     """
@@ -148,7 +147,7 @@ class MySQLNodeFieldMapper:
             for field in field_list.field_list
         ]
 
-
+# Class definition
 class MySQLNodeMapper:
     """
     Maps between MySQL row shapes and the domain Node model.
