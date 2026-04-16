@@ -21,3 +21,4 @@
 - Think about where to store custom print functions (eg, print_node_saved(), print_edge_saved()) [DONE 1st version]
 - Implement data file structure analyser/inspector
 - Add `list` function to workflows/operations
+- Fix CLI to use mappers
