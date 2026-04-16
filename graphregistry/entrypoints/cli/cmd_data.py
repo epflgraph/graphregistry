@@ -1,15 +1,82 @@
 # graphregistry/entrypoints/cli/cmd_data.py
+from __future__ import annotations
+
+from pathlib import Path
+import json
+import rich
+
 from graphregistry.domain.models.mdl_base import NodeKey, EdgeKey
-from graphregistry.domain.models.mdl_node import Node, NodeList
-from graphregistry.domain.models.mdl_edge import Edge, EdgeList
+from graphregistry.domain.models.mdl_node import NodeList
+from graphregistry.domain.models.mdl_edge import EdgeList
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.workflows.operations.ops_node import NodeOperations
 from graphregistry.workflows.operations.ops_edge import EdgeOperations
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from pathlib import Path
-import json, rich
+from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
+from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
+from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
+from graphregistry.domain.models.mdl_subgraph import SubGraph
+
+
+#--------------------------------------#
+# Helper: Build default schema resolver #
+#--------------------------------------#
+def _make_schema_resolver(args) -> DefaultSchemaResolver:
+    return DefaultSchemaResolver(
+        engine_name=args.env,
+        glbcfg=args.ctx.global_config,
+    )
+
+
+#--------------------------------#
+# Helper: Build node repository  #
+#--------------------------------#
+def _make_node_repo(args) -> NodeRepository:
+    return MySQLNodeRepository(
+        db=args.ctx.db,
+        schema_resolver=_make_schema_resolver(args),
+    )
+
+
+#--------------------------------#
+# Helper: Build edge repository  #
+#--------------------------------#
+def _make_edge_repo(args) -> EdgeRepository:
+    return MySQLEdgeRepository(
+        db=args.ctx.db,
+        schema_resolver=_make_schema_resolver(args),
+    )
+
+
+#---------------------------------------------#
+# Helper: Load JSON from inline string or file #
+#---------------------------------------------#
+def _load_json_input(raw_input: str, label: str):
+    # Case 1: --xxx=@path/to/file.json
+    if raw_input.startswith("@"):
+
+        # Extract path from input
+        path_str = raw_input[1:]
+        json_path = Path(path_str)
+
+        # Check if file exists
+        if not json_path.exists():
+            raise FileNotFoundError(f"{label} data file not found: {json_path}")
+
+        # Open JSON file and load data
+        with json_path.open("r", encoding="utf-8") as fp:
+            return json.load(fp)
+
+    # Case 2: --xxx='<json>'
+    else:
+        print(f"Parsing inline JSON {label}.")
+        try:
+            return json.loads(raw_input)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON passed to {label}: {e}") from e
+
 
 # Handler: Import data from JSON file into Registry
 def cmd_data_import(args):
@@ -35,39 +102,61 @@ def cmd_data_import(args):
     # -----------------#
 
     # Open JSON sample set
-    with open(input_file, 'r') as fp:
+    with open(input_file, 'r', encoding='utf-8') as fp:
         sample_set = json.load(fp)
+
+    # Build repositories
+    node_repo: NodeRepository = _make_node_repo(args)
+    edge_repo: EdgeRepository = _make_edge_repo(args)
+    node_ops = NodeOperations(repo=node_repo)
+    edge_ops = EdgeOperations(repo=edge_repo)
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
 
         # Process nodes
-        for node_json in sample_set['nodes']:
-            node = registry.Node()
-            node.set_from_json(doc_json=node_json, detect_concepts=detect_concepts)
-            node.commit(actions=actions)
+        for node_json in sample_set.get('nodes', []):
+            node = MySQLNodeMapper.from_simplified_dict(node_json)
+            node_ops.save(node, actions=actions)
+
+            if detect_concepts:
+                print(f"⚠️  detect_concepts requested but not yet wired into the new CLI workflow for node {node.key.to_tuple()}.")
 
         # Process edges
-        for edge_json in sample_set['edges']:
-            edge = registry.Edge()
-            edge.set_from_json(doc_json=edge_json)
-            edge.commit(actions=actions)
+        for edge_json in sample_set.get('edges', []):
+            edge = MySQLEdgeMapper.from_simplified_dict(edge_json)
+            edge_ops.save(edge, actions=actions)
 
     # Method 2: Process and commit as list of objects
     elif import_method == 'list':
 
         # Process nodes list
-        node_list = registry.NodeList()
-        node_list.set_from_json(doc_json_list=sample_set['nodes'], detect_concepts=detect_concepts)
-        node_list.commit(actions=actions)
+        node_list = NodeList(
+            node_list=[
+                MySQLNodeMapper.from_simplified_dict(node_json)
+                for node_json in sample_set.get('nodes', [])
+            ]
+        )
+        node_ops.save_many(node_list, actions=actions)
 
         # Process edges list
-        edge_list = registry.EdgeList()
-        edge_list.set_from_json(doc_json_list=sample_set['edges'])
-        edge_list.commit(actions=actions)
+        edge_list = EdgeList(
+            edge_list=[
+                MySQLEdgeMapper.from_simplified_dict(edge_json)
+                for edge_json in sample_set.get('edges', [])
+            ]
+        )
+        edge_ops.save_many(edge_list, actions=actions)
+
+        if detect_concepts:
+            print("⚠️  detect_concepts requested but not yet wired into the new CLI workflow for list import.")
+
+    else:
+        raise ValueError("import_method must be either 'object' or 'list'.")
 
     # Print footers
     print("🖥️  ~ Done.")
+
 
 # Handler: Check if node or edge exists in Registry
 def cmd_data_exists(args):
@@ -88,13 +177,14 @@ def cmd_data_exists(args):
 
     # Check if node and print results
     if node_key:
-        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
+        node_repo: NodeRepository = _make_node_repo(args)
         print(f"""{"✅ Exists" if node_repo.exists(node_key) else "❌ Not found"}: Node ~ ({node_key.institution_id}, {node_key.object_type}, {node_key.object_id})""")
 
     # Check if edge and print results
     if edge_key:
-        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
+        edge_repo: EdgeRepository = _make_edge_repo(args)
         print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge ~ ({edge_key.from_institution_id}, {edge_key.from_object_type}, {edge_key.from_object_id}, {edge_key.to_institution_id}, {edge_key.to_object_type}, {edge_key.to_object_id}, {edge_key.context})""")
+
 
 # Handler: Fetch node or edge from Registry
 def cmd_data_fetch(args):
@@ -115,21 +205,22 @@ def cmd_data_fetch(args):
 
     # Fetch node and print results
     if node_key:
-        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
+        node_repo: NodeRepository = _make_node_repo(args)
         node = node_repo.get(node_key)
         if node:
-            rich.print_json(data=node.to_simplified_dict())
+            rich.print_json(data=MySQLNodeMapper.to_simplified_dict(node))
         else:
             print(f"❌ Not found: Node{node_key_tuple}")
 
     # Fetch edge and print results
     if edge_key:
-        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
+        edge_repo: EdgeRepository = _make_edge_repo(args)
         edge = edge_repo.get(edge_key)
         if edge:
-            rich.print_json(data=edge.to_simplified_dict())
+            rich.print_json(data=MySQLEdgeMapper.to_simplified_dict(edge))
         else:
             print(f"❌ Not found: Edge{edge_key_tuple}")
+
 
 # Handler: Insert node or edge in Registry
 def cmd_data_insert(args):
@@ -145,155 +236,113 @@ def cmd_data_insert(args):
     edge_input = args.edge
     node_list_input = args.node_list
     edge_list_input = args.edge_list
+    subgraph_input = args.subgraph
     actions = tuple(args.actions.split(',')) if args.actions else ()
+    detect_concepts = args.detect_concepts
+
+    # Build repositories
+    node_repo: NodeRepository = _make_node_repo(args)
+    edge_repo: EdgeRepository = _make_edge_repo(args)
+    node_ops = NodeOperations(repo=node_repo)
+    edge_ops = EdgeOperations(repo=edge_repo)
 
     # Process node input
     if node_input:
 
         # Case 1: --node=@path/to/file.json
-        if node_input.startswith("@"):
-
-            # Extract path from input
-            path_str = node_input[1:]
-            node_json_path = Path(path_str)
-
-            # Check if file exists
-            if not node_json_path.exists():
-                raise FileNotFoundError(f"Node data file not found: {node_json_path}")
-
-            # Open JSON file and load data
-            with node_json_path.open("r") as fp:
-
-                # Load JSON data from file
-                node_json_data = json.load(fp)
-
         # Case 2: --node='<json>'
-        else:
-            print("Parsing inline JSON node.")
-            try:
-                node_json_data = json.loads(node_input)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON passed to --node: {e}") from e
-
-        # Create node key from JSON data
-        node_key = NodeKey(institution_id=node_json_data["institution_id"], object_type=node_json_data["object_type"], object_id=node_json_data["object_id"])
+        node_json_data = _load_json_input(node_input, "--node")
 
         # Create node object from JSON data
-        node = Node(key=node_key)
-        node.from_simplified_dict(node_json_data)
+        node = MySQLNodeMapper.from_simplified_dict(node_json_data)
 
         # Insert node into registry
-        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
-        node_repo.save(node, actions=actions)
+        node_ops.save(node, actions=actions)
+
+        if detect_concepts:
+            print(f"⚠️  detect_concepts requested but not yet wired into the new CLI workflow for node {node.key.to_tuple()}.")
 
     # Process edge input
     if edge_input:
 
         # Case 1: --edge=@path/to/file.json
-        if edge_input.startswith("@"):
-
-            # Extract path from input
-            path_str = edge_input[1:]
-            edge_json_path = Path(path_str)
-
-            # Check if file exists
-            if not edge_json_path.exists():
-                raise FileNotFoundError(f"Edge data file not found: {edge_json_path}")
-
-            # Open JSON file and load data
-            with edge_json_path.open("r") as fp:
-
-                # Load JSON data from file
-                edge_json_data = json.load(fp)
-
         # Case 2: --edge='<json>'
-        else:
-            print("Parsing inline JSON edge.")
-            try:
-                edge_json_data = json.loads(edge_input)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON passed to --edge: {e}") from e
-
-        # Create edge key from JSON data
-        edge_key = EdgeKey(from_institution_id=edge_json_data["from_institution_id"], from_object_type=edge_json_data["from_object_type"], from_object_id=edge_json_data["from_object_id"], to_institution_id=edge_json_data["to_institution_id"], to_object_type=edge_json_data["to_object_type"], to_object_id=edge_json_data["to_object_id"], context=edge_json_data["context"])
+        edge_json_data = _load_json_input(edge_input, "--edge")
 
         # Create edge object from JSON data
-        edge = Edge(key=edge_key)
-        edge.from_simplified_dict(edge_json_data)
+        edge = MySQLEdgeMapper.from_simplified_dict(edge_json_data)
 
         # Insert edge into registry
-        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
-        edge_repo.save(edge, actions=actions)
+        edge_ops.save(edge, actions=actions)
 
     # Process node list input
     if node_list_input:
 
         # Case 1: --node_list=@path/to/file.json
-        if node_list_input.startswith("@"):
-
-            # Extract path from input
-            path_str = node_list_input[1:]
-            node_list_json_path = Path(path_str)
-
-            # Check if file exists
-            if not node_list_json_path.exists():
-                raise FileNotFoundError(f"Node list data file not found: {node_list_json_path}")
-
-            # Open JSON file
-            with node_list_json_path.open("r") as fp:
-
-                # Load JSON data from file
-                node_list_json_data = json.load(fp)
-
         # Case 2: --node_list='<json>'
-        else:
-            print("Parsing inline JSON node list.")
-            try:
-                node_list_json_data = json.loads(node_list_input)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON passed to --node_list: {e}") from e
+        node_list_json_data = _load_json_input(node_list_input, "--node_list")
 
         # Create node list object from JSON data
-        node_list = NodeList()
-        node_list.from_simplified_dict_list(node_list_json_data)
+        node_list = NodeList(
+            node_list=[
+                MySQLNodeMapper.from_simplified_dict(node_json)
+                for node_json in node_list_json_data
+            ]
+        )
 
         # Insert node list into registry
-        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
-        node_repo.save_many(node_list, actions=actions)
+        node_ops.save_many(node_list, actions=actions)
+
+        if detect_concepts:
+            print("⚠️  detect_concepts requested but not yet wired into the new CLI workflow for node_list.")
 
     # Process edge list input
     if edge_list_input:
 
         # Case 1: --edge_list=@path/to/file.json
-        if edge_list_input.startswith("@"):
-
-            # Extract path from input
-            path_str = edge_list_input[1:]
-            edge_list_json_path = Path(path_str)
-
-            # Check if file exists
-            if not edge_list_json_path.exists():
-                raise FileNotFoundError(f"Edge list data file not found: {edge_list_json_path}")
-
-            # Open JSON file and load data
-            with edge_list_json_path.open("r") as fp:
-                edge_list_json_data = json.load(fp)
-
         # Case 2: --edge_list='<json>'
-        else:
-            print("Parsing inline JSON edge list.")
-            try:
-                edge_list_json_data = json.loads(edge_list_input)
-            except json.JSONDecodeError as e:
-                raise ValueError(f"Invalid JSON passed to --edge_list: {e}") from e
+        edge_list_json_data = _load_json_input(edge_list_input, "--edge_list")
 
         # Create edge list object from JSON data
-        edge_list = EdgeList()
-        edge_list.from_simplified_dict_list(edge_list_json_data)
+        edge_list = EdgeList(
+            edge_list=[
+                MySQLEdgeMapper.from_simplified_dict(edge_json)
+                for edge_json in edge_list_json_data
+            ]
+        )
 
         # Insert edge list into registry
-        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
-        edge_repo.save_many(edge_list, actions=actions)
+        edge_ops.save_many(edge_list, actions=actions)
+
+    # Process subgraph input
+    if subgraph_input:
+
+        # Case 1: --subgraph=@path/to/file.json
+        # Case 2: --subgraph='<json>'
+        subgraph_json_data = _load_json_input(subgraph_input, "--subgraph")
+
+        # Create subgraph object from JSON data
+        subgraph = SubGraph(
+            nodes=NodeList(
+                node_list=[
+                    MySQLNodeMapper.from_simplified_dict(node_json)
+                    for node_json in subgraph_json_data.get("nodes", [])
+                ]
+            ),
+            edges=EdgeList(
+                edge_list=[
+                    MySQLEdgeMapper.from_simplified_dict(edge_json)
+                    for edge_json in subgraph_json_data.get("edges", [])
+                ]
+            ),
+        )
+
+        # Insert subgraph into registry
+        node_ops.save_many(subgraph.nodes, actions=actions)
+        edge_ops.save_many(subgraph.edges, actions=actions)
+
+        if detect_concepts:
+            print("⚠️  detect_concepts requested but not yet wired into the new CLI workflow for subgraph.")
 
 # Handler: Check if node or edge exists in Registry
 def cmd_data_delete(args):
@@ -311,15 +360,50 @@ def cmd_data_delete(args):
     edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
     actions  = tuple(args.actions.split(','))  if args.actions  else ()
 
+    # Build repositories
+    node_repo: NodeRepository = _make_node_repo(args)
+    edge_repo: EdgeRepository = _make_edge_repo(args)
+
     # Fetch node and print results
     if node_key:
-        node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
         node_repo.delete(node_key, actions=actions)
 
     # Fetch edge and print results
     if edge_key:
-        edge_repo: EdgeRepository = MySQLEdgeRepository(engine_name=env, db=db)
         edge_repo.delete(edge_key, actions=actions)
+
+    # Fetch node list and print results
+    if args.node_list:
+
+        # Case 1: --node_list=@path/to/file.json
+        # Case 2: --node_list='<json>'
+        node_list_json_data = _load_json_input(args.node_list, "--node_list")
+
+        # Build key list
+        node_key_list = [
+            NodeKey.from_tuple(tuple(item))
+            for item in node_list_json_data
+        ]
+
+        # Delete node list
+        node_repo.delete_many(node_key_list, actions=actions)
+
+    # Fetch edge list and print results
+    if args.edge_list:
+
+        # Case 1: --edge_list=@path/to/file.json
+        # Case 2: --edge_list='<json>'
+        edge_list_json_data = _load_json_input(args.edge_list, "--edge_list")
+
+        # Build key list
+        edge_key_list = [
+            EdgeKey.from_tuple(tuple(item))
+            for item in edge_list_json_data
+        ]
+
+        # Delete edge list
+        edge_repo.delete_many(edge_key_list, actions=actions)
+
 
 # Handler: Genereal debug command for data operations
 def cmd_data_debug(args):
@@ -352,10 +436,9 @@ def cmd_data_debug(args):
         raise ValueError("node_key is required")
 
     # Create node object
-    node = Node(key=node_key)
-
-    node_repo: NodeRepository = MySQLNodeRepository(engine_name=env, db=db)
+    node_repo: NodeRepository = _make_node_repo(args)
     node_ops = NodeOperations(repo=node_repo)
+    node = MySQLNodeMapper.from_simplified_dict(json_data)
     node_ops.insert(node, actions=('eval',))
 
     return
