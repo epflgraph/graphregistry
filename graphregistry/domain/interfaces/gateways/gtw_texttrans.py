@@ -8,10 +8,5 @@ class TextTranslationGateway(Protocol):
     def translate_text(self, text: str, source_language: LanguageCode, target_language: LanguageCode) -> str:
         ...
 
-    def translate_multilingual(
-        self,
-        text: MultilingualText,
-        source_language: LanguageCode,
-        target_languages: tuple[LanguageCode, ...] = ("en", "fr", "de", "it"),
-    ) -> MultilingualText:
+    def translate_multilingual(self, text: MultilingualText, source_language: LanguageCode, target_languages: tuple[LanguageCode, ...] = ("en", "fr", "de", "it"),) -> MultilingualText:
         ...

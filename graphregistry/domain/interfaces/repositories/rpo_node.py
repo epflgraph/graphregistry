@@ -1,6 +1,6 @@
 # graphregistry/domain/interfaces/repositories/rpo_node.py
 from __future__ import annotations
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.models.mdl_node import Node, NodeKey, NodeList
 
@@ -22,7 +22,7 @@ class NodeRepository(Protocol):
     def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
         ...
 
-    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[Any]:
+    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[Node]:
         ...
 
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:

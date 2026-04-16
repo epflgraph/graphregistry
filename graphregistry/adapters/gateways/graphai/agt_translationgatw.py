@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Callable
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.domain.interfaces.gateways.gtw_texttrans import TextTranslationGateway
-from graphregistry.domain.models.mdl_text import MultilingualText
+from graphregistry.domain.models.mdl_text import MultilingualText, LanguageCode
 
 # Type aliases for better readability
 LoginFn = Callable[[str], dict[str, Any]]
@@ -24,7 +24,7 @@ class GraphAITextTranslationGateway(TextTranslationGateway):
         self._login_fn = login_fn
         self._translate_fn = translate_fn
 
-    def translate_text(self, text: str, source_language: str, target_language: str) -> str:
+    def translate_text(self, text: str, source_language: LanguageCode, target_language: LanguageCode) -> str:
         if not text or source_language == target_language:
             return text
         login_info = self._ensure_login_info()
@@ -33,8 +33,8 @@ class GraphAITextTranslationGateway(TextTranslationGateway):
     def translate_multilingual(
         self,
         text: MultilingualText,
-        source_language: str,
-        target_languages: tuple[str, ...] = ("en", "fr", "de", "it"),
+        source_language: LanguageCode,
+        target_languages: tuple[LanguageCode, ...] = ("en", "fr", "de", "it"),
     ) -> MultilingualText:
         out = text.model_copy(deep=True)
         source_value = getattr(text, source_language, None)
@@ -46,7 +46,11 @@ class GraphAITextTranslationGateway(TextTranslationGateway):
                 continue
             current = getattr(out, lang, None)
             if current is None or len(current.strip()) == 0:
-                translated = self.translate_text(source_value, source_language=source_language, target_language=lang)
+                translated = self.translate_text(
+                    source_value,
+                    source_language=source_language,
+                    target_language=lang,
+                )
                 setattr(out, lang, translated)
         return out
 

@@ -9,9 +9,7 @@ from graphregistry.domain.models.mdl_base import (
 from graphregistry.domain.models.mdl_edge import (
     Edge,
     EdgeField,
-    EdgeFieldKey,
     EdgeFieldList,
-    EdgeKey,
     EdgeList,
 )
 from graphregistry.domain.models.mdl_text import (
@@ -24,9 +22,7 @@ from graphregistry.domain.models.mdl_subgraph import SubGraph
 from graphregistry.domain.models.mdl_node import (
     Node,
     NodeField,
-    NodeFieldKey,
     NodeFieldList,
-    NodeKey,
     NodeList,
 )
 from graphregistry.domain.models.mdl_pageprofile import PageProfile

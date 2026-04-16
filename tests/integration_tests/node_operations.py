@@ -1,16 +1,11 @@
-# test/integration_tests/node_operations.py
+# tests/integration_tests/node_operations.py
 from __future__ import annotations
-
-import json
 from pathlib import Path
 from typing import Any
-
-import pytest
-
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.mdl_base import NodeKey
+import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere
 from graphdb.core.graphdb import GraphDB
@@ -18,32 +13,37 @@ from graphdb.core.graphdb import GraphDB
 # Resolve the fixture path relative to this test file, going up to the project root and then into tests/fixtures
 FIXTURE_PATH = Path("./tests/fixtures/node_course_test_101.json")
 
+# Define the engine name constant used in the schema resolver
+ENGINE_NAME = 'xaas_coresrv'
+
 # Use a dedicated schema for integration tests to avoid conflicts with other data
 SCHEMA_NAME = "_0_integration_tests_graph_registry"
 
+# Class definition for a fixed schema resolver that always returns the same schema for nodes and edges
+class FixedTestSchemaResolver:
+    def for_node(self, key):
+        return (ENGINE_NAME, SCHEMA_NAME)
+
+    def for_edge(self, key):
+        return (ENGINE_NAME, SCHEMA_NAME)
+
+# Helper function to load the JSON fixture data
 def load_fixture() -> dict[str, Any]:
     with FIXTURE_PATH.open("r", encoding="utf-8") as f:
         return json.load(f)
 
-
+# Pytest fixture to provide a real repository instance for integration testing
 @pytest.fixture
 def real_repo() -> MySQLNodeRepository:
-    """
-    Real integration repository using the actual DB connection.
-
-    Adjust engine_name if needed for your environment.
-    Recommended: use a dedicated test DB / test schema.
-    """
-    glbcfg = GlobalConfig()
     db = GraphDB()
+    resolver = FixedTestSchemaResolver()
 
     return MySQLNodeRepository(
-        engine_name="xaas_coresrv",
         db=db,
-        glbcfg=glbcfg,
+        schema_resolver=resolver
     )
 
-
+# The actual test function that performs a full CRUD cycle on the MySQLNodeRepository using the fixture data
 @pytest.mark.integration
 def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -> None:
     data = load_fixture()
@@ -58,25 +58,25 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -
     node = MySQLNodeMapper.from_simplified_dict(data)
 
     # Defensive cleanup before test in case a prior failed run left state behind
-    if real_repo.exists(key, schema_override=SCHEMA_NAME):
-        real_repo.delete(key, actions=("eval", "commit"), schema_override=SCHEMA_NAME)
+    if real_repo.exists(key):
+        real_repo.delete(key, actions=("eval", "commit"))
 
     try:
         # 1) Initial state
         print('')
-        assert real_repo.exists(key, schema_override=SCHEMA_NAME) is False
-        assert real_repo.get(key, schema_override=SCHEMA_NAME) is None
+        assert real_repo.exists(key) is False
+        assert real_repo.get(key) is None
 
         # 2) Save
         print('\nSaving node to repository...')
-        saved = real_repo.save(node, actions=("eval", "commit"), schema_override=SCHEMA_NAME)
+        saved = real_repo.save(node, actions=("eval", "commit"))
         assert saved.key == key
 
         # 3) Exists after save
-        assert real_repo.exists(key, schema_override=SCHEMA_NAME) is True
+        assert real_repo.exists(key) is True
 
         # 4) Get after save
-        loaded = real_repo.get(key, schema_override=SCHEMA_NAME)
+        loaded = real_repo.get(key)
         assert loaded is not None
         import rich
         print("\nNode object content:")
@@ -129,13 +129,13 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -
         assert rehydrated.page_profile.external_url.en == loaded.page_profile.external_url.en
 
         # 8) Delete
-        assert real_repo.delete(key, actions=("eval", "commit"), schema_override=SCHEMA_NAME) is True
+        assert real_repo.delete(key, actions=("eval", "commit")) is True
 
         # 9) Final state
-        assert real_repo.exists(key, schema_override=SCHEMA_NAME) is False
-        assert real_repo.get(key, schema_override=SCHEMA_NAME) is None
+        assert real_repo.exists(key) is False
+        assert real_repo.get(key) is None
 
     finally:
         # Always clean up even if an assertion fails
-        if real_repo.exists(key, schema_override=SCHEMA_NAME):
-            real_repo.delete(key, actions=("eval", "commit"), schema_override=SCHEMA_NAME)
+        if real_repo.exists(key):
+            real_repo.delete(key, actions=("eval", "commit"))

@@ -1,38 +1,33 @@
 # graphregistry/domain/interfaces/repositories/rpo_edge.py
 from __future__ import annotations
-from typing import Any, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 from graphregistry.domain.models.mdl_edge import Edge, EdgeKey, EdgeList
+from graphregistry.domain.interfaces.types import ActionSet
 
+# Class definition
 @runtime_checkable
 class EdgeRepository(Protocol):
 
-    # Check if object exists
     def exists(self, key: EdgeKey) -> bool:
         ...
 
-    # Check if objects in list exist
     def exists_many(self, key_list: list[EdgeKey]) -> list[bool]:
         ...
 
-    # Load one edge from persistence
     def get(self, key: EdgeKey) -> Edge | None:
         ...
 
-    # Load many edges from persistence
     def get_many(self, key_list: list[EdgeKey]) -> EdgeList:
         ...
 
-    # Save one edge to persistence
-    def save(self, edge: Edge, actions: tuple[str, ...] = ("eval",)) -> Any:
+    def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
         ...
 
-    # Save many edges
-    def save_many(self, edge_list: EdgeList, actions: tuple[str, ...] = ("eval",)) -> list[Any]:
+    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> list[Edge]:
         ...
 
-    # Optional delete operations
-    def delete(self, key: EdgeKey, actions: tuple[str, ...] = ("eval",)) -> bool:
+    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
         ...
 
-    def delete_many(self, key_list: list[EdgeKey], actions: tuple[str, ...] = ("eval",)) -> list[bool]:
+    def delete_many(self, key_list: list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
         ...

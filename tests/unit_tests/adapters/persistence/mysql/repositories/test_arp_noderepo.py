@@ -1,15 +1,12 @@
 # tests/unit_tests/adapters/persistence/mysql/repositories/test_arp_noderepo.py
 from __future__ import annotations
-
 from copy import deepcopy
-from typing import Any
-
+from typing import Any, cast
 import pytest
-
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
+from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
 from graphregistry.domain.models.mdl_base import NodeKey
-
 
 NODE_JSON_FIXTURE: dict[str, Any] = {
     "institution_id": "EPFL",
@@ -88,12 +85,12 @@ NODE_JSON_FIXTURE: dict[str, Any] = {
     },
 }
 
+class FakeSchemaResolver:
+    def for_node(self, key: NodeKey) -> tuple[str, str]:
+        return ("test_engine", "schema_course")
 
-class FakeGlobalConfig:
-    def __init__(self) -> None:
-        self.object_type_to_schema = {"Course": "schema_course"}
-        self.page_profile_columns = tuple(NODE_JSON_FIXTURE["page_profile"].keys())
-
+    def for_edge(self, key) -> tuple[str, str]:
+        return ("test_engine", "schema_course_person")
 
 class FakeGraphDB:
     def __init__(self) -> None:
@@ -113,18 +110,18 @@ class FakeGraphDB:
         if op == "node_get_basic":
             if key not in self.nodes:
                 return []
-            node = self.nodes[key]
+            node = self.nodes[cast(tuple[str, str, str], key)]
             return [[node["object_title"], node["text_source"], node["raw_text"]]]
 
         if op == "node_get_custom":
-            rows = self.custom_fields.get(key, [])
+            rows = self.custom_fields.get(cast(tuple[str, str, str], key), [])
             return [[r["field_language"], r["field_name"], r["field_value"]] for r in rows]
 
         if op == "node_get_profile":
-            row = self.page_profiles.get(key)
+            row = self.page_profiles.get(cast(tuple[str, str, str], key))
             if row is None:
                 return []
-            return [[row.get(col) for col in NODE_JSON_FIXTURE["page_profile"].keys()]]
+            return [[row.get(col) for col in PAGE_PROFILE_COLUMNS]]
 
         raise AssertionError(f"Unexpected query: {query}")
 
@@ -203,11 +200,10 @@ class FakeGraphDB:
         if op != "node_delete":
             raise AssertionError(f"Unexpected shell query: {query}")
 
-        self.nodes.pop(key, None)
-        self.custom_fields.pop(key, None)
-        self.page_profiles.pop(key, None)
-        self.deleted_keys.append(key)
-
+        self.nodes.pop(cast(tuple[str, str, str], key), None)
+        self.custom_fields.pop(cast(tuple[str, str, str], key), None)
+        self.page_profiles.pop(cast(tuple[str, str, str], key), None)
+        self.deleted_keys.append(cast(tuple[str, str, str], key))
 
 @pytest.fixture
 def repo(monkeypatch: pytest.MonkeyPatch) -> MySQLNodeRepository:
@@ -240,11 +236,9 @@ def repo(monkeypatch: pytest.MonkeyPatch) -> MySQLNodeRepository:
     monkeypatch.setattr(repo_module, "resolve_sql_query", fake_resolve_sql_query)
 
     return MySQLNodeRepository(
-        engine_name="test_engine",
-        db=FakeGraphDB(),
-        glbcfg=FakeGlobalConfig(),
+        db=FakeGraphDB(), # type: ignore
+        schema_resolver=FakeSchemaResolver()
     )
-
 
 def test_mysql_node_repository_full_crud_cycle(repo: MySQLNodeRepository) -> None:
     data = deepcopy(NODE_JSON_FIXTURE)

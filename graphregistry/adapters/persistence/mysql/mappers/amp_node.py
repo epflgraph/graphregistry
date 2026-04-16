@@ -5,6 +5,7 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MyS
 from graphregistry.domain.models.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldList
 
+
 # Class definition
 class MySQLNodeFieldMapper:
     """
@@ -12,27 +13,52 @@ class MySQLNodeFieldMapper:
     """
 
     @staticmethod
+    def from_row(row: tuple[Any, ...], node_key: NodeKey) -> NodeField:
+        """
+        Expected row shape:
+            (field_language, field_name, field_value)
+        """
+        field_language, field_name, field_value = row
+        return NodeField(
+            key=NodeFieldKey(
+                key=node_key,
+                field_language=str(field_language or ""),
+                field_name=str(field_name or ""),
+            ),
+            field_value=field_value,
+        )
+
+    @staticmethod
+    def from_dict(row: dict[str, Any], node_key: NodeKey) -> NodeField:
+        """
+        Expected dict shape:
+            {
+                "field_language": ...,
+                "field_name": ...,
+                "field_value": ...
+            }
+        """
+        return NodeField(
+            key=NodeFieldKey(
+                key=node_key,
+                field_language=str(row.get("field_language") or ""),
+                field_name=str(row.get("field_name") or ""),
+            ),
+            field_value=row.get("field_value"),
+        )
+
+    @staticmethod
     def from_rows(rows: list[tuple[Any, ...]] | None, node_key: NodeKey) -> NodeFieldList:
         """
         Expected row shape:
             (field_language, field_name, field_value)
         """
-        field_list: list[NodeField] = []
-
-        for row in rows or []:
-            field_language, field_name, field_value = row
-            field_list.append(
-                NodeField(
-                    key=NodeFieldKey(
-                        key=node_key,
-                        field_language=str(field_language or ""),
-                        field_name=str(field_name or ""),
-                    ),
-                    field_value=field_value,
-                )
-            )
-
-        return NodeFieldList(field_list=field_list)
+        return NodeFieldList(
+            field_list=[
+                MySQLNodeFieldMapper.from_row(row, node_key=node_key)
+                for row in (rows or [])
+            ]
+        )
 
     @staticmethod
     def from_dicts(rows: list[dict[str, Any]] | None, node_key: NodeKey) -> NodeFieldList:
@@ -44,42 +70,72 @@ class MySQLNodeFieldMapper:
                 "field_value": ...
             }
         """
-        field_list: list[NodeField] = []
+        return NodeFieldList(
+            field_list=[
+                MySQLNodeFieldMapper.from_dict(row, node_key=node_key)
+                for row in (rows or [])
+            ]
+        )
 
-        for row in rows or []:
-            field_list.append(
-                NodeField(
-                    key=NodeFieldKey(
-                        key=node_key,
-                        field_language=str(row.get("field_language") or ""),
-                        field_name=str(row.get("field_name") or ""),
-                    ),
-                    field_value=row.get("field_value"),
-                )
-            )
+    @staticmethod
+    def to_upsert_row(field: NodeField) -> dict[str, Any]:
+        """
+        Returns one row suitable for upserting into Data_N_Object_T_CustomFields.
+        """
+        return {
+            "institution_id": field.key.key.institution_id,
+            "object_type": field.key.key.object_type,
+            "object_id": field.key.key.object_id,
+            "field_language": field.key.field_language,
+            "field_name": field.key.field_name,
+            "field_value": field.field_value,
+        }
 
-        return NodeFieldList(field_list=field_list)
+    @staticmethod
+    def to_dict(field: NodeField) -> dict[str, Any]:
+        """
+        Returns a full dict representation including parent node identity fields.
+        """
+        return {
+            "institution_id": field.key.key.institution_id,
+            "object_type": field.key.key.object_type,
+            "object_id": field.key.key.object_id,
+            "field_language": field.key.field_language,
+            "field_name": field.key.field_name,
+            "field_value": field.field_value,
+        }
+
+    @staticmethod
+    def to_simplified_row(field: NodeField) -> dict[str, Any]:
+        """
+        Returns simplified row without parent node identity fields.
+        Useful for export/debug payloads.
+        """
+        return {
+            "field_language": field.key.field_language,
+            "field_name": field.key.field_name,
+            "field_value": field.field_value,
+        }
 
     @staticmethod
     def to_upsert_rows(field_list: NodeFieldList) -> list[dict[str, Any]]:
         """
         Returns rows suitable for upserting into Data_N_Object_T_CustomFields.
         """
-        rows: list[dict[str, Any]] = []
+        return [
+            MySQLNodeFieldMapper.to_upsert_row(field)
+            for field in field_list.field_list
+        ]
 
-        for field in field_list.field_list:
-            rows.append(
-                {
-                    "institution_id": field.key.key.institution_id,
-                    "object_type": field.key.key.object_type,
-                    "object_id": field.key.key.object_id,
-                    "field_language": field.key.field_language,
-                    "field_name": field.key.field_name,
-                    "field_value": field.field_value,
-                }
-            )
-
-        return rows
+    @staticmethod
+    def to_dicts(field_list: NodeFieldList) -> list[dict[str, Any]]:
+        """
+        Returns full dict rows including parent node identity fields.
+        """
+        return [
+            MySQLNodeFieldMapper.to_dict(field)
+            for field in field_list.field_list
+        ]
 
     @staticmethod
     def to_simplified_rows(field_list: NodeFieldList) -> list[dict[str, Any]]:
@@ -87,18 +143,10 @@ class MySQLNodeFieldMapper:
         Returns simplified rows without the parent node identity fields.
         Useful for export/debug payloads.
         """
-        rows: list[dict[str, Any]] = []
-
-        for field in field_list.field_list:
-            rows.append(
-                {
-                    "field_language": field.key.field_language,
-                    "field_name": field.key.field_name,
-                    "field_value": field.field_value,
-                }
-            )
-
-        return rows
+        return [
+            MySQLNodeFieldMapper.to_simplified_row(field)
+            for field in field_list.field_list
+        ]
 
 
 class MySQLNodeMapper:

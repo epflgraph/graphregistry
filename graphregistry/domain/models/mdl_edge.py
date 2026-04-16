@@ -42,13 +42,6 @@ class EdgeField(BaseModel):
             "field_value"         : self.field_value
         }
 
-    def to_simplified_dict(self) -> dict[str, Any]:
-        return {
-            "field_language"      : self.key.field_language,
-            "field_name"          : self.key.field_name,
-            "field_value"         : self.field_value
-        }
-
 # Model definition
 class EdgeFieldList(BaseModel):
     field_list: list[EdgeField] = Field(default_factory=list)
@@ -74,9 +67,6 @@ class EdgeFieldList(BaseModel):
     def to_list(self) -> list[dict[str, Any]]:
         return [field.to_dict() for field in self.field_list]
 
-    def to_simplified_list(self) -> list[dict[str, Any]]:
-        return [field.to_simplified_dict() for field in self.field_list]
-
 # Model definition
 class Edge(BaseModel):
     key: EdgeKey
@@ -89,30 +79,6 @@ class Edge(BaseModel):
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
 
-    def set_from_simplified_dict(self, json_data: dict[str, Any]) -> None:
-        self.key = EdgeKey(
-             from_institution_id = json_data["from_institution_id"],
-             from_object_type    = json_data["from_object_type"],
-             from_object_id      = json_data["from_object_id"],
-             to_institution_id   = json_data["to_institution_id"],
-             to_object_type      = json_data["to_object_type"],
-             to_object_id        = json_data["to_object_id"],
-             context             = json_data["context"]
-        )
-        self.field_list.set_from_list(json_data=json_data.get("custom_fields", []), edge_key=self.key)
-
-    def to_simplified_dict(self) -> dict[str, Any]:
-        return {
-            "from_institution_id" : self.key.from_institution_id,
-            "from_object_type"    : self.key.from_object_type,
-            "from_object_id"      : self.key.from_object_id,
-            "to_institution_id"   : self.key.to_institution_id,
-            "to_object_type"      : self.key.to_object_type,
-            "to_object_id"        : self.key.to_object_id,
-            "context"             : self.key.context,
-            "custom_fields"       : self.field_list.to_simplified_list()
-        }
-
 # Model definition
 class EdgeList(BaseModel):
     edge_list: list[Edge] = Field(default_factory=list)
@@ -123,21 +89,3 @@ class EdgeList(BaseModel):
 
     def to_json(self) -> list[dict[str, Any]]:
         return self.model_dump(mode="json")["edge_list"]
-
-    def set_from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
-        self.edge_list = []
-        for edge_json in (json_data or []):
-            edge = Edge(key=EdgeKey(
-                from_institution_id = edge_json["from_institution_id"],
-                from_object_type    = edge_json["from_object_type"],
-                from_object_id      = edge_json["from_object_id"],
-                to_institution_id   = edge_json["to_institution_id"],
-                to_object_type      = edge_json["to_object_type"],
-                to_object_id        = edge_json["to_object_id"],
-                context             = edge_json["context"]
-            ))
-            edge.set_from_simplified_dict(edge_json)
-            self.edge_list.append(edge)
-
-    def to_simplified_dict_list(self) -> list[dict[str, Any]]:
-        return [edge.to_simplified_dict() for edge in self.edge_list]

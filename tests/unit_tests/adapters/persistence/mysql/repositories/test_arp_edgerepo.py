@@ -1,15 +1,11 @@
 # tests/unit_tests/adapters/persistence/mysql/repositories/test_arp_edgerepo.py
 from __future__ import annotations
-
 from copy import deepcopy
-from typing import Any
-
+from typing import Any, cast
 import pytest
-
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.domain.models.mdl_base import EdgeKey
 from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
-
 
 EDGE_JSON_FIXTURE: dict[str, Any] = {
     "from_institution_id": "EPFL",
@@ -28,13 +24,12 @@ EDGE_JSON_FIXTURE: dict[str, Any] = {
     ],
 }
 
+class FakeSchemaResolver:
+    def for_node(self, key) -> tuple[str, str]:
+        return ("test_engine", "schema_course")
 
-class FakeGlobalConfig:
-    def __init__(self) -> None:
-        self.object2object_type_to_schema = {
-            tuple(sorted(["Course", "Person"])): "schema_course_person"
-        }
-
+    def for_edge(self, key: EdgeKey) -> tuple[str, str]:
+        return ("test_engine", "schema_course_person")
 
 class FakeGraphDB:
     def __init__(self) -> None:
@@ -51,7 +46,7 @@ class FakeGraphDB:
             return [[1 if key in self.edges else 0]]
 
         if op == "edge_get_custom":
-            rows = self.custom_fields.get(key, [])
+            rows = self.custom_fields.get(cast(tuple[str, str, str, str, str, str, str], key), [])
             return [[r["field_language"], r["field_name"], r["field_value"]] for r in rows]
 
         raise AssertionError(f"Unexpected query: {query}")
@@ -130,10 +125,9 @@ class FakeGraphDB:
         if op != "edge_delete":
             raise AssertionError(f"Unexpected shell query: {query}")
 
-        self.edges.pop(key, None)
-        self.custom_fields.pop(key, None)
-        self.deleted_keys.append(key)
-
+        self.edges.pop(cast(tuple[str, str, str, str, str, str, str], key), None)
+        self.custom_fields.pop(cast(tuple[str, str, str, str, str, str, str], key), None)
+        self.deleted_keys.append(cast(tuple[str, str, str, str, str, str, str], key))
 
 @pytest.fixture
 def repo(monkeypatch: pytest.MonkeyPatch) -> MySQLEdgeRepository:
@@ -168,11 +162,9 @@ def repo(monkeypatch: pytest.MonkeyPatch) -> MySQLEdgeRepository:
     monkeypatch.setattr(repo_module, "resolve_sql_query", fake_resolve_sql_query)
 
     return MySQLEdgeRepository(
-        engine_name="test_engine",
-        db=FakeGraphDB(),
-        glbcfg=FakeGlobalConfig(),
+        db=FakeGraphDB(), # type: ignore
+        schema_resolver=FakeSchemaResolver()
     )
-
 
 def make_edge_from_fixture(data: dict[str, Any]) -> Edge:
     key = EdgeKey(
@@ -200,7 +192,6 @@ def make_edge_from_fixture(data: dict[str, Any]) -> Edge:
     )
 
     return Edge(key=key, field_list=field_list)
-
 
 def test_mysql_edge_repository_full_crud_cycle(repo: MySQLEdgeRepository) -> None:
     data = deepcopy(EDGE_JSON_FIXTURE)

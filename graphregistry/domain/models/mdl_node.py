@@ -40,13 +40,6 @@ class NodeField(BaseModel):
             "field_value"    : self.field_value
         }
 
-    def to_simplified_dict(self) -> dict[str, Any]:
-        return {
-            "field_language" : self.key.field_language,
-            "field_name"     : self.key.field_name,
-            "field_value"    : self.field_value
-        }
-
 # Model definition
 class NodeFieldList(BaseModel):
     field_list: list[NodeField] = Field(default_factory=list)
@@ -72,9 +65,6 @@ class NodeFieldList(BaseModel):
     def to_list(self) -> list[dict[str, Any]]:
         return [field.to_dict() for field in self.field_list]
 
-    def to_simplified_list(self) -> list[dict[str, Any]]:
-        return [field.to_simplified_dict() for field in self.field_list]
-
 # Model definition
 class Node(BaseModel):
     key          : NodeKey
@@ -99,30 +89,6 @@ class Node(BaseModel):
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
 
-    def set_from_simplified_dict(self, json_data: dict[str, Any]) -> None:
-        self.key = NodeKey(
-            institution_id = json_data["institution_id"],
-            object_type    = json_data["object_type"],
-            object_id      = json_data["object_id"]
-        )
-        self.title        = str(json_data.get("object_title", self.title))
-        self.text_source  = str(json_data.get("text_source", self.text_source))
-        self.raw_text     = str(json_data.get("raw_text", self.raw_text))
-        self.field_list.set_from_list(json_data=json_data.get("custom_fields", []), node_key=self.key)
-        self.page_profile = PageProfile.from_json(data=json_data.get("page_profile", {}), key=self.key)
-
-    def to_simplified_dict(self) -> dict[str, Any]:
-        return {
-            "institution_id" : self.key.institution_id,
-            "object_type"    : self.key.object_type,
-            "object_id"      : self.key.object_id,
-            "object_title"   : self.title,
-            "text_source"    : self.text_source,
-            "raw_text"       : self.raw_text,
-            "custom_fields"  : self.field_list.to_simplified_list(),
-            "page_profile"   : self.page_profile.to_simplified_dict()
-        }
-
 # Model definition
 class NodeList(BaseModel):
     node_list: list[Node] = Field(default_factory=list)
@@ -133,17 +99,3 @@ class NodeList(BaseModel):
 
     def to_json(self) -> list[dict[str, Any]]:
         return self.model_dump(mode="json")["node_list"]
-
-    def set_from_simplified_dict_list(self, json_data: list[dict[str, Any]]) -> None:
-        self.node_list = []
-        for node_json in (json_data or []):
-            node = Node(key=NodeKey(
-                institution_id = node_json["institution_id"],
-                object_type    = node_json["object_type"],
-                object_id      = node_json["object_id"]
-            ))
-            node.set_from_simplified_dict(node_json)
-            self.node_list.append(node)
-
-    def to_simplified_dict_list(self) -> list[dict[str, Any]]:
-        return [node.to_simplified_dict() for node in self.node_list]
