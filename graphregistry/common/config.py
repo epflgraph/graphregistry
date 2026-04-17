@@ -1,8 +1,8 @@
 # graphregistry/common/config.py
-import json, rich
 from collections import defaultdict
 from pathlib import Path
 from yaml import safe_load
+import json, rich, copy
 
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +27,9 @@ class GlobalConfig:
         # Set MySQL schema names from config file #
         #-----------------------------------------#
 
+        # Get execution mode [dev, prod] from config file
+        self.mysql_execution_mode = self.settings['mysql']['mode']
+
         # Fetch schema names from config file
         self.mysql_schema_names = {
             'test' : {
@@ -43,8 +46,14 @@ class GlobalConfig:
                 'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
             }
         }
-        self.mysql_schema_names['xaas_coresrv'] = self.mysql_schema_names['test']
-        self.mysql_schema_names['xaas_prod']    = self.mysql_schema_names['prod']
+        self.mysql_schema_names['xaas_coresrv'] = copy.deepcopy(self.mysql_schema_names['test'])
+        self.mysql_schema_names['xaas_prod']    = copy.deepcopy(self.mysql_schema_names['prod'])
+
+        # Add prefix to schema names if in 'dev' mode
+        if self.mysql_execution_mode == 'dev':
+            for env in self.mysql_schema_names:
+                for schema in self.mysql_schema_names[env]:
+                    self.mysql_schema_names[env].update({schema: "_1_DEV_" + self.mysql_schema_names[env][schema]})
 
         # Assign to local variables (to act as aliases)
         self.schema_ontology = self.mysql_schema_names['test']['ontology']
@@ -129,7 +138,10 @@ class GlobalConfig:
 
     # Print method
     def print(self):
+        print('Raw config:')
         rich.print_json(data=self.settings)
+        print('mysql_schema_names:')
+        rich.print_json(data=self.mysql_schema_names)
 
 #===============================#
 # Class definition: IndexConfig #
@@ -526,8 +538,8 @@ class ScoresConfig:
 # Main execution #
 #================#
 if __name__ == "__main__":
-    # self = GlobalConfig()
-    # self.print()
+    self = GlobalConfig()
+    self.print()
     idxcfg = IndexConfig()
     idxcfg.print(compact=True)
     scrcfg = ScoresConfig()
