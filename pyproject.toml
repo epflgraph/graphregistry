@@ -51,5 +51,6 @@ exclude = [
 # Pytest configuration for the project
 [tool.pytest.ini_options]
 markers = [
-    "integration: tests that hit real external systems (DB, APIs, etc.)"
+    "integration: tests that hit real external systems (DB, APIs, etc.)",
+    "e2e: end-to-end tests hitting real systems (DB, CLI, etc.)"
 ]
