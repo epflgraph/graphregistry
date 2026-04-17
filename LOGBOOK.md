@@ -22,3 +22,5 @@
 - Implement data file structure analyser/inspector
 - Add `list` function to workflows/operations
 - Fix CLI to use mappers
+- There's a problem with graphdb, in that the exporting function must be different depending on whether the mysql and mysqldump binaries are local or docker-based
+- Also check if sql.gz files can be imported with the same function, or if they need to be unzipped first
