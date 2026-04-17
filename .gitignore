@@ -274,3 +274,4 @@ config/config_graphai_client copy.json
 scripts/init/sample_sets/*.json
 config/config_graphai_client.rcp.json
 config/config_graphai_client.switch.json
+database/init/sample_sets/*
