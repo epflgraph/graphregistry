@@ -12,10 +12,6 @@ from graphregistry.workflows.messages import (
     EdgeUpdateResponse,
     EdgeUpsertRequest,
     EdgeUpsertResponse,
-    GenerateAndTranslateRequest,
-    GenerateAndTranslateResponse,
-    GenerateTextRequest,
-    GenerateTextResponse,
     NodeDeleteRequest,
     NodeDeleteResponse,
     NodeExistsRequest,
@@ -28,8 +24,6 @@ from graphregistry.workflows.messages import (
     NodeUpdateResponse,
     NodeUpsertRequest,
     NodeUpsertResponse,
-    TranslateMultilingualTextRequest,
-    TranslateMultilingualTextResponse,
 )
 from graphregistry.workflows.operations import EdgeOperations, GeneratedTextOperations, NodeOperations
 
@@ -61,10 +55,4 @@ __all__ = [
     "EdgeUpsertResponse",
     "EdgeDeleteRequest",
     "EdgeDeleteResponse",
-    "TranslateMultilingualTextRequest",
-    "TranslateMultilingualTextResponse",
-    "GenerateTextRequest",
-    "GenerateTextResponse",
-    "GenerateAndTranslateRequest",
-    "GenerateAndTranslateResponse",
 ]

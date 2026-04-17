@@ -26,6 +26,7 @@ from graphregistry.domain.models.mdl_node import (
     NodeList,
 )
 from graphregistry.domain.models.mdl_pageprofile import PageProfile
+from graphregistry.domain.models.mdl_translation import TranslationTask
 
 __all__ = [
     "NodeKey",
@@ -48,4 +49,5 @@ __all__ = [
     "DescriptionSet",
     "PageProfile",
     "SubGraph",
+    "TranslationTask",
 ]

@@ -1,7 +1,7 @@
-# graphregistry/domain/interfaces/gateways/gtw_texttrans.py
+# graphregistry/domain/interfaces/gateways/gtw_translation.py
 from __future__ import annotations
 from typing import Protocol
-from graphregistry.domain.models.mdl_text import LanguageCode, MultilingualText
+from graphregistry.domain.models.mdl_text import LanguageCode, MultilingualText, MultilingualGeneratedText
 
 # Model definition
 class TextTranslationGateway(Protocol):
@@ -9,4 +9,7 @@ class TextTranslationGateway(Protocol):
         ...
 
     def translate_multilingual(self, text: MultilingualText, source_language: LanguageCode, target_languages: tuple[LanguageCode, ...] = ("en", "fr", "de", "it"),) -> MultilingualText:
+        ...
+
+    def translate_missing_generated(self, text: MultilingualGeneratedText, source_language: LanguageCode, target_languages: tuple[LanguageCode, ...] = ("en", "fr", "de", "it")) -> MultilingualGeneratedText:
         ...

@@ -1,10 +1,6 @@
 # graphregistry/entrypoints/cli/cmd_data.py
 from __future__ import annotations
-
 from pathlib import Path
-import json
-import rich
-
 from graphregistry.domain.models.mdl_base import NodeKey, EdgeKey
 from graphregistry.domain.models.mdl_node import NodeList
 from graphregistry.domain.models.mdl_edge import EdgeList
@@ -18,41 +14,30 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeM
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
 from graphregistry.domain.models.mdl_subgraph import SubGraph
+import rich, json
 
-
-#--------------------------------------#
-# Helper: Build default schema resolver #
-#--------------------------------------#
+# Helper: Build default schema resolver
 def _make_schema_resolver(args) -> DefaultSchemaResolver:
     return DefaultSchemaResolver(
         engine_name=args.env,
         glbcfg=args.ctx.global_config,
     )
 
-
-#--------------------------------#
-# Helper: Build node repository  #
-#--------------------------------#
+# Helper: Build node repository
 def _make_node_repo(args) -> NodeRepository:
     return MySQLNodeRepository(
         db=args.ctx.db,
         schema_resolver=_make_schema_resolver(args),
     )
 
-
-#--------------------------------#
-# Helper: Build edge repository  #
-#--------------------------------#
+# Helper: Build edge repository
 def _make_edge_repo(args) -> EdgeRepository:
     return MySQLEdgeRepository(
         db=args.ctx.db,
         schema_resolver=_make_schema_resolver(args),
     )
 
-
-#---------------------------------------------#
-# Helper: Load JSON from inline string or file #
-#---------------------------------------------#
+# Helper: Load JSON from inline string or file
 def _load_json_input(raw_input: str, label: str):
     # Case 1: --xxx=@path/to/file.json
     if raw_input.startswith("@"):
@@ -76,7 +61,6 @@ def _load_json_input(raw_input: str, label: str):
             return json.loads(raw_input)
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON passed to {label}: {e}") from e
-
 
 # Handler: Import data from JSON file into Registry
 def cmd_data_import(args):
@@ -157,7 +141,6 @@ def cmd_data_import(args):
     # Print footers
     print("🖥️  ~ Done.")
 
-
 # Handler: Check if node or edge exists in Registry
 def cmd_data_exists(args):
 
@@ -184,7 +167,6 @@ def cmd_data_exists(args):
     if edge_key:
         edge_repo: EdgeRepository = _make_edge_repo(args)
         print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge ~ ({edge_key.from_institution_id}, {edge_key.from_object_type}, {edge_key.from_object_id}, {edge_key.to_institution_id}, {edge_key.to_object_type}, {edge_key.to_object_id}, {edge_key.context})""")
-
 
 # Handler: Fetch node or edge from Registry
 def cmd_data_fetch(args):
@@ -220,7 +202,6 @@ def cmd_data_fetch(args):
             rich.print_json(data=MySQLEdgeMapper.to_simplified_dict(edge))
         else:
             print(f"❌ Not found: Edge{edge_key_tuple}")
-
 
 # Handler: Insert node or edge in Registry
 def cmd_data_insert(args):
@@ -403,7 +384,6 @@ def cmd_data_delete(args):
 
         # Delete edge list
         edge_repo.delete_many(edge_key_list, actions=actions)
-
 
 # Handler: Genereal debug command for data operations
 def cmd_data_debug(args):
