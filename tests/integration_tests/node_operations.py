@@ -2,6 +2,7 @@
 from __future__ import annotations
 from pathlib import Path
 from typing import Any
+from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.domain.models.mdl_base import NodeKey
@@ -10,14 +11,17 @@ import pytest, json
 # Adjust this import if your actual DB class lives elsewhere
 from graphdb.core.graphdb import GraphDB
 
+# Initialize global config to ensure schema names are available
+glbcfg = GlobalConfig()
+
 # Resolve the fixture path relative to this test file, going up to the project root and then into tests/fixtures
-FIXTURE_PATH = Path("./tests/fixtures/node_course_test_101.json")
+FIXTURE_PATH = Path("./tests/fixtures/node_operations_sample.json")
 
 # Define the engine name constant used in the schema resolver
 ENGINE_NAME = 'xaas_coresrv'
 
 # Use a dedicated schema for integration tests to avoid conflicts with other data
-SCHEMA_NAME = "_0_integration_tests_graph_registry"
+SCHEMA_NAME = "_0_PYTESTS_"+glbcfg.schema_registry
 
 # Class definition for a fixed schema resolver that always returns the same schema for nodes and edges
 class FixedTestSchemaResolver:

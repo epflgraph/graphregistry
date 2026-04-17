@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from graphregistry.adapters.gateways.graphai.agt_conceptgatw import GraphAIConceptGateway
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
 from graphregistry.common.config import REPO_ROOT
 
 
