@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.models.mdl_edge import Edge, EdgeKey, EdgeList
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 
 # Class definition
 @dataclass(frozen=True)

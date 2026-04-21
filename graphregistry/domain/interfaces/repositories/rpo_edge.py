@@ -1,7 +1,7 @@
 # graphregistry/domain/interfaces/repositories/rpo_edge.py
 from __future__ import annotations
 from typing import Protocol, runtime_checkable
-from graphregistry.domain.models.mdl_edge import Edge, EdgeKey, EdgeList
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 from graphregistry.domain.interfaces.types import ActionSet
 
 # Class definition

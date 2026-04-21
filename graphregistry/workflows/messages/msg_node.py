@@ -1,7 +1,7 @@
 # graphregistry/workflows/messages/msg_node.py
 from __future__ import annotations
 from pydantic import BaseModel
-from graphregistry.domain.models.mdl_node import Node, NodeKey
+from graphregistry.domain.models.entities.mdl_node import Node, NodeKey
 
 # Class definition
 class NodeExistsRequest(BaseModel):

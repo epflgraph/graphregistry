@@ -1,7 +1,7 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_edgerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
-from graphregistry.domain.models.mdl_edge import EdgeKey, Edge, EdgeList
+from graphregistry.domain.models.entities.mdl_edge import EdgeKey, Edge, EdgeList
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver

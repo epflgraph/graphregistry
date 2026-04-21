@@ -1,8 +1,8 @@
 # graphregistry/domain/interfaces/services/srv_schema.py
 from __future__ import annotations
 from typing import Protocol, TypeAlias
-from graphregistry.domain.models.mdl_node import NodeKey
-from graphregistry.domain.models.mdl_edge import EdgeKey
+from graphregistry.domain.models.entities.mdl_node import NodeKey
+from graphregistry.domain.models.entities.mdl_edge import EdgeKey
 
 # Type alias for engine and schema tuple
 EngineSchema: TypeAlias = tuple[str, str]

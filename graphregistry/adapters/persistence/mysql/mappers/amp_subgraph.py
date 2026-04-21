@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Any
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
-from graphregistry.domain.models.mdl_edge import Edge, EdgeList
-from graphregistry.domain.models.mdl_node import Node, NodeList
-from graphregistry.domain.models.mdl_subgraph import SubGraph
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList
+from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 
 # Class definition
 class MySQLSubGraphMapper:

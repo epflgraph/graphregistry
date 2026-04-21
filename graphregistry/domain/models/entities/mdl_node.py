@@ -2,9 +2,9 @@
 from __future__ import annotations
 from typing import Any, Iterator
 from pydantic import BaseModel, Field, model_validator
-from graphregistry.domain.models.mdl_base import NodeKey, NodeFieldKey
-from graphregistry.domain.models.mdl_pageprofile import PageProfile
-from graphregistry.domain.models.mdl_concept import DetectedConceptList, DetectedConcept
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeFieldKey
+from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
+from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList, ConceptDetectionResult
 
 # Model definition
 class NodeField(BaseModel):
@@ -142,7 +142,7 @@ class Node(BaseModel):
     raw_text: str = ""
     field_list: NodeFieldList = Field(default_factory=NodeFieldList)
     page_profile: PageProfile | None = None
-    detected_concepts: DetectedConceptList = Field(default_factory=DetectedConceptList)
+    detected_concepts: ConceptDetectionResultList = Field(default_factory=ConceptDetectionResultList)
 
     @model_validator(mode="after")
     def set_default_page_profile(self) -> "Node":

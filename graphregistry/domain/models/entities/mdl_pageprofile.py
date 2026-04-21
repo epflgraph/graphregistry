@@ -2,8 +2,8 @@
 from __future__ import annotations
 from typing import Iterator
 from pydantic import BaseModel, Field, model_validator
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.domain.models.mdl_text import (
+from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_text import (
     DescriptionSet,
     GeneratedText,
     MultilingualGeneratedText,

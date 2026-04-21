@@ -1,7 +1,7 @@
 # graphregistry/workflows/messages/msg_text.py
 from __future__ import annotations
 from pydantic import BaseModel
-from graphregistry.domain.models.mdl_text import (
+from graphregistry.domain.models.entities.mdl_text import (
     LanguageCode,
     MultilingualGeneratedText,
 )

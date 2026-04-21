@@ -1,7 +1,7 @@
 # graphregistry/workflows/factories/fct_node.py
 from __future__ import annotations
-from graphregistry.domain.models.mdl_node import Node
-from graphregistry.domain.models.mdl_concept import DetectedConceptList
+from graphregistry.domain.models.entities.mdl_node import Node
+from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
 
 

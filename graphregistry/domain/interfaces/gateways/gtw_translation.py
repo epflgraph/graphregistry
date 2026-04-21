@@ -1,7 +1,7 @@
 # graphregistry/domain/interfaces/gateways/gtw_translation.py
 from __future__ import annotations
 from typing import Protocol
-from graphregistry.domain.models.mdl_text import LanguageCode, MultilingualText, MultilingualGeneratedText
+from graphregistry.domain.models.entities.mdl_text import LanguageCode, MultilingualText, MultilingualGeneratedText
 
 # Model definition
 class TextTranslationGateway(Protocol):

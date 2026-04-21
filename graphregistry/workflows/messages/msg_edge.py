@@ -1,7 +1,7 @@
 # graphregistry/workflows/messages/msg_edge.py
 from __future__ import annotations
 from pydantic import BaseModel
-from graphregistry.domain.models.mdl_edge import Edge, EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey
 
 # Class definition
 class EdgeExistsRequest(BaseModel):

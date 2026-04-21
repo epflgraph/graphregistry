@@ -2,9 +2,9 @@
 from __future__ import annotations
 from typing import Iterator
 from pydantic import BaseModel, Field
-from graphregistry.domain.models.mdl_base import NodeKey, EdgeKey
-from graphregistry.domain.models.mdl_edge import Edge, EdgeList
-from graphregistry.domain.models.mdl_node import Node, NodeList
+from graphregistry.domain.models.entities.mdl_base import NodeKey, EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 
 # Model definition
 class SubGraph(BaseModel):

@@ -9,8 +9,8 @@ from requests import Response, get, post
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
-from graphregistry.domain.models.mdl_text import LanguageCode, MultilingualText
-from graphregistry.domain.models.mdl_translation import TranslationTask
+from graphregistry.domain.models.entities.mdl_text import LanguageCode, MultilingualText
+from graphregistry.domain.models.tasks.mdl_translation import TranslationTask
 
 DIRECT_TRANSLATION_PAIRS: set[tuple[LanguageCode, LanguageCode]] = {
     ("fr", "en"),

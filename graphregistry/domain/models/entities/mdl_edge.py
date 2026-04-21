@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any, Iterator
 from pydantic import BaseModel, Field
-from graphregistry.domain.models.mdl_base import EdgeKey, EdgeFieldKey
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeFieldKey
 
 # Model definition
 class EdgeField(BaseModel):

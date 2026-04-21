@@ -1,8 +1,8 @@
 # graphregistry/adapters/persistence/mysql/mappers/amp_pageprofile.py
 from __future__ import annotations
 from typing import Any
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.domain.models.mdl_pageprofile import PageProfile
+from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 # Class definition
 class MySQLPageProfileMapper:

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import cast
 from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
-from graphregistry.domain.models.mdl_translation import TranslationTask
+from graphregistry.domain.models.tasks.mdl_translation import TranslationTask
 
 # Class definition
 class TranslationOperations:

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from graphregistry.domain.models.mdl_text import LanguageCode
+from graphregistry.domain.models.entities.mdl_text import LanguageCode
 
 
 class TranslationTask(BaseModel):

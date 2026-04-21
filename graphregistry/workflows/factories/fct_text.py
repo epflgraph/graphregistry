@@ -1,11 +1,11 @@
 # graphregistry/workflows/factories/fct_text.py
 from __future__ import annotations
-from graphregistry.domain.models.mdl_text import (
+from graphregistry.domain.models.entities.mdl_text import (
     GeneratedText,
     LanguageCode,
     MultilingualGeneratedText,
 )
-from graphregistry.workflows.operations.ops_text import GeneratedTextOperations
+from graphregistry.workflows.operations.entities.ops_text import GeneratedTextOperations
 
 # Class definition
 class MultilingualGeneratedTextFactory:

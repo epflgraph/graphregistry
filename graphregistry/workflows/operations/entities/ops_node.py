@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
-from graphregistry.domain.models.mdl_node import Node, NodeKey, NodeList
-from graphregistry.domain.models.mdl_concept import DetectedConceptList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
+from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
 
 # Class definition
 @dataclass(frozen=True)
@@ -54,7 +54,7 @@ class NodeOperations:
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool:
         return bool(self.repo.delete(key, actions=actions))
 
-    def detect_concepts(self, text: str) -> DetectedConceptList:
+    def detect_concepts(self, text: str) -> ConceptDetectionResultList:
         if self.concept_gateway is None:
             raise ValueError("No concept gateway configured")
         return self.concept_gateway.detect_concepts(text)

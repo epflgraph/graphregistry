@@ -1,8 +1,8 @@
 # graphregistry/adapters/services/schema/asv_schema_multitenant.py
 from __future__ import annotations
 from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver, EngineSchema
-from graphregistry.domain.models.mdl_node import NodeKey
-from graphregistry.domain.models.mdl_edge import EdgeKey
+from graphregistry.domain.models.entities.mdl_node import NodeKey
+from graphregistry.domain.models.entities.mdl_edge import EdgeKey
 
 # Class definition
 class MultiTenantSchemaResolver(SchemaResolver):

@@ -1,6 +1,6 @@
 # graphregistry/common/logger.py
-from graphregistry.domain.models.mdl_node import NodeKey
-from graphregistry.domain.models.mdl_edge import EdgeKey
+from graphregistry.domain.models.entities.mdl_node import NodeKey
+from graphregistry.domain.models.entities.mdl_edge import EdgeKey
 import rich
 
 #==================#

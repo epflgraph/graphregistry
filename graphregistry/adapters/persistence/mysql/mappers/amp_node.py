@@ -2,8 +2,8 @@
 from __future__ import annotations
 from typing import Any
 from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MySQLPageProfileMapper
-from graphregistry.domain.models.mdl_base import NodeFieldKey, NodeKey
-from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldList
+from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
+from graphregistry.domain.models.entities.mdl_node import Node, NodeField, NodeFieldList
 
 # Class definition
 class MySQLNodeFieldMapper:

@@ -1,19 +1,19 @@
 # graphregistry/entrypoints/cli/cmd_data.py
 from __future__ import annotations
 from pathlib import Path
-from graphregistry.domain.models.mdl_base import NodeKey, EdgeKey
-from graphregistry.domain.models.mdl_node import NodeList
-from graphregistry.domain.models.mdl_edge import EdgeList
+from graphregistry.domain.models.entities.mdl_base import NodeKey, EdgeKey
+from graphregistry.domain.models.entities.mdl_node import NodeList
+from graphregistry.domain.models.entities.mdl_edge import EdgeList
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.workflows.operations.ops_node import NodeOperations
-from graphregistry.workflows.operations.ops_edge import EdgeOperations
+from graphregistry.workflows.operations.entities.ops_node import NodeOperations
+from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
-from graphregistry.domain.models.mdl_subgraph import SubGraph
+from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 import rich, json
 
 # Helper: Build default schema resolver

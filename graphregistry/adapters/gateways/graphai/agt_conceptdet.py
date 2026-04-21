@@ -6,27 +6,27 @@ from urllib.parse import urlencode
 
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
-from graphregistry.domain.models.mdl_concept import (
-    ConceptExtractionTask,
-    DetectedConcept,
-    DetectedConceptList,
+from graphregistry.domain.models.tasks.mdl_conceptdet import (
+    ConceptDetectionTask,
+    ConceptDetectionResult,
+    ConceptDetectionResultList,
 )
 from requests import post
 
 
 class GraphAIConceptGateway(GraphAIBaseGateway, ConceptGateway):
-    def detect_concepts(self, text: str) -> DetectedConceptList:
+    def detect_concepts(self, text: str) -> ConceptDetectionResultList:
         if not text or not text.strip():
-            return DetectedConceptList()
+            return ConceptDetectionResultList()
 
         login_info = self._ensure_login_info()
 
-        task = ConceptExtractionTask(text=text)
+        task = ConceptDetectionTask(text=text)
 
         url = (
             login_info["host"]
             + "/text/wikify?"
-            + urlencode(task.to_wikify_query_params())
+            + urlencode(task.get_params_dict())
         )
 
         response = self._request(
@@ -34,14 +34,14 @@ class GraphAIConceptGateway(GraphAIBaseGateway, ConceptGateway):
             login_info=login_info,
             request_func=post,
             headers={"Content-Type": "application/json"},
-            json=task.to_wikify_payload(),
+            json=task.get_payload_dict(),
             timeout=900,
             max_tries=15,
         )
 
         data = response.json()
 
-        return DetectedConceptList(
+        return ConceptDetectionResultList(
             concept_list=[
                 self._to_detected_concept(item)
                 for item in data
@@ -50,8 +50,8 @@ class GraphAIConceptGateway(GraphAIBaseGateway, ConceptGateway):
         )
 
     @staticmethod
-    def _to_detected_concept(item: dict[str, Any]) -> DetectedConcept:
-        return DetectedConcept(
+    def _to_detected_concept(item: dict[str, Any]) -> ConceptDetectionResult:
+        return ConceptDetectionResult(
             concept_id=str(item.get("concept_id") or item.get("id") or ""),
             text_source=str(item.get("concept_name")) if item.get("concept_name") is not None else None,
             score=float(item.get("mixed_score", 0.0)),

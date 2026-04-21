@@ -1,7 +1,7 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_noderepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
-from graphregistry.domain.models.mdl_node import NodeKey, Node, NodeList
+from graphregistry.domain.models.entities.mdl_node import NodeKey, Node, NodeList
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
