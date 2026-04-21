@@ -1,21 +1,88 @@
 # graphregistry/domain/models/mdl_text.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING, TypeAlias, Iterator
 from pydantic import BaseModel, Field
+import rich
 
 # Check type if running in a type-checking context to avoid circular imports
 if TYPE_CHECKING:
     from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
 
 # Type alias for language codes
-LanguageCode: TypeAlias = Literal["en", "fr", "de", "it"]
+LanguageCode: TypeAlias = str
+LanguageCodeList: TypeAlias = tuple[LanguageCode, ...]
+DEFAULT_LANGUAGE_CODES: LanguageCodeList = ("en", "fr", "de", "it")
 
 # Model definition
 class MultilingualText(BaseModel):
-    en: str = ""
-    fr: str = ""
-    de: str = ""
-    it: str = ""
+    """Model representing a multilingual text, with language codes as keys and text as values.
+    The item_map field is a dictionary mapping language codes to their corresponding text values.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    item_map: dict[LanguageCode, str] = Field(default_factory=dict)
+
+    #-----------------------------------#
+    # Model constructors and validators #
+    #-----------------------------------#
+    # Class constructor
+    def __init__(self, item_map: dict[LanguageCode, str] | None = None, /, **data) -> None:
+        if item_map is not None and 'item_map' not in data:
+            data['item_map'] = item_map
+        super(MultilingualText, self).__init__(**data)
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_json(cls, input_json: dict[str, str] | dict[str, dict[str, str]]) -> "MultilingualText":
+        if 'item_map' in input_json and isinstance(input_json['item_map'], dict):
+            return cls(item_map=input_json['item_map'])
+        return cls(item_map={str(k): str(v) for k, v in input_json.items()})
+
+    def to_json(self) -> dict[str, str]:
+        return dict(self.item_map)
+
+    #--------------------#
+    # Operator overloads #
+    #--------------------#
+
+    # Operator: multilingual_text[language] to get the text for a specific language
+    def __getitem__(self, language: LanguageCode) -> str:
+        return self.get(language)
+
+    # Operator: multilingual_text[language] = value to set the text for a specific language
+    def __setitem__(self, language: LanguageCode, value: str) -> None:
+        self.set(language, value)
+
+    # Method: Get keys of the item_map directly from the object
+    def keys(self) -> Iterator[LanguageCode]:
+        return iter(self.item_map.keys())
+
+    # Operator: Iterate directly over language codes
+    def __iter__(self) -> Iterator[LanguageCode]: # type: ignore
+        return iter(self.item_map)
+
+    #----------------#
+    # Access methods #
+    #----------------#
+
+    # Method: Get the text for a specific language
+    def get(self, language: LanguageCode, default: str = "") -> str:
+        return self.item_map.get(language, default)
+
+    # Method: Set the text for a specific language
+    def set(self, language: LanguageCode, value: str) -> None:
+        self.item_map[language] = str(value)
+
+    #-----------------#
+    # Display methods #
+    #-----------------#
+
+    # Method: Pretty-print the multilingual text using rich
+    def print(self) -> None:
+        rich.print_json(data=self.to_json())
 
 # Model definition
 class GeneratedText(BaseModel):
@@ -32,7 +99,7 @@ class MultilingualGeneratedText(BaseModel):
     de: GeneratedText = Field(default_factory=GeneratedText)
     it: GeneratedText = Field(default_factory=GeneratedText)
 
-    LANGUAGES: tuple[LanguageCode, ...] = ("en", "fr", "de", "it")
+    LANGUAGES: LanguageCodeList = DEFAULT_LANGUAGE_CODES
 
     @classmethod
     def from_source(
@@ -96,7 +163,7 @@ class MultilingualGeneratedText(BaseModel):
             return
 
         translated = translation_gateway.translate_multilingual(
-            text=MultilingualText(**{source_language: source_value}),
+            text=MultilingualText(item_map={source_language: source_value}),
             source_language=source_language,
             target_languages=self.LANGUAGES,
         )
@@ -110,7 +177,7 @@ class MultilingualGeneratedText(BaseModel):
             if current.value.strip() and not overwrite_existing:
                 continue
 
-            new_value = getattr(translated, lang, "").strip()
+            new_value = translated.get(lang).strip()
             if not new_value:
                 continue
 
@@ -173,7 +240,7 @@ class MultilingualGeneratedText(BaseModel):
 
     def preferred_source_language(
         self,
-        preferred_languages: tuple[LanguageCode, ...] | None = None,
+        preferred_languages: LanguageCodeList | None = None,
     ) -> LanguageCode | None:
         """
         Return the first language that contains text.
@@ -186,7 +253,7 @@ class MultilingualGeneratedText(BaseModel):
 
     def preferred_value(
         self,
-        preferred_languages: tuple[LanguageCode, ...] | None = None,
+        preferred_languages: LanguageCodeList | None = None,
     ) -> str:
         for lang in preferred_languages or self.LANGUAGES:
             value = self.get_value(lang).strip()
