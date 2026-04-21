@@ -4,13 +4,15 @@ from __future__ import annotations
 from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
 from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
 from graphregistry.domain.models.entities.mdl_text import (
+    DEFAULT_LANGUAGE_CODES,
     GeneratedText,
     LanguageCode,
+    LanguageCodeList,
     MultilingualGeneratedText,
     MultilingualText,
 )
 
-ALL_LANGUAGES: tuple[LanguageCode, ...] = ("en", "fr", "de", "it")
+ALL_LANGUAGES: LanguageCodeList = DEFAULT_LANGUAGE_CODES
 
 
 class GeneratedTextOperations:
@@ -30,7 +32,7 @@ class GeneratedTextOperations:
         self,
         text: MultilingualText,
         source_language: LanguageCode,
-        target_languages: tuple[LanguageCode, ...] = ALL_LANGUAGES,
+        target_languages: LanguageCodeList = ALL_LANGUAGES,
     ) -> MultilingualText:
         return self.translation_gateway.translate_multilingual(
             text=text,
@@ -45,7 +47,7 @@ class GeneratedTextOperations:
         self,
         text: MultilingualGeneratedText,
         source_language: LanguageCode,
-        target_languages: tuple[LanguageCode, ...] = ALL_LANGUAGES,
+        target_languages: LanguageCodeList = ALL_LANGUAGES,
         overwrite_existing: bool = False,
     ) -> MultilingualGeneratedText:
         """
@@ -65,8 +67,7 @@ class GeneratedTextOperations:
             return out
 
         # Build a simple multilingual payload for the translation gateway
-        seed = MultilingualText()
-        setattr(seed, source_language, source_value)
+        seed = MultilingualText(item_map={source_language: source_value})
 
         translated = self.translation_gateway.translate_multilingual(
             text=seed,
@@ -83,7 +84,7 @@ class GeneratedTextOperations:
             if current.value.strip() and not overwrite_existing:
                 continue
 
-            translated_value = getattr(translated, lang, "").strip()
+            translated_value = translated.get(lang).strip()
             if not translated_value:
                 continue
 
