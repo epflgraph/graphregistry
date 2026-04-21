@@ -27,7 +27,6 @@ from graphregistry.workflows.messages.msg_node import (
     NodeUpsertRequest,
     NodeUpsertResponse,
 )
-
 __all__ = [
     "NodeExistsRequest",
     "NodeExistsResponse",

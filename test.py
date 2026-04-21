@@ -1,7 +1,6 @@
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
-from graphregistry.workflows.factories.fct_node import NodeFactory
-import rich
+from graphregistry.domain.models import NodeKey
+from graphregistry.adapters.gateways import GraphAIConceptGateway
+from graphregistry.workflows.factories import NodeFactory
 
 gtw = GraphAIConceptGateway(debug=True)
 node_factory = NodeFactory(concept_gateway=gtw)

@@ -1,14 +1,21 @@
 # graphregistry/domain/interfaces/__init__.py
-from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
-from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
-from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
-from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
-
+from graphregistry.domain.interfaces.gateways import (
+    ConceptGateway,
+    TextGenerationGateway,
+    TextTranslationGateway,
+)
+from graphregistry.domain.interfaces.repositories import (
+    EdgeRepository,
+    NodeRepository,
+)
+from graphregistry.domain.interfaces.services import (
+    SchemaResolver,
+)
 __all__ = [
-    "NodeRepository",
-    "EdgeRepository",
     "ConceptGateway",
     "TextTranslationGateway",
     "TextGenerationGateway",
+    "NodeRepository",
+    "EdgeRepository",
+    "SchemaResolver",
 ]
