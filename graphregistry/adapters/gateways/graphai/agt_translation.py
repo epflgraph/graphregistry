@@ -9,7 +9,12 @@ from requests import Response, get, post
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
-from graphregistry.domain.models.entities.mdl_text import LanguageCode, MultilingualText
+from graphregistry.domain.models.entities.mdl_text import (
+    DEFAULT_LANGUAGE_CODES,
+    LanguageCode,
+    LanguageCodeList,
+    MultilingualText,
+)
 from graphregistry.domain.models.tasks.mdl_translation import TranslationTask
 
 DIRECT_TRANSLATION_PAIRS: set[tuple[LanguageCode, LanguageCode]] = {
@@ -31,7 +36,7 @@ DEFAULT_MAX_TEXT_LENGTH_IF_TEXT_TOO_LONG = 4000
 STEP_AUTO_DECREASE_TEXT_LENGTH = 800
 
 # Supported application languages in the registry
-SUPPORTED_LANGUAGES: tuple[LanguageCode, ...] = ("en", "fr", "de", "it")
+SUPPORTED_LANGUAGES: LanguageCodeList = DEFAULT_LANGUAGE_CODES
 
 
 class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
@@ -131,7 +136,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         self,
         text: MultilingualText,
         source_language: LanguageCode,
-        target_languages: tuple[LanguageCode, ...] = SUPPORTED_LANGUAGES,
+        target_languages: LanguageCodeList = SUPPORTED_LANGUAGES,
         ) -> MultilingualText:
         """
         Translate a multilingual container by filling only missing target fields.
@@ -143,7 +148,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         - never overwrites existing non-empty target text
         """
         out = text.model_copy(deep=True)
-        source_value = getattr(text, source_language, "").strip()
+        source_value = text.get(source_language).strip()
 
         if not source_value:
             return out
@@ -152,7 +157,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             if lang == source_language:
                 continue
 
-            existing_value = getattr(out, lang, "").strip()
+            existing_value = out.get(lang).strip()
             if existing_value:
                 continue
 
@@ -163,7 +168,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             )
 
             if translated:
-                setattr(out, lang, translated)
+                out.set(lang, translated)
 
         return out
 
