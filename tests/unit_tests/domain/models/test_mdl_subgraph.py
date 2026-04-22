@@ -1,10 +1,10 @@
 # tests/unit_tests/domain/models/test_mdl_subgraph.py
 from __future__ import annotations
 
-from graphregistry.domain.models.mdl_base import EdgeKey, NodeKey
-from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldKey
-from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldKey
-from graphregistry.domain.models.mdl_subgraph import SubGraph
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey
+from graphregistry.domain.models.entities.mdl_node import Node, NodeField, NodeFieldKey
+from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 
 
 def make_node_key(object_id: str) -> NodeKey:

@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from json import load as load_json
 from pathlib import Path
+from random import uniform
 from time import sleep
 from typing import Any, Callable, cast
 
@@ -81,7 +82,20 @@ class GraphAIBaseGateway:
         """
         Retry delays: 1, 2, 4, 8, 16, 32, ...
         """
-        return 2 ** (attempt - 1)
+        return min(2 ** (attempt - 1), 32)
+
+    @staticmethod
+    def _is_retryable_status(status_code: int) -> bool:
+        return status_code in {408, 425, 429, 500, 502, 503, 504}
+
+    @staticmethod
+    def _is_server_error(status_code: int) -> bool:
+        return 500 <= status_code <= 599
+
+    @staticmethod
+    def _jittered_delay(delay_seconds: int) -> float:
+        # Keep jitter moderate to avoid synchronized retries against GraphAI.
+        return max(0.0, delay_seconds * uniform(0.8, 1.2))
 
     def _log(self, message: str) -> None:
         if self.debug:
@@ -139,13 +153,27 @@ class GraphAIBaseGateway:
                 request_headers["Authorization"] = f"Bearer {new_token}"
                 continue
 
-            if attempt < max_tries:
+            retryable_status = self._is_retryable_status(response.status_code)
+
+            # Fail faster for unstable auth infrastructure instead of hammering /token.
+            if (
+                "/token" in url
+                and self._is_server_error(response.status_code)
+                and attempt >= 2
+            ):
+                raise RuntimeError(
+                    f'HTTP {response.status_code} while calling "{url}": '
+                    f'{response.reason} (auth endpoint unstable; aborted early)'
+                )
+
+            if retryable_status and attempt < max_tries:
                 delay = self._backoff_seconds(attempt)
+                jittered_delay = self._jittered_delay(delay)
                 self._log(
                     f"{request_func.__name__.upper()} {url} returned "
-                    f"{response.status_code}, retrying in {delay}s..."
+                    f"{response.status_code}, retrying in {jittered_delay:.2f}s..."
                 )
-                sleep(delay)
+                sleep(jittered_delay)
                 continue
 
             raise RuntimeError(

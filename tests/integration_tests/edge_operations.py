@@ -4,8 +4,8 @@ from pathlib import Path
 from typing import Any
 from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from graphregistry.domain.models.mdl_base import EdgeKey
-from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
 import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere
@@ -21,7 +21,7 @@ FIXTURE_PATH = Path("./tests/fixtures/edge_operations_sample.json")
 ENGINE_NAME = 'xaas_coresrv'
 
 # Use a dedicated schema for integration tests to avoid conflicts with other data
-SCHEMA_NAME = "_0_PYTESTS_"+glbcfg.schema_registry
+SCHEMA_NAME = "_0_PYTESTS_"+glbcfg.schema_registry.replace('_1_DEV_','')
 
 # Class definition for a fixed schema resolver that always returns the same schema for nodes and edges
 class FixedTestSchemaResolver:
@@ -60,7 +60,7 @@ def build_edge(data: dict[str, Any]) -> Edge:
     )
 
     field_list = EdgeFieldList(
-        field_list=[
+        item_list=[
             EdgeField(
                 key=EdgeFieldKey(
                     key=key,
@@ -122,11 +122,11 @@ def test_mysql_edge_repository_real_crud_cycle(real_repo: MySQLEdgeRepository) -
         assert loaded.key == key
 
         # 5) Custom fields verification
-        assert len(loaded.field_list.field_list) == len(data["field_list"])
+        assert len(loaded.field_list.item_list) == len(data["field_list"])
 
         field_map = {
             (field.key.field_language, field.key.field_name): field.field_value
-            for field in loaded.field_list.field_list
+            for field in loaded.field_list.item_list
         }
 
         for row in data["field_list"]:

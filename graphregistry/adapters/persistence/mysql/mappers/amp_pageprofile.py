@@ -47,20 +47,20 @@ class MySQLPageProfileMapper:
             external_url_key = f"external_url_{lang}"
 
             if numeric_id_key in row and row[numeric_id_key] is not None:
-                setattr(profile.numeric_id, lang, str(row[numeric_id_key]))
+                profile.numeric_id.set(lang, str(row[numeric_id_key]))
 
             if subtype_key in row and row[subtype_key] is not None:
-                setattr(profile.subtype, lang, str(row[subtype_key]))
+                profile.subtype.set(lang, str(row[subtype_key]))
 
             if external_key_key in row and row[external_key_key] is not None:
-                setattr(profile.external_key, lang, str(row[external_key_key]))
+                profile.external_key.set(lang, str(row[external_key_key]))
 
             if external_url_key in row and row[external_url_key] is not None:
-                setattr(profile.external_url, lang, str(row[external_url_key]))
+                profile.external_url.set(lang, str(row[external_url_key]))
 
         # Multilingual generated text: name
         for lang in cls.LANGUAGES:
-            target = getattr(profile.name, lang)
+            updates: dict[str, Any] = {}
             for attr in cls.GENERATED_ATTRS:
                 flat_key = f"name_{lang}_{attr}"
                 if flat_key not in row or row[flat_key] is None:
@@ -68,17 +68,21 @@ class MySQLPageProfileMapper:
 
                 value = row[flat_key]
                 if attr.startswith("is_auto_"):
-                    setattr(target, attr, bool(value))
+                    updates[attr] = bool(value)
                 elif attr == "translated_from":
-                    setattr(target, attr, str(value) if value else None)
+                    updates[attr] = str(value) if value else None
                 else:
-                    setattr(target, attr, str(value or ""))
+                    updates[attr] = str(value or "")
+
+            if updates:
+                current = profile.name.get(lang)
+                profile.name[lang] = current.model_copy(update=updates)
 
         # Descriptions: short / medium / long
         for size in cls.DESCRIPTION_SIZES:
             size_obj = getattr(profile.description, size)
             for lang in cls.LANGUAGES:
-                target = getattr(size_obj, lang)
+                updates: dict[str, Any] = {}
                 for attr in cls.GENERATED_ATTRS:
                     flat_key = f"description_{size}_{lang}_{attr}"
                     if flat_key not in row or row[flat_key] is None:
@@ -86,11 +90,15 @@ class MySQLPageProfileMapper:
 
                     value = row[flat_key]
                     if attr.startswith("is_auto_"):
-                        setattr(target, attr, bool(value))
+                        updates[attr] = bool(value)
                     elif attr == "translated_from":
-                        setattr(target, attr, str(value) if value else None)
+                        updates[attr] = str(value) if value else None
                     else:
-                        setattr(target, attr, str(value or ""))
+                        updates[attr] = str(value or "")
+
+                if updates:
+                    current = size_obj.get(lang)
+                    size_obj[lang] = current.model_copy(update=updates)
 
         return profile
 
@@ -110,10 +118,10 @@ class MySQLPageProfileMapper:
 
         # Flatten multilingual text fields
         for lang in cls.LANGUAGES:
-            row[f"numeric_id_{lang}"] = cls._empty_to_none(getattr(profile.numeric_id, lang))
-            row[f"subtype_{lang}"] = cls._empty_to_none(getattr(profile.subtype, lang))
-            row[f"external_key_{lang}"] = cls._empty_to_none(getattr(profile.external_key, lang))
-            row[f"external_url_{lang}"] = cls._empty_to_none(getattr(profile.external_url, lang))
+            row[f"numeric_id_{lang}"] = cls._empty_to_none(profile.numeric_id.get(lang))
+            row[f"subtype_{lang}"] = cls._empty_to_none(profile.subtype.get(lang))
+            row[f"external_key_{lang}"] = cls._empty_to_none(profile.external_key.get(lang))
+            row[f"external_url_{lang}"] = cls._empty_to_none(profile.external_url.get(lang))
 
             name_lang_obj = getattr(profile.name, lang)
             for attr in cls.GENERATED_ATTRS:

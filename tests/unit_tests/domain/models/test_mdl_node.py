@@ -6,9 +6,9 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from graphregistry.domain.models.mdl_base import NodeFieldKey, NodeKey
-from graphregistry.domain.models.mdl_node import Node, NodeField, NodeFieldList, NodeList
-from graphregistry.domain.models.mdl_pageprofile import PageProfile
+from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
+from graphregistry.domain.models.entities.mdl_node import Node, NodeField, NodeFieldList, NodeList
+from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 
 def make_node_key(

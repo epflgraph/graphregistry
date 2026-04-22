@@ -1,4 +1,4 @@
-# graphregistry/domain/models/mdl_node.py
+# graphregistry/domain/models/entities/mdl_node.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field, model_validator
@@ -17,9 +17,9 @@ class NodeField(BaseModel):
     key: NodeFieldKey
     field_value: Any = ""
 
-    #------------------#
-    # Model validators #
-    #------------------#
+    #-----------------------------------#
+    # Model constructors and validators #
+    #-----------------------------------#
     @model_validator(mode="after")
     def validate_key_consistency(self) -> "NodeField":
         if not isinstance(self.key, NodeFieldKey):
@@ -56,15 +56,15 @@ class NodeFieldList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_json(cls, input_json: list[dict[str, Any]], key: NodeKey) -> "NodeFieldList":
+    def from_list(cls, input_list: list[dict[str, Any]], key: NodeKey) -> "NodeFieldList":
         return cls(
             item_list=[
                 NodeField.from_json(field_json, node_key=key)
-                for field_json in (input_json or [])
+                for field_json in (input_list or [])
             ]
         )
 
-    def to_json(self) -> list[dict[str, Any]]:
+    def to_list(self) -> list[dict[str, Any]]:
         return [field.to_json() for field in self.item_list]
 
 # Model definition
@@ -78,13 +78,13 @@ class Node(BaseModel):
     title: str = ""
     text_source: str = ""
     raw_text: str = ""
-    item_list: NodeFieldList = Field(default_factory=NodeFieldList)
+    field_list: NodeFieldList = Field(default_factory=NodeFieldList)
     page_profile: PageProfile | None = None
     detected_concepts: ConceptDetectionResultList = Field(default_factory=ConceptDetectionResultList)
 
-    #------------------#
-    # Model validators #
-    #------------------#
+    #-----------------------------------#
+    # Model constructors and validators #
+    #-----------------------------------#
     @model_validator(mode="after")
     def set_default_page_profile(self) -> "Node":
         if self.page_profile is None:
@@ -96,7 +96,7 @@ class Node(BaseModel):
     @model_validator(mode="after")
     def validate_field_keys(self) -> "Node":
         fixed_fields: list[NodeField] = []
-        for field in self.item_list.item_list:
+        for field in self.field_list.item_list:
             if field.key.key != self.key:
                 field = field.model_copy(
                     update={
@@ -104,7 +104,7 @@ class Node(BaseModel):
                     }
                 )
             fixed_fields.append(field)
-        self.item_list = NodeFieldList(item_list=fixed_fields)
+        self.field_list = NodeFieldList(item_list=fixed_fields)
         return self
 
     #-----------------------#
@@ -130,8 +130,8 @@ class NodeList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_json(cls, input_json: list[dict[str, Any]]) -> "NodeList":
-        return cls(item_list=[Node.model_validate(doc) for doc in (input_json or [])])
+    def from_list(cls, input_list: list[dict[str, Any]]) -> "NodeList":
+        return cls(item_list=[Node.model_validate(doc) for doc in (input_list or [])])
 
-    def to_json(self) -> list[dict[str, Any]]:
+    def to_list(self) -> list[dict[str, Any]]:
         return self.model_dump(mode='json')['item_list']

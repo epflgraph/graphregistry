@@ -1,4 +1,4 @@
-# graphregistry/domain/models/mdl_text.py
+# graphregistry/domain/models/entities/mdl_text.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, TypeAlias, Iterator, Any
 from pydantic import BaseModel, Field

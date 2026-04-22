@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.domain.models.mdl_node import Node, NodeList
+from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 
 
 class DummyNodeRepo:

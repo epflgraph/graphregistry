@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from graphregistry.domain.models.mdl_base import EdgeFieldKey, EdgeKey
-from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldList, EdgeList
+from graphregistry.domain.models.entities.mdl_base import EdgeFieldKey, EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldList, EdgeList
 
 
 def make_edge_key(

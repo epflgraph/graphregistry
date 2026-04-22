@@ -53,7 +53,7 @@ class MySQLNodeFieldMapper:
             (field_language, field_name, field_value)
         """
         return NodeFieldList(
-            field_list=[
+            item_list=[
                 MySQLNodeFieldMapper.from_row(row, node_key=node_key)
                 for row in (rows or [])
             ]
@@ -70,7 +70,7 @@ class MySQLNodeFieldMapper:
             }
         """
         return NodeFieldList(
-            field_list=[
+            item_list=[
                 MySQLNodeFieldMapper.from_dict(row, node_key=node_key)
                 for row in (rows or [])
             ]
@@ -123,7 +123,7 @@ class MySQLNodeFieldMapper:
         """
         return [
             MySQLNodeFieldMapper.to_upsert_row(field)
-            for field in field_list.field_list
+            for field in field_list.item_list
         ]
 
     @staticmethod
@@ -133,7 +133,7 @@ class MySQLNodeFieldMapper:
         """
         return [
             MySQLNodeFieldMapper.to_dict(field)
-            for field in field_list.field_list
+            for field in field_list.item_list
         ]
 
     @staticmethod
@@ -144,7 +144,7 @@ class MySQLNodeFieldMapper:
         """
         return [
             MySQLNodeFieldMapper.to_simplified_row(field)
-            for field in field_list.field_list
+            for field in field_list.item_list
         ]
 
 # Class definition

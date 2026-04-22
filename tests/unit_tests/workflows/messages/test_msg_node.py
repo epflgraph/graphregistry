@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.domain.models.mdl_node import Node
+from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_node import Node
 from graphregistry.workflows.messages.msg_node import (
     NodeDeleteRequest,
     NodeExistsRequest,

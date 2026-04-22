@@ -24,18 +24,18 @@ class MySQLSubGraphMapper:
 
         return SubGraph(
             nodes=NodeList(
-                node_list=MySQLNodeMapper.from_simplified_dict_list(data["nodes"])
+                item_list=MySQLNodeMapper.from_simplified_dict_list(data["nodes"])
             ),
             edges=EdgeList(
-                edge_list=MySQLEdgeMapper.from_simplified_dict_list(data["edges"])
+                item_list=MySQLEdgeMapper.from_simplified_dict_list(data["edges"])
             ),
         )
 
     @staticmethod
     def to_dict(subgraph: SubGraph) -> dict[str, Any]:
         return {
-            "nodes": MySQLNodeMapper.to_simplified_dict_list(subgraph.nodes.node_list),
-            "edges": MySQLEdgeMapper.to_simplified_dict_list(subgraph.edges.edge_list),
+            "nodes": MySQLNodeMapper.to_simplified_dict_list(subgraph.nodes.item_list),
+            "edges": MySQLEdgeMapper.to_simplified_dict_list(subgraph.edges.item_list),
         }
 
     @staticmethod
@@ -46,11 +46,11 @@ class MySQLSubGraphMapper:
         if isinstance(nodes, NodeList):
             node_list = nodes
         else:
-            node_list = NodeList(node_list=list(nodes or []))
+            node_list = NodeList(item_list=list(nodes or []))
 
         if isinstance(edges, EdgeList):
             edge_list = edges
         else:
-            edge_list = EdgeList(edge_list=list(edges or []))
+            edge_list = EdgeList(item_list=list(edges or []))
 
         return SubGraph(nodes=node_list, edges=edge_list)

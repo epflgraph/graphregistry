@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from graphregistry.domain.models.mdl_base import NodeKey
-from graphregistry.domain.models.mdl_pageprofile import PageProfile
+from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 
 @pytest.fixture

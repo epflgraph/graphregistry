@@ -1,14 +1,22 @@
-# graphregistry/domain/models/mdl_base.py
+# graphregistry/domain/models/entities/mdl_base.py
 from __future__ import annotations
 from pydantic import BaseModel, model_validator
 
 # Model definition
 class NodeKey(BaseModel):
+    """Model representing the unique key of a node.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
     model_config = {"frozen": True}
     institution_id: str
     object_type: str
     object_id: str
 
+    #-----------------------------------#
+    # Model constructors and validators #
+    #-----------------------------------#
     @model_validator(mode="before")
     @classmethod
     def parse_tuple(cls, data):
@@ -22,26 +30,41 @@ class NodeKey(BaseModel):
             }
         return data
 
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
     @classmethod
-    def from_tuple(cls, value: tuple[str, str, str]) -> "NodeKey":
-        return cls.model_validate(value)
+    def from_tuple(cls, input_tuple: tuple[str, str, str]) -> "NodeKey":
+        return cls.model_validate(input_tuple)
 
     def to_tuple(self) -> tuple[str, str, str]:
         return (self.institution_id, self.object_type, self.object_id)
 
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "institution_id" : self.institution_id,
-            "object_type"    : self.object_type,
-            "object_id"      : self.object_id,
-        }
-
 # Model definition
 class NodeFieldKey(BaseModel):
+    """Model representing the unique key of a node field.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
     model_config = {"frozen": True}
     key: NodeKey
     field_language: str = ""
     field_name: str = ""
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str]) -> "NodeFieldKey":
+        if len(input_tuple) != 5:
+            raise ValueError("NodeFieldKey tuple must have 5 elements")
+        node_key = NodeKey.from_tuple(input_tuple[:3])
+        return cls(
+            key=node_key,
+            field_language=input_tuple[3],
+            field_name=input_tuple[4],
+        )
 
     def to_tuple(self) -> tuple[str, str, str, str, str]:
         return (
@@ -52,17 +75,13 @@ class NodeFieldKey(BaseModel):
             self.field_name,
         )
 
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "institution_id" : self.key.institution_id,
-            "object_type"    : self.key.object_type,
-            "object_id"      : self.key.object_id,
-            "field_language" : self.field_language,
-            "field_name"     : self.field_name,
-        }
-
 # Model definition
 class EdgeKey(BaseModel):
+    """Model representing the unique key of an edge.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
     model_config = {"frozen": True}
     from_institution_id: str
     from_object_type: str
@@ -72,6 +91,9 @@ class EdgeKey(BaseModel):
     to_object_id: str
     context: str
 
+    #-----------------------------------#
+    # Model constructors and validators #
+    #-----------------------------------#
     @model_validator(mode="before")
     @classmethod
     def parse_tuple(cls, data):
@@ -89,9 +111,12 @@ class EdgeKey(BaseModel):
             }
         return data
 
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
     @classmethod
-    def from_tuple(cls, value: tuple[str, str, str, str, str, str, str]) -> "EdgeKey":
-        return cls.model_validate(value)
+    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str, str, str]) -> "EdgeKey":
+        return cls.model_validate(input_tuple)
 
     def to_tuple(self) -> tuple[str, str, str, str, str, str, str]:
         return (
@@ -104,23 +129,31 @@ class EdgeKey(BaseModel):
             self.context,
         )
 
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "from_institution_id" : self.from_institution_id,
-            "from_object_type"    : self.from_object_type,
-            "from_object_id"      : self.from_object_id,
-            "to_institution_id"   : self.to_institution_id,
-            "to_object_type"      : self.to_object_type,
-            "to_object_id"        : self.to_object_id,
-            "context"             : self.context,
-        }
-
 # Model definition
 class EdgeFieldKey(BaseModel):
+    """Model representing the unique key of an edge field.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
     model_config = {"frozen": True}
     key: EdgeKey
     field_language: str
     field_name: str
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str, str, str, str, str]) -> "EdgeFieldKey":
+        if len(input_tuple) != 9:
+            raise ValueError("EdgeFieldKey tuple must have 9 elements")
+        edge_key = EdgeKey.from_tuple(input_tuple[:7])
+        return cls(
+            key=edge_key,
+            field_language=input_tuple[7],
+            field_name=input_tuple[8],
+        )
 
     def to_tuple(self) -> tuple[str, str, str, str, str, str, str, str, str]:
         return (
@@ -134,16 +167,3 @@ class EdgeFieldKey(BaseModel):
             self.field_language,
             self.field_name,
         )
-
-    def to_dict(self) -> dict[str, str]:
-        return {
-            "from_institution_id" : self.key.from_institution_id,
-            "from_object_type"    : self.key.from_object_type,
-            "from_object_id"      : self.key.from_object_id,
-            "to_institution_id"   : self.key.to_institution_id,
-            "to_object_type"      : self.key.to_object_type,
-            "to_object_id"        : self.key.to_object_id,
-            "context"             : self.key.context,
-            "field_language"      : self.field_language,
-            "field_name"          : self.field_name,
-        }

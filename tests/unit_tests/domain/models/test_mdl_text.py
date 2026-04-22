@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from graphregistry.domain.models.mdl_text import DescriptionSet, GeneratedText, MultilingualGeneratedText, MultilingualText
+from graphregistry.domain.models.entities.mdl_text import DescriptionSet, GeneratedText, MultilingualGeneratedText, MultilingualText
 
 
 def test_multilingual_text_defaults_empty_strings() -> None:

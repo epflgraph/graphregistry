@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
-from graphregistry.domain.models.mdl_base import EdgeKey, NodeKey
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
 
 
 def test_default_schema_resolver_for_node_uses_object_type_mapping() -> None:

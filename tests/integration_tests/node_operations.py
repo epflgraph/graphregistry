@@ -5,7 +5,7 @@ from typing import Any
 from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.domain.models.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_base import NodeKey
 import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere
@@ -21,7 +21,7 @@ FIXTURE_PATH = Path("./tests/fixtures/node_operations_sample.json")
 ENGINE_NAME = 'xaas_coresrv'
 
 # Use a dedicated schema for integration tests to avoid conflicts with other data
-SCHEMA_NAME = "_0_PYTESTS_"+glbcfg.schema_registry
+SCHEMA_NAME = "_0_PYTESTS_"+glbcfg.schema_registry.replace('_1_DEV_','')
 
 # Class definition for a fixed schema resolver that always returns the same schema for nodes and edges
 class FixedTestSchemaResolver:
@@ -92,10 +92,10 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -
         assert loaded.raw_text == data["raw_text"]
 
         # 5) Custom fields verification
-        assert len(loaded.field_list.field_list) == len(data["custom_fields"])
+        assert len(loaded.field_list.item_list) == len(data["custom_fields"])
         field_map = {
             (field.key.field_language, field.key.field_name): field.field_value
-            for field in loaded.field_list.field_list
+            for field in loaded.field_list.item_list
         }
 
         for row in data["custom_fields"]:
@@ -112,8 +112,8 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -
         assert loaded.page_profile.description.short.en.value == data["page_profile"]["description_short_en_value"]
         assert loaded.page_profile.description.medium.en.value == data["page_profile"]["description_medium_en_value"]
         assert loaded.page_profile.description.long.en.value == data["page_profile"]["description_long_en_value"]
-        assert loaded.page_profile.external_key.en == data["page_profile"]["external_key_en"]
-        assert loaded.page_profile.external_url.en == data["page_profile"]["external_url_en"]
+        assert loaded.page_profile.external_key['en'] == data["page_profile"]["external_key_en"]
+        assert loaded.page_profile.external_url['en'] == data["page_profile"]["external_url_en"]
         assert loaded.page_profile.is_visible is True
 
         # 7) Serialization round-trip check through mapper
@@ -124,13 +124,13 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository) -
         assert rehydrated.title == loaded.title
         assert rehydrated.text_source == loaded.text_source
         assert rehydrated.raw_text == loaded.raw_text
-        assert len(rehydrated.field_list.field_list) == len(loaded.field_list.field_list)
+        assert len(rehydrated.field_list.item_list) == len(loaded.field_list.item_list)
 
         assert rehydrated.page_profile is not None
         assert loaded.page_profile is not None
         assert rehydrated.page_profile.short_code == loaded.page_profile.short_code
-        assert rehydrated.page_profile.name.en.value == loaded.page_profile.name.en.value
-        assert rehydrated.page_profile.external_url.en == loaded.page_profile.external_url.en
+        assert rehydrated.page_profile.name['en'].value == loaded.page_profile.name['en'].value
+        assert rehydrated.page_profile.external_url['en'] == loaded.page_profile.external_url['en']
 
         # 8) Delete
         assert real_repo.delete(key, actions=("eval", "commit")) is True

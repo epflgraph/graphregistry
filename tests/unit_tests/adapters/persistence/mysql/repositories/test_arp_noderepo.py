@@ -6,7 +6,7 @@ import pytest
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
-from graphregistry.domain.models.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_base import NodeKey
 
 NODE_JSON_FIXTURE: dict[str, Any] = {
     "institution_id": "EPFL",
@@ -258,14 +258,14 @@ def test_mysql_node_repository_full_crud_cycle(repo: MySQLNodeRepository) -> Non
     assert node.title == data["object_title"]
     assert node.text_source == data["text_source"]
     assert node.raw_text == data["raw_text"]
-    assert len(node.field_list.field_list) == len(data["custom_fields"])
+    assert len(node.item_list.item_list) == len(data["custom_fields"])
     assert node.page_profile is not None
     assert node.page_profile.short_code == "TEST-101"
-    assert node.page_profile.name.en.value == "Introduction to Autonomous Systems Design"
-    assert node.page_profile.name.fr.value == "Introduction à la conception de systèmes autonomes"
-    assert node.page_profile.description.short.en.value.startswith("Learn the fundamentals of autonomous systems")
-    assert node.page_profile.external_key.en == "intro-autonomous-systems-TEST-101"
-    assert node.page_profile.external_url.en == "https://edu.epfl.ch/coursebook/en/intro-autonomous-systems-TEST-101"
+    assert node.page_profile.name['en'].value == "Introduction to Autonomous Systems Design"
+    assert node.page_profile.name['fr'].value == "Introduction à la conception de systèmes autonomes"
+    assert node.page_profile.description['short']['en'].value.startswith("Learn the fundamentals of autonomous systems")
+    assert node.page_profile.external_key['en'] == "intro-autonomous-systems-TEST-101"
+    assert node.page_profile.external_url['en'] == "https://edu.epfl.ch/coursebook/en/intro-autonomous-systems-TEST-101"
     assert node.page_profile.is_visible is True
 
     saved = repo.save(node, actions=("eval", "commit"))
@@ -280,10 +280,10 @@ def test_mysql_node_repository_full_crud_cycle(repo: MySQLNodeRepository) -> Non
     assert loaded.text_source == data["text_source"]
     assert loaded.raw_text == data["raw_text"]
 
-    assert len(loaded.field_list.field_list) == len(data["custom_fields"])
+    assert len(loaded.item_list.item_list) == len(data["custom_fields"])
     field_map = {
         (field.key.field_language, field.key.field_name): field.field_value
-        for field in loaded.field_list.field_list
+        for field in loaded.item_list.item_list
     }
     assert field_map[("en", "bibliography")] == data["custom_fields"][0]["field_value"]
     assert field_map[("en", "content")] == data["custom_fields"][1]["field_value"]
@@ -299,8 +299,8 @@ def test_mysql_node_repository_full_crud_cycle(repo: MySQLNodeRepository) -> Non
     assert loaded.page_profile.description.short.en.value == data["page_profile"]["description_short_en_value"]
     assert loaded.page_profile.description.medium.en.value == data["page_profile"]["description_medium_en_value"]
     assert loaded.page_profile.description.long.en.value == data["page_profile"]["description_long_en_value"]
-    assert loaded.page_profile.external_key.en == data["page_profile"]["external_key_en"]
-    assert loaded.page_profile.external_url.en == data["page_profile"]["external_url_en"]
+    assert loaded.page_profile.external_key['en'] == data["page_profile"]["external_key_en"]
+    assert loaded.page_profile.external_url['en'] == data["page_profile"]["external_url_en"]
     assert loaded.page_profile.is_visible is True
 
     simplified = MySQLNodeMapper.to_simplified_dict(loaded)
@@ -324,14 +324,14 @@ def test_mysql_node_repository_full_crud_cycle(repo: MySQLNodeRepository) -> Non
     assert rehydrated.title == loaded.title
     assert rehydrated.text_source == loaded.text_source
     assert rehydrated.raw_text == loaded.raw_text
-    assert len(rehydrated.field_list.field_list) == len(loaded.field_list.field_list)
+    assert len(rehydrated.item_list.item_list) == len(loaded.item_list.item_list)
     assert rehydrated.page_profile is not None
     assert rehydrated.page_profile.short_code == loaded.page_profile.short_code
-    assert rehydrated.page_profile.name.en.value == loaded.page_profile.name.en.value
-    assert rehydrated.page_profile.name.fr.value == loaded.page_profile.name.fr.value
-    assert rehydrated.page_profile.description.short.en.value == loaded.page_profile.description.short.en.value
-    assert rehydrated.page_profile.external_key.en == loaded.page_profile.external_key.en
-    assert rehydrated.page_profile.external_url.en == loaded.page_profile.external_url.en
+    assert rehydrated.page_profile.name['en'].value == loaded.page_profile.name['en'].value
+    assert rehydrated.page_profile.name['fr'].value == loaded.page_profile.name['fr'].value
+    assert rehydrated.page_profile.description['short']['en'].value == loaded.page_profile.description['short']['en'].value
+    assert rehydrated.page_profile.external_key['en'] == loaded.page_profile.external_key['en']
+    assert rehydrated.page_profile.external_url['en'] == loaded.page_profile.external_url['en']
     assert rehydrated.page_profile.is_visible is True
 
     assert repo.delete(key, actions=("eval",)) is False

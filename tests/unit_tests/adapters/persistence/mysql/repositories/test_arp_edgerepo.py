@@ -4,8 +4,8 @@ from copy import deepcopy
 from typing import Any, cast
 import pytest
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from graphregistry.domain.models.mdl_base import EdgeKey
-from graphregistry.domain.models.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
 
 EDGE_JSON_FIXTURE: dict[str, Any] = {
     "from_institution_id": "EPFL",

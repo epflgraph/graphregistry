@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from graphregistry.adapters.services.schema.asv_schema_multitenant import MultiTenantSchemaResolver
-from graphregistry.domain.models.mdl_base import EdgeKey, NodeKey
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
 
 
 def _tenant_config() -> dict[str, dict]:

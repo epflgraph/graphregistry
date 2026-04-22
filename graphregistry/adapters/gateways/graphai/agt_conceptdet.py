@@ -36,7 +36,7 @@ class GraphAIConceptGateway(GraphAIBaseGateway, ConceptGateway):
             headers={"Content-Type": "application/json"},
             json=task.get_payload_dict(),
             timeout=900,
-            max_tries=15,
+            max_tries=5,
         )
 
         data = response.json()

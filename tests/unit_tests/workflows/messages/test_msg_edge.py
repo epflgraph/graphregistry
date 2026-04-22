@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from graphregistry.domain.models.mdl_base import EdgeKey
-from graphregistry.domain.models.mdl_edge import Edge
+from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge
 from graphregistry.workflows.messages.msg_edge import (
     EdgeExistsRequest,
     EdgeInsertRequest,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from graphregistry.domain.models.mdl_base import EdgeKey, NodeKey
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
 
 
 class DummySchemaResolver:

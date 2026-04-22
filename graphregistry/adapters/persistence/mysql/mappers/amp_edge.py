@@ -52,7 +52,7 @@ class MySQLEdgeFieldMapper:
             (field_language, field_name, field_value)
         """
         return EdgeFieldList(
-            field_list=[
+            item_list=[
                 MySQLEdgeFieldMapper.from_row(row, edge_key=edge_key)
                 for row in (rows or [])
             ]
@@ -69,7 +69,7 @@ class MySQLEdgeFieldMapper:
             }
         """
         return EdgeFieldList(
-            field_list=[
+            item_list=[
                 MySQLEdgeFieldMapper.from_dict(row, edge_key=edge_key)
                 for row in (rows or [])
             ]
@@ -130,7 +130,7 @@ class MySQLEdgeFieldMapper:
         """
         return [
             MySQLEdgeFieldMapper.to_upsert_row(field)
-            for field in field_list.field_list
+            for field in field_list.item_list
         ]
 
     @staticmethod
@@ -140,7 +140,7 @@ class MySQLEdgeFieldMapper:
         """
         return [
             MySQLEdgeFieldMapper.to_dict(field)
-            for field in field_list.field_list
+            for field in field_list.item_list
         ]
 
     @staticmethod
@@ -151,7 +151,7 @@ class MySQLEdgeFieldMapper:
         """
         return [
             MySQLEdgeFieldMapper.to_simplified_row(field)
-            for field in field_list.field_list
+            for field in field_list.item_list
         ]
 
 # Class definition

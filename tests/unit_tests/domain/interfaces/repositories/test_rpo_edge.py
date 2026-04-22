@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.models.mdl_base import EdgeKey
-from graphregistry.domain.models.mdl_edge import Edge, EdgeList
+from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
 
 
 class DummyEdgeRepo:
