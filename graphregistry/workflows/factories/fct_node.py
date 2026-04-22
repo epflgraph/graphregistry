@@ -1,7 +1,9 @@
 # graphregistry/workflows/factories/fct_node.py
 from __future__ import annotations
+from typing import Any
 from graphregistry.domain.models.entities.mdl_node import Node
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
+from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 
 # Factory definition
 class NodeFactory:
@@ -38,3 +40,16 @@ class NodeFactory:
 
         # Return the node with detected concepts
         return node
+
+    # Method: Create a Node with the equivaleng of MySQLNodeMapper.from_simplified_dict(node_json_data)
+    def from_simplified_dict(self, input_json: dict[str, Any], detect_concepts: bool = False) -> Node:
+        node = MySQLNodeMapper.from_simplified_dict(input_json)
+        return self.create(
+                key          = node.key,
+                title        = node.title,
+                text_source  = node.text_source,
+                raw_text     = node.raw_text,
+                field_list   = node.field_list,
+                page_profile = node.page_profile,
+                detect_concepts = detect_concepts
+            )

@@ -8,11 +8,13 @@ from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.workflows.operations.entities.ops_node import NodeOperations
 from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
+from graphregistry.workflows.factories.fct_node import NodeFactory
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
 from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 import rich, json
 
@@ -213,12 +215,12 @@ def cmd_data_insert(args):
     env = args.env
 
     # Fetch input options
-    node_input = args.node
-    edge_input = args.edge
+    node_input      = args.node
+    edge_input      = args.edge
     node_list_input = args.node_list
     edge_list_input = args.edge_list
-    subgraph_input = args.subgraph
-    actions = tuple(args.actions.split(',')) if args.actions else ()
+    subgraph_input  = args.subgraph
+    actions         = tuple(args.actions.split(',')) if args.actions else ()
     detect_concepts = args.detect_concepts
 
     # Build repositories
@@ -227,6 +229,10 @@ def cmd_data_insert(args):
     node_ops = NodeOperations(repo=node_repo)
     edge_ops = EdgeOperations(repo=edge_repo)
 
+    # Initialize concept detection gateway and node factory (if needed)
+    gtw = GraphAIConceptGateway(debug=True)
+    node_factory = NodeFactory(concept_gateway=gtw)
+
     # Process node input
     if node_input:
 
@@ -234,14 +240,11 @@ def cmd_data_insert(args):
         # Case 2: --node='<json>'
         node_json_data = _load_json_input(node_input, "--node")
 
-        # Create node object from JSON data
-        node = MySQLNodeMapper.from_simplified_dict(node_json_data)
+        # Create node object from JSON data using factory to leverage concept detection if requested
+        node = node_factory.from_simplified_dict(node_json_data, detect_concepts=detect_concepts)
 
         # Insert node into registry
         node_ops.save(node, actions=actions)
-
-        if detect_concepts:
-            print(f"⚠️  detect_concepts requested but not yet wired into the new CLI workflow for node {node.key.to_tuple()}.")
 
     # Process edge input
     if edge_input:

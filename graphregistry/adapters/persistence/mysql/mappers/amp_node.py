@@ -4,6 +4,7 @@ from typing import Any
 from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MySQLPageProfileMapper
 from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.entities.mdl_node import Node, NodeField, NodeFieldList
+from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResult, ConceptDetectionResultList
 
 # Class definition
 class MySQLNodeFieldMapper:
@@ -77,17 +78,31 @@ class MySQLNodeFieldMapper:
         )
 
     @staticmethod
-    def to_upsert_row(field: NodeField) -> dict[str, Any]:
+    def to_custom_field_upsert_row(field: NodeField) -> dict[str, Any]:
         """
         Returns one row suitable for upserting into Data_N_Object_T_CustomFields.
         """
         return {
-            "institution_id": field.key.key.institution_id,
-            "object_type": field.key.key.object_type,
-            "object_id": field.key.key.object_id,
-            "field_language": field.key.field_language,
-            "field_name": field.key.field_name,
-            "field_value": field.field_value,
+            "institution_id" : field.key.key.institution_id,
+            "object_type"    : field.key.key.object_type,
+            "object_id"      : field.key.key.object_id,
+            "field_language" : field.key.field_language,
+            "field_name"     : field.key.field_name,
+            "field_value"    : field.field_value,
+        }
+
+    @staticmethod
+    def to_detected_concepts_upsert_row(node_key: NodeKey, text_source: str, concept: ConceptDetectionResult) -> dict[str, Any]:
+        """
+        Returns one row suitable for upserting into Edges_N_Object_N_Concept_T_ConceptDetection.
+        """
+        return {
+            "institution_id" : node_key.institution_id,
+            "object_type"    : node_key.object_type,
+            "object_id"      : node_key.object_id,
+            "concept_id"     : concept.concept_id,
+            "text_source"    : text_source,
+            "score"          : concept.score
         }
 
     @staticmethod
@@ -117,13 +132,23 @@ class MySQLNodeFieldMapper:
         }
 
     @staticmethod
-    def to_upsert_rows(field_list: NodeFieldList) -> list[dict[str, Any]]:
+    def to_custom_field_upsert_rows(field_list: NodeFieldList) -> list[dict[str, Any]]:
         """
         Returns rows suitable for upserting into Data_N_Object_T_CustomFields.
         """
         return [
-            MySQLNodeFieldMapper.to_upsert_row(field)
+            MySQLNodeFieldMapper.to_custom_field_upsert_row(field)
             for field in field_list.item_list
+        ]
+
+    @staticmethod
+    def to_detected_concepts_upsert_rows(node_key: NodeKey, text_source: str, detected_concepts: ConceptDetectionResultList) -> list[dict[str, Any]]:
+        """
+        Returns rows suitable for upserting into Edges_N_Object_N_Concept_T_ConceptDetection.
+        """
+        return [
+            MySQLNodeFieldMapper.to_detected_concepts_upsert_row(node_key, text_source, concept)
+            for concept in detected_concepts.item_list
         ]
 
     @staticmethod
@@ -199,7 +224,7 @@ class MySQLNodeMapper:
         """
         Returns rows suitable for upserting into Data_N_Object_T_CustomFields.
         """
-        return MySQLNodeFieldMapper.to_upsert_rows(node.field_list)
+        return MySQLNodeFieldMapper.to_custom_field_upsert_rows(node.field_list)
 
     @staticmethod
     def to_page_profile_row(node: Node) -> dict[str, Any]:
@@ -209,6 +234,13 @@ class MySQLNodeMapper:
         """
         assert node.page_profile is not None
         return MySQLPageProfileMapper.to_row(node.page_profile)
+
+    @staticmethod
+    def to_detected_concepts_rows(node: Node) -> list[dict[str, Any]]:
+        """
+        Returns rows suitable for upserting into Data_N_Object_T_CustomFields.
+        """
+        return MySQLNodeFieldMapper.to_detected_concepts_upsert_rows(node.key, node.text_source, node.detected_concepts)
 
     @staticmethod
     def to_simplified_dict(node: Node) -> dict[str, Any]:

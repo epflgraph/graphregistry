@@ -1,4 +1,4 @@
-# graphregistry/domain/models/mdl_concept.py
+# graphregistry/domain/models/tasks/mdl_concept.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
@@ -94,8 +94,8 @@ class ConceptDetectionResultList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_json(cls, input_json: list[dict[str, Any]]) -> "ConceptDetectionResultList":
-        return cls(item_list=[ConceptDetectionResult.model_validate(doc) for doc in (input_json or [])])
+    def from_list(cls, input_list: list[dict[str, Any]]) -> "ConceptDetectionResultList":
+        return cls(item_list=[ConceptDetectionResult.model_validate(doc) for doc in (input_list or [])])
 
-    def to_json(self) -> list[dict[str, Any]]:
+    def to_list(self) -> list[dict[str, Any]]:
         return self.model_dump(mode='json')['item_list']

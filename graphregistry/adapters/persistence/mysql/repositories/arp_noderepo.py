@@ -202,6 +202,31 @@ class MySQLNodeRepository(NodeRepository):
             actions           = actions,
         )
 
+        #--------------------------#
+        # Upsert detected concepts #
+        #--------------------------#
+
+        # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
+        for row in MySQLNodeMapper.to_detected_concepts_rows(node):
+            self.db.execute_upsert_row(
+                engine_name       = engine_name,
+                schema_name       = schema_name,
+                table_name        = "Edges_N_Object_N_Concept_T_ConceptDetection",
+                key_column_names  = ["institution_id", "object_type", "object_id", "concept_id", "text_source"],
+                key_column_values = [
+                    row["institution_id"],
+                    row["object_type"],
+                    row["object_id"],
+                    row["concept_id"],
+                    row["text_source"]
+                ],
+                upd_column_names  = ["score"],
+                upd_column_values = [row["score"]],
+                actions           = actions,
+            )
+
+        #---------------------#
+
         # Print status message
         self.msg.saved(node.key)
 
