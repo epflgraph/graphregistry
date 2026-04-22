@@ -190,12 +190,15 @@ class MultilingualGeneratedText(BaseModel):
     # Access methods #
     #----------------#
 
+    # Method: Get the GeneratedText for a specific language, returning an empty GeneratedText if not found
     def get(self, language: LanguageCode) -> GeneratedText:
         return self.item_map.get(language, GeneratedText())
 
+    # Method: Get the text value for a specific language, returning an empty string if not found
     def get_value(self, language: LanguageCode) -> str:
         return self.get(language).value
 
+    # Method: Set the text value for a specific language, with optional metadata about how it was generated or translated
     def set(self, language: LanguageCode, value: str, *,
         is_auto_generated: bool | None = None,
         is_auto_corrected: bool | None = None,
