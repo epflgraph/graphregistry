@@ -116,7 +116,7 @@ def cmd_data_import(args):
 
         # Process nodes list
         node_list = NodeList(
-            node_list=[
+            item_list=[
                 MySQLNodeMapper.from_simplified_dict(node_json)
                 for node_json in sample_set.get('nodes', [])
             ]
@@ -125,7 +125,7 @@ def cmd_data_import(args):
 
         # Process edges list
         edge_list = EdgeList(
-            edge_list=[
+            item_list=[
                 MySQLEdgeMapper.from_simplified_dict(edge_json)
                 for edge_json in sample_set.get('edges', [])
             ]
@@ -265,7 +265,7 @@ def cmd_data_insert(args):
 
         # Create node list object from JSON data
         node_list = NodeList(
-            node_list=[
+            item_list=[
                 MySQLNodeMapper.from_simplified_dict(node_json)
                 for node_json in node_list_json_data
             ]
@@ -286,7 +286,7 @@ def cmd_data_insert(args):
 
         # Create edge list object from JSON data
         edge_list = EdgeList(
-            edge_list=[
+            item_list=[
                 MySQLEdgeMapper.from_simplified_dict(edge_json)
                 for edge_json in edge_list_json_data
             ]
@@ -305,13 +305,13 @@ def cmd_data_insert(args):
         # Create subgraph object from JSON data
         subgraph = SubGraph(
             nodes=NodeList(
-                node_list=[
+                item_list=[
                     MySQLNodeMapper.from_simplified_dict(node_json)
                     for node_json in subgraph_json_data.get("nodes", [])
                 ]
             ),
             edges=EdgeList(
-                edge_list=[
+                item_list=[
                     MySQLEdgeMapper.from_simplified_dict(edge_json)
                     for edge_json in subgraph_json_data.get("edges", [])
                 ]

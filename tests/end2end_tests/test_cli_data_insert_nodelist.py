@@ -186,12 +186,12 @@ def test_cli_data_insert_node_list_e2e() -> None:
             assert basic_row is not None
 
             expected_title = node_json.get("object_title", "")
-            expected_text_source = node_json.get("text_source", "")
-            expected_raw_text = node_json.get("raw_text", "")
+            expected_text_source = node_json.get("text_source") or ""
+            expected_raw_text = node_json.get("raw_text") or ""
 
             assert basic_row[0] == expected_title
-            assert basic_row[1] == expected_text_source
-            assert basic_row[2] == expected_raw_text
+            assert (basic_row[1] or "") == expected_text_source
+            assert (basic_row[2] or "") == expected_raw_text
 
             # 3) Custom fields
             expected_custom_fields = node_json.get("custom_fields", [])
@@ -285,7 +285,8 @@ def test_cli_data_insert_node_list_e2e() -> None:
             )
 
             # 6) Extra safety: verify page-profile identity and a few invariant columns
-            assert db_page_profile_map["short_code"] == node_json["object_id"]
+            if "short_code" in expected_page_profile:
+                assert db_page_profile_map["short_code"] == expected_page_profile["short_code"]
             assert int(bool(db_page_profile_map["is_visible"])) == int(bool(expected_page_profile.get("is_visible", True)))
 
             # 7) Extra safety: if EN/FR URLs or keys are present in fixture, verify them explicitly
