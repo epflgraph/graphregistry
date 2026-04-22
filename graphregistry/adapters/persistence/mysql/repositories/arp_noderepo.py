@@ -119,12 +119,29 @@ class MySQLNodeRepository(NodeRepository):
         else:
             page_profile_dict = {}
 
+        #------------------------------#
+        # Get node's detected concepts #
+        #------------------------------#
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path      = sql_queries_paths['registry']['commit']['node_get_concepts'],
+            registry       = schema_name,
+            institution_id = key.institution_id,
+            object_type    = key.object_type,
+            object_id      = key.object_id
+        )
+
+        # Execute query and fetch result
+        detected_concepts = cast(list[tuple[str, float]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
         # Construct Node object from fetched data
         node = MySQLNodeMapper.from_parts(
             key               = key,
             basic_row         = basic_row,
             custom_field_rows = custom_fields,
             page_profile_row  = page_profile_dict,
+            concept_rows      = detected_concepts
         )
 
         # Return the constructed Node object

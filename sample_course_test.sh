@@ -1,6 +1,6 @@
 graphregistry data exists --node=EPFL,Course,TEST-101
 graphregistry data fetch --node=EPFL,Course,TEST-101
-graphregistry data insert --node=@sample_course_node.json --actions=commit
+graphregistry data insert --node=@sample_course_node.json -d --actions=commit
 graphregistry data fetch --node=EPFL,Course,TEST-101
 
 graphregistry data exists --edge=EPFL,Course,TEST-101,EPFL,Person,01010101,teacher

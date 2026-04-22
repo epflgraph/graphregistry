@@ -68,7 +68,7 @@ class ConceptDetectionResult(BaseModel):
     # Internal variables #
     #--------------------#
     concept_id: str
-    concept_name: str
+    concept_name: str | None = None
     score: float
 
     #-----------------------#
