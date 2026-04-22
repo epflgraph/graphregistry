@@ -1,15 +1,17 @@
-# graphregistry/domain/models/mdl_translation.py
+# graphregistry/domain/models/tasks/mdl_translation.py
 from __future__ import annotations
-
 from pydantic import BaseModel, Field
-
 from graphregistry.domain.models.entities.mdl_text import LanguageCode
 
-
+# Model definition
 class TranslationTask(BaseModel):
-    # What GraphAI accepts:
-    # - one string
-    # - or a list of strings
+    """Task model representing a translation operation
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    # String or list of strings to be translated. If a list is provided, 
+    # the translation will be performed on each item in the list.
     text: str | list[str]
 
     # Use aliases so model_dump(by_alias=True) produces the exact API keys:
@@ -33,10 +35,14 @@ class TranslationTask(BaseModel):
     successful: bool = False
     error_message: str | None = None
 
-    model_config = {
-        "populate_by_name": True,
-    }
+    # Pydantic model configuration to allow population by field name or alias
+    model_config = {"populate_by_name": True}
 
+    #-----------------------#
+    # Import/Export methods #
+    #-----------------------#
+
+    # Method: Export to API-compatible payload
     def to_api_payload(self) -> dict:
         """
         Return only the fields that belong to the GraphAI request payload,
