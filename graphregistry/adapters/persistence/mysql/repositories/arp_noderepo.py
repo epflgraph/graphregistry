@@ -133,7 +133,7 @@ class MySQLNodeRepository(NodeRepository):
     # Method: Fetch multiple nodes data and construct NodeList object from a list of node keys
     def get_many(self, key_list: list[NodeKey]) -> NodeList:
         out = [node for node in (self.get(key) for key in key_list) if node is not None]
-        return NodeList(node_list=out)
+        return NodeList(item_list=out)
 
     # Method: Save (insert or update) node data to persistence
     def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
@@ -210,7 +210,7 @@ class MySQLNodeRepository(NodeRepository):
 
     # Method: Save (insert or update) multiple nodes data to persistence from a NodeList object
     def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[Node]:
-        return [self.save(node, actions=actions) for node in node_list.node_list]
+        return [self.save(node, actions=actions) for node in node_list.item_list]
 
     # Method: Delete node data from persistence based on the node key
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:
