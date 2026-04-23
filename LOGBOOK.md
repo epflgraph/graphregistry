@@ -25,3 +25,5 @@
 - There's a problem with graphdb, in that the exporting function must be different depending on whether the mysql and mysqldump binaries are local or docker-based
 - Also check if sql.gz files can be imported with the same function, or if they need to be unzipped first
 - Now nodes can be linked to concepts after concept detection, but there's still no support for saving the concepts on mysql repo class. Need to implement together with delete function
+- Implement mysql mapping function for concepts [DONE]
+- Edge custom fields are not being imported.
