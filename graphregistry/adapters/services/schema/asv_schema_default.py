@@ -25,3 +25,16 @@ class DefaultSchemaResolver(SchemaResolver):
         edge_type = (a, b) if a <= b else (b, a)
         schema = self.glbcfg.object2object_type_to_schema[edge_type]
         return (self.engine_name, schema)
+
+    # Class method: Get engine identifier and schema name for an object type (node or edge)
+    def for_object_type(self, object_type: str | tuple[str, str]) -> EngineSchema:
+        if type(object_type) is str:
+            schema = self.glbcfg.object_type_to_schema[object_type]
+            return (self.engine_name, schema)
+        elif type(object_type) is tuple:
+            a,b = object_type
+            edge_type = (a, b) if a <= b else (b, a)
+            schema = self.glbcfg.object2object_type_to_schema[edge_type]
+            return (self.engine_name, schema)
+        else:
+            raise ValueError(f"Invalid object_type: {object_type}")

@@ -64,6 +64,31 @@ def _load_json_input(raw_input: str, label: str):
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON passed to {label}: {e}") from e
 
+# Handler: Check if node or edge exists in Registry
+def cmd_data_list(args):
+
+    # Fetch context objects
+    db = args.ctx.db
+
+    # Fetch environment from input options
+    env = args.env
+
+    # Fetch input options
+    object_type = tuple(args.object_type.split(',')) if ',' in args.object_type else str(args.object_type)
+    id_pattern = args.id_pattern
+
+    # Node list requested
+    if type(object_type) is str:
+        node_repo: NodeRepository = _make_node_repo(args)
+        node_list = node_repo.list(object_type=object_type, id_pattern=id_pattern)
+        rich.print(node_list)
+
+    # Edge list requested
+    elif type(object_type) is tuple:
+        edge_repo: EdgeRepository = _make_edge_repo(args)
+        edge_list = edge_repo.list(object_type=object_type, id_pattern=id_pattern)
+        rich.print(edge_list)
+
 # Handler: Import data from JSON file into Registry
 def cmd_data_import(args):
     """

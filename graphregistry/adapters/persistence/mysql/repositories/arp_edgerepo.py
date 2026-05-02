@@ -22,6 +22,30 @@ class MySQLEdgeRepository(EdgeRepository):
         self.schema_resolver = schema_resolver
         self.msg = GraphLogger()
 
+    # Method: Get list of existing nodes given an object type and id string pattern
+    def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str, str, str]]:
+
+        # Get schema name from object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
+
+        # Get from and to object types
+        from_object_type, to_object_type = object_type
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path        = sql_queries_paths['registry']['commit']['edge_list'],
+            registry         = schema_name,
+            from_object_type = from_object_type,
+            to_object_type   = to_object_type,
+            id_pattern       = id_pattern.replace('*', '%') if id_pattern is not None else "%"
+        )
+
+        # Execute SQL query
+        edge_list = self.db.execute_query(engine_name=engine_name, query=sql_query)
+
+        # Return edge list
+        return cast(list[tuple[str, str, str, str, str, str, str]], edge_list)
+
     # Method: Check if an edge exists in persistence based on the edge key
     def exists(self, key: EdgeKey) -> bool:
 
@@ -176,7 +200,7 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Method: Save (insert or update) multiple edges data to persistence from an EdgeList object
     def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> list[Edge]:
-        return [self.save(edge, actions=actions) for edge in edge_list.edge_list]
+        return [self.save(edge, actions=actions) for edge in edge_list.item_list]
 
     # Method: Delete edge data from persistence based on the edge key
     def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:

@@ -19,6 +19,7 @@ from graphregistry.entrypoints.cli.cmd_ai import (
     cmd_ai_test,
 )
 from graphregistry.entrypoints.cli.cmd_data import (
+    cmd_data_list,
     cmd_data_import,
     cmd_data_insert,
     cmd_data_exists,
@@ -201,6 +202,15 @@ cli_definitions: Dict[str, Any] = {
             'env': global_common_args['env']
         },
         commands = {
+            'list' : dict(
+                help = "List existing nodes or edges for given object type(s).",
+                func = cmd_data_list,
+                args = [
+                    dict(flags=('--object_type', ), kwargs=dict(required=True,  type=str, default=None, help="Object type for node (single string) or edge (two comma-separated strings).")),
+                    dict(flags=('--id_pattern',  ), kwargs=dict(required=False, type=str, default=None, help="String pattern to search for in node or edge ids.")),
+                ],
+                common_args = ['env']
+            ),
             'import' : dict(
                 help = "Import data from json file.",
                 func = cmd_data_import,

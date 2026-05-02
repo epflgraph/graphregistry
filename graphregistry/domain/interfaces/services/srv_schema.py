@@ -21,3 +21,6 @@ class SchemaResolver(Protocol):
 
     def for_edge(self, key: EdgeKey) -> EngineSchema:
         ...
+
+    def for_object_type(self, object_type: str | tuple[str, str]) -> EngineSchema:
+        ...

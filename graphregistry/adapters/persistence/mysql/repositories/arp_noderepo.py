@@ -23,6 +23,26 @@ class MySQLNodeRepository(NodeRepository):
         self.schema_resolver = schema_resolver
         self.msg = GraphLogger()
 
+    # Method: Get list of existing nodes given an object type and id string pattern
+    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str, str]]:
+
+        # Get schema name from object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['node_list'],
+            registry    = schema_name,
+            object_type = object_type,
+            id_pattern  = id_pattern.replace('*', '%') if id_pattern is not None else "%"
+        )
+
+        # Execute SQL query
+        node_list = self.db.execute_query(engine_name=engine_name, query=sql_query)
+
+        # Return node list
+        return cast(list[tuple[str, str, str]], node_list)
+
     # Method: Check if a node exists in persistence from the node key
     def exists(self, key: NodeKey) -> bool:
 

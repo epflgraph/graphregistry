@@ -20,10 +20,10 @@
 - Test full run with new structure [DONE]
 - Think about where to store custom print functions (eg, print_node_saved(), print_edge_saved()) [DONE 1st version]
 - Implement data file structure analyser/inspector
-- Add `list` function to workflows/operations
-- Fix CLI to use mappers
+- Add `list` function to workflows/operations [DONE]
+- Fix CLI to use mappers [DONE]
 - There's a problem with graphdb, in that the exporting function must be different depending on whether the mysql and mysqldump binaries are local or docker-based
 - Also check if sql.gz files can be imported with the same function, or if they need to be unzipped first
-- Now nodes can be linked to concepts after concept detection, but there's still no support for saving the concepts on mysql repo class. Need to implement together with delete function
+- Now nodes can be linked to concepts after concept detection, but there's still no support for saving the concepts on mysql repo class. Need to implement together with delete function [DONE]
 - Implement mysql mapping function for concepts [DONE]
 - Edge custom fields are not being imported. [FIXED]

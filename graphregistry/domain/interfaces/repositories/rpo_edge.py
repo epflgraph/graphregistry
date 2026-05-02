@@ -8,6 +8,9 @@ from graphregistry.domain.interfaces.types import ActionSet
 @runtime_checkable
 class EdgeRepository(Protocol):
 
+    def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str, str, str]]:
+        ...
+
     def exists(self, key: EdgeKey) -> bool:
         ...
 
