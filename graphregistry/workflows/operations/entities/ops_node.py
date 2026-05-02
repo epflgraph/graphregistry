@@ -1,4 +1,4 @@
-# graphregistry/workflows/operations/ops_node.py
+# graphregistry/workflows/operations/entities/ops_node.py
 from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.interfaces.types import ActionSet
@@ -15,12 +15,19 @@ class NodeUpsertResult:
 
 # Class definition
 class NodeOperations:
+
     def __init__(self, repo: NodeRepository, concept_gateway: ConceptGateway | None = None):
         self.repo = repo
         self.concept_gateway = concept_gateway
 
+    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str, str]]:
+        return self.repo.list(object_type=object_type, id_pattern=id_pattern)
+
     def exists(self, key: NodeKey) -> bool:
         return self.repo.exists(key)
+
+    def exists_many(self, key_list: list[NodeKey]) -> list[bool]:
+        return self.repo.exists_many(key_list)
 
     def get(self, key: NodeKey) -> Node | None:
         return self.repo.get(key)
@@ -53,6 +60,9 @@ class NodeOperations:
 
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool:
         return bool(self.repo.delete(key, actions=actions))
+
+    def delete_many(self, key_list: list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool]:
+        return [bool(result) for result in self.repo.delete_many(key_list, actions=actions)]
 
     def detect_concepts(self, text: str) -> ConceptDetectionResultList:
         if self.concept_gateway is None:

@@ -1,112 +1,199 @@
 # graphregistry/entrypoints/api/schemas.py
+from __future__ import annotations
+
+from typing import Literal
+
 from pydantic import BaseModel, Field
-from typing import List, Tuple, Dict, Any, Optional, Literal
-from enum import Enum
+
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList
+from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 
 
-class ItemType(str, Enum):
-    """
-    Enum defining allowed item types.
-    """
-    nodes = "nodes"
-    edges = "edges"
+#================#
+# Shared schemas #
+#================#
+
+ActionName = Literal["print", "eval", "commit"]
 
 
-class InsertItemRequest(BaseModel):
-    """
-    Schema for inserting multiple items into the registry.
-    """
-    type: ItemType = Field(..., title="Type", description="The type of the items (nodes, edges)")
-    data: List[Dict[str, Any]] = Field(..., title="Data", description="A list of items to insert")
-    update_existing: bool = Field(False, title="Update Existing", description="Whether to update existing items")
-    actions: List[Literal['eval', 'commit', 'print']] = Field(
-        ('eval',), title="Actions", description="A list of actions to perform."
+def _default_actions() -> list[ActionName]:
+    return ["eval"]
+
+
+class APIRequestBase(BaseModel):
+    env: str = Field(
+        default="test",
+        description="GraphDB engine/environment name to use for this request.",
     )
 
 
-class DeleteNodesRequest(BaseModel):
-    """
-    Schema for deleting multiple nodes from the database.
-    """
-    institution_id: str = Field("EPFL", title="Institution ID", description="The institution ID of the nodes to delete")
-    object_type: str = Field(..., title="object type", description="The object type of the nodes to delete")
-    nodes_id: List[str] = Field(..., title="nodes ID", description="A list of the id of the nodes to delete")
-    actions: List[Literal['eval', 'commit', 'print']] = Field(
-        ('eval',), title="Actions", description="A list of actions to perform."
-    )
-    engine_name: str = Field("test", title="engine name", description="The name of the engine to use")
-
-
-class DeleteEdgesRequest(BaseModel):
-    """
-    Schema for deleting multiple edges from the database.
-    """
-    from_institution_id: str = Field(
-        "EPFL", title="Child Institution ID", description="The child institution ID of the edges to delete"
-    )
-    from_object_type: str = Field(
-        ..., title="Child Object type", description="The child object type of the edges to delete"
-    )
-    to_institution_id: str = Field(
-        "EPFL", title="Parent Institution ID", description="The parent institution ID of the edges to delete"
-    )
-    to_object_type: str = Field(
-        ..., title="Parent Object Type", description="The parent object type of the edges to delete"
-    )
-    edges_id: List[Tuple[str, str]] = Field(
-        ..., title="Edges IDs", description="A list of the id of the edges to delete. "
-                "The first eleemnt is the child object ID and the second is the parent object ID."
-    )
-    actions: List[Literal['eval', 'commit', 'print']] = Field(
-        ('eval',), title="Actions", description="A list of actions to perform."
+class ActionRequestBase(APIRequestBase):
+    actions: list[ActionName] = Field(
+        default_factory=_default_actions,
+        description="Actions to perform. Use `eval` for dry-run behavior and add `commit` to persist changes.",
     )
 
 
-class ListNodesRequest(BaseModel):
-    """
-    Schema for listing nodes present in the database.
-    """
-    institution_id: str = Field("EPFL", title="Institution ID", description="The institution ID of the nodes to list")
-    object_type: str = Field(..., title="object type", description="The object type of the nodes to list")
-    engine_name: str = Field("test", title="engine name", description="The name of the engine to use")
+class StatusResponse(BaseModel):
+    success: bool = True
+    message: str
 
 
-class ListEdgesRequest(BaseModel):
-    """
-    Schema for listing edges present in the database.
-    """
-    from_institution_id: str = Field(
-        "EPFL", title="Child Institution ID", description="The child institution ID of the edges to list"
+#==============#
+# Node schemas #
+#==============#
+
+class NodeListRequest(APIRequestBase):
+    object_type: str = Field(..., description="Node object type to list.")
+    id_pattern: str | None = Field(
+        default=None,
+        description="Optional wildcard pattern for object_id values. `*` is supported.",
     )
-    from_object_type: str = Field(
-        ..., title="Child Object Type", description="The child object type of the edges to list"
+
+
+class NodeListResponse(BaseModel):
+    nodes: list[NodeKey] = Field(default_factory=list)
+    count: int = 0
+
+
+class NodeExistsAPIRequest(APIRequestBase):
+    key: NodeKey
+
+
+class NodeExistsResponse(BaseModel):
+    exists: bool
+
+
+class NodeFetchRequest(APIRequestBase):
+    key: NodeKey
+
+
+class NodeFetchResponse(BaseModel):
+    found: bool
+    node: Node | None = None
+
+
+class NodeSaveAPIRequest(ActionRequestBase):
+    node: Node
+
+
+class NodeSaveAPIResponse(BaseModel):
+    success: bool
+    node: Node
+
+
+class NodeListSaveRequest(ActionRequestBase):
+    node_list: NodeList
+
+
+class NodeListSaveResponse(BaseModel):
+    success: bool
+    node_list: NodeList
+    count: int
+
+
+class NodeDeleteAPIRequest(ActionRequestBase):
+    key: NodeKey
+
+
+class NodeDeleteResponse(BaseModel):
+    success: bool
+
+
+class NodeDeleteManyRequest(ActionRequestBase):
+    keys: list[NodeKey] = Field(default_factory=list)
+
+
+class NodeDeleteManyResponse(BaseModel):
+    success: bool
+    results: list[bool]
+    count: int
+
+
+#==============#
+# Edge schemas #
+#==============#
+
+class EdgeListRequest(APIRequestBase):
+    from_object_type: str = Field(..., description="Source node object type.")
+    to_object_type: str = Field(..., description="Target node object type.")
+    id_pattern: str | None = Field(
+        default=None,
+        description="Optional wildcard pattern applied to edge identifiers. `*` is supported.",
     )
-    to_institution_id: str = Field(
-        "EPFL", title="Parent Institution ID", description="The parent institution ID of the edges to list"
-    )
-    to_object_type: str = Field(
-        ..., title="Parent Object Type", description="The parent object type of the edges to list"
-    )
-    engine_name: str = Field("test", title="engine name", description="The name of the engine to use")
 
 
-class ExistsItemRequest(BaseModel):
-    """
-    Schema for checking if an item exists in the database.
-    """
-    type: ItemType = Field(..., title="Type", description="The type of the items (nodes, edges)")
-    data: List[Dict[str, Any]] = Field(..., title="Data", description="A list of items to insert")
+class EdgeListResponse(BaseModel):
+    edges: list[EdgeKey] = Field(default_factory=list)
+    count: int = 0
 
-class ItemResponse(BaseModel):
-    """
-    Schema representing an item in the database.
-    """
-    item_id: str
-    name: str
-    description: Optional[str]
 
-class ListItemsResponse(BaseModel):
-    """
-    Schema for returning a list of items.
-    """
-    items: List[ItemResponse]
+class EdgeExistsAPIRequest(APIRequestBase):
+    key: EdgeKey
+
+
+class EdgeExistsResponse(BaseModel):
+    exists: bool
+
+
+class EdgeFetchRequest(APIRequestBase):
+    key: EdgeKey
+
+
+class EdgeFetchResponse(BaseModel):
+    found: bool
+    edge: Edge | None = None
+
+
+class EdgeSaveAPIRequest(ActionRequestBase):
+    edge: Edge
+
+
+class EdgeSaveAPIResponse(BaseModel):
+    success: bool
+    edge: Edge
+
+
+class EdgeListSaveRequest(ActionRequestBase):
+    edge_list: EdgeList
+
+
+class EdgeListSaveResponse(BaseModel):
+    success: bool
+    edge_list: EdgeList
+    count: int
+
+
+class EdgeDeleteAPIRequest(ActionRequestBase):
+    key: EdgeKey
+
+
+class EdgeDeleteResponse(BaseModel):
+    success: bool
+
+
+class EdgeDeleteManyRequest(ActionRequestBase):
+    keys: list[EdgeKey] = Field(default_factory=list)
+
+
+class EdgeDeleteManyResponse(BaseModel):
+    success: bool
+    results: list[bool]
+    count: int
+
+
+#==================#
+# Subgraph schemas #
+#==================#
+
+class SubGraphSaveRequest(ActionRequestBase):
+    subgraph: SubGraph
+
+
+class SubGraphSaveResponse(BaseModel):
+    success: bool
+    nodes_saved: int
+    edges_saved: int
+    subgraph: SubGraph
