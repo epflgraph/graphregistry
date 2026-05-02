@@ -5,7 +5,6 @@
   "object_title": "Introduction to Autonomous Systems Design",
   "text_source": "course page description",
   "raw_text": "This course introduces the principles behind autonomous systems, including perception, decision-making, and control. Students will explore how intelligent agents interact with dynamic environments.\n\nTopics include:\n1. Foundations of autonomous agents\n2. Sensor fusion and perception pipelines\n3. Planning under uncertainty\n4. Reinforcement learning for control\n5. Multi-agent coordination\n6. Safety, ethics, and human-in-the-loop systems\n\nApplications in robotics, self-driving vehicles, and smart infrastructure are discussed. The course combines theoretical lectures with practical projects.\n\nPrerequisites include probability theory, linear algebra, and basic programming in Python.\n\nRecommended reading:\n\"Autonomous Systems: Principles and Practice / A. Kumar\"\n\"Reinforcement Learning: An Introduction / Sutton & Barto\"\n\nThe course prepares students for advanced topics in robotics and AI systems engineering.",
-
   "custom_fields": [
     {
       "field_language": "en",
@@ -63,19 +62,15 @@
       "field_value": "Winter session\nWritten + Project"
     }
   ],
-
   "page_profile": {
     "short_code": "TEST-101",
     "name_en_value": "Introduction to Autonomous Systems Design",
     "name_fr_value": "Introduction à la conception de systèmes autonomes",
-
     "description_short_en_value": "Learn the fundamentals of autonomous systems, including perception, planning, and control.",
     "description_medium_en_value": "This course provides a structured introduction to autonomous systems, combining theoretical foundations with practical applications in robotics and AI.",
     "description_long_en_value": "This course explores the design of autonomous systems capable of perceiving, reasoning, and acting in complex environments. Students will study perception pipelines, planning under uncertainty, reinforcement learning, and system safety. Applications include robotics, autonomous vehicles, and smart infrastructure.",
-
     "external_key_en": "intro-autonomous-systems-TEST-101",
     "external_url_en": "https://edu.epfl.ch/coursebook/en/intro-autonomous-systems-TEST-101",
-
     "is_visible": true
   }
 }

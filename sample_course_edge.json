@@ -6,7 +6,7 @@
   "to_object_type": "Person",
   "to_object_id": "01010101",
   "context": "teacher",
-  "field_list": [
+  "custom_fields": [
     {
       "field_language": "n/a",
       "field_name": "teaching_assignment_year",
