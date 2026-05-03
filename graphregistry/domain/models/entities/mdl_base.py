@@ -34,7 +34,7 @@ class NodeKey(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple(cls, input_tuple: tuple[str, str, str]) -> "NodeKey":
+    def from_tuple(cls, input_tuple: tuple) -> "NodeKey":
         return cls.model_validate(input_tuple)
 
     def to_tuple(self) -> tuple[str, str, str]:
@@ -115,7 +115,7 @@ class EdgeKey(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str, str, str]) -> "EdgeKey":
+    def from_tuple(cls, input_tuple: tuple) -> "EdgeKey":
         return cls.model_validate(input_tuple)
 
     def to_tuple(self) -> tuple[str, str, str, str, str, str, str]:

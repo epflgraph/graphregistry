@@ -4,6 +4,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import ValidationError
 from graphregistry.entrypoints.api.router import router
 
 # Set up logging
@@ -25,21 +26,112 @@ def create_app() -> FastAPI:
     # Include the API router which contains all the endpoint definitions
     app.include_router(router)
 
-    # Define a custom exception handler for request validation errors to
-    # log details and return a structured response
-    @app.exception_handler(RequestValidationError)
-    async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    #====================#
+    # Exception handlers #
+    #====================#
 
-        # Read the request body for logging purposes (note: this may consume the body stream)
+    @app.exception_handler(RequestValidationError)
+    async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+        """
+        Handle FastAPI request validation errors.
+
+        These happen before the endpoint function is called, usually because
+        the incoming JSON body, query params, or path params do not match the
+        declared request schema.
+        """
+
         body = await request.body()
 
-        # Log the validation error details, including the request method, URL, errors, and body content
-        logger.error("Validation error on %s %s", request.method, request.url.path)
+        logger.error(
+            "Request validation error: method=%s path=%s",
+            request.method,
+            request.url.path,
+        )
         logger.error("Errors: %s", exc.errors())
         logger.error("Body: %s", body.decode("utf-8", errors="replace"))
 
-        # Return a JSON response with the validation errors and a 422 status code
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": exc.errors(),
+            },
+        )
+
+    @app.exception_handler(ValidationError)
+    async def pydantic_validation_exception_handler(request: Request, exc: ValidationError) -> JSONResponse:
+        """
+        Handle Pydantic validation errors raised inside endpoint code.
+
+        These are different from RequestValidationError. They usually mean
+        that the API received a valid request, but our own conversion logic
+        failed while building a domain model or response object.
+        """
+
+        logger.exception(
+            "Internal Pydantic validation error: method=%s path=%s",
+            request.method,
+            request.url.path,
+        )
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Internal validation error: {type(exc).__name__}: {exc}",
+            },
+        )
+
+    @app.exception_handler(ValueError)
+    async def value_error_exception_handler(request: Request, exc: ValueError) -> JSONResponse:
+        """
+        Handle expected ValueError exceptions as bad API requests.
+
+        This is useful for errors such as unknown configured environments,
+        unsupported object types, malformed keys, etc.
+
+        Later, this can be tightened by replacing broad ValueError handling
+        with a custom BadAPIRequestError.
+        """
+
+        logger.warning(
+            "Invalid API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+            exc_info=True,
+        )
+
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": f"Invalid request: {type(exc).__name__}: {exc}",
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        """
+        Handle unexpected errors.
+
+        This keeps endpoint code clean while ensuring unexpected exceptions
+        are logged with tracebacks and returned as structured 500 responses.
+        """
+
+        logger.exception(
+            "Unhandled API error: method=%s path=%s",
+            request.method,
+            request.url.path,
+        )
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Internal server error: {type(exc).__name__}: {exc}",
+            },
+        )
+
+    #==================#
+    # Utility routes   #
+    #==================#
 
     # Define a root endpoint that redirects to the API documentation for easy access
     @app.get("/", include_in_schema=False)
@@ -66,4 +158,8 @@ if __name__ == "__main__":
     import uvicorn
 
     # Run the Uvicorn server, specifying the application to run, host, and port
-    uvicorn.run("graphregistry.entrypoints.api.main:app", host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "graphregistry.entrypoints.api.main:app",
+        host="0.0.0.0",
+        port=8000,
+    )
