@@ -1,6 +1,6 @@
 # graphregistry/entrypoints/api/schemas.py
 from __future__ import annotations
-from typing import Literal
+from typing import Literal, Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
@@ -11,24 +11,6 @@ from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 # Shared schemas #
 #================#
 
-# Define allowed action names for API requests
-ActionName = Literal["print", "eval", "commit"]
-
-# Default actions for API requests (e.g., default to "eval" for dry-run behavior)
-def _default_actions() -> list[ActionName]:
-    return ["eval"]
-
-# Base schema for all API requests, including common fields like `env`
-class APIRequestBase(BaseModel):
-    pass
-
-# Base schema for API requests that include actions, extending the base request with an `actions` field
-class ActionRequestBase(APIRequestBase):
-    actions: list[ActionName] = Field(
-        default_factory=_default_actions,
-        description="Actions to perform. Use `eval` for dry-run behavior and add `commit` to persist changes.",
-    )
-
 # Generic response schema for API endpoints, indicating success and providing a message
 class StatusResponse(BaseModel):
     success: bool = True
@@ -38,38 +20,60 @@ class StatusResponse(BaseModel):
 # Node schemas #
 #==============#
 
-class NodeListRequest(APIRequestBase):
-    object_type: str = Field(..., description="Node object type to list.")
-    id_pattern: str | None = Field(
+# api/nodes/list
+class NodeListRequest(BaseModel):
+    object_type : str = Field(..., description="Node object type to list.")
+    id_pattern  : str | None = Field(
         default=None,
         description="Optional wildcard pattern for object_id values. `*` is supported.",
     )
 
 class NodeListResponse(BaseModel):
-    nodes: list[NodeKey] = Field(default_factory=list)
-    count: int = 0
+    nodes : list[NodeKey] = Field(default_factory=list)
+    count : int = 0
 
-class NodeExistsAPIRequest(APIRequestBase):
-    key: NodeKey
+# api/nodes/exists
+class NodeExistsAPIRequest(BaseModel):
+    object_type : str
+    object_id   : str
 
 class NodeExistsResponse(BaseModel):
-    exists: bool
+    exists : bool
 
-class NodeFetchRequest(APIRequestBase):
-    key: NodeKey
+# api/nodes/fetch
+class NodeFetchRequest(BaseModel):
+    object_type : str
+    object_id   : str
 
 class NodeFetchResponse(BaseModel):
-    found: bool
-    node: Node | None = None
+    found : bool
+    node  : dict[str, Any] | None = None
 
-class NodeSaveAPIRequest(ActionRequestBase):
-    node: Node
+# api/nodes/save
+class NodeCustomFieldInput(BaseModel):
+    field_language : str = "n/a"
+    field_name     : str
+    field_value    : str
+
+class NodeSimplifiedInput(BaseModel):
+    object_type    : str
+    object_id      : str
+    object_title   : str = ""
+    text_source    : str = ""
+    raw_text       : str = ""
+    custom_fields  : list[NodeCustomFieldInput] = Field(default_factory=list)
+    page_profile   : dict[str, Any] | None = None
+
+class NodeSaveAPIRequest(BaseModel):
+    node : NodeSimplifiedInput
+    detect_concepts : bool = False
 
 class NodeSaveAPIResponse(BaseModel):
-    success: bool
-    node: Node
+    success : bool
+    node    : Node
 
-class NodeListSaveRequest(ActionRequestBase):
+# api/nodes/save-many
+class NodeListSaveRequest(BaseModel):
     node_list: NodeList
 
 class NodeListSaveResponse(BaseModel):
@@ -77,13 +81,13 @@ class NodeListSaveResponse(BaseModel):
     node_list: NodeList
     count: int
 
-class NodeDeleteAPIRequest(ActionRequestBase):
+class NodeDeleteAPIRequest(BaseModel):
     key: NodeKey
 
 class NodeDeleteResponse(BaseModel):
     success: bool
 
-class NodeDeleteManyRequest(ActionRequestBase):
+class NodeDeleteManyRequest(BaseModel):
     keys: list[NodeKey] = Field(default_factory=list)
 
 class NodeDeleteManyResponse(BaseModel):
@@ -95,7 +99,7 @@ class NodeDeleteManyResponse(BaseModel):
 # Edge schemas #
 #==============#
 
-class EdgeListRequest(APIRequestBase):
+class EdgeListRequest(BaseModel):
     from_object_type: str = Field(..., description="Source node object type.")
     to_object_type: str = Field(..., description="Target node object type.")
     id_pattern: str | None = Field(
@@ -107,27 +111,27 @@ class EdgeListResponse(BaseModel):
     edges: list[EdgeKey] = Field(default_factory=list)
     count: int = 0
 
-class EdgeExistsAPIRequest(APIRequestBase):
+class EdgeExistsAPIRequest(BaseModel):
     key: EdgeKey
 
 class EdgeExistsResponse(BaseModel):
     exists: bool
 
-class EdgeFetchRequest(APIRequestBase):
+class EdgeFetchRequest(BaseModel):
     key: EdgeKey
 
 class EdgeFetchResponse(BaseModel):
     found: bool
     edge: Edge | None = None
 
-class EdgeSaveAPIRequest(ActionRequestBase):
+class EdgeSaveAPIRequest(BaseModel):
     edge: Edge
 
 class EdgeSaveAPIResponse(BaseModel):
     success: bool
     edge: Edge
 
-class EdgeListSaveRequest(ActionRequestBase):
+class EdgeListSaveRequest(BaseModel):
     edge_list: EdgeList
 
 class EdgeListSaveResponse(BaseModel):
@@ -135,13 +139,13 @@ class EdgeListSaveResponse(BaseModel):
     edge_list: EdgeList
     count: int
 
-class EdgeDeleteAPIRequest(ActionRequestBase):
+class EdgeDeleteAPIRequest(BaseModel):
     key: EdgeKey
 
 class EdgeDeleteResponse(BaseModel):
     success: bool
 
-class EdgeDeleteManyRequest(ActionRequestBase):
+class EdgeDeleteManyRequest(BaseModel):
     keys: list[EdgeKey] = Field(default_factory=list)
 
 class EdgeDeleteManyResponse(BaseModel):
@@ -153,7 +157,7 @@ class EdgeDeleteManyResponse(BaseModel):
 # Subgraph schemas #
 #==================#
 
-class SubGraphSaveRequest(ActionRequestBase):
+class SubGraphSaveRequest(BaseModel):
     subgraph: SubGraph
 
 class SubGraphSaveResponse(BaseModel):

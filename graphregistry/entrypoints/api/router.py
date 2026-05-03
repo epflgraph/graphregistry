@@ -17,10 +17,12 @@ from graphregistry.domain.models.entities.mdl_node import NodeList
 from graphregistry.entrypoints.api import schemas
 from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
 from graphregistry.workflows.operations.entities.ops_node import NodeOperations
+from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 
 # Environment variables
 API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
 DEFAULT_API_ENV = "xaas_coresrv"
+INSTITUTION_ID = "EPFL"
 
 # Router object
 router = APIRouter(
@@ -166,7 +168,7 @@ def node_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations 
     """
     Check whether one node exists.
     """
-    exists = node_ops.exists(request.key)
+    exists = node_ops.exists(NodeKey(institution_id=INSTITUTION_ID, object_type=request.object_type, object_id=request.object_id))
     return schemas.NodeExistsResponse(exists=exists)
 
 @router.post("/nodes/fetch", response_model=schemas.NodeFetchResponse, response_model_exclude_none=True, tags=["nodes"])
@@ -174,15 +176,30 @@ def fetch_node(request: schemas.NodeFetchRequest, node_ops: NodeOperations = Dep
     """
     Fetch one node by key.
     """
-    node = node_ops.get(request.key)
-    return schemas.NodeFetchResponse(found=node is not None, node=node)
+    node = node_ops.get(NodeKey(
+        institution_id = INSTITUTION_ID,
+        object_type    = request.object_type,
+        object_id      = request.object_id
+    ))
+    return schemas.NodeFetchResponse(found=node is not None, node=MySQLNodeMapper.to_simplified_dict(node) if node is not None else None)
 
 @router.post("/nodes/save", response_model=schemas.NodeSaveAPIResponse, tags=["nodes"])
 def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeSaveAPIResponse:
     """
     Save one node.
     """
-    saved_node = node_ops.save(request.node, actions=('commit',))
+    node = MySQLNodeMapper.from_simplified_dict({
+        'institution_id' : INSTITUTION_ID,
+        'object_type'    : request.node.object_type,
+        'object_id'      : request.node.object_id,
+        'object_title'   : request.node.object_title,
+        'text_source'    : request.node.text_source,
+        'raw_text'       : request.node.raw_text,
+        'custom_fields'  : [field.model_dump() for field in request.node.custom_fields],
+        'page_profile'   : request.node.page_profile or {},
+        'detected_concepts': [],
+    })
+    saved_node = node_ops.save(node, actions=('commit',))
     return schemas.NodeSaveAPIResponse(success=True, node=saved_node)
 
 @router.post("/nodes/save-many", response_model=schemas.NodeListSaveResponse, tags=["nodes"])
