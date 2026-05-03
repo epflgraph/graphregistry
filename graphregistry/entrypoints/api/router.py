@@ -1,13 +1,9 @@
 # graphregistry/entrypoints/api/router.py
 from __future__ import annotations
-
 from typing import cast, NoReturn
-
 from fastapi import APIRouter, HTTPException
-
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
-
 from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
@@ -19,19 +15,18 @@ from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey, EdgeKey
 from graphregistry.domain.models.entities.mdl_node import NodeList
 from graphregistry.domain.models.entities.mdl_edge import EdgeList
-
 from graphregistry.entrypoints.api import schemas
+import os
 
+# Environment variables
+API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
+DEFAULT_API_ENV = "xaas_coresrv"
 
-#================#
-# Router object  #
-#================#
-
+# Router object
 router = APIRouter(
-    prefix="/registry",
-    responses={404: {"description": "Not found"}},
+    prefix = "/api",
+    responses = {404: {"description": "Not found"}}
 )
-
 
 #=================#
 # Helper methods  #
@@ -46,6 +41,14 @@ def _raise_api_error(message: str, exc: Exception, status_code: int = 500) -> No
         detail=f"{message}: {type(exc).__name__}: {exc}",
     ) from exc
 
+def _get_api_env() -> str:
+    """
+    Return the single environment used by this API instance.
+
+    The API should expose one configured registry environment, not let every
+    client choose the environment per request.
+    """
+    return os.getenv(API_ENV_VAR, DEFAULT_API_ENV)
 
 def _make_db() -> GraphDB:
     """
@@ -54,50 +57,50 @@ def _make_db() -> GraphDB:
     db_config = GraphDBConfig.from_file("config/config_db.yaml")
     return GraphDB(config=db_config)
 
+def _make_schema_resolver() -> DefaultSchemaResolver:
+    """
+    Build the default schema resolver for the configured API environment.
+    """
+    env = _get_api_env()
 
-def _make_schema_resolver(env: str) -> DefaultSchemaResolver:
-    """
-    Build the default schema resolver for one environment.
-    """
     global_config = GlobalConfig()
     db_config = GraphDBConfig.from_file("config/config_db.yaml")
 
     if env not in db_config.environments:
         available_envs = ", ".join(db_config.environments.keys())
-        raise ValueError(f"Unknown env '{env}'. Available environments: {available_envs}")
+        raise ValueError(
+            f"Unknown API env '{env}'. "
+            f"Set {API_ENV_VAR} to one of: {available_envs}"
+        )
 
     return DefaultSchemaResolver(
         engine_name=env,
         glbcfg=global_config,
     )
 
-
-def _make_node_repo(env: str, db: GraphDB | None = None) -> NodeRepository:
+def _make_node_repo(db: GraphDB | None = None) -> NodeRepository:
     """
     Build node repository for one request.
     """
     return MySQLNodeRepository(
         db=db if db is not None else _make_db(),
-        schema_resolver=_make_schema_resolver(env),
+        schema_resolver=_make_schema_resolver(),
     )
 
-
-def _make_edge_repo(env: str, db: GraphDB | None = None) -> EdgeRepository:
+def _make_edge_repo(db: GraphDB | None = None) -> EdgeRepository:
     """
     Build edge repository for one request.
     """
     return MySQLEdgeRepository(
         db=db if db is not None else _make_db(),
-        schema_resolver=_make_schema_resolver(env),
+        schema_resolver=_make_schema_resolver(),
     )
-
 
 def _actions_tuple(actions: list[schemas.ActionName] | None) -> tuple[schemas.ActionName, ...]:
     """
     Convert API action list into the tuple expected by repositories/operations.
     """
     return tuple(actions or ["eval"])
-
 
 #==================#
 # System endpoints #
@@ -109,10 +112,9 @@ def registry_status() -> schemas.StatusResponse:
     Check that the registry API is reachable.
     """
     return schemas.StatusResponse(
-        success=True,
-        message="GraphRegistry API ready. Open /docs for the Swagger UI.",
+        success = True,
+        message = "GraphRegistry API ready. Open /docs for the Swagger UI.",
     )
-
 
 #================#
 # Node endpoints #
@@ -123,41 +125,29 @@ def list_nodes(request: schemas.NodeListRequest) -> schemas.NodeListResponse:
     """
     List existing nodes for one object type.
     """
-
     try:
         # Fetch input options
-        env = request.env
         object_type = request.object_type
-        id_pattern = request.id_pattern
+        id_pattern  = request.id_pattern
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
-        rows = node_ops.list(
-            object_type=object_type,
-            id_pattern=id_pattern,
-        )
+        rows = node_ops.list(object_type=object_type, id_pattern=id_pattern)
 
         # Convert rows to keys
-        node_keys = [
-            NodeKey.from_tuple(cast(tuple[str, str, str], row))
-            for row in rows
-        ]
+        node_keys = [NodeKey.from_tuple(cast(tuple[str, str, str], tuple(row))) for row in rows]
 
         # Return response
-        return schemas.NodeListResponse(
-            nodes=node_keys,
-            count=len(node_keys),
-        )
+        return schemas.NodeListResponse(nodes=node_keys, count=len(node_keys))
 
     except ValueError as exc:
         _raise_api_error("Invalid node list request", exc, status_code=400)
 
     except Exception as exc:
         _raise_api_error("Failed to list nodes", exc)
-
 
 @router.post("/nodes/exists", response_model=schemas.NodeExistsResponse, tags=["nodes"])
 def node_exists(request: schemas.NodeExistsAPIRequest) -> schemas.NodeExistsResponse:
@@ -167,11 +157,10 @@ def node_exists(request: schemas.NodeExistsAPIRequest) -> schemas.NodeExistsResp
 
     try:
         # Fetch input options
-        env = request.env
         node_key = request.key
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
@@ -186,7 +175,6 @@ def node_exists(request: schemas.NodeExistsAPIRequest) -> schemas.NodeExistsResp
     except Exception as exc:
         _raise_api_error("Failed to check node existence", exc)
 
-
 @router.post(
     "/nodes/fetch",
     response_model=schemas.NodeFetchResponse,
@@ -200,11 +188,10 @@ def fetch_node(request: schemas.NodeFetchRequest) -> schemas.NodeFetchResponse:
 
     try:
         # Fetch input options
-        env = request.env
         node_key = request.key
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
@@ -222,7 +209,6 @@ def fetch_node(request: schemas.NodeFetchRequest) -> schemas.NodeFetchResponse:
     except Exception as exc:
         _raise_api_error("Failed to fetch node", exc)
 
-
 @router.post("/nodes/save", response_model=schemas.NodeSaveAPIResponse, tags=["nodes"])
 def save_node(request: schemas.NodeSaveAPIRequest) -> schemas.NodeSaveAPIResponse:
     """
@@ -234,12 +220,11 @@ def save_node(request: schemas.NodeSaveAPIRequest) -> schemas.NodeSaveAPIRespons
 
     try:
         # Fetch input options
-        env = request.env
         node = request.node
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
@@ -260,7 +245,6 @@ def save_node(request: schemas.NodeSaveAPIRequest) -> schemas.NodeSaveAPIRespons
     except Exception as exc:
         _raise_api_error("Failed to save node", exc)
 
-
 @router.post("/nodes/save-many", response_model=schemas.NodeListSaveResponse, tags=["nodes"])
 def save_node_list(request: schemas.NodeListSaveRequest) -> schemas.NodeListSaveResponse:
     """
@@ -269,12 +253,11 @@ def save_node_list(request: schemas.NodeListSaveRequest) -> schemas.NodeListSave
 
     try:
         # Fetch input options
-        env = request.env
         node_list = request.node_list
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
@@ -299,7 +282,6 @@ def save_node_list(request: schemas.NodeListSaveRequest) -> schemas.NodeListSave
     except Exception as exc:
         _raise_api_error("Failed to save node list", exc)
 
-
 @router.post("/nodes/delete", response_model=schemas.NodeDeleteResponse, tags=["nodes"])
 def delete_node(request: schemas.NodeDeleteAPIRequest) -> schemas.NodeDeleteResponse:
     """
@@ -311,12 +293,11 @@ def delete_node(request: schemas.NodeDeleteAPIRequest) -> schemas.NodeDeleteResp
 
     try:
         # Fetch input options
-        env = request.env
         node_key = request.key
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
@@ -336,7 +317,6 @@ def delete_node(request: schemas.NodeDeleteAPIRequest) -> schemas.NodeDeleteResp
     except Exception as exc:
         _raise_api_error("Failed to delete node", exc)
 
-
 @router.post("/nodes/delete-many", response_model=schemas.NodeDeleteManyResponse, tags=["nodes"])
 def delete_node_list(request: schemas.NodeDeleteManyRequest) -> schemas.NodeDeleteManyResponse:
     """
@@ -345,12 +325,11 @@ def delete_node_list(request: schemas.NodeDeleteManyRequest) -> schemas.NodeDele
 
     try:
         # Fetch input options
-        env = request.env
         node_keys = request.keys
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        node_repo: NodeRepository = _make_node_repo(env)
+        node_repo: NodeRepository = _make_node_repo()
         node_ops = NodeOperations(repo=node_repo)
 
         # Execute command
@@ -372,7 +351,6 @@ def delete_node_list(request: schemas.NodeDeleteManyRequest) -> schemas.NodeDele
     except Exception as exc:
         _raise_api_error("Failed to delete node list", exc)
 
-
 #================#
 # Edge endpoints #
 #================#
@@ -385,13 +363,12 @@ def list_edges(request: schemas.EdgeListRequest) -> schemas.EdgeListResponse:
 
     try:
         # Fetch input options
-        env = request.env
         from_object_type = request.from_object_type
         to_object_type = request.to_object_type
         id_pattern = request.id_pattern
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -418,7 +395,6 @@ def list_edges(request: schemas.EdgeListRequest) -> schemas.EdgeListResponse:
     except Exception as exc:
         _raise_api_error("Failed to list edges", exc)
 
-
 @router.post("/edges/exists", response_model=schemas.EdgeExistsResponse, tags=["edges"])
 def edge_exists(request: schemas.EdgeExistsAPIRequest) -> schemas.EdgeExistsResponse:
     """
@@ -427,11 +403,10 @@ def edge_exists(request: schemas.EdgeExistsAPIRequest) -> schemas.EdgeExistsResp
 
     try:
         # Fetch input options
-        env = request.env
         edge_key = request.key
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -446,7 +421,6 @@ def edge_exists(request: schemas.EdgeExistsAPIRequest) -> schemas.EdgeExistsResp
     except Exception as exc:
         _raise_api_error("Failed to check edge existence", exc)
 
-
 @router.post(
     "/edges/fetch",
     response_model=schemas.EdgeFetchResponse,
@@ -460,11 +434,10 @@ def fetch_edge(request: schemas.EdgeFetchRequest) -> schemas.EdgeFetchResponse:
 
     try:
         # Fetch input options
-        env = request.env
         edge_key = request.key
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -482,7 +455,6 @@ def fetch_edge(request: schemas.EdgeFetchRequest) -> schemas.EdgeFetchResponse:
     except Exception as exc:
         _raise_api_error("Failed to fetch edge", exc)
 
-
 @router.post("/edges/save", response_model=schemas.EdgeSaveAPIResponse, tags=["edges"])
 def save_edge(request: schemas.EdgeSaveAPIRequest) -> schemas.EdgeSaveAPIResponse:
     """
@@ -491,12 +463,11 @@ def save_edge(request: schemas.EdgeSaveAPIRequest) -> schemas.EdgeSaveAPIRespons
 
     try:
         # Fetch input options
-        env = request.env
         edge = request.edge
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -517,7 +488,6 @@ def save_edge(request: schemas.EdgeSaveAPIRequest) -> schemas.EdgeSaveAPIRespons
     except Exception as exc:
         _raise_api_error("Failed to save edge", exc)
 
-
 @router.post("/edges/save-many", response_model=schemas.EdgeListSaveResponse, tags=["edges"])
 def save_edge_list(request: schemas.EdgeListSaveRequest) -> schemas.EdgeListSaveResponse:
     """
@@ -526,12 +496,11 @@ def save_edge_list(request: schemas.EdgeListSaveRequest) -> schemas.EdgeListSave
 
     try:
         # Fetch input options
-        env = request.env
         edge_list = request.edge_list
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -556,7 +525,6 @@ def save_edge_list(request: schemas.EdgeListSaveRequest) -> schemas.EdgeListSave
     except Exception as exc:
         _raise_api_error("Failed to save edge list", exc)
 
-
 @router.post("/edges/delete", response_model=schemas.EdgeDeleteResponse, tags=["edges"])
 def delete_edge(request: schemas.EdgeDeleteAPIRequest) -> schemas.EdgeDeleteResponse:
     """
@@ -565,12 +533,11 @@ def delete_edge(request: schemas.EdgeDeleteAPIRequest) -> schemas.EdgeDeleteResp
 
     try:
         # Fetch input options
-        env = request.env
         edge_key = request.key
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -590,7 +557,6 @@ def delete_edge(request: schemas.EdgeDeleteAPIRequest) -> schemas.EdgeDeleteResp
     except Exception as exc:
         _raise_api_error("Failed to delete edge", exc)
 
-
 @router.post("/edges/delete-many", response_model=schemas.EdgeDeleteManyResponse, tags=["edges"])
 def delete_edge_list(request: schemas.EdgeDeleteManyRequest) -> schemas.EdgeDeleteManyResponse:
     """
@@ -599,12 +565,11 @@ def delete_edge_list(request: schemas.EdgeDeleteManyRequest) -> schemas.EdgeDele
 
     try:
         # Fetch input options
-        env = request.env
         edge_keys = request.keys
         actions = _actions_tuple(request.actions)
 
         # Build repository and operations
-        edge_repo: EdgeRepository = _make_edge_repo(env)
+        edge_repo: EdgeRepository = _make_edge_repo()
         edge_ops = EdgeOperations(repo=edge_repo)
 
         # Execute command
@@ -626,7 +591,6 @@ def delete_edge_list(request: schemas.EdgeDeleteManyRequest) -> schemas.EdgeDele
     except Exception as exc:
         _raise_api_error("Failed to delete edge list", exc)
 
-
 #====================#
 # Subgraph endpoints #
 #====================#
@@ -639,7 +603,6 @@ def save_subgraph(request: schemas.SubGraphSaveRequest) -> schemas.SubGraphSaveR
 
     try:
         # Fetch input options
-        env = request.env
         subgraph = request.subgraph
         actions = _actions_tuple(request.actions)
 
@@ -647,8 +610,8 @@ def save_subgraph(request: schemas.SubGraphSaveRequest) -> schemas.SubGraphSaveR
         db = _make_db()
 
         # Build repositories and operations
-        node_repo: NodeRepository = _make_node_repo(env, db=db)
-        edge_repo: EdgeRepository = _make_edge_repo(env, db=db)
+        node_repo: NodeRepository = _make_node_repo(db=db)
+        edge_repo: EdgeRepository = _make_edge_repo(db=db)
         node_ops = NodeOperations(repo=node_repo)
         edge_ops = EdgeOperations(repo=edge_repo)
 
