@@ -278,3 +278,6 @@ database/init/sample_sets/*
 sample_set_graph_ontology.sql
 services_path.txt
 nginx.graphregistry-https.conf
+.temp*
+promtail*
+restart.sh
