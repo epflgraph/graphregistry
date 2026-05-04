@@ -38,7 +38,7 @@ class NodeOperations:
     def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
         return self.repo.save(node, actions=actions)
 
-    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[Node]:
+    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> NodeList:
         return self.repo.save_many(node_list, actions=actions)
 
     def insert(self, node: Node, actions: ActionSet = ("eval",)) -> bool:

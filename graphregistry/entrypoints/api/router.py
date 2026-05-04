@@ -18,6 +18,8 @@ from graphregistry.entrypoints.api import schemas
 from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
 from graphregistry.workflows.operations.entities.ops_node import NodeOperations
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
+from graphregistry.workflows.factories.fct_node import NodeFactory
 
 # Environment variables
 API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
@@ -107,6 +109,13 @@ def get_edge_ops() -> EdgeOperations:
     edge_repo: EdgeRepository = _make_edge_repo()
     return EdgeOperations(repo=edge_repo)
 
+def get_node_factory() -> NodeFactory:
+    """
+    Build NodeFactory for one request.
+    """
+    gtw = GraphAIConceptGateway(debug=True)
+    return NodeFactory(concept_gateway=gtw)
+
 @dataclass(frozen=True)
 class RegistryOps:
     """
@@ -184,39 +193,41 @@ def fetch_node(request: schemas.NodeFetchRequest, node_ops: NodeOperations = Dep
     return schemas.NodeFetchResponse(found=node is not None, node=MySQLNodeMapper.to_simplified_dict(node) if node is not None else None)
 
 @router.post("/nodes/save", response_model=schemas.NodeSaveAPIResponse, tags=["nodes"])
-def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeSaveAPIResponse:
+def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = Depends(get_node_ops), node_factory: NodeFactory = Depends(get_node_factory)) -> schemas.NodeSaveAPIResponse:
     """
     Save one node.
     """
-    node = MySQLNodeMapper.from_simplified_dict({
-        'institution_id' : INSTITUTION_ID,
-        'object_type'    : request.node.object_type,
-        'object_id'      : request.node.object_id,
-        'object_title'   : request.node.object_title,
-        'text_source'    : request.node.text_source,
-        'raw_text'       : request.node.raw_text,
-        'custom_fields'  : [field.model_dump() for field in request.node.custom_fields],
-        'page_profile'   : request.node.page_profile or {},
-        'detected_concepts': [],
-    })
+    node = node_factory.from_simplified_dict(request.node.model_dump(), detect_concepts=request.detect_concepts)
     saved_node = node_ops.save(node, actions=('commit',))
-    return schemas.NodeSaveAPIResponse(success=True, node=saved_node)
+    return schemas.NodeSaveAPIResponse(success=True, saved_key=saved_node.key, n_concepts_detected=len(saved_node.detected_concepts.item_list) if saved_node.detected_concepts else 0)
 
 @router.post("/nodes/save-many", response_model=schemas.NodeListSaveResponse, tags=["nodes"])
-def save_node_list(request: schemas.NodeListSaveRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeListSaveResponse:
+def save_node_list(request: schemas.NodeListSaveRequest, node_ops: NodeOperations = Depends(get_node_ops), node_factory: NodeFactory = Depends(get_node_factory)) -> schemas.NodeListSaveResponse:
     """
     Save a list of nodes.
     """
-    saved_nodes = node_ops.save_many(request.node_list, actions=('commit',))
-    saved_node_list = NodeList(item_list=saved_nodes)
-    return schemas.NodeListSaveResponse(success=True, node_list=saved_node_list, count=len(saved_node_list.item_list))
+    node_list = NodeList(item_list=[
+        node_factory.from_simplified_dict(node_dict.model_dump(), detect_concepts=request.detect_concepts)
+        for node_dict in request.node_list
+    ])
+    saved_nodes = node_ops.save_many(node_list, actions=('commit',))
+    return schemas.NodeListSaveResponse(
+        success    = True,
+        saved_keys = [node.key for node in saved_nodes.item_list],
+        count      = len(saved_nodes.item_list),
+        total_detected_concepts = sum(len(node.detected_concepts.item_list) if node.detected_concepts else 0 for node in saved_nodes.item_list)
+    )
 
 @router.post("/nodes/delete", response_model=schemas.NodeDeleteResponse, tags=["nodes"])
 def delete_node(request: schemas.NodeDeleteAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeDeleteResponse:
     """
     Delete one node.
     """
-    deleted = node_ops.delete(request.key, actions=('commit',))
+    deleted = node_ops.delete(NodeKey(
+        institution_id = INSTITUTION_ID,
+        object_type    = request.object_type,
+        object_id      = request.object_id
+    ), actions=('commit',))
     return schemas.NodeDeleteResponse(success=bool(deleted))
 
 @router.post("/nodes/delete-many", response_model=schemas.NodeDeleteManyResponse, tags=["nodes"])
@@ -224,8 +235,16 @@ def delete_node_list(request: schemas.NodeDeleteManyRequest, node_ops: NodeOpera
     """
     Delete a list of nodes.
     """
-    bool_results = node_ops.delete_many(request.keys, actions=('commit',))
-    return schemas.NodeDeleteManyResponse(success=all(bool_results) if bool_results else True, results=bool_results, count=len(bool_results))
+    bool_results = node_ops.delete_many([NodeKey(
+        institution_id = INSTITUTION_ID,
+        object_type    = key.object_type,
+        object_id      = key.object_id
+    ) for key in request.key_list], actions=('commit',))
+    return schemas.NodeDeleteManyResponse(
+        success = all(bool_results) if bool_results else True,
+        results = bool_results,
+        n_deleted = sum(bool_results)
+    )
 
 #================#
 # Edge endpoints #

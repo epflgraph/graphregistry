@@ -26,7 +26,7 @@ class NodeRepository(Protocol):
     def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
         ...
 
-    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[Node]:
+    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> NodeList:
         ...
 
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:

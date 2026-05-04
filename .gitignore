@@ -281,3 +281,5 @@ nginx.graphregistry-https.conf
 .temp*
 promtail*
 restart.sh
+sample_course_node_list.json
+test.sh

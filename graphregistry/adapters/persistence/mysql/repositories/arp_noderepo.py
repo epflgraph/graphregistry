@@ -271,8 +271,8 @@ class MySQLNodeRepository(NodeRepository):
         return node
 
     # Method: Save (insert or update) multiple nodes data to persistence from a NodeList object
-    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> list[Node]:
-        return [self.save(node, actions=actions) for node in node_list.item_list]
+    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> NodeList:
+        return NodeList(item_list=[self.save(node, actions=actions) for node in node_list.item_list])
 
     # Method: Delete node data from persistence based on the node key
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:

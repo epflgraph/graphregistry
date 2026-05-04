@@ -4,7 +4,7 @@ from typing import Any
 from graphregistry.adapters.persistence.mysql.mappers.amp_conceptdet import MySQLConceptDetectionResultMapper
 from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MySQLPageProfileMapper
 from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
-from graphregistry.domain.models.entities.mdl_node import Node, NodeField, NodeFieldList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList, NodeField, NodeFieldList
 
 # Class definition
 class MySQLNodeFieldMapper:
@@ -190,5 +190,5 @@ class MySQLNodeMapper:
         return [MySQLNodeMapper.to_simplified_dict(node) for node in node_list]
 
     @staticmethod
-    def from_simplified_dict_list(data: list[dict[str, Any]]) -> list[Node]:
-        return [MySQLNodeMapper.from_simplified_dict(item) for item in (data or [])]
+    def from_simplified_dict_list(data: list[dict[str, Any]]) -> NodeList:
+        return NodeList(item_list=[MySQLNodeMapper.from_simplified_dict(item) for item in (data or [])])

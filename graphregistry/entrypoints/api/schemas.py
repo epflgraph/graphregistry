@@ -16,6 +16,25 @@ class StatusResponse(BaseModel):
     success: bool = True
     message: str
 
+class NodeSimplifiedKey(BaseModel):
+    object_type    : str
+    object_id      : str
+
+class NodeCustomFieldInput(BaseModel):
+    field_language : str = "n/a"
+    field_name     : str
+    field_value    : str
+
+class NodeSimplifiedInput(BaseModel):
+    institution_id : str = "EPFL"
+    object_type    : str
+    object_id      : str
+    object_title   : str | None = ""
+    text_source    : str | None = ""
+    raw_text       : str | None = ""
+    custom_fields  : list[NodeCustomFieldInput] = Field(default_factory=list)
+    page_profile   : dict[str, Any] | None = None
+
 #==============#
 # Node schemas #
 #==============#
@@ -50,50 +69,42 @@ class NodeFetchResponse(BaseModel):
     node  : dict[str, Any] | None = None
 
 # api/nodes/save
-class NodeCustomFieldInput(BaseModel):
-    field_language : str = "n/a"
-    field_name     : str
-    field_value    : str
-
-class NodeSimplifiedInput(BaseModel):
-    object_type    : str
-    object_id      : str
-    object_title   : str = ""
-    text_source    : str = ""
-    raw_text       : str = ""
-    custom_fields  : list[NodeCustomFieldInput] = Field(default_factory=list)
-    page_profile   : dict[str, Any] | None = None
-
 class NodeSaveAPIRequest(BaseModel):
     node : NodeSimplifiedInput
     detect_concepts : bool = False
 
 class NodeSaveAPIResponse(BaseModel):
-    success : bool
-    node    : Node
+    success   : bool
+    saved_key : NodeKey
+    n_concepts_detected : int = 0
 
 # api/nodes/save-many
 class NodeListSaveRequest(BaseModel):
-    node_list: NodeList
+    node_list : list[NodeSimplifiedInput] = Field(default_factory=list)
+    detect_concepts : bool = False
 
 class NodeListSaveResponse(BaseModel):
-    success: bool
-    node_list: NodeList
-    count: int
+    success    : bool
+    saved_keys : list[NodeKey] = Field(default_factory=list)
+    count      : int
+    total_detected_concepts : int = 0
 
+# api/nodes/delete
 class NodeDeleteAPIRequest(BaseModel):
-    key: NodeKey
+    object_type : str
+    object_id   : str
 
 class NodeDeleteResponse(BaseModel):
     success: bool
 
+# api/nodes/delete-many
 class NodeDeleteManyRequest(BaseModel):
-    keys: list[NodeKey] = Field(default_factory=list)
+    key_list : list[NodeSimplifiedKey] = Field(default_factory=list)
 
 class NodeDeleteManyResponse(BaseModel):
-    success: bool
-    results: list[bool]
-    count: int
+    success   : bool
+    results   : list[bool]
+    n_deleted : int
 
 #==============#
 # Edge schemas #
