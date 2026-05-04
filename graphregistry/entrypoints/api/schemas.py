@@ -7,6 +7,9 @@ from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 
+# Define a type for supported field languages, which can be used in custom fields of nodes
+FieldLanguage = Literal['n/a', 'en', 'fr', 'de', 'it']
+
 #================#
 # Shared schemas #
 #================#
@@ -21,7 +24,7 @@ class NodeSimplifiedKey(BaseModel):
     object_id      : str
 
 class CustomFieldInput(BaseModel):
-    field_language : str = "n/a"
+    field_language : FieldLanguage
     field_name     : str
     field_value    : str
 
@@ -49,8 +52,8 @@ class EdgeSimplifiedKey(BaseModel):
 class NodeListRequest(BaseModel):
     object_type : str = Field(..., description="Node object type to list.")
     id_pattern  : str | None = Field(
-        default=None,
-        description="Optional wildcard pattern for object_id values. `*` is supported.",
+        default     = None,
+        description = "Optional wildcard pattern for object_id values. `*` is supported.",
     )
 
 class NodeListResponse(BaseModel):
@@ -59,116 +62,116 @@ class NodeListResponse(BaseModel):
 
 # api/nodes/exists
 class NodeExistsAPIRequest(BaseModel):
-    object_type : str
-    object_id   : str
+    key: NodeSimplifiedKey
 
 class NodeExistsResponse(BaseModel):
-    exists : bool
+    exists: bool
 
-# api/nodes/fetch
-class NodeFetchRequest(BaseModel):
-    object_type : str
-    object_id   : str
+# api/nodes/get
+class NodeGetRequest(BaseModel):
+    key: NodeSimplifiedKey
 
-class NodeFetchResponse(BaseModel):
+class NodeGetResponse(BaseModel):
     found : bool
     node  : dict[str, Any] | None = None
 
 # api/nodes/save
 class NodeSaveAPIRequest(BaseModel):
-    node : NodeSimplifiedInput
-    detect_concepts : bool = False
+    node: NodeSimplifiedInput
 
 class NodeSaveAPIResponse(BaseModel):
     success   : bool
-    saved_key : NodeKey
-    n_concepts_detected : int = 0
+    saved_key : dict[str, str] | None = None
 
-# api/nodes/save-many
+# api/nodes/save_many
 class NodeListSaveRequest(BaseModel):
     node_list : list[NodeSimplifiedInput] = Field(default_factory=list)
-    detect_concepts : bool = False
 
 class NodeListSaveResponse(BaseModel):
     success    : bool
-    saved_keys : list[NodeKey] = Field(default_factory=list)
+    saved_keys : list[dict[str, str]] = Field(default_factory=list)
     count      : int
-    total_detected_concepts : int = 0
 
 # api/nodes/delete
 class NodeDeleteAPIRequest(BaseModel):
-    object_type : str
-    object_id   : str
+    key: NodeSimplifiedKey
 
 class NodeDeleteResponse(BaseModel):
     success: bool
 
-# api/nodes/delete-many
+# api/nodes/delete_many
 class NodeDeleteManyRequest(BaseModel):
-    key_list : list[NodeSimplifiedKey] = Field(default_factory=list)
+    key_list: list[NodeSimplifiedKey] = Field(default_factory=list)
 
 class NodeDeleteManyResponse(BaseModel):
     success   : bool
-    results   : list[bool]
+    results   : list[bool] = Field(default_factory=list)
     n_deleted : int
 
 #==============#
 # Edge schemas #
 #==============#
 
+# api/edges/list
 class EdgeListRequest(BaseModel):
-    from_object_type: str = Field(..., description="Source node object type.")
-    to_object_type: str = Field(..., description="Target node object type.")
-    id_pattern: str | None = Field(
-        default=None,
-        description="Optional wildcard pattern applied to edge identifiers. `*` is supported.",
+    from_object_type : str = Field(..., description="Source node object type.")
+    to_object_type   : str = Field(..., description="Target node object type.")
+    id_pattern       : str | None = Field(
+        default     = None,
+        description = "Optional wildcard pattern applied to edge identifiers. `*` is supported.",
     )
 
 class EdgeListResponse(BaseModel):
-    edges: list[EdgeKey] = Field(default_factory=list)
-    count: int = 0
+    edges : list[EdgeKey] = Field(default_factory=list)
+    count : int = 0
 
+# api/edges/exists
 class EdgeExistsAPIRequest(BaseModel):
-    key: EdgeKey
+    key: EdgeSimplifiedKey
 
 class EdgeExistsResponse(BaseModel):
     exists: bool
 
-class EdgeFetchRequest(BaseModel):
-    key: EdgeKey
+# api/edges/get
+class EdgeGetRequest(BaseModel):
+    key: EdgeSimplifiedKey
 
-class EdgeFetchResponse(BaseModel):
-    found: bool
-    edge: Edge | None = None
+class EdgeGetResponse(BaseModel):
+    found : bool
+    edge  : dict[str, Any] | None = None
 
+# api/edges/save
 class EdgeSaveAPIRequest(BaseModel):
-    edge: Edge
+    edge: EdgeSimplifiedKey
 
 class EdgeSaveAPIResponse(BaseModel):
-    success: bool
-    edge: Edge
+    success   : bool
+    saved_key : dict[str, str] | None = None
 
+# api/edges/save_many
 class EdgeListSaveRequest(BaseModel):
-    edge_list: EdgeList
+    edge_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
 
 class EdgeListSaveResponse(BaseModel):
-    success: bool
-    edge_list: EdgeList
-    count: int
+    success    : bool
+    saved_keys : list[dict[str, str]] = Field(default_factory=list)
+    count      : int
 
+# api/edges/delete
 class EdgeDeleteAPIRequest(BaseModel):
-    key: EdgeKey
+    key: EdgeSimplifiedKey
 
 class EdgeDeleteResponse(BaseModel):
     success: bool
 
+# api/edges/delete_many
 class EdgeDeleteManyRequest(BaseModel):
-    keys: list[EdgeKey] = Field(default_factory=list)
+    key_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
 
 class EdgeDeleteManyResponse(BaseModel):
-    success: bool
-    results: list[bool]
-    count: int
+    success   : bool
+    results   : list[bool] = Field(default_factory=list)
+    n_deleted : int
 
 #==================#
 # Subgraph schemas #
