@@ -200,6 +200,25 @@ def node_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations 
     # Return the existence result in the response
     return schemas.NodeExistsResponse(exists=exists)
 
+#--------------------------------------#
+# API Endpoint: /api/nodes/exists_many #
+# -------------------------------------#
+@router.post("/nodes/exists_many", response_model=schemas.NodeExistsManyResponse, tags=["nodes"])
+def node_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeExistsManyResponse:
+    """
+    Check whether a list of nodes exist.
+    """
+    # Check if the nodes exist in the database by key, and get list of boolean results for each key
+    exist_keys = node_ops.exists_many([
+        NodeKey(
+            institution_id = INSTITUTION_ID,
+            object_type    = key.object_type,
+            object_id      = key.object_id
+        ) for key in request.key_list
+    ])
+    # Return the existence results in the response, including list of individual results and count
+    return schemas.NodeExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
+
 #------------------------------#
 # API Endpoint: /api/nodes/get #
 #------------------------------#

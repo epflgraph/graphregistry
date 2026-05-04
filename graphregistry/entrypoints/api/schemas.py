@@ -67,6 +67,14 @@ class NodeExistsAPIRequest(BaseModel):
 class NodeExistsResponse(BaseModel):
     exists: bool
 
+# api/nodes/exists_many
+class NodeExistsManyRequest(BaseModel):
+    key_list: list[NodeSimplifiedKey] = Field(default_factory=list)
+
+class NodeExistsManyResponse(BaseModel):
+    exist_keys : list[bool] = Field(default_factory=list)
+    count      : int
+
 # api/nodes/get
 class NodeGetRequest(BaseModel):
     key: NodeSimplifiedKey
