@@ -20,20 +20,26 @@ class NodeSimplifiedKey(BaseModel):
     object_type    : str
     object_id      : str
 
-class NodeCustomFieldInput(BaseModel):
+class CustomFieldInput(BaseModel):
     field_language : str = "n/a"
     field_name     : str
     field_value    : str
 
 class NodeSimplifiedInput(BaseModel):
-    institution_id : str = "EPFL"
     object_type    : str
     object_id      : str
     object_title   : str | None = ""
     text_source    : str | None = ""
     raw_text       : str | None = ""
-    custom_fields  : list[NodeCustomFieldInput] = Field(default_factory=list)
+    custom_fields  : list[CustomFieldInput] = Field(default_factory=list)
     page_profile   : dict[str, Any] | None = None
+
+class EdgeSimplifiedKey(BaseModel):
+    from_object_type : str
+    from_object_id   : str
+    to_object_type   : str
+    to_object_id     : str
+    context          : str
 
 #==============#
 # Node schemas #

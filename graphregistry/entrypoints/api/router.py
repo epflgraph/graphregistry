@@ -197,7 +197,10 @@ def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = De
     """
     Save one node.
     """
-    node = node_factory.from_simplified_dict(request.node.model_dump(), detect_concepts=request.detect_concepts)
+    # Add institution_id to the node data, since it's not part of the input schema but required for the domain model and persistence.
+    json_input = request.node.model_dump()
+    json_input.update({"institution_id": INSTITUTION_ID})
+    node = node_factory.from_simplified_dict(json_input, detect_concepts=request.detect_concepts)
     saved_node = node_ops.save(node, actions=('commit',))
     return schemas.NodeSaveAPIResponse(success=True, saved_key=saved_node.key, n_concepts_detected=len(saved_node.detected_concepts.item_list) if saved_node.detected_concepts else 0)
 

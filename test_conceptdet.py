@@ -23,5 +23,5 @@ node: Node = node_factory.create(
         than the two right angles.""",
     detect_concepts = True,
 )
-rich.print_json(data=node.detected_concepts.to_json())
+rich.print_json(data=node.detected_concepts)
 rich.print_json(data=node.to_json())
