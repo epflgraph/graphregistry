@@ -1,7 +1,7 @@
 # graphregistry/entrypoints/cli/cmd_data.py
 from __future__ import annotations
 from pathlib import Path
-from graphregistry.domain.models.entities.mdl_base import NodeKey, EdgeKey
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeList
 from graphregistry.domain.models.entities.mdl_edge import EdgeList
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
@@ -389,10 +389,7 @@ def cmd_data_delete(args):
         node_list_json_data = _load_json_input(args.node_list, "--node_list")
 
         # Build key list
-        node_key_list = [
-            NodeKey.from_tuple(tuple(item))
-            for item in node_list_json_data
-        ]
+        node_key_list = NodeKeyList.from_tuple_list(node_list_json_data)
 
         # Delete node list
         node_repo.delete_many(node_key_list, actions=actions)
@@ -405,10 +402,7 @@ def cmd_data_delete(args):
         edge_list_json_data = _load_json_input(args.edge_list, "--edge_list")
 
         # Build key list
-        edge_key_list = [
-            EdgeKey.from_tuple(tuple(item))
-            for item in edge_list_json_data
-        ]
+        edge_key_list = EdgeKeyList.from_tuple_list(edge_list_json_data)
 
         # Delete edge list
         edge_repo.delete_many(edge_key_list, actions=actions)
