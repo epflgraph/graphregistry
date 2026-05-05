@@ -26,7 +26,7 @@ class EdgeRepository(Protocol):
     def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
         ...
 
-    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> list[Edge]:
+    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> EdgeList:
         ...
 
     def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:

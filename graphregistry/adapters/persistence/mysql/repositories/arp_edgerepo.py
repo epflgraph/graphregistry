@@ -199,8 +199,8 @@ class MySQLEdgeRepository(EdgeRepository):
         return edge
 
     # Method: Save (insert or update) multiple edges data to persistence from an EdgeList object
-    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> list[Edge]:
-        return [self.save(edge, actions=actions) for edge in edge_list.item_list]
+    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> EdgeList:
+        return EdgeList(item_list=[self.save(edge, actions=actions) for edge in edge_list.item_list])
 
     # Method: Delete edge data from persistence based on the edge key
     def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:

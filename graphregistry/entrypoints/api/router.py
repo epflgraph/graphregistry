@@ -306,9 +306,13 @@ def save_node_list(request: schemas.NodeListSaveRequest, node_ops: NodeOperation
 
     # Return the saved node keys in the response
     return schemas.NodeListSaveResponse(
-        success    = True,
-        saved_keys = [saved_node.key for saved_node in saved_nodes.item_list],
-        count      = len(saved_nodes.item_list)
+        success = True,
+        saved_keys = [
+            {
+                'object_type' : saved_node.key.object_type,
+                'object_id'   : saved_node.key.object_id
+            } for saved_node in saved_nodes.item_list],
+        count = len(saved_nodes.item_list)
     )
 
 #---------------------------------#
@@ -493,9 +497,16 @@ def save_edge_list(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperation
 
     # Return the saved edge keys in the response
     return schemas.EdgeListSaveResponse(
-        success    = True,
-        saved_keys = [saved_edge.key for saved_edge in saved_edges.item_list],
-        count      = len(saved_edges.item_list)
+        success = True,
+        saved_keys = [
+            {
+                'from_object_type' : saved_edge.key.from_object_type,
+                'from_object_id'   : saved_edge.key.from_object_id,
+                'to_object_type'   : saved_edge.key.to_object_type,
+                'to_object_id'     : saved_edge.key.to_object_id,
+                'context'          : saved_edge.key.context
+            } for saved_edge in saved_edges.item_list],
+        count = len(saved_edges.item_list)
     )
 
 #---------------------------------#

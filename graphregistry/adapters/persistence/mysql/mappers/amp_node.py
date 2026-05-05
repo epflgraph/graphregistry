@@ -186,7 +186,9 @@ class MySQLNodeMapper:
         )
 
     @staticmethod
-    def to_simplified_dict_list(node_list: list[Node]) -> list[dict[str, Any]]:
+    def to_simplified_dict_list(node_list: NodeList | list[Node]) -> list[dict[str, Any]]:
+        if isinstance(node_list, NodeList):
+            node_list = node_list.item_list
         return [MySQLNodeMapper.to_simplified_dict(node) for node in node_list]
 
     @staticmethod

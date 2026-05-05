@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any
 from graphregistry.domain.models.entities.mdl_base import EdgeFieldKey, EdgeKey
-from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList, EdgeField, EdgeFieldList
 
 # Class definition
 class MySQLEdgeFieldMapper:
@@ -145,9 +145,11 @@ class MySQLEdgeMapper:
         return Edge(key=key, field_list=MySQLEdgeFieldMapper.from_dict_list(data['custom_fields'], edge_key=key))
 
     @staticmethod
-    def to_simplified_dict_list(edge_list: list[Edge]) -> list[dict[str, Any]]:
+    def to_simplified_dict_list(edge_list: EdgeList | list[Edge]) -> list[dict[str, Any]]:
+        if isinstance(edge_list, EdgeList):
+            edge_list = edge_list.item_list
         return [MySQLEdgeMapper.to_simplified_dict(edge) for edge in edge_list]
 
     @staticmethod
-    def from_simplified_dict_list(data: list[dict[str, Any]]) -> list[Edge]:
-        return [MySQLEdgeMapper.from_simplified_dict(item) for item in data]
+    def from_simplified_dict_list(data: list[dict[str, Any]]) -> EdgeList:
+        return EdgeList(item_list=[MySQLEdgeMapper.from_simplified_dict(item) for item in (data or [])])

@@ -35,7 +35,7 @@ class EdgeOperations:
     def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
         return self.repo.save(edge, actions=actions)
 
-    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> list[Edge]:
+    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> EdgeList:
         return self.repo.save_many(edge_list, actions=actions)
 
     def insert(self, edge: Edge, actions: ActionSet = ("eval",)) -> bool:
