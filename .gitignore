@@ -247,7 +247,6 @@ config_scores.json
 # Exclude symlinks
 *.lnk
 .gitleaks.toml
-security_scan.sh
 setup.sh
 node_modules/
 *.crt
