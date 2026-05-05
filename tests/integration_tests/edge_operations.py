@@ -1,11 +1,12 @@
 # tests/integration_tests/edge_operations.py
 from __future__ import annotations
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.domain.models.entities.mdl_base import EdgeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
+from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
 import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere
@@ -25,10 +26,10 @@ SCHEMA_NAME = "_0_PYTESTS_"+glbcfg.schema_registry.replace('_1_DEV_','')
 
 # Class definition for a fixed schema resolver that always returns the same schema for nodes and edges
 class FixedTestSchemaResolver:
-    def for_node(self, key):
+    def for_node(self, key) -> tuple[str, str]:
         return (ENGINE_NAME, SCHEMA_NAME)
 
-    def for_edge(self, key):
+    def for_edge(self, key) -> tuple[str, str]:
         return (ENGINE_NAME, SCHEMA_NAME)
 
 # Helper function to load the JSON fixture data
@@ -44,7 +45,7 @@ def real_repo() -> MySQLEdgeRepository:
 
     return MySQLEdgeRepository(
         db=db,
-        schema_resolver=resolver
+        schema_resolver=cast(SchemaResolver, resolver)
     )
 
 # Helper function to build an Edge domain object from the simplified JSON fixture data

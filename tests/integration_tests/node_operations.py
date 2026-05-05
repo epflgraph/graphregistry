@@ -1,11 +1,12 @@
 # tests/integration_tests/node_operations.py
 from __future__ import annotations
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
 import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere
@@ -44,7 +45,7 @@ def real_repo() -> MySQLNodeRepository:
 
     return MySQLNodeRepository(
         db=db,
-        schema_resolver=resolver
+        schema_resolver=cast(SchemaResolver, resolver)
     )
 
 # The actual test function that performs a full CRUD cycle on the MySQLNodeRepository using the fixture data

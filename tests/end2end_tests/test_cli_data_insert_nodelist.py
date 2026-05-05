@@ -1,6 +1,6 @@
 # tests/end2end_tests/test_cli_data_insert_nodelist.py
 from __future__ import annotations
-from typing import Any, cast
+from typing import cast
 from pathlib import Path
 from graphregistry.common.config import GlobalConfig
 from graphdb.core.config import GraphDBConfig
@@ -14,11 +14,17 @@ glbcfg = GlobalConfig()
 # Configuration                                                      #
 # ------------------------------------------------------------------ #
 
-CLI_CMD = [
-    "graphregistry",
-    "data",
-    "insert",
+# Define CLI command as a constant list for reuse in insert operations
+CLI_CMD_INSERT = [
+    "graphregistry", "data", "insert",
     "--node_list=@./tests/fixtures/e2e_data_insert_graph_sample_set_nodelist.json",
+    "--actions=commit",
+]
+
+# Define CLI command for deleting nodes using the node key list fixture
+CLI_CMD_DELETE = [
+    "graphregistry", "data", "delete",
+    "--node_list=@tests/fixtures/e2e_data_insert_graph_sample_set_nodekeylist.json",
     "--actions=commit",
 ]
 
@@ -66,26 +72,27 @@ def node_key_tuple(node_json: dict) -> tuple[str, str, str]:
         str(node_json["object_id"]),
     )
 
-def delete_node(db: GraphDB, node_json: dict) -> None:
-    institution_id, object_type, object_id = node_key_tuple(node_json)
-
-    # Double-check schema name
+def delete_nodes() -> None:
     if not SCHEMA_NAME.startswith("_1_DEV_"):
         raise AssertionError(
-            f"Attempting to delete node from schema '{SCHEMA_NAME}' which does not start with '_1_DEV_'. "
+            f"Attempting to delete nodes from schema '{SCHEMA_NAME}' which does not start with '_1_DEV_'. "
             "Aborting to prevent potential data loss. Please set execution mode to 'dev' in your config."
         )
 
-    query = f"""
-    DELETE FROM {SCHEMA_NAME}.Nodes_N_Object
-    WHERE institution_id = "{institution_id}"
-      AND object_type    = "{object_type}"
-      AND object_id      = "{object_id}";
-    """
-    db.execute_query(
-        engine_name=ENGINE_NAME,
-        query=query,
-        commit=True,
+    result = subprocess.run(
+        CLI_CMD_DELETE,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    print("\nDELETE STDOUT:\n", result.stdout)
+    print("\nDELETE STDERR:\n", result.stderr)
+
+    assert result.returncode == 0, (
+        f"CLI delete failed with return code {result.returncode}\n"
+        f"STDOUT:\n{result.stdout}\n"
+        f"STDERR:\n{result.stderr}"
     )
 
 def count_node_rows(db: GraphDB, node_json: dict) -> int:
@@ -148,18 +155,11 @@ def test_cli_data_insert_node_list_e2e() -> None:
     sample_nodes = load_sample_nodes()
     db = make_db()
 
-    # -------------------------------------------------------------- #
-    # Defensive cleanup before test                                  #
-    # -------------------------------------------------------------- #
-    for node_json in sample_nodes:
-        delete_node(db, node_json)
+    delete_nodes()
 
     try:
-        # ---------------------------------------------------------- #
-        # Execute real CLI command                                   #
-        # ---------------------------------------------------------- #
         result = subprocess.run(
-            CLI_CMD,
+            CLI_CMD_INSERT,
             text=True,
             capture_output=True,
             check=False,
@@ -174,16 +174,25 @@ def test_cli_data_insert_node_list_e2e() -> None:
             f"STDERR:\n{result.stderr}"
         )
 
-        # ---------------------------------------------------------- #
-        # Explicit DB checks                                         #
-        # ---------------------------------------------------------- #
+        from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import (
+            PAGE_PROFILE_COLUMNS,
+        )
+
         for node_json in sample_nodes:
+            node_label = (
+                f"{node_json['institution_id']}:"
+                f"{node_json['object_type']}:"
+                f"{node_json['object_id']}"
+            )
+
             # 1) Node shell row exists
-            assert count_node_rows(db, node_json) == 1
+            assert count_node_rows(db, node_json) == 1, (
+                f"Missing or duplicate node shell row for {node_label}"
+            )
 
             # 2) Basic node content
             basic_row = fetch_node_basic_row(db, node_json)
-            assert basic_row is not None
+            assert basic_row is not None, f"Missing basic node row for {node_label}"
 
             expected_title = node_json.get("object_title", "")
             expected_text_source = node_json.get("text_source") or ""
@@ -197,122 +206,82 @@ def test_cli_data_insert_node_list_e2e() -> None:
             expected_custom_fields = node_json.get("custom_fields", [])
             db_custom_fields = fetch_custom_fields(db, node_json)
 
-            db_field_map = {
-                (row[0], row[1]): row[2]
-                for row in db_custom_fields
-            }
-
-            for field in expected_custom_fields:
-                key = (field["field_language"], field["field_name"])
-                assert key in db_field_map
-                assert db_field_map[key] == field["field_value"]
-
-            # 4) Page profile row exists if expected
-            expected_page_profile = node_json.get("page_profile")
-            db_page_profile = fetch_page_profile_row(db, node_json)
-
-            # Print all data extracted with SQL for debugging
-            # Use rich library for better formatting
-            # import rich
-            # rich.print(f"\nNode: {node_json['object_id']}")
-            # rich.print("Basic Row:")
-            # rich.print(basic_row)
-            # rich.print("Custom Fields:")
-            # rich.print(db_custom_fields)
-            # rich.print("Page Profile Row:")
-            # rich.print(db_page_profile)
-
-            # ==============================
-            # Assertion block
-            # ==============================
-
-            # 4) Page profile row exists and matches expected values
-            expected_page_profile = node_json.get("page_profile", {})
-            assert db_page_profile is not None, f"Missing page profile row for node {node_json['object_id']}"
-
-            from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
-
-            # `SELECT *` returns:
-            #   institution_id, object_type, object_id, <page profile columns...>, <extra trailing DB columns...>
-            assert len(db_page_profile) >= 3 + len(PAGE_PROFILE_COLUMNS), (
-                f"Unexpected page profile row length for node {node_json['object_id']}: "
-                f"got {len(db_page_profile)}, expected at least {3 + len(PAGE_PROFILE_COLUMNS)}"
-            )
-
-            assert db_page_profile[0] == node_json["institution_id"]
-            assert db_page_profile[1] == node_json["object_type"]
-            assert db_page_profile[2] == node_json["object_id"]
-
-            db_page_profile_map = dict(zip(PAGE_PROFILE_COLUMNS, db_page_profile[3:3 + len(PAGE_PROFILE_COLUMNS)]))
-
-            for field_name, expected_value in expected_page_profile.items():
-                assert field_name in db_page_profile_map, (
-                    f"Missing page profile column '{field_name}' for node {node_json['object_id']}"
-                )
-
-                actual_value = db_page_profile_map[field_name]
-
-                # Normalize bools because MySQL stores them as 0/1
-                if isinstance(expected_value, bool):
-                    assert int(bool(actual_value)) == int(expected_value), (
-                        f"Mismatch in page_profile[{field_name}] for node {node_json['object_id']}: "
-                        f"expected {int(expected_value)!r}, got {actual_value!r}"
-                    )
-                else:
-                    assert actual_value == expected_value, (
-                        f"Mismatch in page_profile[{field_name}] for node {node_json['object_id']}: "
-                        f"expected {expected_value!r}, got {actual_value!r}"
-                    )
-
-            # 5) Make sure the exact number of custom fields was written
-            assert len(db_custom_fields) == len(expected_custom_fields), (
-                f"Unexpected number of custom fields for node {node_json['object_id']}: "
-                f"expected {len(expected_custom_fields)}, got {len(db_custom_fields)}"
-            )
-
-            expected_field_keys = {
-                (field["field_language"], field["field_name"])
+            expected_field_map = {
+                (field["field_language"], field["field_name"]): field["field_value"]
                 for field in expected_custom_fields
             }
-            actual_field_keys = {
-                (row[0], row[1])
-                for row in db_custom_fields
+
+            actual_field_map = {
+                (field_language, field_name): field_value
+                for field_language, field_name, field_value in db_custom_fields
             }
 
-            assert actual_field_keys == expected_field_keys, (
-                f"Custom field key mismatch for node {node_json['object_id']}: "
-                f"expected {expected_field_keys}, got {actual_field_keys}"
+            if True:  # Set to False to disable rich printing of field maps
+                from rich import print as rprint
+
+                rprint(f"\n[bold cyan]CHECKING CUSTOM FIELDS FOR:[/bold cyan] {node_label}")
+                rprint("[bold]Expected:[/bold]", expected_field_map)
+                rprint("[bold]Actual:[/bold]", actual_field_map)
+
+            assert actual_field_map == expected_field_map, (
+                f"Custom fields mismatch for node {node_label}\n"
+                f"Expected:\n{expected_field_map}\n"
+                f"Actual:\n{actual_field_map}"
             )
 
-            # 6) Extra safety: verify page-profile identity and a few invariant columns
-            if "short_code" in expected_page_profile:
-                assert db_page_profile_map["short_code"] == expected_page_profile["short_code"]
-            assert int(bool(db_page_profile_map["is_visible"])) == int(bool(expected_page_profile.get("is_visible", True)))
+            # 4) Page profile
+            expected_page_profile = node_json.get("page_profile") or {}
+            db_page_profile = fetch_page_profile_row(db, node_json)
 
-            # 7) Extra safety: if EN/FR URLs or keys are present in fixture, verify them explicitly
-            for invariant_col in (
-                "external_key_en",
-                "external_key_fr",
-                "external_url_en",
-                "external_url_fr",
-                "name_en_value",
-                "name_fr_value",
-                "description_short_en_value",
-                "description_short_fr_value",
-                "description_medium_en_value",
-                "description_medium_fr_value",
-                "description_long_en_value",
-                "description_long_fr_value",
-            ):
-                if invariant_col in expected_page_profile:
-                    assert db_page_profile_map[invariant_col] == expected_page_profile[invariant_col], (
-                        f"Mismatch in invariant page_profile[{invariant_col}] for node {node_json['object_id']}: "
-                        f"expected {expected_page_profile[invariant_col]!r}, got {db_page_profile_map[invariant_col]!r}"
+            if expected_page_profile:
+                assert db_page_profile is not None, (
+                    f"Missing page profile row for node {node_label}"
+                )
+
+                assert len(db_page_profile) >= 3 + len(PAGE_PROFILE_COLUMNS), (
+                    f"Unexpected page profile row length for node {node_label}: "
+                    f"got {len(db_page_profile)}, expected at least {3 + len(PAGE_PROFILE_COLUMNS)}"
+                )
+
+                assert db_page_profile[0] == node_json["institution_id"]
+                assert db_page_profile[1] == node_json["object_type"]
+                assert db_page_profile[2] == node_json["object_id"]
+
+                actual_page_profile_map = dict(
+                    zip(
+                        PAGE_PROFILE_COLUMNS,
+                        db_page_profile[3:3 + len(PAGE_PROFILE_COLUMNS)],
+                    )
+                )
+
+                if True:  # Set to False to disable rich printing of page profile maps
+                    from rich import print as rprint
+
+                    rprint(f"\n[bold magenta]CHECKING PAGE PROFILE FOR:[/bold magenta] {node_label}")
+                    rprint("[bold]Expected:[/bold]", expected_page_profile)
+                    rprint("[bold]Actual:[/bold]", actual_page_profile_map)
+
+                for field_name, expected_value in expected_page_profile.items():
+                    assert field_name in actual_page_profile_map, (
+                        f"Missing page profile column '{field_name}' for node {node_label}"
                     )
 
+                    actual_value = actual_page_profile_map[field_name]
+
+                    if isinstance(expected_value, bool):
+                        assert int(bool(actual_value)) == int(expected_value), (
+                            f"Mismatch in page_profile[{field_name}] for node {node_label}: "
+                            f"expected {int(expected_value)!r}, got {actual_value!r}"
+                        )
+                    else:
+                        assert actual_value == expected_value, (
+                            f"Mismatch in page_profile[{field_name}] for node {node_label}: "
+                            f"expected {expected_value!r}, got {actual_value!r}"
+                        )
+            else:
+                assert db_page_profile is None, (
+                    f"Unexpected page profile row for node {node_label}"
+                )
+
     finally:
-        # ---------------------------------------------------------- #
-        # Cleanup                                                    #
-        # ---------------------------------------------------------- #
-        for node_json in sample_nodes:
-            delete_node(db, node_json)
+        delete_nodes()
