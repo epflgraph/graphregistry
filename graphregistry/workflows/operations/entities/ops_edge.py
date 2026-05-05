@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
+from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 
 # Class definition
@@ -23,19 +24,19 @@ class EdgeOperations:
     def exists(self, key: EdgeKey) -> bool:
         return self.repo.exists(key)
 
-    def exists_many(self, key_list: list[EdgeKey]) -> list[bool]:
+    def exists_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> list[bool]:
         return self.repo.exists_many(key_list)
 
     def get(self, key: EdgeKey) -> Edge | None:
         return self.repo.get(key)
 
-    def get_many(self, key_list: list[EdgeKey]) -> EdgeList:
+    def get_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> EdgeList:
         return self.repo.get_many(key_list)
 
     def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
         return self.repo.save(edge, actions=actions)
 
-    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> EdgeList:
+    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("eval",)) -> EdgeList:
         return self.repo.save_many(edge_list, actions=actions)
 
     def insert(self, edge: Edge, actions: ActionSet = ("eval",)) -> bool:
@@ -55,8 +56,8 @@ class EdgeOperations:
         success = bool(self.repo.save(edge, actions=actions))
         return EdgeUpsertResult(success=success, created=created)
 
-    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool:
-        return bool(self.repo.delete(key, actions=actions))
+    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
+        return self.repo.delete(key, actions=actions)
 
-    def delete_many(self, key_list: list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool]:
-        return [bool(result) for result in self.repo.delete_many(key_list, actions=actions)]
+    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+        return self.repo.delete_many(key_list, actions=actions)

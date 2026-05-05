@@ -1,6 +1,7 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_edgerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
+from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import EdgeKey, Edge, EdgeList
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
@@ -72,7 +73,9 @@ class MySQLEdgeRepository(EdgeRepository):
         return edge_exists
 
     # Method: Check if multiple edges exist in persistence from a list of edge keys
-    def exists_many(self, key_list: list[EdgeKey]) -> list[bool]:
+    def exists_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> list[bool]:
+        if isinstance(key_list, EdgeKeyList):
+            key_list = key_list.item_list
         return [self.exists(key) for key in key_list]
 
     # Method: Fetch edge data and construct Edge object
@@ -113,7 +116,9 @@ class MySQLEdgeRepository(EdgeRepository):
         return edge
 
     # Method: Fetch multiple edges data and construct EdgeList object from a list of edge keys
-    def get_many(self, key_list: list[EdgeKey]) -> EdgeList:
+    def get_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> EdgeList:
+        if isinstance(key_list, EdgeKeyList):
+            key_list = key_list.item_list
         out = [edge for edge in (self.get(key) for key in key_list) if edge is not None]
         return EdgeList(edge_list=out)
 
@@ -199,8 +204,10 @@ class MySQLEdgeRepository(EdgeRepository):
         return edge
 
     # Method: Save (insert or update) multiple edges data to persistence from an EdgeList object
-    def save_many(self, edge_list: EdgeList, actions: ActionSet = ("eval",)) -> EdgeList:
-        return EdgeList(item_list=[self.save(edge, actions=actions) for edge in edge_list.item_list])
+    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("eval",)) -> EdgeList:
+        if isinstance(edge_list, EdgeList):
+            edge_list = edge_list.item_list
+        return EdgeList(item_list=[self.save(edge, actions=actions) for edge in edge_list])
 
     # Method: Delete edge data from persistence based on the edge key
     def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
@@ -242,5 +249,7 @@ class MySQLEdgeRepository(EdgeRepository):
         return False
 
     # Method: Delete multiple edges data from persistence based on a list of edge keys
-    def delete_many(self, key_list: list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+        if isinstance(key_list, EdgeKeyList):
+            key_list = key_list.item_list
         return [self.delete(key, actions=actions) for key in key_list]

@@ -1,6 +1,7 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_noderepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
+from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeKey, Node, NodeList
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
@@ -65,8 +66,11 @@ class MySQLNodeRepository(NodeRepository):
         return node_exists
 
     # Method: Check if multiple nodes exist in persistence from a list of node keys
-    def exists_many(self, key_list: list[NodeKey]) -> list[bool]:
-        return [self.exists(key) for key in key_list]
+    def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
+        if isinstance(key_list, NodeKeyList):
+            return [self.exists(key) for key in key_list.item_list]
+        else:
+            return [self.exists(key) for key in key_list]
 
     # Method: Fetch node data and construct Node object
     def get(self, key: NodeKey) -> Node | None:
@@ -168,7 +172,9 @@ class MySQLNodeRepository(NodeRepository):
         return node
 
     # Method: Fetch multiple nodes data and construct NodeList object from a list of node keys
-    def get_many(self, key_list: list[NodeKey]) -> NodeList:
+    def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
+        if isinstance(key_list, NodeKeyList):
+            key_list = key_list.item_list
         out = [node for node in (self.get(key) for key in key_list) if node is not None]
         return NodeList(item_list=out)
 
@@ -271,8 +277,10 @@ class MySQLNodeRepository(NodeRepository):
         return node
 
     # Method: Save (insert or update) multiple nodes data to persistence from a NodeList object
-    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> NodeList:
-        return NodeList(item_list=[self.save(node, actions=actions) for node in node_list.item_list])
+    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("eval",)) -> NodeList:
+        if isinstance(node_list, NodeList):
+            node_list = node_list.item_list
+        return NodeList(item_list=[self.save(node, actions=actions) for node in node_list])
 
     # Method: Delete node data from persistence based on the node key
     def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:
@@ -310,5 +318,8 @@ class MySQLNodeRepository(NodeRepository):
         return False
 
     # Method: Delete multiple nodes data from persistence based on a list of node keys
-    def delete_many(self, key_list: list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
-        return [self.delete(key, actions=actions) for key in key_list]
+    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+        if isinstance(key_list, NodeKeyList):
+            return [self.delete(key, actions=actions) for key in key_list.item_list]
+        else:
+            return [self.delete(key, actions=actions) for key in key_list]

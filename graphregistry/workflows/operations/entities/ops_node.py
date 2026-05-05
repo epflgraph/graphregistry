@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from graphregistry.domain.interfaces.types import ActionSet
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
 
@@ -26,19 +27,19 @@ class NodeOperations:
     def exists(self, key: NodeKey) -> bool:
         return self.repo.exists(key)
 
-    def exists_many(self, key_list: list[NodeKey]) -> list[bool]:
+    def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
         return self.repo.exists_many(key_list)
 
     def get(self, key: NodeKey) -> Node | None:
         return self.repo.get(key)
 
-    def get_many(self, key_list: list[NodeKey]) -> NodeList:
+    def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
         return self.repo.get_many(key_list)
 
     def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
         return self.repo.save(node, actions=actions)
 
-    def save_many(self, node_list: NodeList, actions: ActionSet = ("eval",)) -> NodeList:
+    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("eval",)) -> NodeList:
         return self.repo.save_many(node_list, actions=actions)
 
     def insert(self, node: Node, actions: ActionSet = ("eval",)) -> bool:
@@ -58,11 +59,11 @@ class NodeOperations:
         success = bool(self.repo.save(node, actions=actions))
         return NodeUpsertResult(success=success, created=created)
 
-    def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool:
-        return bool(self.repo.delete(key, actions=actions))
+    def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:
+        return self.repo.delete(key, actions=actions)
 
-    def delete_many(self, key_list: list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool]:
-        return [bool(result) for result in self.repo.delete_many(key_list, actions=actions)]
+    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+        return self.repo.delete_many(key_list, actions=actions)
 
     def detect_concepts(self, text: str) -> ConceptDetectionResultList:
         if self.concept_gateway is None:
