@@ -1,6 +1,6 @@
 # graphregistry/domain/models/entities/mdl_base.py
 from __future__ import annotations
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 # Model definition
 class NodeKey(BaseModel):
@@ -167,3 +167,79 @@ class EdgeFieldKey(BaseModel):
             self.field_language,
             self.field_name,
         )
+
+# Model definition
+class NodeKeyList(BaseModel):
+    """Model representing a list of node keys.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    item_list: list[NodeKey] = Field(default_factory=list)
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str]]) -> "NodeKeyList":
+        return cls(item_list=[NodeKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
+
+    def to_tuple_list(self) -> list[tuple[str, str, str]]:
+        return [item.to_tuple() for item in self.item_list]
+
+# Model definition
+class NodeFieldKeyList(BaseModel):
+    """Model representing a list of node field keys.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    item_list: list[NodeFieldKey] = Field(default_factory=list)
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str]]) -> "NodeFieldKeyList":
+        return cls(item_list=[NodeFieldKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
+
+    def to_tuple_list(self) -> list[tuple[str, str, str, str, str]]:
+        return [item.to_tuple() for item in self.item_list]
+
+# Model definition
+class EdgeKeyList(BaseModel):
+    """Model representing a list of edge keys.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    item_list: list[EdgeKey] = Field(default_factory=list)
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str, str, str]]) -> "EdgeKeyList":
+        return cls(item_list=[EdgeKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
+
+    def to_tuple_list(self) -> list[tuple[str, str, str, str, str, str, str]]:
+        return [item.to_tuple() for item in self.item_list]
+
+# Model definition
+class EdgeFieldKeyList(BaseModel):
+    """Model representing a list of edge field keys.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    item_list: list[EdgeFieldKey] = Field(default_factory=list)
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str, str, str, str, str]]) -> "EdgeFieldKeyList":
+        return cls(item_list=[EdgeFieldKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
+
+    def to_tuple_list(self) -> list[tuple[str, str, str, str, str, str, str, str, str]]:
+        return [item.to_tuple() for item in self.item_list]
