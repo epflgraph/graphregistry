@@ -30,3 +30,5 @@
 - ✅ Implement mysql mapping function for concepts [DONE]
 - ✅ Edge custom fields are not being imported. [FIXED]
 - 👉 Keep modifying input formats in API endpoints
+- ✅ Node endpoints are mostly fixed
+- 👉 Edge endpoints need work

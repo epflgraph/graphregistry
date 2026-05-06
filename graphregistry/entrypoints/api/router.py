@@ -391,7 +391,7 @@ def nodes_delete_many(request: schemas.NodeDeleteManyRequest, node_ops: NodeOper
 # API Endpoint: /api/edges/list #
 #-------------------------------#
 @router.post("/edges/list", response_model=schemas.EdgeListResponse, tags=["edges"])
-def list_edges(request: schemas.EdgeListRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeListResponse:
+def edges_list(request: schemas.EdgeListRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeListResponse:
     """
     List existing edges for one pair of object types.
     """
@@ -408,7 +408,7 @@ def list_edges(request: schemas.EdgeListRequest, edge_ops: EdgeOperations = Depe
 # API Endpoint: /api/edges/exists #
 #---------------------------------#
 @router.post("/edges/exists", response_model=schemas.EdgeExistsResponse, tags=["edges"])
-def edge_exists(request: schemas.EdgeExistsAPIRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeExistsResponse:
+def edges_exists(request: schemas.EdgeExistsAPIRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeExistsResponse:
     """
     Check whether one edge exists.
     """
@@ -431,7 +431,7 @@ def edge_exists(request: schemas.EdgeExistsAPIRequest, edge_ops: EdgeOperations 
 # API Endpoint: /api/edges/get #
 #------------------------------#
 @router.post("/edges/get", response_model=schemas.EdgeGetResponse, response_model_exclude_none=True, tags=["edges"])
-def get_edge(request: schemas.EdgeGetRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeGetResponse:
+def edges_get(request: schemas.EdgeGetRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeGetResponse:
     """
     get one edge by key.
     """
@@ -460,7 +460,7 @@ def get_edge(request: schemas.EdgeGetRequest, edge_ops: EdgeOperations = Depends
 # API Endpoint: /api/edges/save #
 #-------------------------------#
 @router.post("/edges/save", response_model=schemas.EdgeSaveAPIResponse, tags=["edges"])
-def save_edge(request: schemas.EdgeSaveAPIRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeSaveAPIResponse:
+def edges_save(request: schemas.EdgeSaveAPIRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeSaveAPIResponse:
     """
     Save one edge.
     """
@@ -494,7 +494,7 @@ def save_edge(request: schemas.EdgeSaveAPIRequest, edge_ops: EdgeOperations = De
 # API Endpoint: /api/edges/save_many #
 #------------------------------------#
 @router.post("/edges/save_many", response_model=schemas.EdgeListSaveResponse, tags=["edges"])
-def save_edge_list(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeListSaveResponse:
+def edges_save_many(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeListSaveResponse:
     """
     Save a list of edges.
     """
@@ -539,7 +539,7 @@ def save_edge_list(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperation
 # API Endpoint: /api/edges/delete #
 #---------------------------------#
 @router.post("/edges/delete", response_model=schemas.EdgeDeleteResponse, tags=["edges"])
-def delete_edge(request: schemas.EdgeDeleteAPIRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeDeleteResponse:
+def edges_delete(request: schemas.EdgeDeleteAPIRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeDeleteResponse:
     """
     Delete one edge.
     """
@@ -561,12 +561,11 @@ def delete_edge(request: schemas.EdgeDeleteAPIRequest, edge_ops: EdgeOperations 
 # API Endpoint: /api/edges/delete_many #
 #--------------------------------------#
 @router.post("/edges/delete_many", response_model=schemas.EdgeDeleteManyResponse, tags=["edges"])
-def delete_edge_list(request: schemas.EdgeDeleteManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeDeleteManyResponse:
+def edges_delete_many(request: schemas.EdgeDeleteManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> schemas.EdgeDeleteManyResponse:
     """
     Delete a list of edges.
     """
-    # Delete the edges from the database by key,
-    # and get list of boolean results for each deletion
+    # Delete the edges from the database by key list
     raw_results = edge_ops.delete_many([EdgeKey(
         from_institution_id = INSTITUTION_ID,
         from_object_type    = key.from_type,
@@ -576,6 +575,8 @@ def delete_edge_list(request: schemas.EdgeDeleteManyRequest, edge_ops: EdgeOpera
         to_object_id        = key.to_id,
         context             = key.context
     ) for key in request.key_list], actions=('commit',))
+
+    # Convert raw results to boolean (in case the repository returns other types of results)
     bool_results = [bool(result) for result in raw_results]
 
     # Return the deletion results in the response, including overall success,

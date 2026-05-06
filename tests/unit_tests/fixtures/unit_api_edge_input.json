@@ -1,0 +1,102 @@
+{
+    "edge_list": [
+        {
+            "from_type": "Course",
+            "from_id": "BIO-410",
+            "to_type": "Person",
+            "to_id": "115533",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2025-2026"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-202",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2025-2026"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-303",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2023-2024"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-418",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2021-2022"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-500",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2024-2025"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-312",
+            "to_type": "Person",
+            "to_id": "120906",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2025-2026"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-348",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2025-2026"
+                }
+            ]
+        }
+    ]
+}
