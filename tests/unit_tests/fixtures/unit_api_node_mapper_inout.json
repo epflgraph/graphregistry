@@ -844,8 +844,8 @@
                     "object_id": "ml-lab"
                 },
                 "title": "Machine Learning Laboratory",
-                "text_source": "",
-                "raw_text": "",
+                "text_source": null,
+                "raw_text": null,
                 "field_list": {
                     "item_list": [
                         {

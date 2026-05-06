@@ -1,5 +1,5 @@
 {
-    "node_keys": [
+    "key_list": [
         {
             "type": "Course",
             "id": "CS-433"
