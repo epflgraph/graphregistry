@@ -1,5 +1,6 @@
 # graphregistry/entrypoints/api/router.py
 from __future__ import annotations
+import json
 import os
 from dataclasses import dataclass
 from fastapi import APIRouter, Depends
@@ -12,8 +13,10 @@ from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
-from graphregistry.domain.models.entities.mdl_edge import EdgeList
-from graphregistry.domain.models.entities.mdl_node import NodeList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList, NodeFieldList
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
+from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
 from graphregistry.entrypoints.api import schemas
 from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
 from graphregistry.workflows.operations.entities.ops_node import NodeOperations
@@ -21,6 +24,7 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeM
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
 from graphregistry.workflows.factories.fct_node import NodeFactory
+from graphregistry.entrypoints.api.mappers.emp_node import APINodeMapper
 
 # Environment variables
 API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
@@ -173,7 +177,7 @@ def list_nodes(request: schemas.NodeListRequest, node_ops: NodeOperations = Depe
     List existing nodes for one object type.
     """
     # Fetch list of nodes from the database for the given object type and optional id pattern
-    rows = node_ops.list(object_type=request.object_type, id_pattern=request.id_pattern)
+    rows = node_ops.list(object_type=request.type, id_pattern=request.id_pattern)
 
     # Convert list of tuples returned by the repository to list of NodeKey objects for the response
     node_keys = [NodeKey.from_tuple(tuple(row)) for row in rows]
@@ -193,8 +197,8 @@ def node_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations 
     exists = node_ops.exists(
         NodeKey(
             institution_id = INSTITUTION_ID,
-            object_type    = request.key.object_type,
-            object_id      = request.key.object_id
+            object_type    = request.key.type,
+            object_id      = request.key.id
         )
     )
     # Return the existence result in the response
@@ -212,8 +216,8 @@ def node_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOpera
     exist_keys = node_ops.exists_many([
         NodeKey(
             institution_id = INSTITUTION_ID,
-            object_type    = key.object_type,
-            object_id      = key.object_id
+            object_type    = key.type,
+            object_id      = key.id
         ) for key in request.key_list
     ])
     # Return the existence results in the response, including list of individual results and count
@@ -231,8 +235,8 @@ def get_node(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depends
     node = node_ops.get(
         NodeKey(
             institution_id = INSTITUTION_ID,
-            object_type    = request.key.object_type,
-            object_id      = request.key.object_id
+            object_type    = request.key.type,
+            object_id      = request.key.id
         )
     )
     # If returned node is None, the node was not found
@@ -256,13 +260,8 @@ def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = De
     """
     Save one node.
     """
-    # Add institution_id to the node data, since it's not part of the input schema
-    # (but required for the domain model and persistence)
-    json_input = request.node.model_dump()
-    json_input.update({'institution_id': INSTITUTION_ID})
-
-    # Convert simplified input to domain model
-    node = MySQLNodeMapper.from_simplified_dict(json_input)
+    # Convert the API request to a domain model node
+    node = APINodeMapper.from_save_request(request)
 
     # Save the node and return the saved node object
     saved_node = node_ops.save(node, actions=('commit',))
@@ -271,8 +270,8 @@ def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = De
     return schemas.NodeSaveAPIResponse(
         success   = True,
         saved_key = {
-            'object_type' : saved_node.key.object_type,
-            'object_id'   : saved_node.key.object_id,
+            'type' : saved_node.key.object_type,
+            'id'   : saved_node.key.object_id
         }
     )
 
@@ -309,8 +308,8 @@ def save_node_list(request: schemas.NodeListSaveRequest, node_ops: NodeOperation
         success = True,
         saved_keys = [
             {
-                'object_type' : saved_node.key.object_type,
-                'object_id'   : saved_node.key.object_id
+                'type' : saved_node.key.object_type,
+                'id'   : saved_node.key.object_id
             } for saved_node in saved_nodes.item_list],
         count = len(saved_nodes.item_list)
     )
@@ -326,8 +325,8 @@ def delete_node(request: schemas.NodeDeleteAPIRequest, node_ops: NodeOperations 
     # Delete the node from the database by key
     deleted = node_ops.delete(NodeKey(
         institution_id = INSTITUTION_ID,
-        object_type    = request.key.object_type,
-        object_id      = request.key.object_id
+        object_type    = request.key.type,
+        object_id      = request.key.id
     ), actions=('commit',))
 
     # Return the deletion result in the response
@@ -343,11 +342,12 @@ def delete_node_list(request: schemas.NodeDeleteManyRequest, node_ops: NodeOpera
     """
     # Delete the nodes from the database by key,
     # and get list of boolean results for each deletion
-    bool_results = node_ops.delete_many([NodeKey(
+    raw_results = node_ops.delete_many([NodeKey(
         institution_id = INSTITUTION_ID,
-        object_type    = key.object_type,
-        object_id      = key.object_id
+        object_type    = key.type,
+        object_id      = key.id
     ) for key in request.key_list], actions=('commit',))
+    bool_results = [bool(result) for result in raw_results]
 
     # Return the deletion results in the response, including overall success,
     # list of individual results, and count of deleted nodes
@@ -370,7 +370,7 @@ def list_edges(request: schemas.EdgeListRequest, edge_ops: EdgeOperations = Depe
     List existing edges for one pair of object types.
     """
     # Fetch list of edges from the database for the given pair of object types and optional id pattern
-    rows = edge_ops.list(object_type=(request.from_object_type, request.to_object_type), id_pattern=request.id_pattern)
+    rows = edge_ops.list(object_type=(request.from_type, request.to_type), id_pattern=request.id_pattern)
 
     # Convert list of tuples returned by the repository to list of EdgeKey objects for the response
     edge_keys = [EdgeKey.from_tuple(tuple(row)) for row in rows]
@@ -390,11 +390,11 @@ def edge_exists(request: schemas.EdgeExistsAPIRequest, edge_ops: EdgeOperations 
     exists = edge_ops.exists(
         EdgeKey(
             from_institution_id = INSTITUTION_ID,
-            from_object_type    = request.key.from_object_type,
-            from_object_id      = request.key.from_object_id,
+            from_object_type    = request.key.from_type,
+            from_object_id      = request.key.from_id,
             to_institution_id   = INSTITUTION_ID,
-            to_object_type      = request.key.to_object_type,
-            to_object_id        = request.key.to_object_id,
+            to_object_type      = request.key.to_type,
+            to_object_id        = request.key.to_id,
             context             = request.key.context
         )
     )
@@ -412,11 +412,11 @@ def get_edge(request: schemas.EdgeGetRequest, edge_ops: EdgeOperations = Depends
     edge = edge_ops.get(
         EdgeKey(
             from_institution_id = INSTITUTION_ID,
-            from_object_type    = request.key.from_object_type,
-            from_object_id      = request.key.from_object_id,
+            from_object_type    = request.key.from_type,
+            from_object_id      = request.key.from_id,
             to_institution_id   = INSTITUTION_ID,
-            to_object_type      = request.key.to_object_type,
-            to_object_id        = request.key.to_object_id,
+            to_object_type      = request.key.to_type,
+            to_object_id        = request.key.to_id,
             context             = request.key.context
         )
     )
@@ -456,11 +456,11 @@ def save_edge(request: schemas.EdgeSaveAPIRequest, edge_ops: EdgeOperations = De
     return schemas.EdgeSaveAPIResponse(
         success   = True,
         saved_key = {
-            'from_object_type'    : saved_edge.key.from_object_type,
-            'from_object_id'      : saved_edge.key.from_object_id,
-            'to_object_type'      : saved_edge.key.to_object_type,
-            'to_object_id'        : saved_edge.key.to_object_id,
-            'context'             : saved_edge.key.context,
+            'from_type' : saved_edge.key.from_object_type,
+            'from_id'   : saved_edge.key.from_object_id,
+            'to_type'   : saved_edge.key.to_object_type,
+            'to_id'     : saved_edge.key.to_object_id,
+            'context'   : saved_edge.key.context,
         }
     )
 
@@ -500,10 +500,10 @@ def save_edge_list(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperation
         success = True,
         saved_keys = [
             {
-                'from_object_type' : saved_edge.key.from_object_type,
-                'from_object_id'   : saved_edge.key.from_object_id,
-                'to_object_type'   : saved_edge.key.to_object_type,
-                'to_object_id'     : saved_edge.key.to_object_id,
+                'from_type' : saved_edge.key.from_object_type,
+                'from_id'   : saved_edge.key.from_object_id,
+                'to_type'   : saved_edge.key.to_object_type,
+                'to_id'     : saved_edge.key.to_object_id,
                 'context'          : saved_edge.key.context
             } for saved_edge in saved_edges.item_list],
         count = len(saved_edges.item_list)
@@ -520,11 +520,11 @@ def delete_edge(request: schemas.EdgeDeleteAPIRequest, edge_ops: EdgeOperations 
     # Delete the edge from the database by key
     deleted = edge_ops.delete(EdgeKey(
         from_institution_id = INSTITUTION_ID,
-        from_object_type    = request.key.from_object_type,
-        from_object_id      = request.key.from_object_id,
+        from_object_type    = request.key.from_type,
+        from_object_id      = request.key.from_id,
         to_institution_id   = INSTITUTION_ID,
-        to_object_type      = request.key.to_object_type,
-        to_object_id        = request.key.to_object_id,
+        to_object_type      = request.key.to_type,
+        to_object_id        = request.key.to_id,
         context             = request.key.context
     ), actions=('commit',))
 
@@ -541,15 +541,16 @@ def delete_edge_list(request: schemas.EdgeDeleteManyRequest, edge_ops: EdgeOpera
     """
     # Delete the edges from the database by key,
     # and get list of boolean results for each deletion
-    bool_results = edge_ops.delete_many([EdgeKey(
+    raw_results = edge_ops.delete_many([EdgeKey(
         from_institution_id = INSTITUTION_ID,
-        from_object_type    = key.from_object_type,
-        from_object_id      = key.from_object_id,
+        from_object_type    = key.from_type,
+        from_object_id      = key.from_id,
         to_institution_id   = INSTITUTION_ID,
-        to_object_type      = key.to_object_type,
-        to_object_id        = key.to_object_id,
+        to_object_type      = key.to_type,
+        to_object_id        = key.to_id,
         context             = key.context
     ) for key in request.key_list], actions=('commit',))
+    bool_results = [bool(result) for result in raw_results]
 
     # Return the deletion results in the response, including overall success,
     # list of individual results, and count of deleted edges

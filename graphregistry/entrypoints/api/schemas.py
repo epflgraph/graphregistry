@@ -8,7 +8,8 @@ from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 
 # Define a type for supported field languages, which can be used in custom fields of nodes
-FieldLanguage = Literal['n/a', 'en', 'fr', 'de', 'it']
+TextLanguage  = Literal['en', 'fr', 'de', 'it']
+ObjectType    = Literal['Category', 'Concept', 'Course', 'Exercise', 'Lecture', 'MOOC', 'Notebook', 'Person', 'Publication', 'Specialisation', 'Startup', 'StudyPlan', 'Unit', 'Widget']
 
 #================#
 # Shared schemas #
@@ -20,29 +21,36 @@ class StatusResponse(BaseModel):
     message: str
 
 class NodeSimplifiedKey(BaseModel):
-    object_type    : str
-    object_id      : str
+    type : ObjectType
+    id   : str
 
 class CustomFieldInput(BaseModel):
-    field_language : FieldLanguage
+    field_language : TextLanguage | None
     field_name     : str
     field_value    : str
 
+class MultilingualText(BaseModel):
+    language : TextLanguage
+    text     : str
+
 class NodeSimplifiedInput(BaseModel):
-    object_type    : str
-    object_id      : str
-    object_title   : str | None = ""
-    text_source    : str | None = ""
-    raw_text       : str | None = ""
-    custom_fields  : list[CustomFieldInput] = Field(default_factory=list)
-    page_profile   : dict[str, Any] | None = None
+    type          : ObjectType
+    subtype       : str | list[MultilingualText] | None = None
+    id            : str
+    title         : str | list[MultilingualText]
+    description   : str | list[MultilingualText] | dict[str, list[MultilingualText]]
+    url           : str | list[MultilingualText] | None = None
+    custom_fields : list[CustomFieldInput] | None = Field(default_factory=list)
 
 class EdgeSimplifiedKey(BaseModel):
-    from_object_type : str
-    from_object_id   : str
-    to_object_type   : str
-    to_object_id     : str
-    context          : str
+    from_type : str
+    from_id   : str
+    to_type   : str
+    to_id     : str
+    context   : str
+
+class EdgeSimplifiedInput(EdgeSimplifiedKey):
+    custom_fields: list[CustomFieldInput] = Field(default_factory=list)
 
 #==============#
 # Node schemas #
@@ -50,10 +58,10 @@ class EdgeSimplifiedKey(BaseModel):
 
 # api/nodes/list
 class NodeListRequest(BaseModel):
-    object_type : str = Field(..., description="Node object type to list.")
+    type : str = Field(..., description="Node object type to list.")
     id_pattern  : str | None = Field(
         default     = None,
-        description = "Optional wildcard pattern for object_id values. `*` is supported.",
+        description = "Optional wildcard pattern for object id values. `*` is supported.",
     )
 
 class NodeListResponse(BaseModel):
@@ -122,8 +130,8 @@ class NodeDeleteManyResponse(BaseModel):
 
 # api/edges/list
 class EdgeListRequest(BaseModel):
-    from_object_type : str = Field(..., description="Source node object type.")
-    to_object_type   : str = Field(..., description="Target node object type.")
+    from_type : str = Field(..., description="Source node object type.")
+    to_type   : str = Field(..., description="Target node object type.")
     id_pattern       : str | None = Field(
         default     = None,
         description = "Optional wildcard pattern applied to edge identifiers. `*` is supported.",
@@ -150,7 +158,7 @@ class EdgeGetResponse(BaseModel):
 
 # api/edges/save
 class EdgeSaveAPIRequest(BaseModel):
-    edge: EdgeSimplifiedKey
+    edge: EdgeSimplifiedInput
 
 class EdgeSaveAPIResponse(BaseModel):
     success   : bool
@@ -158,7 +166,7 @@ class EdgeSaveAPIResponse(BaseModel):
 
 # api/edges/save_many
 class EdgeListSaveRequest(BaseModel):
-    edge_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
+    edge_list: list[EdgeSimplifiedInput] = Field(default_factory=list)
 
 class EdgeListSaveResponse(BaseModel):
     success    : bool

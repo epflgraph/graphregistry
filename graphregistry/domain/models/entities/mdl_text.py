@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 # Type alias for language codes
 LanguageCode: TypeAlias = str
 LanguageCodeList: TypeAlias = tuple[LanguageCode, ...]
-DEFAULT_LANGUAGE_CODES: LanguageCodeList = ("en", "fr", "de", "it")
+DEFAULT_LANGUAGE_CODES: LanguageCodeList = ('en', 'fr', 'de', 'it')
 
 # Model definition
 class MultilingualText(BaseModel):
