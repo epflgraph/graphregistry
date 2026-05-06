@@ -313,24 +313,12 @@ def nodes_save_many(request: schemas.NodeListSaveRequest, node_ops: NodeOperatio
     """
     Save a list of nodes.
     """
-    # Initialise json_input list
-    json_input_list = []
-
-    # Convert each simplified input to domain model, and add institution_id to the node data
-    for node in request.node_list:
-
-        # Add institution_id to the node data, since it's not part of the input schema
-        # (but required for the domain model and persistence)
-        json_input = node.model_dump()
-        json_input.update({'institution_id': INSTITUTION_ID})
-
-        # Append json_input to the list
-        json_input_list.append(json_input)
-
-    # Convert simplified input to domain model
-    node_list = MySQLNodeMapper.from_simplified_dict_list(json_input_list)
-
-    # Save the nodes and return the saved node objects
+    # Convert the API request to a domain model node list
+    node_list = [
+        APINodeMapper.from_save_request({"node": node_obj.model_dump()})
+        for node_obj in request.node_list
+    ]
+    # Save the nodes and return the saved node objects``
     saved_nodes = node_ops.save_many(node_list, actions=('commit',))
 
     # Return the saved node keys in the response
