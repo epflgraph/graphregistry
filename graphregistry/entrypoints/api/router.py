@@ -212,14 +212,17 @@ def nodes_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOper
     """
     Check whether a list of nodes exist.
     """
+    # Create node key list
+    node_key_list = NodeKeyList.from_tuple_list(
+        input_tuple_list = [(
+            INSTITUTION_ID,
+            key.type,
+            key.id
+        ) for key in request.key_list]
+    )
     # Check if the nodes exist in the database by key, and get list of boolean results for each key
-    exist_keys = node_ops.exists_many([
-        NodeKey(
-            institution_id = INSTITUTION_ID,
-            object_type    = key.type,
-            object_id      = key.id
-        ) for key in request.key_list
-    ])
+    exist_keys = node_ops.exists_many(node_key_list)
+
     # Return the existence results in the response, including list of individual results and count
     return schemas.NodeExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
@@ -358,13 +361,18 @@ def nodes_delete_many(request: schemas.NodeDeleteManyRequest, node_ops: NodeOper
     """
     Delete a list of nodes.
     """
-    # Delete the nodes from the database by key,
-    # and get list of boolean results for each deletion
-    raw_results = node_ops.delete_many([NodeKey(
-        institution_id = INSTITUTION_ID,
-        object_type    = key.type,
-        object_id      = key.id
-    ) for key in request.key_list], actions=('commit',))
+    # Create node key list
+    node_key_list = NodeKeyList.from_tuple_list(
+        input_tuple_list = [(
+            INSTITUTION_ID,
+            key.type,
+            key.id
+        ) for key in request.key_list]
+    )
+    # Delete the nodes from the database by key list
+    raw_results = node_ops.delete_many(node_key_list, actions=('commit',))
+
+    # Convert raw results to boolean (in case the repository returns other types of results)
     bool_results = [bool(result) for result in raw_results]
 
     # Return the deletion results in the response, including overall success,
