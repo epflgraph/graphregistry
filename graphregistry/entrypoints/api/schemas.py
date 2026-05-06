@@ -91,6 +91,15 @@ class NodeGetResponse(BaseModel):
     found : bool
     node  : dict[str, Any] | None = None
 
+# api/nodes/get_many
+class NodeGetManyRequest(BaseModel):
+    key_list: list[NodeSimplifiedKey] = Field(default_factory=list)
+
+class NodeGetManyResponse(BaseModel):
+    found_keys : list[bool] = Field(default_factory=list)
+    nodes      : list[dict[str, Any] | None] = Field(default_factory=list)
+    count      : int
+
 # api/nodes/save
 class NodeSaveAPIRequest(BaseModel):
     node: NodeMinimalFormat

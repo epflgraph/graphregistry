@@ -12,7 +12,7 @@ from graphregistry.adapters.services.schema.asv_schema_default import DefaultSch
 from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
-from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList, NodeFieldList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList, EdgeFieldList
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
@@ -172,7 +172,7 @@ def registry_status() -> schemas.StatusResponse:
 # API Endpoint: /api/nodes/list #
 #-------------------------------#
 @router.post("/nodes/list", response_model=schemas.NodeListResponse, tags=["nodes"])
-def list_nodes(request: schemas.NodeListRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeListResponse:
+def nodes_list(request: schemas.NodeListRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeListResponse:
     """
     List existing nodes for one object type.
     """
@@ -189,7 +189,7 @@ def list_nodes(request: schemas.NodeListRequest, node_ops: NodeOperations = Depe
 # API Endpoint: /api/nodes/exists #
 #---------------------------------#
 @router.post("/nodes/exists", response_model=schemas.NodeExistsResponse, tags=["nodes"])
-def node_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeExistsResponse:
+def nodes_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeExistsResponse:
     """
     Check whether one node exists.
     """
@@ -208,7 +208,7 @@ def node_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations 
 # API Endpoint: /api/nodes/exists_many #
 # -------------------------------------#
 @router.post("/nodes/exists_many", response_model=schemas.NodeExistsManyResponse, tags=["nodes"])
-def node_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeExistsManyResponse:
+def nodes_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeExistsManyResponse:
     """
     Check whether a list of nodes exist.
     """
@@ -227,7 +227,7 @@ def node_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOpera
 # API Endpoint: /api/nodes/get #
 #------------------------------#
 @router.post("/nodes/get", response_model=schemas.NodeGetResponse, response_model_exclude_none=True, tags=["nodes"])
-def get_node(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeGetResponse:
+def nodes_get(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeGetResponse:
     """
     Get one node by key.
     """
@@ -249,11 +249,44 @@ def get_node(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depends
     # Return the node data in the response
     return schemas.NodeGetResponse(found=True, node=json_output.model_dump())
 
+#-----------------------------------#
+# API Endpoint: /api/nodes/get_many #
+#-----------------------------------#
+@router.post("/nodes/get_many", response_model=schemas.NodeGetManyResponse, tags=["nodes"])
+def nodes_get_many(request: schemas.NodeGetManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeGetManyResponse:
+    """
+    Get a list of nodes by key.
+    """
+    # Create node key list
+    node_key_list = NodeKeyList.from_tuple_list(
+        input_tuple_list = [(
+            INSTITUTION_ID,
+            key.type,
+            key.id
+        ) for key in request.key_list]
+    )
+    # Fetch the nodes from the database by key list
+    nodes = node_ops.get_many(node_key_list)
+
+    # Get simplified dict representation of the nodes for the response
+    json_output = [
+        APINodeMapper.to_get_request(node).model_dump()
+        if node is not None else None for node in nodes.item_list
+    ]
+
+    # Return the node data in the response, including list of found keys,
+    # list of node data (or None if not found), and count
+    return schemas.NodeGetManyResponse(
+        found_keys = [node is not None for node in nodes.item_list],
+        nodes = json_output,
+        count = len(nodes.item_list)
+    )
+
 #-------------------------------#
 # API Endpoint: /api/nodes/save #
 #-------------------------------#
 @router.post("/nodes/save", response_model=schemas.NodeSaveAPIResponse, tags=["nodes"])
-def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeSaveAPIResponse:
+def nodes_save(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeSaveAPIResponse:
     """
     Save one node.
     """
@@ -276,7 +309,7 @@ def save_node(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = De
 # API Endpoint: /api/nodes/save_many #
 #------------------------------------#
 @router.post("/nodes/save_many", response_model=schemas.NodeListSaveResponse, tags=["nodes"])
-def save_node_list(request: schemas.NodeListSaveRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeListSaveResponse:
+def nodes_save_many(request: schemas.NodeListSaveRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeListSaveResponse:
     """
     Save a list of nodes.
     """
@@ -315,7 +348,7 @@ def save_node_list(request: schemas.NodeListSaveRequest, node_ops: NodeOperation
 # API Endpoint: /api/nodes/delete #
 #---------------------------------#
 @router.post("/nodes/delete", response_model=schemas.NodeDeleteResponse, tags=["nodes"])
-def delete_node(request: schemas.NodeDeleteAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeDeleteResponse:
+def nodes_delete(request: schemas.NodeDeleteAPIRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeDeleteResponse:
     """
     Delete one node.
     """
@@ -333,7 +366,7 @@ def delete_node(request: schemas.NodeDeleteAPIRequest, node_ops: NodeOperations 
 # API Endpoint: /api/nodes/delete_many #
 #--------------------------------------#
 @router.post("/nodes/delete_many", response_model=schemas.NodeDeleteManyResponse, tags=["nodes"])
-def delete_node_list(request: schemas.NodeDeleteManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeDeleteManyResponse:
+def nodes_delete_many(request: schemas.NodeDeleteManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> schemas.NodeDeleteManyResponse:
     """
     Delete a list of nodes.
     """

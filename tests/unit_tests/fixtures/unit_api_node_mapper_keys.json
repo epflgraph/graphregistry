@@ -1,0 +1,28 @@
+{
+    "node_keys": [
+        {
+            "type": "Course",
+            "id": "CS-433"
+        },
+        {
+            "type": "Course",
+            "id": "MATH-203"
+        },
+        {
+            "type": "Course",
+            "id": "CS-250"
+        },
+        {
+            "type": "Person",
+            "id": "person-12345"
+        },
+        {
+            "type": "Publication",
+            "id": "doi-10.1234-example-ml-2024"
+        },
+        {
+            "type": "Unit",
+            "id": "ml-lab"
+        }
+    ]
+}
