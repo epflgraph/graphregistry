@@ -33,7 +33,7 @@ class MultilingualText(BaseModel):
     language : TextLanguage
     text     : str
 
-class NodeSimplifiedInput(BaseModel):
+class NodeMinimalFormat(BaseModel):
     type          : ObjectType
     subtype       : str | list[MultilingualText] | None = None
     id            : str
@@ -93,7 +93,7 @@ class NodeGetResponse(BaseModel):
 
 # api/nodes/save
 class NodeSaveAPIRequest(BaseModel):
-    node: NodeSimplifiedInput
+    node: NodeMinimalFormat
 
 class NodeSaveAPIResponse(BaseModel):
     success   : bool
@@ -101,7 +101,7 @@ class NodeSaveAPIResponse(BaseModel):
 
 # api/nodes/save_many
 class NodeListSaveRequest(BaseModel):
-    node_list : list[NodeSimplifiedInput] = Field(default_factory=list)
+    node_list : list[NodeMinimalFormat] = Field(default_factory=list)
 
 class NodeListSaveResponse(BaseModel):
     success    : bool

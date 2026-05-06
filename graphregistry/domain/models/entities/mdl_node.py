@@ -76,8 +76,8 @@ class Node(BaseModel):
     #--------------------#
     key: NodeKey
     title: str = ""
-    text_source: str = ""
-    raw_text: str = ""
+    text_source: str | None = None
+    raw_text: str | None = None
     field_list: NodeFieldList = Field(default_factory=NodeFieldList)
     page_profile: PageProfile | None = None
     detected_concepts: ConceptDetectionResultList = Field(default_factory=ConceptDetectionResultList)

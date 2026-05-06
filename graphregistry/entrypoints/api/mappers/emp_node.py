@@ -1,6 +1,6 @@
 # graphregistry/entrypoints/api/mappers/emp_node.py
 from __future__ import annotations
-from typing import Any
+from typing import Any, cast
 from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
 from graphregistry.domain.models.entities.mdl_base import NodeKey
@@ -14,6 +14,129 @@ class APINodeMapper:
     """
     Maps between API custom-field input shapes and domain NodeField / NodeFieldList.
     """
+
+    @staticmethod
+    def to_get_request(node: Node | dict[str, Any]) -> schemas.NodeMinimalFormat:
+
+        # If input is a dict, convert to Node model
+        if isinstance(node, dict):
+            node = Node.model_validate(node)
+
+        # Initialise page profile shortcut
+        page_profile = node.page_profile
+
+        #-----------------------#
+        # Handle object subtype #
+        #-----------------------#
+        subtype: str | list[schemas.MultilingualText] | None = None
+        if page_profile is not None:
+            subtype_list: list[schemas.MultilingualText] = [
+                schemas.MultilingualText(language=cast(schemas.TextLanguage, language), text=value)
+                for language in DEFAULT_LANGUAGE_CODES
+                if language in page_profile.subtype.item_map
+                if (value := page_profile.subtype.item_map.get(language, "")).strip()
+            ]
+            if len(subtype_list) == 1 and subtype_list[0].language == "en":
+                subtype = subtype_list[0].text
+            elif subtype_list:
+                subtype = subtype_list
+
+        #--------------------------#
+        # Handle object name/title #
+        #--------------------------#
+        title_list: list[schemas.MultilingualText] = []
+        if page_profile is not None:
+            title_list = [
+                schemas.MultilingualText(language=cast(schemas.TextLanguage, language), text=value)
+                for language in DEFAULT_LANGUAGE_CODES
+                if language in page_profile.name.item_map
+                if (value := page_profile.name.get_value(language)).strip()
+            ]
+        title: str | list[schemas.MultilingualText] = title_list if title_list else node.title
+
+        #---------------------------#
+        # Handle object description #
+        #---------------------------#
+        description: str | list[schemas.MultilingualText] | dict[str, list[schemas.MultilingualText]]
+
+        if page_profile is None:
+            description = node.raw_text
+        else:
+            descriptions: dict[str, list[schemas.MultilingualText]] = {}
+
+            for text_length in ("short", "medium", "long"):
+                generated_text = getattr(page_profile.description, text_length)
+
+                text_list = [
+                    schemas.MultilingualText(language=cast(schemas.TextLanguage, language), text=value)
+                    for language in DEFAULT_LANGUAGE_CODES
+                    if language in generated_text.item_map
+                    if (value := generated_text.get_value(language)).strip()
+                ]
+
+                if text_list:
+                    descriptions[text_length] = text_list
+
+            if not descriptions:
+                description = node.raw_text
+            elif set(descriptions) == {"long"}:
+                description = descriptions["long"]
+            else:
+                description = descriptions
+
+        #-------------------#
+        # Handle object url #
+        #-------------------#
+        url: str | list[schemas.MultilingualText] | None = None
+
+        if page_profile is not None:
+            url_list: list[schemas.MultilingualText] = [
+                schemas.MultilingualText(language=cast(schemas.TextLanguage, language), text=value)
+                for language in DEFAULT_LANGUAGE_CODES
+                if language in page_profile.external_url.item_map
+                if (value := page_profile.external_url.item_map.get(language, "")).strip()
+            ]
+
+            if url_list:
+                default_language_values = [
+                    page_profile.external_url.item_map.get(language, "")
+                    for language in DEFAULT_LANGUAGE_CODES
+                ]
+
+                if (
+                    all(default_language_values)
+                    and len(set(default_language_values)) == 1
+                ):
+                    url = default_language_values[0]
+                else:
+                    url = url_list
+
+        #----------------------#
+        # Handle custom fields #
+        #----------------------#
+        custom_fields = [
+            schemas.CustomFieldInput(
+                field_language = (
+                    cast(schemas.TextLanguage, field.key.field_language)
+                    if field.key.field_language in DEFAULT_LANGUAGE_CODES
+                    else None
+                ),
+                field_name     = field.key.field_name,
+                field_value    = "" if field.field_value is None else str(field.field_value),
+            )
+            for field in node.field_list.item_list
+        ]
+
+        # Return API node object
+        return schemas.NodeMinimalFormat(
+            type          = cast(schemas.ObjectType, node.key.object_type),
+            subtype       = subtype,
+            id            = node.key.object_id,
+            title         = title,
+            description   = description,
+            url           = url,
+            custom_fields = custom_fields,
+        )
 
     @staticmethod
     def from_save_request(request: schemas.NodeSaveAPIRequest | dict[str, Any]) -> Node:

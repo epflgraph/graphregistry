@@ -244,13 +244,10 @@ def get_node(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depends
         return schemas.NodeGetResponse(found=False, node=None)
 
     # Get simplified dict representation of the node for the response
-    json_output = MySQLNodeMapper.to_simplified_dict(node)
-
-    # Drop concept list from the output, since it's not part of the response schema
-    json_output.pop('detected_concepts', None)
+    json_output = APINodeMapper.to_get_request(node)
 
     # Return the node data in the response
-    return schemas.NodeGetResponse(found=True, node=json_output)
+    return schemas.NodeGetResponse(found=True, node=json_output.model_dump())
 
 #-------------------------------#
 # API Endpoint: /api/nodes/save #
