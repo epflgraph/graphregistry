@@ -1,0 +1,74 @@
+# graphregistry/entrypoints/api/mappers/emp_edge.py
+from __future__ import annotations
+from typing import Any, cast
+from graphregistry.entrypoints.api import schemas
+from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
+from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeFieldList
+
+INSTITUTION_ID = "EPFL"
+
+# Class definition
+class APIEdgeMapper:
+    """
+    Maps between API custom-field input shapes and domain EdgeField / EdgeFieldList.
+    """
+
+    @staticmethod
+    def to_get_request(edge: Edge | dict[str, Any]) -> schemas.EdgeMinimalFormat:
+
+        # If input is a dict, convert to Edge model
+        if isinstance(edge, dict):
+            edge = Edge.model_validate(edge)
+
+        #----------------------#
+        # Handle custom fields #
+        #----------------------#
+        custom_fields = [
+            schemas.CustomFieldInput(
+                field_language = field.key.field_language if field.key.field_language in DEFAULT_LANGUAGE_CODES else "n/a",
+                field_name     = field.key.field_name,
+                field_value    = "" if field.field_value is None else str(field.field_value),
+            )
+            for field in edge.field_list.item_list
+        ]
+
+        # Return API edge object
+        return schemas.EdgeMinimalFormat(
+            from_type     = cast(schemas.ObjectType, edge.key.from_object_type),
+            from_id       = edge.key.from_object_id,
+            to_type       = cast(schemas.ObjectType, edge.key.to_object_type),
+            to_id         = edge.key.to_object_id,
+            context       = edge.key.context,
+            custom_fields = custom_fields,
+        )
+
+    @staticmethod
+    def from_save_request(request: schemas.EdgeSaveAPIRequest | dict[str, Any]) -> Edge:
+
+        # If input is a dict, convert to EdgeSaveAPIRequest model
+        if isinstance(request, dict):
+            request = schemas.EdgeSaveAPIRequest.model_validate(request)
+
+        # Create edge key
+        edge_key = EdgeKey(
+            from_institution_id = INSTITUTION_ID,
+            from_object_type    = request.edge.from_type,
+            from_object_id      = request.edge.from_id,
+            to_institution_id   = INSTITUTION_ID,
+            to_object_type      = request.edge.to_type,
+            to_object_id        = request.edge.to_id,
+            context             = request.edge.context,
+        )
+
+        # Initialise edge object
+        edge = Edge(
+            key = edge_key,
+            field_list = EdgeFieldList.from_list(
+                input_list = [cf.model_dump() for cf in (request.edge.custom_fields or [])],
+                key = edge_key,
+            ),
+        )
+
+        # Return edge object
+        return edge
