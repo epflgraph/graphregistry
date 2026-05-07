@@ -1,6 +1,10 @@
 # graphregistry/domain/models/entities/mdl_base.py
 from __future__ import annotations
+from typing import Literal, cast
 from pydantic import BaseModel, Field, model_validator
+
+# Define a type for supported field languages, which can be used in custom fields of nodes
+FieldLanguage = Literal['en', 'fr', 'de', 'it', 'n/a']
 
 # Model definition
 class NodeKey(BaseModel):
@@ -49,7 +53,7 @@ class NodeFieldKey(BaseModel):
     #--------------------#
     model_config = {"frozen": True}
     key: NodeKey
-    field_language: str = ""
+    field_language: FieldLanguage = "n/a"
     field_name: str = ""
 
     #-----------------------#
@@ -61,9 +65,9 @@ class NodeFieldKey(BaseModel):
             raise ValueError("NodeFieldKey tuple must have 5 elements")
         node_key = NodeKey.from_tuple(input_tuple[:3])
         return cls(
-            key=node_key,
-            field_language=input_tuple[3],
-            field_name=input_tuple[4],
+            key = node_key,
+            field_language = cast(FieldLanguage, input_tuple[3]),
+            field_name     = input_tuple[4],
         )
 
     def to_tuple(self) -> tuple[str, str, str, str, str]:
@@ -138,7 +142,7 @@ class EdgeFieldKey(BaseModel):
     #--------------------#
     model_config = {"frozen": True}
     key: EdgeKey
-    field_language: str
+    field_language: FieldLanguage = "n/a"
     field_name: str
 
     #-----------------------#
@@ -150,9 +154,9 @@ class EdgeFieldKey(BaseModel):
             raise ValueError("EdgeFieldKey tuple must have 9 elements")
         edge_key = EdgeKey.from_tuple(input_tuple[:7])
         return cls(
-            key=edge_key,
-            field_language=input_tuple[7],
-            field_name=input_tuple[8],
+            key = edge_key,
+            field_language = cast(FieldLanguage, input_tuple[7]),
+            field_name     = input_tuple[8],
         )
 
     def to_tuple(self) -> tuple[str, str, str, str, str, str, str, str, str]:

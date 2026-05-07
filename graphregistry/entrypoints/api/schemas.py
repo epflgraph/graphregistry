@@ -9,6 +9,7 @@ from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 
 # Define a type for supported field languages, which can be used in custom fields of nodes
 TextLanguage  = Literal['en', 'fr', 'de', 'it']
+FieldLanguage = Literal['en', 'fr', 'de', 'it', 'n/a']
 ObjectType    = Literal['Category', 'Concept', 'Course', 'Exercise', 'Lecture', 'MOOC', 'Notebook', 'Person', 'Publication', 'Specialisation', 'Startup', 'StudyPlan', 'Unit', 'Widget']
 
 #================#
@@ -25,7 +26,7 @@ class NodeSimplifiedKey(BaseModel):
     id   : str
 
 class CustomFieldInput(BaseModel):
-    field_language : TextLanguage | None
+    field_language : FieldLanguage = "n/a"
     field_name     : str
     field_value    : str
 
@@ -37,8 +38,8 @@ class NodeMinimalFormat(BaseModel):
     type          : ObjectType
     subtype       : str | list[MultilingualText] | None = None
     id            : str
-    title         : str | list[MultilingualText]
-    description   : str | list[MultilingualText] | dict[str, list[MultilingualText]]
+    title         : str | list[MultilingualText] | None = None
+    description   : str | list[MultilingualText] | dict[str, list[MultilingualText]] | None = None
     url           : str | list[MultilingualText] | None = None
     custom_fields : list[CustomFieldInput] | None = Field(default_factory=list)
 
@@ -48,6 +49,14 @@ class EdgeSimplifiedKey(BaseModel):
     to_type   : str
     to_id     : str
     context   : str
+
+class EdgeMinimalFormat(BaseModel):
+    from_type     : str
+    from_id       : str
+    to_type       : str
+    to_id         : str
+    context       : str
+    custom_fields : list[CustomFieldInput] | None = Field(default_factory=list)
 
 class EdgeSimplifiedInput(EdgeSimplifiedKey):
     custom_fields: list[CustomFieldInput] = Field(default_factory=list)
@@ -167,7 +176,7 @@ class EdgeGetResponse(BaseModel):
 
 # api/edges/save
 class EdgeSaveAPIRequest(BaseModel):
-    edge: EdgeSimplifiedInput
+    edge: EdgeMinimalFormat
 
 class EdgeSaveAPIResponse(BaseModel):
     success   : bool
@@ -175,7 +184,7 @@ class EdgeSaveAPIResponse(BaseModel):
 
 # api/edges/save_many
 class EdgeListSaveRequest(BaseModel):
-    edge_list: list[EdgeSimplifiedInput] = Field(default_factory=list)
+    edge_list: list[EdgeMinimalFormat] = Field(default_factory=list)
 
 class EdgeListSaveResponse(BaseModel):
     success    : bool

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
-from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_base import Field, NodeKey
 from graphregistry.domain.models.entities.mdl_node import Node, NodeFieldList
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
@@ -57,7 +57,7 @@ class APINodeMapper:
         #---------------------------#
         # Handle object description #
         #---------------------------#
-        description: str | list[schemas.MultilingualText] | dict[str, list[schemas.MultilingualText]]
+        description: str | list[schemas.MultilingualText] | dict[str, list[schemas.MultilingualText]] | None = None
 
         if page_profile is None:
             description = node.raw_text
@@ -114,13 +114,11 @@ class APINodeMapper:
         #----------------------#
         # Handle custom fields #
         #----------------------#
+        custom_fields : list[schemas.CustomFieldInput] | None = Field(default_factory=list)
+
         custom_fields = [
             schemas.CustomFieldInput(
-                field_language = (
-                    cast(schemas.TextLanguage, field.key.field_language)
-                    if field.key.field_language in DEFAULT_LANGUAGE_CODES
-                    else None
-                ),
+                field_language = field.key.field_language if field.key.field_language in DEFAULT_LANGUAGE_CODES else "n/a",
                 field_name     = field.key.field_name,
                 field_value    = "" if field.field_value is None else str(field.field_value),
             )

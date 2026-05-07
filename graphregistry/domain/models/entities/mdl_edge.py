@@ -1,8 +1,8 @@
 # graphregistry/domain/models/entities/mdl_edge.py
 from __future__ import annotations
-from typing import Any
+from typing import Any, cast
 from pydantic import BaseModel, Field
-from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeFieldKey
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeFieldKey, FieldLanguage
 
 # Model definition
 class EdgeField(BaseModel):
@@ -22,9 +22,9 @@ class EdgeField(BaseModel):
     def from_json(cls, json_data: dict[str, Any], edge_key: EdgeKey) -> "EdgeField":
         return cls(
             key=EdgeFieldKey(
-                key=edge_key,
-                field_language=str(json_data["field_language"]),
-                field_name=str(json_data["field_name"]),
+                key = edge_key,
+                field_language = cast(FieldLanguage, json_data["field_language"]),
+                field_name     = str(json_data["field_name"]),
             ),
             field_value=json_data.get("field_value", ""),
         )
@@ -45,10 +45,10 @@ class EdgeFieldList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_list(cls, input_list: list[dict[str, Any]], edge_key: EdgeKey) -> "EdgeFieldList":
+    def from_list(cls, input_list: list[dict[str, Any]], key: EdgeKey) -> "EdgeFieldList":
         return cls(
             item_list=[
-                EdgeField.from_json(field_json, edge_key=edge_key)
+                EdgeField.from_json(field_json, edge_key=key)
                 for field_json in (input_list or [])
             ]
         )
