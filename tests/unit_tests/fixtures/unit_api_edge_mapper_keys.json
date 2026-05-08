@@ -1,0 +1,53 @@
+{
+  "key_list": [
+    {
+      "from_type": "Course",
+      "from_id": "CS-433",
+      "to_type": "Person",
+      "to_id": "person-12345",
+      "context": "teaching_assignment"
+    },
+    {
+      "from_type": "Course",
+      "from_id": "CS-433",
+      "to_type": "Unit",
+      "to_id": "ml-lab",
+      "context": "offered_by"
+    },
+    {
+      "from_type": "Person",
+      "from_id": "person-12345",
+      "to_type": "Unit",
+      "to_id": "ml-lab",
+      "context": "affiliation"
+    },
+    {
+      "from_type": "Publication",
+      "from_id": "doi-10.1234-example-ml-2024",
+      "to_type": "Person",
+      "to_id": "person-12345",
+      "context": "authorship"
+    },
+    {
+      "from_type": "Publication",
+      "from_id": "doi-10.1234-example-ml-2024",
+      "to_type": "Unit",
+      "to_id": "ml-lab",
+      "context": "research_output"
+    },
+    {
+      "from_type": "Course",
+      "from_id": "CS-250",
+      "to_type": "Course",
+      "to_id": "CS-433",
+      "context": "prerequisite"
+    },
+    {
+      "from_type": "Course",
+      "from_id": "MATH-203",
+      "to_type": "Course",
+      "to_id": "CS-433",
+      "context": "prerequisite"
+    }
+  ]
+}

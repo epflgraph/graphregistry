@@ -1,0 +1,382 @@
+{
+    "samples": [
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Course",
+                    "from_id": "CS-433",
+                    "to_type": "Person",
+                    "to_id": "person-12345",
+                    "context": "teaching_assignment",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "role",
+                            "field_value": "Lecturer"
+                        },
+                        {
+                            "field_name": "academic_year",
+                            "field_value": "2024-2025"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Course",
+                    "from_object_id": "CS-433",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Person",
+                    "to_object_id": "person-12345",
+                    "context": "teaching_assignment"
+                },
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Course",
+                                    "from_object_id": "CS-433",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Person",
+                                    "to_object_id": "person-12345",
+                                    "context": "teaching_assignment"
+                                },
+                                "field_language": "en",
+                                "field_name": "role"
+                            },
+                            "field_value": "Lecturer"
+                        },
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Course",
+                                    "from_object_id": "CS-433",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Person",
+                                    "to_object_id": "person-12345",
+                                    "context": "teaching_assignment"
+                                },
+                                "field_language": "n/a",
+                                "field_name": "academic_year"
+                            },
+                            "field_value": "2024-2025"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Course",
+                    "from_id": "CS-433",
+                    "to_type": "Unit",
+                    "to_id": "ml-lab",
+                    "context": "offered_by",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "relationship_type",
+                            "field_value": "course ownership"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Course",
+                    "from_object_id": "CS-433",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Unit",
+                    "to_object_id": "ml-lab",
+                    "context": "offered_by"
+                },
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Course",
+                                    "from_object_id": "CS-433",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Unit",
+                                    "to_object_id": "ml-lab",
+                                    "context": "offered_by"
+                                },
+                                "field_language": "en",
+                                "field_name": "relationship_type"
+                            },
+                            "field_value": "course ownership"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Person",
+                    "from_id": "person-12345",
+                    "to_type": "Unit",
+                    "to_id": "ml-lab",
+                    "context": "affiliation",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "position",
+                            "field_value": "Professor"
+                        },
+                        {
+                            "field_name": "is_active",
+                            "field_value": "true"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Person",
+                    "from_object_id": "person-12345",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Unit",
+                    "to_object_id": "ml-lab",
+                    "context": "affiliation"
+                },
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Person",
+                                    "from_object_id": "person-12345",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Unit",
+                                    "to_object_id": "ml-lab",
+                                    "context": "affiliation"
+                                },
+                                "field_language": "en",
+                                "field_name": "position"
+                            },
+                            "field_value": "Professor"
+                        },
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Person",
+                                    "from_object_id": "person-12345",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Unit",
+                                    "to_object_id": "ml-lab",
+                                    "context": "affiliation"
+                                },
+                                "field_language": "n/a",
+                                "field_name": "is_active"
+                            },
+                            "field_value": "true"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Publication",
+                    "from_id": "doi-10.1234-example-ml-2024",
+                    "to_type": "Person",
+                    "to_id": "person-12345",
+                    "context": "authorship",
+                    "custom_fields": [
+                        {
+                            "field_name": "author_position",
+                            "field_value": "1"
+                        },
+                        {
+                            "field_name": "corresponding_author",
+                            "field_value": "true"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Publication",
+                    "from_object_id": "doi-10.1234-example-ml-2024",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Person",
+                    "to_object_id": "person-12345",
+                    "context": "authorship"
+                },
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Publication",
+                                    "from_object_id": "doi-10.1234-example-ml-2024",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Person",
+                                    "to_object_id": "person-12345",
+                                    "context": "authorship"
+                                },
+                                "field_language": "n/a",
+                                "field_name": "author_position"
+                            },
+                            "field_value": "1"
+                        },
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Publication",
+                                    "from_object_id": "doi-10.1234-example-ml-2024",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Person",
+                                    "to_object_id": "person-12345",
+                                    "context": "authorship"
+                                },
+                                "field_language": "n/a",
+                                "field_name": "corresponding_author"
+                            },
+                            "field_value": "true"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Publication",
+                    "from_id": "doi-10.1234-example-ml-2024",
+                    "to_type": "Unit",
+                    "to_id": "ml-lab",
+                    "context": "research_output",
+                    "custom_fields": [
+                        {
+                            "field_name": "year",
+                            "field_value": "2024"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Publication",
+                    "from_object_id": "doi-10.1234-example-ml-2024",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Unit",
+                    "to_object_id": "ml-lab",
+                    "context": "research_output"
+                },
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Publication",
+                                    "from_object_id": "doi-10.1234-example-ml-2024",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Unit",
+                                    "to_object_id": "ml-lab",
+                                    "context": "research_output"
+                                },
+                                "field_language": "n/a",
+                                "field_name": "year"
+                            },
+                            "field_value": "2024"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Course",
+                    "from_id": "CS-250",
+                    "to_type": "Course",
+                    "to_id": "CS-433",
+                    "context": "prerequisite",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "recommendation_strength",
+                            "field_value": "strong"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Course",
+                    "from_object_id": "CS-250",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Course",
+                    "to_object_id": "CS-433",
+                    "context": "prerequisite"
+                },
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "from_institution_id": "EPFL",
+                                    "from_object_type": "Course",
+                                    "from_object_id": "CS-250",
+                                    "to_institution_id": "EPFL",
+                                    "to_object_type": "Course",
+                                    "to_object_id": "CS-433",
+                                    "context": "prerequisite"
+                                },
+                                "field_language": "en",
+                                "field_name": "recommendation_strength"
+                            },
+                            "field_value": "strong"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "input": {
+                "edge": {
+                    "from_type": "Course",
+                    "from_id": "MATH-203",
+                    "to_type": "Course",
+                    "to_id": "CS-433",
+                    "context": "prerequisite",
+                    "custom_fields": []
+                }
+            },
+            "output": {
+                "key": {
+                    "from_institution_id": "EPFL",
+                    "from_object_type": "Course",
+                    "from_object_id": "MATH-203",
+                    "to_institution_id": "EPFL",
+                    "to_object_type": "Course",
+                    "to_object_id": "CS-433",
+                    "context": "prerequisite"
+                },
+                "field_list": {
+                    "item_list": []
+                }
+            }
+        }
+    ]
+}

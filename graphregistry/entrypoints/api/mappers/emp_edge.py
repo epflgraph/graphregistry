@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
-from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeFieldList
 
 INSTITUTION_ID = "EPFL"
@@ -72,3 +72,29 @@ class APIEdgeMapper:
 
         # Return edge object
         return edge
+
+    @staticmethod
+    def to_request_key(key: EdgeKey) -> dict[str, str]:
+        return {
+            'from_type' : key.from_object_type,
+            'from_id'   : key.from_object_id,
+            'to_type'   : key.to_object_type,
+            'to_id'     : key.to_object_id,
+            'context'   : key.context,
+        }
+
+    @staticmethod
+    def from_request_key(key: schemas.EdgeSimplifiedKey) -> EdgeKey:
+        return EdgeKey(
+            from_institution_id = INSTITUTION_ID,
+            from_object_type    = key.from_type,
+            from_object_id      = key.from_id,
+            to_institution_id   = INSTITUTION_ID,
+            to_object_type      = key.to_type,
+            to_object_id        = key.to_id,
+            context             = key.context
+        )
+
+    @staticmethod
+    def from_request_key_list(key_list: list[schemas.EdgeSimplifiedKey]) -> EdgeKeyList:
+        return EdgeKeyList(item_list=[APIEdgeMapper.from_request_key(key) for key in key_list])

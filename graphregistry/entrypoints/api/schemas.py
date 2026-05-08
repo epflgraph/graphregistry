@@ -166,6 +166,14 @@ class EdgeExistsAPIRequest(BaseModel):
 class EdgeExistsResponse(BaseModel):
     exists: bool
 
+# api/edges/exists_many
+class EdgeExistsManyRequest(BaseModel):
+    key_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
+
+class EdgeExistsManyResponse(BaseModel):
+    exist_keys : list[bool] = Field(default_factory=list)
+    count      : int
+
 # api/edges/get
 class EdgeGetRequest(BaseModel):
     key: EdgeSimplifiedKey
@@ -173,6 +181,15 @@ class EdgeGetRequest(BaseModel):
 class EdgeGetResponse(BaseModel):
     found : bool
     edge  : dict[str, Any] | None = None
+
+# api/edges/get_many
+class EdgeGetManyRequest(BaseModel):
+    key_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
+
+class EdgeGetManyResponse(BaseModel):
+    found_keys : list[bool] = Field(default_factory=list)
+    edges      : list[dict[str, Any] | None] = Field(default_factory=list)
+    count      : int
 
 # api/edges/save
 class EdgeSaveAPIRequest(BaseModel):

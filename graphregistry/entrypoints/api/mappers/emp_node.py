@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, cast
 from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
-from graphregistry.domain.models.entities.mdl_base import Field, NodeKey
+from graphregistry.domain.models.entities.mdl_base import Field, NodeKey, NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeFieldList
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
@@ -251,3 +251,22 @@ class APINodeMapper:
 
         # Remove node object
         return node
+
+    @staticmethod
+    def to_response_key(key: NodeKey) -> dict[str, str]:
+        return {
+            'type' : key.object_type,
+            'id'   : key.object_id
+        }
+
+    @staticmethod
+    def from_request_key(key: schemas.NodeSimplifiedKey) -> NodeKey:
+        return NodeKey(
+            institution_id = INSTITUTION_ID,
+            object_type    = key.type,
+            object_id      = key.id
+        )
+
+    @staticmethod
+    def from_request_key_list(key_list: list[schemas.NodeSimplifiedKey]) -> NodeKeyList:
+        return NodeKeyList(item_list=[APINodeMapper.from_request_key(key) for key in key_list])

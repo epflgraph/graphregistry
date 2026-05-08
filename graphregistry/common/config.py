@@ -7,7 +7,7 @@ import json, rich, copy
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#================================#
+#================================#`1`
 # Class definition: GlobalConfig #
 #================================#
 class GlobalConfig:
@@ -87,22 +87,25 @@ class GlobalConfig:
 
         # Object-to-object type to schema mapping
         self.object2object_type_to_schema = {
-            ('Course'  , 'Person')          : self.schema_registry,
-            ('Course'  , 'Specialisation')  : self.schema_registry,
-            ('Course'  , 'StudyPlan')       : self.schema_registry,
-            ('Exercise', 'Person')          : self.schema_registry,
-            ('MOOC'    , 'Person')          : self.schema_registry,
-            ('Notebook', 'Person')          : self.schema_registry,
-            ('Person'  , 'Unit')            : self.schema_registry,
-            ('Person'  , 'Publication')     : self.schema_registry,
-            ('Unit'    , 'Unit')            : self.schema_registry,
-            ('Course'  , 'Lecture')         : self.schema_lectures,
-            ('Lecture' , 'MOOC')            : self.schema_lectures,
-            ('Lecture' , 'Slide')           : self.schema_lectures,
-            ('Lecture' , 'Transcript')      : self.schema_lectures,
-            ('Lecture' , 'Widget')          : self.schema_lectures,
-            ('Category', 'Category')        : self.schema_ontology,
-            ('Category', 'Concept')         : self.schema_ontology
+            ('Course'     , 'Course')          : self.schema_registry,
+            ('Course'     , 'Person')          : self.schema_registry,
+            ('Course'     , 'Specialisation')  : self.schema_registry,
+            ('Course'     , 'StudyPlan')       : self.schema_registry,
+            ('Course'     , 'Unit')            : self.schema_registry,
+            ('Exercise'   , 'Person')          : self.schema_registry,
+            ('MOOC'       , 'Person')          : self.schema_registry,
+            ('Notebook'   , 'Person')          : self.schema_registry,
+            ('Person'     , 'Unit')            : self.schema_registry,
+            ('Person'     , 'Publication')     : self.schema_registry,
+            ('Publication', 'Unit')            : self.schema_registry,
+            ('Unit'       , 'Unit')            : self.schema_registry,
+            ('Course'     , 'Lecture')         : self.schema_lectures,
+            ('Lecture'    , 'MOOC')            : self.schema_lectures,
+            ('Lecture'    , 'Slide')           : self.schema_lectures,
+            ('Lecture'    , 'Transcript')      : self.schema_lectures,
+            ('Lecture'    , 'Widget')          : self.schema_lectures,
+            ('Category'   , 'Category')        : self.schema_ontology,
+            ('Category'   , 'Concept')         : self.schema_ontology
         }
 
 
