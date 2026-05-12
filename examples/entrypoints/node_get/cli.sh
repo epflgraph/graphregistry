@@ -1,1 +1,1 @@
-graphregistry data get --node=@examples/entrypoints/node_get/request.json
+graphregistry data get --node_key examples/entrypoints/node_get/request.json
