@@ -1,143 +1,92 @@
 # graphregistry/entrypoints/api/schemas.py
 from __future__ import annotations
-from typing import Literal, Any
+from typing import Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
-from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
-from graphregistry.domain.models.entities.mdl_node import Node, NodeList
-from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
-
-# Define a type for supported field languages, which can be used in custom fields of nodes
-TextLanguage  = Literal['en', 'fr', 'de', 'it']
-FieldLanguage = Literal['en', 'fr', 'de', 'it', 'n/a']
-ObjectType    = Literal['Category', 'Concept', 'Course', 'Exercise', 'Lecture', 'MOOC', 'Notebook', 'Person', 'Publication', 'Specialisation', 'Startup', 'StudyPlan', 'Unit', 'Widget']
-
-#================#
-# Shared schemas #
-#================#
+from graphregistry.entrypoints.schemas import NodeSpec, EdgeSpec, NodeKeySpec, EdgeKeySpec
 
 # Generic response schema for API endpoints, indicating success and providing a message
 class StatusResponse(BaseModel):
     success: bool = True
     message: str
 
-class NodeSimplifiedKey(BaseModel):
-    type : ObjectType
-    id   : str
-
-class CustomFieldInput(BaseModel):
-    field_language : FieldLanguage = "n/a"
-    field_name     : str
-    field_value    : str
-
-class MultilingualText(BaseModel):
-    language : TextLanguage
-    text     : str
-
-class NodeMinimalFormat(BaseModel):
-    type          : ObjectType
-    subtype       : str | list[MultilingualText] | None = None
-    id            : str
-    title         : str | list[MultilingualText] | None = None
-    description   : str | list[MultilingualText] | dict[str, list[MultilingualText]] | None = None
-    url           : str | list[MultilingualText] | None = None
-    custom_fields : list[CustomFieldInput] | None = Field(default_factory=list)
-
-class EdgeSimplifiedKey(BaseModel):
-    from_type : str
-    from_id   : str
-    to_type   : str
-    to_id     : str
-    context   : str
-
-class EdgeMinimalFormat(BaseModel):
-    from_type     : str
-    from_id       : str
-    to_type       : str
-    to_id         : str
-    context       : str
-    custom_fields : list[CustomFieldInput] | None = Field(default_factory=list)
-
-class EdgeSimplifiedInput(EdgeSimplifiedKey):
-    custom_fields: list[CustomFieldInput] = Field(default_factory=list)
-
 #==============#
 # Node schemas #
 #==============#
 
 # api/nodes/list
-class NodeListRequest(BaseModel):
+class APINodesListRequest(BaseModel):
     type : str = Field(..., description="Node object type to list.")
     id_pattern  : str | None = Field(
         default     = None,
         description = "Optional wildcard pattern for object id values. `*` is supported.",
     )
 
-class NodeListResponse(BaseModel):
+class APINodesListResponse(BaseModel):
     nodes : list[NodeKey] = Field(default_factory=list)
     count : int = 0
 
 # api/nodes/exists
-class NodeExistsAPIRequest(BaseModel):
-    key: NodeSimplifiedKey
+class APINodesExistsRequest(BaseModel):
+    key: NodeKeySpec
 
-class NodeExistsResponse(BaseModel):
+class APINodesExistsResponse(BaseModel):
     exists: bool
 
 # api/nodes/exists_many
-class NodeExistsManyRequest(BaseModel):
-    key_list: list[NodeSimplifiedKey] = Field(default_factory=list)
+class APINodesExistsManyRequest(BaseModel):
+    key_list: list[NodeKeySpec] = Field(default_factory=list)
 
-class NodeExistsManyResponse(BaseModel):
+class APINodesExistsManyResponse(BaseModel):
     exist_keys : list[bool] = Field(default_factory=list)
     count      : int
 
 # api/nodes/get
-class NodeGetRequest(BaseModel):
-    key: NodeSimplifiedKey
+class APINodesGetRequest(BaseModel):
+    key: NodeKeySpec
 
-class NodeGetResponse(BaseModel):
+class APINodesGetResponse(BaseModel):
     found : bool
     node  : dict[str, Any] | None = None
 
 # api/nodes/get_many
-class NodeGetManyRequest(BaseModel):
-    key_list: list[NodeSimplifiedKey] = Field(default_factory=list)
+class APINodesGetManyRequest(BaseModel):
+    key_list: list[NodeKeySpec] = Field(default_factory=list)
 
-class NodeGetManyResponse(BaseModel):
+class APINodesGetManyResponse(BaseModel):
     found_keys : list[bool] = Field(default_factory=list)
     nodes      : list[dict[str, Any] | None] = Field(default_factory=list)
     count      : int
 
 # api/nodes/save
-class NodeSaveAPIRequest(BaseModel):
-    node: NodeMinimalFormat
+class APINodesSaveRequest(BaseModel):
+    node: NodeSpec
 
-class NodeSaveAPIResponse(BaseModel):
+class APINodesSaveResponse(BaseModel):
     success   : bool
     saved_key : dict[str, str] | None = None
 
 # api/nodes/save_many
-class NodeListSaveRequest(BaseModel):
-    node_list : list[NodeMinimalFormat] = Field(default_factory=list)
+class APINodesSaveManyRequest(BaseModel):
+    node_list : list[NodeSpec] = Field(default_factory=list)
 
-class NodeListSaveResponse(BaseModel):
+class APINodesSaveManyResponse(BaseModel):
     success    : bool
     saved_keys : list[dict[str, str]] = Field(default_factory=list)
     count      : int
 
 # api/nodes/delete
-class NodeDeleteAPIRequest(BaseModel):
-    key: NodeSimplifiedKey
+class APINodesDeleteRequest(BaseModel):
+    key: NodeKeySpec
 
-class NodeDeleteResponse(BaseModel):
+class APINodesDeleteResponse(BaseModel):
     success: bool
 
 # api/nodes/delete_many
-class NodeDeleteManyRequest(BaseModel):
-    key_list: list[NodeSimplifiedKey] = Field(default_factory=list)
+class APINodesDeleteManyRequest(BaseModel):
+    key_list: list[NodeKeySpec] = Field(default_factory=list)
 
-class NodeDeleteManyResponse(BaseModel):
+class APINodesDeleteManyResponse(BaseModel):
     success   : bool
     results   : list[bool] = Field(default_factory=list)
     n_deleted : int
@@ -147,7 +96,7 @@ class NodeDeleteManyResponse(BaseModel):
 #==============#
 
 # api/edges/list
-class EdgeListRequest(BaseModel):
+class APIEdgesListRequest(BaseModel):
     from_type : str = Field(..., description="Source node object type.")
     to_type   : str = Field(..., description="Target node object type.")
     id_pattern       : str | None = Field(
@@ -155,84 +104,71 @@ class EdgeListRequest(BaseModel):
         description = "Optional wildcard pattern applied to edge identifiers. `*` is supported.",
     )
 
-class EdgeListResponse(BaseModel):
+class APIEdgesListResponse(BaseModel):
     edges : list[EdgeKey] = Field(default_factory=list)
     count : int = 0
 
 # api/edges/exists
-class EdgeExistsAPIRequest(BaseModel):
-    key: EdgeSimplifiedKey
+class APIEdgesExistsRequest(BaseModel):
+    key: EdgeKeySpec
 
-class EdgeExistsResponse(BaseModel):
+class APIEdgesExistsResponse(BaseModel):
     exists: bool
 
 # api/edges/exists_many
-class EdgeExistsManyRequest(BaseModel):
-    key_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
+class APIEdgesExistsManyRequest(BaseModel):
+    key_list: list[EdgeKeySpec] = Field(default_factory=list)
 
-class EdgeExistsManyResponse(BaseModel):
+class APIEdgesExistsManyResponse(BaseModel):
     exist_keys : list[bool] = Field(default_factory=list)
     count      : int
 
 # api/edges/get
-class EdgeGetRequest(BaseModel):
-    key: EdgeSimplifiedKey
+class APIEdgesGetRequest(BaseModel):
+    key: EdgeKeySpec
 
-class EdgeGetResponse(BaseModel):
+class APIEdgesGetResponse(BaseModel):
     found : bool
     edge  : dict[str, Any] | None = None
 
 # api/edges/get_many
-class EdgeGetManyRequest(BaseModel):
-    key_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
+class APIEdgesGetManyRequest(BaseModel):
+    key_list: list[EdgeKeySpec] = Field(default_factory=list)
 
-class EdgeGetManyResponse(BaseModel):
+class APIEdgesGetManyResponse(BaseModel):
     found_keys : list[bool] = Field(default_factory=list)
     edges      : list[dict[str, Any] | None] = Field(default_factory=list)
     count      : int
 
 # api/edges/save
-class EdgeSaveAPIRequest(BaseModel):
-    edge: EdgeMinimalFormat
+class APIEdgesSaveRequest(BaseModel):
+    edge: EdgeSpec
 
-class EdgeSaveAPIResponse(BaseModel):
+class APIEdgesSaveResponse(BaseModel):
     success   : bool
     saved_key : dict[str, str] | None = None
 
 # api/edges/save_many
-class EdgeListSaveRequest(BaseModel):
-    edge_list: list[EdgeMinimalFormat] = Field(default_factory=list)
+class APIEdgesSaveManyRequest(BaseModel):
+    edge_list: list[EdgeSpec] = Field(default_factory=list)
 
-class EdgeListSaveResponse(BaseModel):
+class APIEdgesSaveManyResponse(BaseModel):
     success    : bool
     saved_keys : list[dict[str, str]] = Field(default_factory=list)
     count      : int
 
 # api/edges/delete
-class EdgeDeleteAPIRequest(BaseModel):
-    key: EdgeSimplifiedKey
+class APIEdgesDeleteRequest(BaseModel):
+    key: EdgeKeySpec
 
-class EdgeDeleteResponse(BaseModel):
+class APIEdgesDeleteResponse(BaseModel):
     success: bool
 
 # api/edges/delete_many
-class EdgeDeleteManyRequest(BaseModel):
-    key_list: list[EdgeSimplifiedKey] = Field(default_factory=list)
+class APIEdgesDeleteManyRequest(BaseModel):
+    key_list: list[EdgeKeySpec] = Field(default_factory=list)
 
-class EdgeDeleteManyResponse(BaseModel):
+class APIEdgesDeleteManyResponse(BaseModel):
     success   : bool
     results   : list[bool] = Field(default_factory=list)
     n_deleted : int
-
-#==================#
-# Subgraph schemas #
-#==================#
-
-class SubGraphSaveRequest(BaseModel):
-    subgraph: SubGraph
-
-class SubGraphSaveResponse(BaseModel):
-    success: bool
-    nodes_saved: int
-    edges_saved: int
-    subgraph: SubGraph

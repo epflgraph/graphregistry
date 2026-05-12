@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Literal, cast
 from pydantic import BaseModel, Field, model_validator
-from graphregistry.domain.types import FieldLanguage
+from graphregistry.domain.types import FieldLanguage, ObjectType
 
 # Model definition
 class NodeKey(BaseModel):
@@ -12,9 +12,9 @@ class NodeKey(BaseModel):
     # Internal variables #
     #--------------------#
     model_config = {"frozen": True}
-    institution_id: str
-    object_type: str
-    object_id: str
+    institution_id : str
+    object_type    : ObjectType
+    object_id      : str
 
     #-----------------------------------#
     # Model constructors and validators #
@@ -85,13 +85,13 @@ class EdgeKey(BaseModel):
     # Internal variables #
     #--------------------#
     model_config = {"frozen": True}
-    from_institution_id: str
-    from_object_type: str
-    from_object_id: str
-    to_institution_id: str
-    to_object_type: str
-    to_object_id: str
-    context: str
+    from_institution_id : str
+    from_object_type    : ObjectType
+    from_object_id      : str
+    to_institution_id   : str
+    to_object_type      : ObjectType
+    to_object_id        : str
+    context             : str
 
     #-----------------------------------#
     # Model constructors and validators #
