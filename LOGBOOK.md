@@ -31,4 +31,5 @@
 - ✅ Edge custom fields are not being imported. [FIXED]
 - 👉 Keep modifying input formats in API endpoints
 - ✅ Node endpoints are mostly fixed
-- 👉 Edge endpoints need work, fix output format of 'get edge'. also, 'get many edges' is not returning results
+- ✅ Edge endpoints need work, fix output format of 'get edge'. also, 'get many edges' is not returning results
+- 👉 need to fix global/local paths issue in graphdb repo
