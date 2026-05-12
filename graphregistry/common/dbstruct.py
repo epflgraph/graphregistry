@@ -13,8 +13,26 @@ glbcfg = GlobalConfig()
 idxcfg = IndexConfig()
 scrcfg = ScoresConfig()
 
+
+def _find_repo_root(start: Path | None = None) -> Path:
+    start = (start or Path(__file__)).resolve()
+
+    for parent in [start, *start.parents]:
+        if (parent / "graphregistry").is_dir() and (parent / "config").is_dir():
+            return parent
+
+    raise RuntimeError(f"Could not find repository root from: {start}")
+
+
+REPO_ROOT = _find_repo_root()
+CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
+
+db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
+
+
+
 # Initialise MySQL client
-db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
 db = GraphDB(config=db_cfg)
 
 # SQL data type mapping dictionary

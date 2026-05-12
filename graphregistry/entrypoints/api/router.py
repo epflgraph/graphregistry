@@ -46,7 +46,9 @@ def _make_db() -> GraphDB:
     """
     Build the GraphDB client.
     """
-    db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    from graphregistry.common.paths import CONFIG_DB_PATH
+    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
     return GraphDB(config=db_config)
 
 def _make_schema_resolver() -> DefaultSchemaResolver:
@@ -56,7 +58,9 @@ def _make_schema_resolver() -> DefaultSchemaResolver:
     env = _get_api_env()
 
     global_config = GlobalConfig()
-    db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    from graphregistry.common.paths import CONFIG_DB_PATH
+    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
+    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
 
     if env not in db_config.environments:
         available_envs = ", ".join(db_config.environments.keys())

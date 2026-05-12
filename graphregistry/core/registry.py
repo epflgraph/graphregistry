@@ -32,7 +32,9 @@ scrcfg = ScoresConfig()
 dynsql = DynamicSQL()
 
 # Initialise MySQL client
-db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+from graphregistry.common.paths import CONFIG_DB_PATH
+db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
 db = GraphDB(config=db_cfg)
 
 # Initialise clients

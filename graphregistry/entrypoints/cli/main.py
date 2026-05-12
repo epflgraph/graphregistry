@@ -59,7 +59,9 @@ def main(argv=None) -> int:
     ai       = GraphAI
 
     # Initialise MySQL client
-    db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    from graphregistry.common.paths import CONFIG_DB_PATH
+    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
     db = GraphDB(config=db_config)
 
     # Login to GraphAI and get auth token

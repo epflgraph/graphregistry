@@ -12,7 +12,9 @@ from typing import List, Tuple
 glbcfg = GlobalConfig()
 
 # Initialise MySQL client
-db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+from graphregistry.common.paths import CONFIG_DB_PATH
+db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
 db = GraphDB(config=db_cfg)
 
 # Auxiliary function to get schema name from a (from,to) tuple
