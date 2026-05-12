@@ -2,16 +2,12 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, TypeAlias, Iterator, Any
 from pydantic import BaseModel, Field
+from graphregistry.domain.types import LanguageCode, LanguageCodeList, DEFAULT_LANGUAGE_CODES
 import rich
 
 # Check type if running in a type-checking context to avoid circular imports
 if TYPE_CHECKING:
     from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
-
-# Type alias for language codes
-LanguageCode: TypeAlias = str
-LanguageCodeList: TypeAlias = tuple[LanguageCode, ...]
-DEFAULT_LANGUAGE_CODES: LanguageCodeList = ('en', 'fr', 'de', 'it')
 
 # Model definition
 class MultilingualText(BaseModel):

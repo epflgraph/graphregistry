@@ -1,7 +1,7 @@
 # graphregistry/domain/models/tasks/mdl_translation.py
 from __future__ import annotations
 from pydantic import BaseModel, Field
-from graphregistry.domain.models.entities.mdl_text import LanguageCode
+from graphregistry.domain.types import LanguageCode
 
 # Model definition
 class TranslationTask(BaseModel):
@@ -10,7 +10,7 @@ class TranslationTask(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    # String or list of strings to be translated. If a list is provided, 
+    # String or list of strings to be translated. If a list is provided,
     # the translation will be performed on each item in the list.
     text: str | list[str]
 

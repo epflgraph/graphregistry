@@ -209,7 +209,6 @@ def cmd_data_save(args):
         node_list_json_data = _load_json_input(node_list_input, "--node_list")
 
         # Create node list object from JSON data
-        
         node_list = EPNodeMapper.from_save_request_list(node_list_json_data)
 
         # Insert node list into registry

@@ -24,8 +24,8 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeM
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
 from graphregistry.workflows.factories.fct_node import NodeFactory
-from graphregistry.entrypoints.api.mappers.emp_node import APINodeMapper
-from graphregistry.entrypoints.api.mappers.emp_edge import APIEdgeMapper
+from graphregistry.entrypoints.mappers.emp_node import EPNodeMapper
+from graphregistry.entrypoints.mappers.emp_edge import EPEdgeMapper
 
 # Environment variables
 API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
@@ -194,7 +194,7 @@ def nodes_exists(request: schemas.NodeExistsAPIRequest, node_ops: NodeOperations
     Check whether one node exists.
     """
     # Check if the node exists in the database by key
-    exists = node_ops.exists(APINodeMapper.from_request_key(request.key))
+    exists = node_ops.exists(EPNodeMapper.from_request_key(request.key))
 
     # Return the existence result in the response
     return schemas.NodeExistsResponse(exists=exists)
@@ -208,7 +208,7 @@ def nodes_exists_many(request: schemas.NodeExistsManyRequest, node_ops: NodeOper
     Check whether a list of nodes exist.
     """
     # Covert the API request key list to a list of domain model node keys
-    node_key_list = APINodeMapper.from_request_key_list(request.key_list)
+    node_key_list = EPNodeMapper.from_request_key_list(request.key_list)
 
     # Check if the nodes exist in the database by key, and get list of boolean results for each key
     exist_keys = node_ops.exists_many(node_key_list)
@@ -225,14 +225,14 @@ def nodes_get(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depend
     Get one node by key.
     """
     # Fetch the node from the database by key
-    node = node_ops.get(APINodeMapper.from_request_key(request.key))
+    node = node_ops.get(EPNodeMapper.from_request_key(request.key))
 
     # If returned node is None, the node was not found
     if node is None:
         return schemas.NodeGetResponse(found=False, node=None)
 
     # Get simplified dict representation of the node for the response
-    json_output = APINodeMapper.to_get_request(node)
+    json_output = EPNodeMapper.to_get_request(node)
 
     # Return the node data in the response
     return schemas.NodeGetResponse(found=True, node=json_output.model_dump(exclude_none=True))
@@ -246,14 +246,14 @@ def nodes_get_many(request: schemas.NodeGetManyRequest, node_ops: NodeOperations
     Get a list of nodes by key.
     """
     # Covert the API request key list to a list of domain model node keys
-    node_key_list = APINodeMapper.from_request_key_list(request.key_list)
+    node_key_list = EPNodeMapper.from_request_key_list(request.key_list)
 
     # Fetch the nodes from the database by key list
     nodes = node_ops.get_many(node_key_list)
 
     # Get simplified dict representation of the nodes for the response
     json_output = [
-        APINodeMapper.to_get_request(node).model_dump()
+        EPNodeMapper.to_get_request(node).model_dump()
         if node is not None else None for node in nodes.item_list
     ]
 
@@ -274,7 +274,7 @@ def nodes_save(request: schemas.NodeSaveAPIRequest, node_ops: NodeOperations = D
     Save one node.
     """
     # Convert the API request to a domain model node
-    node = APINodeMapper.from_save_request(request)
+    node = EPNodeMapper.from_save_request(request)
 
     # Save the node and return the saved node object
     saved_node = node_ops.save(node, actions=('commit',))
@@ -298,7 +298,7 @@ def nodes_save_many(request: schemas.NodeListSaveRequest, node_ops: NodeOperatio
     """
     # Convert the API request to a domain model node list
     node_list = [
-        APINodeMapper.from_save_request({"node": node_obj.model_dump()})
+        EPNodeMapper.from_save_request({"node": node_obj.model_dump()})
         for node_obj in request.node_list
     ]
     # Save the nodes and return the saved node objects``
@@ -324,7 +324,7 @@ def nodes_delete(request: schemas.NodeDeleteAPIRequest, node_ops: NodeOperations
     Delete one node.
     """
     # Delete the node from the database by key
-    deleted = node_ops.delete(APINodeMapper.from_request_key(request.key), actions=('commit',))
+    deleted = node_ops.delete(EPNodeMapper.from_request_key(request.key), actions=('commit',))
 
     # Return the deletion result in the response
     return schemas.NodeDeleteResponse(success=bool(deleted))
@@ -338,7 +338,7 @@ def nodes_delete_many(request: schemas.NodeDeleteManyRequest, node_ops: NodeOper
     Delete a list of nodes.
     """
     # Convert the API request key list to a list of domain model node keys
-    node_key_list = APINodeMapper.from_request_key_list(request.key_list)
+    node_key_list = EPNodeMapper.from_request_key_list(request.key_list)
 
     # Delete the nodes from the database by key list
     raw_results = node_ops.delete_many(node_key_list, actions=('commit',))
@@ -384,7 +384,7 @@ def edges_exists(request: schemas.EdgeExistsAPIRequest, edge_ops: EdgeOperations
     Check whether one edge exists.
     """
     # Check if the edge exists in the database by key
-    exists = edge_ops.exists(APIEdgeMapper.from_request_key(request.key))
+    exists = edge_ops.exists(EPEdgeMapper.from_request_key(request.key))
 
     # Return the existence result in the response
     return schemas.EdgeExistsResponse(exists=exists)
@@ -398,7 +398,7 @@ def edges_exists_many(request: schemas.EdgeExistsManyRequest, edge_ops: EdgeOper
     Check whether a list of edges exist.
     """
     # Covert the API request key list to a list of domain model edge keys
-    edge_key_list = APIEdgeMapper.from_request_key_list(request.key_list)
+    edge_key_list = EPEdgeMapper.from_request_key_list(request.key_list)
 
     # Check if the edges exist in the database by key, and get list of boolean results for each key
     exist_keys = edge_ops.exists_many(edge_key_list)
@@ -415,14 +415,14 @@ def edges_get(request: schemas.EdgeGetRequest, edge_ops: EdgeOperations = Depend
     get one edge by key.
     """
     # Fetch the edge from the database by key
-    edge = edge_ops.get(APIEdgeMapper.from_request_key(request.key))
+    edge = edge_ops.get(EPEdgeMapper.from_request_key(request.key))
 
     # If returned edge is None, the edge was not found
     if edge is None:
         return schemas.EdgeGetResponse(found=False, edge=None)
 
     # Get simplified dict representation of the edge for the response
-    json_output = APIEdgeMapper.to_get_request(edge)
+    json_output = EPEdgeMapper.to_get_request(edge)
 
     # Return the edge data in the response
     return schemas.EdgeGetResponse(found=True, edge=json_output.model_dump(exclude_none=True))
@@ -436,14 +436,14 @@ def edges_get_many(request: schemas.EdgeGetManyRequest, edge_ops: EdgeOperations
     Get a list of edges by key.
     """
     # Covert the API request key list to a list of domain model edge keys
-    edge_key_list = APIEdgeMapper.from_request_key_list(request.key_list)
+    edge_key_list = EPEdgeMapper.from_request_key_list(request.key_list)
 
     # Fetch the edges from the database by key list
     edges = edge_ops.get_many(edge_key_list)
 
     # Get simplified dict representation of the edges for the response
     json_output = [
-        APIEdgeMapper.to_get_request(edge).model_dump()
+        EPEdgeMapper.to_get_request(edge).model_dump()
         if edge is not None else None for edge in edges.item_list
     ]
 
@@ -464,7 +464,7 @@ def edges_save(request: schemas.EdgeSaveAPIRequest, edge_ops: EdgeOperations = D
     Save one edge.
     """
     # Convert the API request to a domain model edge
-    edge = APIEdgeMapper.from_save_request(request)
+    edge = EPEdgeMapper.from_save_request(request)
 
     # Save the edge and return the saved edge object
     saved_edge = edge_ops.save(edge, actions=('commit',))
@@ -472,7 +472,7 @@ def edges_save(request: schemas.EdgeSaveAPIRequest, edge_ops: EdgeOperations = D
     # Return the saved edge key in the response
     return schemas.EdgeSaveAPIResponse(
         success   = True,
-        saved_key = APIEdgeMapper.to_request_key(saved_edge.key)
+        saved_key = EPEdgeMapper.to_request_key(saved_edge.key)
     )
 
 #------------------------------------#
@@ -485,7 +485,7 @@ def edges_save_many(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperatio
     """
     # Convert the API request to a domain model edge list
     edge_list = [
-        APIEdgeMapper.from_save_request({"edge": edge_obj.model_dump()})
+        EPEdgeMapper.from_save_request({"edge": edge_obj.model_dump()})
         for edge_obj in request.edge_list
     ]
     # Save the edges and return the saved edge objects``
@@ -495,7 +495,7 @@ def edges_save_many(request: schemas.EdgeListSaveRequest, edge_ops: EdgeOperatio
     return schemas.EdgeListSaveResponse(
         success = True,
         saved_keys = [
-            APIEdgeMapper.to_request_key(saved_edge.key)
+            EPEdgeMapper.to_request_key(saved_edge.key)
             for saved_edge in saved_edges.item_list
         ],
         count = len(saved_edges.item_list)
@@ -510,7 +510,7 @@ def edges_delete(request: schemas.EdgeDeleteAPIRequest, edge_ops: EdgeOperations
     Delete one edge.
     """
     # Delete the edge from the database by key
-    deleted = edge_ops.delete(APIEdgeMapper.from_request_key(request.key), actions=('commit',))
+    deleted = edge_ops.delete(EPEdgeMapper.from_request_key(request.key), actions=('commit',))
 
     # Return the deletion result in the response
     return schemas.EdgeDeleteResponse(success=bool(deleted))
@@ -524,7 +524,7 @@ def edges_delete_many(request: schemas.EdgeDeleteManyRequest, edge_ops: EdgeOper
     Delete a list of edges.
     """
     # Covert the API request key list to a list of domain model edge keys
-    edge_key_list = APIEdgeMapper.from_request_key_list(request.key_list)
+    edge_key_list = EPEdgeMapper.from_request_key_list(request.key_list)
 
     # Delete the edges from the database by key list
     raw_results = edge_ops.delete_many(edge_key_list, actions=('commit',))

@@ -2,9 +2,7 @@
 from __future__ import annotations
 from typing import Literal, cast
 from pydantic import BaseModel, Field, model_validator
-
-# Define a type for supported field languages, which can be used in custom fields of nodes
-FieldLanguage = Literal['en', 'fr', 'de', 'it', 'n/a']
+from graphregistry.domain.types import FieldLanguage
 
 # Model definition
 class NodeKey(BaseModel):

@@ -20,11 +20,11 @@ from graphregistry.entrypoints.cli.cmd_ai import (
 )
 from graphregistry.entrypoints.cli.cmd_data import (
     cmd_data_list,
-    cmd_data_import,
-    cmd_data_insert,
     cmd_data_exists,
-    cmd_data_fetch,
+    cmd_data_get,
+    cmd_data_save,
     cmd_data_delete,
+    cmd_data_import,
 )
 from graphregistry.entrypoints.cli.cmd_airflow import (
     cmd_airflow_sync,
@@ -231,26 +231,26 @@ cli_definitions: Dict[str, Any] = {
                 ],
                 common_args = ['env']
             ),
-            'fetch' : dict(
+            'get' : dict(
                 help = "Import data from input or json file.",
-                func = cmd_data_fetch,
+                func = cmd_data_get,
                 args = [
                     dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
                     dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
                 ],
                 common_args = ['env']
             ),
-            'insert' : dict(
-                help = "Insert data from input or json file.",
-                func = cmd_data_insert,
+            'save' : dict(
+                help = "save data from input or json file.",
+                func = cmd_data_save,
                 args = [
-                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="Insert node from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="Insert edge from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Insert node list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Insert edge list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="Insert node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="save node from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="save edge from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="save node list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="save edge list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="save node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
                     dict(flags=('--actions',   ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
-                    dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on insert.")),
+                    dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on save.")),
                 ],
                 common_args = ['env']
             ),

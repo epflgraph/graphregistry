@@ -10,7 +10,7 @@ from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 INSTITUTION_ID = "EPFL"
 
 # Class definition
-class APINodeMapper:
+class EPNodeMapper:
     """
     Maps between API custom-field input shapes and domain NodeField / NodeFieldList.
     """
@@ -137,11 +137,11 @@ class APINodeMapper:
         )
 
     @staticmethod
-    def to_get_request_list(node_list: NodeList | list[Node | dict[str, Any]]) -> list[schemas.NodeMinimalFormat]:
+    def to_get_many_request(node_list: NodeList | list[Node | dict[str, Any]]) -> list[schemas.NodeMinimalFormat]:
         if isinstance(node_list, list):
-            return [APINodeMapper.to_get_request(node) for node in node_list]
+            return [EPNodeMapper.to_get_request(node) for node in node_list]
         elif isinstance(node_list, NodeList):
-            return [APINodeMapper.to_get_request(node) for node in node_list.item_list]
+            return [EPNodeMapper.to_get_request(node) for node in node_list.item_list]
 
     @staticmethod
     def from_save_request(request: schemas.NodeSaveAPIRequest | dict[str, Any]) -> Node:
@@ -260,6 +260,10 @@ class APINodeMapper:
         return node
 
     @staticmethod
+    def from_save_request_list(request_list: list[schemas.NodeSaveAPIRequest | dict[str, Any]]) -> NodeList:
+        return NodeList(item_list=[EPNodeMapper.from_save_request(request) for request in request_list])
+
+    @staticmethod
     def to_response_key(key: NodeKey) -> dict[str, str]:
         return {
             'type' : key.object_type,
@@ -276,4 +280,4 @@ class APINodeMapper:
 
     @staticmethod
     def from_request_key_list(key_list: list[schemas.NodeSimplifiedKey]) -> NodeKeyList:
-        return NodeKeyList(item_list=[APINodeMapper.from_request_key(key) for key in key_list])
+        return NodeKeyList(item_list=[EPNodeMapper.from_request_key(key) for key in key_list])

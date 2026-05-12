@@ -9,7 +9,7 @@ from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList, EdgeFi
 INSTITUTION_ID = "EPFL"
 
 # Class definition
-class APIEdgeMapper:
+class EPEdgeMapper:
     """
     Maps between API custom-field input shapes and domain EdgeField / EdgeFieldList.
     """
@@ -46,9 +46,9 @@ class APIEdgeMapper:
     @staticmethod
     def to_get_request_list(edge_list: EdgeList | list[Edge | dict[str, Any]]) -> list[schemas.EdgeMinimalFormat]:
         if isinstance(edge_list, list):
-            return [APIEdgeMapper.to_get_request(edge) for edge in edge_list]
+            return [EPEdgeMapper.to_get_request(edge) for edge in edge_list]
         elif isinstance(edge_list, EdgeList):
-            return [APIEdgeMapper.to_get_request(edge) for edge in edge_list.item_list]
+            return [EPEdgeMapper.to_get_request(edge) for edge in edge_list.item_list]
 
     @staticmethod
     def from_save_request(request: schemas.EdgeSaveAPIRequest | dict[str, Any]) -> Edge:
@@ -81,6 +81,10 @@ class APIEdgeMapper:
         return edge
 
     @staticmethod
+    def from_save_request_list(request_list: list[schemas.EdgeSaveAPIRequest | dict[str, Any]]) -> EdgeList:
+        return EdgeList(item_list=[EPEdgeMapper.from_save_request(request) for request in request_list])
+
+    @staticmethod
     def to_request_key(key: EdgeKey) -> dict[str, str]:
         return {
             'from_type' : key.from_object_type,
@@ -104,4 +108,4 @@ class APIEdgeMapper:
 
     @staticmethod
     def from_request_key_list(key_list: list[schemas.EdgeSimplifiedKey]) -> EdgeKeyList:
-        return EdgeKeyList(item_list=[APIEdgeMapper.from_request_key(key) for key in key_list])
+        return EdgeKeyList(item_list=[EPEdgeMapper.from_request_key(key) for key in key_list])
