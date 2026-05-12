@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeKey, Node, NodeList
-from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.domain.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper

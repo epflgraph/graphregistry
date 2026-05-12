@@ -1,7 +1,7 @@
 # graphregistry/workflows/operations/entities/ops_node.py
 from __future__ import annotations
 from dataclasses import dataclass
-from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.domain.types import ActionSet
 from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
-from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.domain.types import ActionSet
 
 # Class definition
 @runtime_checkable

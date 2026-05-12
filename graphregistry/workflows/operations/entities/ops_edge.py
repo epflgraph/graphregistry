@@ -1,7 +1,7 @@
 # graphregistry/workflows/operations/entities/ops_edge.py
 from __future__ import annotations
 from dataclasses import dataclass
-from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.domain.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList

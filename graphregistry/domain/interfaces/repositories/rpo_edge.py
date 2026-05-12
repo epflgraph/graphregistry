@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
-from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.domain.types import ActionSet
 
 # Class definition
 @runtime_checkable

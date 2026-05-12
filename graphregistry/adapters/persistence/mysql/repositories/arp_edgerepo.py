@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import EdgeKey, Edge, EdgeList
-from graphregistry.domain.interfaces.types import ActionSet
+from graphregistry.domain.types import ActionSet
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
