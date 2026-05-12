@@ -1,0 +1,2391 @@
+{
+    "subgraph": {
+        "node_list": [
+            {
+                "type": "Course",
+                "id": "BIO-410",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Bioimage informatics"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Bioimage informatics"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioi ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioi ..."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning. ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning. ..."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://edu.epfl.ch/coursebook/en/bioimage-informatics-BIO-410"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://edu.epfl.ch/coursebook/fr/bioimage-informatics-BIO-410"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Basic knowledge in signal or image processing\nBaisc knowledge in programming"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "content",
+                        "field_value": "To investigate biological processes, bioimage informatics emerges as a growing field on the interface between microscopy, signal-processing, and computer science. The recent microscopes are producing large volumes of high-resolution multidimensional data (up to 5D). Therefore, algorithms and software tools are needed to automatically extract quantitative data from these images.\nThe course gives the theoretical concepts and practical aspects of the most common image reconstruction and image analysis techniques. It explains how to code algorithms and to deploy software tools to build an automatic analysis workflow using the most common used software, Fiji/ImageJ (Java-based) and Jupyter Notebook (Python-based). The lecture is tailored to the needs of life sciences and driven by biological questions.\nAddressed topics include (but not restricted to): presentation of microscopy modalities, digital images, multi-dimensional data (3D, time, multiple channels) manipulation, 3D image-processing algorithms, 5D visualization, image metrics, reconstruction, deconvolution, denoising, stitching, visual feature detection, segmentation, active contours, image analysis workflow, pixel classification, machine learning, deep learning for image analysis, large datasets, tracking of particles, and super-resolution localization microscopy.\nThe course is composed of lectures, workshops, practices, and a mini-project.\nA personal laptop is recommended to run (open-source) image analysis software and to develop short scripts.\nShow more"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "evaluation_method",
+                        "field_value": "20% Homework, individual\nIn the first half of the semester: 4 homeworks on computer (2 weeks)\n40% Mini-project by groups of 2-3 students\nIn the second half of the semester: Development of an image analysis tool for a real application in biology\n40% End-term exam, individual\nwritten exam with handwritten notes"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "keywords",
+                        "field_value": "Bioimage, microscopy, image processing, image reconstruction, image analysis, visualization, multidimensional data analysis, machine learning, deep learning"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Baisc knowledge in programming"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "summary",
+                        "field_value": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Basic knowledge in signal or image processing\nBaisc knowledge in programming"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "content",
+                        "field_value": "To investigate biological processes, bioimage informatics emerges as a growing field on the interface between microscopy, signal-processing, and computer science. The recent microscopes are producing large volumes of high-resolution multidimensional data (up to 5D). Therefore, algorithms and software tools are needed to automatically extract quantitative data from these images.\nThe course gives the theoretical concepts and practical aspects of the most common image reconstruction and image analysis techniques. It explains how to code algorithms and to deploy software tools to build an automatic analysis workflow using the most common used software, Fiji/ImageJ (Java-based) and Jupyter Notebook (Python-based). The lecture is tailored to the needs of life sciences and driven by biological questions.\nAddressed topics include (but not restricted to): presentation of microscopy modalities, digital images, multi-dimensional data (3D, time, multiple channels) manipulation, 3D image-processing algorithms, 5D visualization, image metrics, reconstruction, deconvolution, denoising, stitching, visual feature detection, segmentation, active contours, image analysis workflow, pixel classification, machine learning, deep learning for image analysis, large datasets, tracking of particles, and super-resolution localization microscopy.\nThe course is composed of lectures, workshops, practices, and a mini-project.\nA personal laptop is recommended to run (open-source) image analysis software and to develop short scripts.\nLire la suite"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "evaluation_method",
+                        "field_value": "20% Homework, individual\nIn the first half of the semester: 4 homeworks on computer (2 weeks)\n40% Mini-project by groups of 2-3 students\nIn the second half of the semester: Development of an image analysis tool for a real application in biology\n40% End-term exam, individual\nwritten exam with handwritten notes"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "keywords",
+                        "field_value": "Bioimage, microscopy, image processing, image reconstruction, image analysis, visualization, multidimensional data analysis, machine learning, deep learning"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Baisc knowledge in programming"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "summary",
+                        "field_value": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "course_code",
+                        "field_value": "BIO-410"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "exam_type",
+                        "field_value": "Summer session\nWritten"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "section_code",
+                        "field_value": "SV"
+                    }
+                ]
+            },
+            {
+                "type": "Course",
+                "id": "COM-202",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Signal processing"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Signal processing"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, D ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, D ..."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, DFT, DTFT,\nCTFT, FFT, STFT; linear time invariant systems; filter design and adaptive filtering; sampling; interpolation\nand quantization; image processing,  ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, DFT, DTFT,\nCTFT, FFT, STFT; linear time invariant systems; filter design and adaptive filtering; sampling; interpolation\nand quantization; image processing,  ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, DFT, DTFT,\nCTFT, FFT, STFT; linear time invariant systems; filter design and adaptive filtering; sampling; interpolation\nand quantization; image processing, data communication and control systems. ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, DFT, DTFT,\nCTFT, FFT, STFT; linear time invariant systems; filter design and adaptive filtering; sampling; interpolation\nand quantization; image processing, data communication and control systems. ..."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://edu.epfl.ch/coursebook/en/signal-processing-COM-202"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://edu.epfl.ch/coursebook/fr/signal-processing-COM-202"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Vectors and vector space, functions and sequences, infinite series"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "content",
+                        "field_value": "Signal processing is an engineering discipline that studies how to analyze, modify, and transmit information using mathematical models, practical devices, and numerical algorithms.\nThe class will cover the following topics:\n1. Basic discrete- and continuous-time signals and systems: signal classes and operations on signals, signals as vectors in a vector space\n2. Fourier Analysis: properties of Fourier transforms, DFT, DTFT, CTFT; practical Fourier analysis (FFT, STFT)\n3. LTI systems: properties and composition, convolution, application of Fourier analysis to LTI System, Laplace and z-Transforms.\n4. Analog vs Digital: sampling, interpolation and quantization.\n5. Applications: adaptive filtering; image processing, data communication and control systems.\nShow more"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "evaluation_method",
+                        "field_value": "The final grade will be almost fully determined by the final exam, with a small grade component based on compilation of weekly laboratory and homework assignments."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "expected_work",
+                        "field_value": "Study class material; complete weekly homework sets (with solutions discussed in subsequent exercise sessions) and participate in Python applied labs."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_ind",
+                        "field_value": "Analyse III (concurrently), Probability theory (concurrently)"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Linear Algebra, Programming (Python), Analysis II"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "summary",
+                        "field_value": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, DFT, DTFT,\nCTFT, FFT, STFT; linear time invariant systems; filter design and adaptive filtering; sampling; interpolation\nand quantization; image processing, data communication and control systems."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "teaching_method",
+                        "field_value": "This course will weave together theoretical analysis in course lectures with practical hands-on labs using Python (via Jupyter notebooks) and more traditional exercise sessions."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Vectors and vector space, functions and sequences, infinite series"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "content",
+                        "field_value": "Signal processing is an engineering discipline that studies how to analyze, modify, and transmit information using mathematical models, practical devices, and numerical algorithms.\nThe class will cover the following topics:\n1. Basic discrete- and continuous-time signals and systems: signal classes and operations on signals, signals as vectors in a vector space\n2. Fourier Analysis: properties of Fourier transforms, DFT, DTFT, CTFT; practical Fourier analysis (FFT, STFT)\n3. LTI systems: properties and composition, convolution, application of Fourier analysis to LTI System, Laplace and z-Transforms.\n4. Analog vs Digital: sampling, interpolation and quantization.\n5. Applications: adaptive filtering; image processing, data communication and control systems.\nLire la suite"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "evaluation_method",
+                        "field_value": "The final grade will be almost fully determined by the final exam, with a small grade component based on compilation of weekly laboratory and homework assignments."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "expected_work",
+                        "field_value": "Study class material; complete weekly homework sets (with solutions discussed in subsequent exercise sessions) and participate in Python applied labs."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_ind",
+                        "field_value": "Analyse III (concurrently), Probability theory (concurrently)"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Linear Algebra, Programming (Python), Analysis II"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "summary",
+                        "field_value": "Signal processing theory and applications: discrete and continuous time signals; Fourier analysis, DFT, DTFT,\nCTFT, FFT, STFT; linear time invariant systems; filter design and adaptive filtering; sampling; interpolation\nand quantization; image processing, data communication and control systems."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "teaching_method",
+                        "field_value": "This course will weave together theoretical analysis in course lectures with practical hands-on labs using Python (via Jupyter notebooks) and more traditional exercise sessions."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "course_code",
+                        "field_value": "COM-202"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "exam_type",
+                        "field_value": "Summer session\nWritten"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "section_code",
+                        "field_value": "SC"
+                    }
+                ]
+            },
+            {
+                "type": "Course",
+                "id": "COM-303",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Signal processing for communications"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter d ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter d ..."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter design, adaptive filtering, sampling, interpolation and quantization; they are introduced to image processing and data communication system design. ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter design, adaptive filtering, sampling, interpolation and quantization; they are introduced to image processing and data communication system design. ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter design, adaptive filtering, sampling, interpolation and quantization; they are introduced to image processing and data communication system design. ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter design, adaptive filtering, sampling, interpolation and quantization; they are introduced to image processing and data communication system design. ..."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://edu.epfl.ch/coursebook/en/signal-processing-for-communications-COM-303"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://edu.epfl.ch/coursebook/fr/signal-processing-for-communications-COM-303"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "bibliography",
+                        "field_value": "Signal processing for Communications\n, EPFL Press, 2008,   by P. Prandoni and M. Vetterli. The book is available for sale in  printed form online  and in bookstores; in iBook format on the Apple  store and is also available as a free pdf file at\nhttp://www.sp4comm.org/"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Vectors and vector spaces, functions and sequences, infinite series"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "content",
+                        "field_value": "Basic discrete-time signals and systems: signal classes and  operations on discrete-time signals, signals as vectors in Hilbert space\nFourier Analysis: properties of Fourier transforms, DFT, DTFT; FFT.\nDiscrete-Time Systems: LTI filters, convolution and modulation; difference equations; FIR vs IIR, stability issues.\nZ-transform: properties and regions of convergence, applications to linear systems.\nFilter Design: FIR design methods, IIR design methods, filter structures.\nStochastic and Adaptive Signal Processing: random processes, spectral representation, Optimal Least Squares adaptive filters.\nInterpolation and Sampling: the continuous-time paradigm, interpolationthe sampling theorem, aliasing.\nQuantization: A/D and D/A converters.\nMulti-rate signal processing: upsampling and downsampling, oversampling.\nMulti-dimensional signals and processing: introduction to Image Processing.\nPractical applications: digital communication system design, ADSL."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "evaluation_method",
+                        "field_value": "Final exam fully determines final grade."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "expected_work",
+                        "field_value": "Complete weekly homework, explore and modify Jupyter Notebook examples"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "handouts",
+                        "field_value": "Signal processing for Communications / Prandoni & Vetterli"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "keywords",
+                        "field_value": "Signal processing, discrete-time, continuous-time, filter, filter  design, sampling, aliasing, DSP, Fourier transform, FFT, modem, ADSL"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "note",
+                        "field_value": "Lecture slides available for download at the beginning of the semester.\nA complete online DSP MOOC is available on Coursera."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "prepares_for_courses",
+                        "field_value": "Adaptive signal processing, image processing"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_ind",
+                        "field_value": "Signals and systems\nBasic probability theory"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Calculus\nLinear Algebra"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "summary",
+                        "field_value": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter design, adaptive filtering, sampling, interpolation and quantization; they are introduced to image processing and data communication system design."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "teaching_method",
+                        "field_value": "Course with exercises sessions and coding examples and exercises in Python (Jupyter Notebooks)"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "bibliography",
+                        "field_value": "Signal processing for Communications\n, EPFL Press, 2008,   by P. Prandoni and M. Vetterli. The book is available for sale in  printed form online  and in bookstores; in iBook format on the Apple  store and is also available as a free pdf file at\nhttp://www.sp4comm.org/"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Vectors and vector spaces, functions and sequences, infinite series"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "content",
+                        "field_value": "Basic discrete-time signals and systems: signal classes and  operations on discrete-time signals, signals as vectors in Hilbert space\nFourier Analysis: properties of Fourier transforms, DFT, DTFT; FFT.\nDiscrete-Time Systems: LTI filters, convolution and modulation; difference equations; FIR vs IIR, stability issues.\nZ-transform: properties and regions of convergence, applications to linear systems.\nFilter Design: FIR design methods, IIR design methods, filter structures.\nStochastic and Adaptive Signal Processing: random processes, spectral representation, Optimal Least Squares adaptive filters.\nInterpolation and Sampling: the continuous-time paradigm, interpolationthe sampling theorem, aliasing.\nQuantization: A/D and D/A converters.\nMulti-rate signal processing: upsampling and downsampling, oversampling.\nMulti-dimensional signals and processing: introduction to Image Processing.\nPractical applications: digital communication system design, ADSL."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "evaluation_method",
+                        "field_value": "Final exam fully determines final grade."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "expected_work",
+                        "field_value": "Complete weekly homework, explore and modify Jupyter Notebook examples"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "handouts",
+                        "field_value": "Signal processing for Communications / Prandoni & Vetterli"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "keywords",
+                        "field_value": "Signal processing, discrete-time, continuous-time, filter, filter  design, sampling, aliasing, DSP, Fourier transform, FFT, modem, ADSL"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "note",
+                        "field_value": "Lecture slides available for download at the beginning of the semester.\nA complete online DSP MOOC is available on Coursera."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "prepares_for_courses",
+                        "field_value": "Adaptive signal processing, image processing"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_ind",
+                        "field_value": "Signals and systems\nBasic probability theory"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Calculus\nLinear Algebra"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "summary",
+                        "field_value": "Students learn digital signal processing theory, including discrete time, Fourier analysis, filter design, adaptive filtering, sampling, interpolation and quantization; they are introduced to image processing and data communication system design."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "teaching_method",
+                        "field_value": "Course with exercises sessions and coding examples and exercises in Python (Jupyter Notebooks)"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "course_code",
+                        "field_value": "COM-303"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "exam_type",
+                        "field_value": "Summer session\nWritten"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "section_code",
+                        "field_value": "SC"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "notes",
+                        "field_value": "Lecture slides available for download at the beginning of the semester.\nA complete online DSP MOOC is available on Coursera."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "notes",
+                        "field_value": "Lecture slides available for download at the beginning of the semester.\nA complete online DSP MOOC is available on Coursera."
+                    }
+                ]
+            },
+            {
+                "type": "Course",
+                "id": "COM-418",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Computers and music"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Computers and music"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital dev ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital dev ..."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital devices has completely revolutionized the world of music in the last 40 years, both from the point of view of production and recording, and from the point of v ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital devices has completely revolutionized the world of music in the last 40 years, both from the point of view of production and recording, and from the point of v ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital devices has completely revolutionized the world of music in the last 40 years, both from the point of view of production and recording, and from the point of view of listening and distribution. ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital devices has completely revolutionized the world of music in the last 40 years, both from the point of view of production and recording, and from the point of view of listening and distribution. ..."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://edu.epfl.ch/coursebook/en/computers-and-music-COM-418"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://edu.epfl.ch/coursebook/fr/computers-and-music-COM-418"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "content",
+                        "field_value": "review of digital signal processing: discrete-time signals, spectral analysis, digital filters\naudio measurement standards; A/D and D/A converters; oversampling; sigma-delta\naudio compression; the MP3 standard\ndigital synthesizers: oscillators, FM synthesis, samplers\nfundamentals of time-frequency analysis; pitch shifting; time stretching; vocoder\nmusic production; equalization, compression, reverb\nnotions of balancing and mastering; the MIDI and VST standards\nnonlinear system modeling\ndeep learning in audio processing\nShow more"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "evaluation_method",
+                        "field_value": "Mini-projects and/or final exam"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "expected_work",
+                        "field_value": "Attending lectures\nWriting code samples\nSolving exercises\nRead technical papers"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "keywords",
+                        "field_value": "DSP, computer music, digital audio"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "others",
+                        "field_value": "Pas donné en 2025-26"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_ind",
+                        "field_value": "Signal processing, Python, C++"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "summary",
+                        "field_value": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital devices has completely revolutionized the world of music in the last 40 years, both from the point of view of production and recording, and from the point of view of listening and distribution."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "teaching_method",
+                        "field_value": "lectures"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "content",
+                        "field_value": "review of digital signal processing: discrete-time signals, spectral analysis, digital filters\naudio measurement standards; A/D and D/A converters; oversampling; sigma-delta\naudio compression; the MP3 standard\ndigital synthesizers: oscillators, FM synthesis, samplers\nfundamentals of time-frequency analysis; pitch shifting; time stretching; vocoder\nmusic production; equalization, compression, reverb\nnotions of balancing and mastering; the MIDI and VST standards\nnonlinear system modeling\ndeep learning in audio processing\nLire la suite"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "evaluation_method",
+                        "field_value": "Mini-projects and/or final exam"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "expected_work",
+                        "field_value": "Attending lectures\nWriting code samples\nSolving exercises\nRead technical papers"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "keywords",
+                        "field_value": "DSP, computer music, digital audio"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "others",
+                        "field_value": "Pas donné en 2025-26"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_ind",
+                        "field_value": "Signal processing, Python, C++"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "summary",
+                        "field_value": "In this class we will explore some of the fundamental ways in which the pervasiveness of digital devices has completely revolutionized the world of music in the last 40 years, both from the point of view of production and recording, and from the point of view of listening and distribution."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "teaching_method",
+                        "field_value": "lectures"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "course_code",
+                        "field_value": "COM-418"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "exam_type",
+                        "field_value": "Summer session\nOral"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "section_code",
+                        "field_value": "SC"
+                    }
+                ]
+            },
+            {
+                "type": "Course",
+                "id": "COM-500",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Statistical signal and data processing through applications"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Statistical signal and data processing through applications"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochast ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochast ..."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochastic modeling, spectral analysis, estimation and prediction, classification, and adaptive filtering, with an application oriented approach and hands-on numeri ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochastic modeling, spectral analysis, estimation and prediction, classification, and adaptive filtering, with an application oriented approach and hands-on numeri ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochastic modeling, spectral analysis, estimation and prediction, classification, and adaptive filtering, with an application oriented approach and hands-on numerical exercises. ..."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochastic modeling, spectral analysis, estimation and prediction, classification, and adaptive filtering, with an application oriented approach and hands-on numerical exercises. ..."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://edu.epfl.ch/coursebook/en/statistical-signal-and-data-processing-through-applications-COM-500"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://edu.epfl.ch/coursebook/fr/statistical-signal-and-data-processing-through-applications-COM-500"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "bibliography",
+                        "field_value": "Background texts\nP. Prandoni,\nSignal Processing for Communications\n, EPFL Press;\nP. Bremaud,\nAn Introduction to Probabilistic Modeling\n, Springer-Verlag, 1988;\nA.V. Oppenheim, R.W. Schafer,\nDiscrete Time Signal Processing\n, Prentice Hall, 1989;\nB. Porat,\nA Course in Digital Signal Processing\n, John Wiley & Sons,1997;\nC.T. Chen,\nDigital Signal Processing\n, Oxford University Press;\nD. P. Bertsekas, J. N. Tsitsiklis,\nIntroduction to Probability,\nAthena Scientific, 2002 (excellent book on probability).\nMore advanced texts\nL. Debnath and P. Mikusinski,\nIntroduction to Hilbert Spaces with Applications\n, Springer-Verlag, 1988;\nA.N. Shiryaev,\nProbability\n, Springer-Verlag, New York, 2nd edition, 1996;\nS.M. Ross,\nIntroduction to Probability Models\n, Third edition, 1985;\nP. Bremaud, Markov Chains, Springer-Verlag, 1999;\nP. Bremaud, Mathematical Principles of Signal Processing, Springer-Verlag, 2002;\nS.M. Ross,\nStochastic Processes\n, John Wiley, 1983;\nB. Porat,\nDigital Processing of Random Signals\n, Prentice Hall,1994;\nP.M. Clarkson,\nOptimal and Adaptive Signal Processing\n, CRC Press, 1993;\nP. Stoïca and R. Moses,\nIntroduction to Spectral Analysis\n, Prentice-Hall, 1997."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Calculus, Algebra, Fourier Transform, Z Transform, Probability, Linear Systems, Filters."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "content",
+                        "field_value": "1. Fundamentals of Statistical Signal and Data Processing:\nSignals and systems from the deterministic and the stochastic point of view; Processing and analysing signals and systems with a mathematical computing language.\n2. Models, Methods, and Algorithms:\nParametric and non-parametric signal models (wide sense stationary, Gaussian, Markovian, auto-regressive and white noise signals); Linear prediction and estimation (orthogonality principle and Wiener filter); Maximum likehood estimation and Bayesian a priori; Maximum a posteriori estimation.\n3. Statistical Signal and Data Processing Tools for Spread Spectrum Wireless Transmission:\nCoding and decoding of information using position of pulses (annihilating filter approach); Spectrum estimation (periodogram, line spectrum methods, smooth spectrum methods, harmonic signals).\n4. Statistical Signal and Data Processing Tools for the Analysis of Neurobiological Recordings:\nPoisson process for neurobiological spikes; Characterization of multi-state neurons (Markovian models and maximum likelihood estimation); Classifying firing rates of neuron (Mixture models and the EM algorithm); Hidden Markov models; Spike sorting and Principal Component Analysis.\n5. Statistical Signal and Data Processing Tools for Echo Cancellation:\nAdaptive filtering (least mean squares and recursive least squares); Adaptive echo cancellation and denoising.\nShow more"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "evaluation_method",
+                        "field_value": "20% midterm\n20% mini project\n60% Final exam"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "expected_work",
+                        "field_value": "Attendance at lectures, completing exercises, testing presented methods with a mathematical computing language (Matlab, Python, or similar)."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "handouts",
+                        "field_value": "Probability / Shiryaev\nStochastics Processes / Ross\nDiscrete Time Signal Processing / Oppenheim\nIntroduction to Spectral Analysis / Stoïca\nDigital Processing of Random Signals / Porat\nIntroduction to Probability / Bertsekas\nIntroduction to Hilbert Spaces with Applications / Debnath\nSignal Processins for Communications / Prandoni\nAn Introduction to Probabilistic Modeling / Bremaud\nA Course in Digital Signal Processing / Porat\nOptimal and Adaptive Signal Processing / Clarkson\nDigital Signal Processing / Chen\nIntroduction to Probability Models / Ross"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "keywords",
+                        "field_value": "Statistical tools, spectral analysis, prediction, estimation, annihilating filter, mixture models, principal component analysis, stochastic processes, hidden Markov models, adaptive filtering, mathematical computing language (Matlab, Python, or similar)."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "note",
+                        "field_value": "Slides handouts;\nCollection of exercises."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Stochastic Models in Communications (COM-300), Signal Processing for Communications (COM-303) / Signal Processing (COM-202)."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "summary",
+                        "field_value": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochastic modeling, spectral analysis, estimation and prediction, classification, and adaptive filtering, with an application oriented approach and hands-on numerical exercises."
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "teaching_method",
+                        "field_value": "Ex cathedra with exercises and numerical examples."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "bibliography",
+                        "field_value": "Background texts\nP. Prandoni,\nSignal Processing for Communications\n, EPFL Press;\nP. Bremaud,\nAn Introduction to Probabilistic Modeling\n, Springer-Verlag, 1988;\nA.V. Oppenheim, R.W. Schafer,\nDiscrete Time Signal Processing\n, Prentice Hall, 1989;\nB. Porat,\nA Course in Digital Signal Processing\n, John Wiley & Sons,1997;\nC.T. Chen,\nDigital Signal Processing\n, Oxford University Press;\nD. P. Bertsekas, J. N. Tsitsiklis,\nIntroduction to Probability,\nAthena Scientific, 2002 (excellent book on probability).\nMore advanced texts\nL. Debnath and P. Mikusinski,\nIntroduction to Hilbert Spaces with Applications\n, Springer-Verlag, 1988;\nA.N. Shiryaev,\nProbability\n, Springer-Verlag, New York, 2nd edition, 1996;\nS.M. Ross,\nIntroduction to Probability Models\n, Third edition, 1985;\nP. Bremaud, Markov Chains, Springer-Verlag, 1999;\nP. Bremaud, Mathematical Principles of Signal Processing, Springer-Verlag, 2002;\nS.M. Ross,\nStochastic Processes\n, John Wiley, 1983;\nB. Porat,\nDigital Processing of Random Signals\n, Prentice Hall,1994;\nP.M. Clarkson,\nOptimal and Adaptive Signal Processing\n, CRC Press, 1993;\nP. Stoïca and R. Moses,\nIntroduction to Spectral Analysis\n, Prentice-Hall, 1997."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "concepts_to_master",
+                        "field_value": "Calculus, Algebra, Fourier Transform, Z Transform, Probability, Linear Systems, Filters."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "content",
+                        "field_value": "1. Fundamentals of Statistical Signal and Data Processing:\nSignals and systems from the deterministic and the stochastic point of view; Processing and analysing signals and systems with a mathematical computing language.\n2. Models, Methods, and Algorithms:\nParametric and non-parametric signal models (wide sense stationary, Gaussian, Markovian, auto-regressive and white noise signals); Linear prediction and estimation (orthogonality principle and Wiener filter); Maximum likehood estimation and Bayesian a priori; Maximum a posteriori estimation.\n3. Statistical Signal and Data Processing Tools for Spread Spectrum Wireless Transmission:\nCoding and decoding of information using position of pulses (annihilating filter approach); Spectrum estimation (periodogram, line spectrum methods, smooth spectrum methods, harmonic signals).\n4. Statistical Signal and Data Processing Tools for the Analysis of Neurobiological Recordings:\nPoisson process for neurobiological spikes; Characterization of multi-state neurons (Markovian models and maximum likelihood estimation); Classifying firing rates of neuron (Mixture models and the EM algorithm); Hidden Markov models; Spike sorting and Principal Component Analysis.\n5. Statistical Signal and Data Processing Tools for Echo Cancellation:\nAdaptive filtering (least mean squares and recursive least squares); Adaptive echo cancellation and denoising.\nLire la suite"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "evaluation_method",
+                        "field_value": "20% midterm\n20% mini project\n60% Final exam"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "expected_work",
+                        "field_value": "Attendance at lectures, completing exercises, testing presented methods with a mathematical computing language (Matlab, Python, or similar)."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "handouts",
+                        "field_value": "Probability / Shiryaev\nStochastics Processes / Ross\nDiscrete Time Signal Processing / Oppenheim\nIntroduction to Spectral Analysis / Stoïca\nDigital Processing of Random Signals / Porat\nIntroduction to Probability / Bertsekas\nIntroduction to Hilbert Spaces with Applications / Debnath\nSignal Processins for Communications / Prandoni\nAn Introduction to Probabilistic Modeling / Bremaud\nA Course in Digital Signal Processing / Porat\nOptimal and Adaptive Signal Processing / Clarkson\nDigital Signal Processing / Chen\nIntroduction to Probability Models / Ross"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "keywords",
+                        "field_value": "Statistical tools, spectral analysis, prediction, estimation, annihilating filter, mixture models, principal component analysis, stochastic processes, hidden Markov models, adaptive filtering, mathematical computing language (Matlab, Python, or similar)."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "note",
+                        "field_value": "Slides handouts;\nCollection of exercises."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "required_courses_obl",
+                        "field_value": "Stochastic Models in Communications (COM-300), Signal Processing for Communications (COM-303) / Signal Processing (COM-202)."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "summary",
+                        "field_value": "Building up on the basic concepts of sampling, filtering and Fourier transforms, we address stochastic modeling, spectral analysis, estimation and prediction, classification, and adaptive filtering, with an application oriented approach and hands-on numerical exercises."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "teaching_method",
+                        "field_value": "Ex cathedra with exercises and numerical examples."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "course_code",
+                        "field_value": "COM-500"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "exam_type",
+                        "field_value": "Summer session\nWritten"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "section_code",
+                        "field_value": "SC"
+                    },
+                    {
+                        "field_language": "en",
+                        "field_name": "notes",
+                        "field_value": "Slides handouts;\nCollection of exercises."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "notes",
+                        "field_value": "Slides handouts;\nCollection of exercises."
+                    }
+                ]
+            },
+            {
+                "type": "Person",
+                "id": "106643",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Jean-Marc Vesin"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Jean-Marc Vesin"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Employee, working on cardiology, neuroscience, statistical inference"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Employee, working on cardiology, neuroscience, statistical inference"
+                        }
+                    ]
+                },
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "gender",
+                        "field_value": "Male"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "email",
+                        "field_value": "jean-marc.vesin@epfl.ch"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_first",
+                        "field_value": "Jean-Marc"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_last",
+                        "field_value": "Vesin"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "sciper",
+                        "field_value": "106643"
+                    }
+                ]
+            },
+            {
+                "type": "Person",
+                "id": "107537",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Martin Vetterli"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Martin Vetterli"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Professor, working on signal processing, analysis, theory of computation"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Professor, working on signal processing, analysis, theory of computation"
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Martin Vetterli was appointed president of EPFL by the Federal Council following a selection process conducted by the ETH Board, which unanimously nominated him.\n\n\nProfessor Vetterli was born on 4 October 1957 in Solothurn and received his elementary and secondary education in Neuchâtel Canton. He earned a Bachelor’s degree in electrical engineering from ETH Zurich (ETHZ) in 1981, a Master’s of Science degree from Stanford University in 1982, and a PhD from EPFL in 1986. Professor Vetterli taught at Columbia University as an assistant and then associate professor. He was subsequently named full professor in the Department of Electrical Engineering and Computer Sciences at the University of California at Berkeley before returning to EPFL as a full professor at the age of 38. He has also taught at ETHZ and Stanford University.\n\n\nProfessor Vetterli has earned numerous national and international awards for his research in electrical engineering, computer science and applied mathematics, including the National Latsis Prize in 1996. He is a fellow of both the Association for Computing Machinery and the Institute of Electrical and Electronics Engineers and a member the US National Academy of Engineering. He has published over 170 articles and three reference works.\n\n\nProfessor Vetterli’s work on the theory of wavelets, which are used in signal processing, is considered to be of major importance by his peers, and his areas of expertise, including image and video compression and self-organized communication systems, are central to the development of new information technologies. As the founding director of the National Centre of Competence in Research on Mobile Information and Communication Systems, Professor Vetterli is a staunch advocate of transdisciplinary research.\n\n\nProfessor Vetterli knows EPFL inside and out. An EPFL graduate himself, he began been teaching at the school in 1995, was vice president for International Affairs and then Institutional Affairs from 2004 to 2011, and served as dean of the School of Computer and Communication Sciences in 2011 and 2012. In addition to his role as president of the National Research Council of the Swiss National Science Foundation, a position he held from 2013 to 2016, he heads the EPFL’s Audiovisual Communications Laboratory (LCAV) since 1995.\n\n\nProfessor Vetterli has supported more than 60 students in Switzerland and the United States in their doctoral work and makes a point of following their highly successful careers, whether it is in the academic or business world.\n\n\nHe is the author of some 50 patents, some of which were the basis for start-ups coming out of his lab, such as Dartfish and Illusonic, while others were sold (e.g. Qualcomm) as successful examples of technology transfer. He actively encourages young researchers to market the results of their work."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Martin Vetterli a été nommé Président de l'École polytechnique fédérale de Lausanne (EPFL) par le Conseil fédéral à l’issue d’un processus de sélection mené par le Conseil des EPF - qui l'a désigné à l'unanimité.\n\n\nNé à Soleure le 4 octobre 1957, Martin Vetterli a suivi sa scolarité et effectué sa maturité dans le canton de Neuchâtel. Ingénieur en génie électrique de l’ETHZ (1981), diplômé de l’Université de Stanford (1982) et docteur en sciences de l’EPFL (1986), Martin Vetterli a enseigné à Columbia University comme professeur assistant puis associé. Il a ensuite été nommé professeur ordinaire au département du génie électrique et des sciences de l’informatique de l’Université de Berkeley, avant de revenir à l’EPFL en tant que professeur ordinaire à l’âge de 38 ans. Il a également enseigné à l’ETHZ et à l’Université de Stanford.\n\n\nSes activités de recherche centrées sur le génie électrique, les sciences de l’informatique et les mathématiques appliquées lui ont valu de nombreuses récompenses nationales et internationales, parmi lesquelles le Prix Latsis National, en 1996. Il est Fellow de l’Association for Computing Machinery et de l'Institute of Electrical and Electronics Engineers et membre de la National Academy of Engineering (NAE) notamment. Martin Vetterli a publié plus de 170 articles et trois ouvrages de référence.\n\n\nSes travaux sur la théorie des ondelettes, utilisées dans le traitement du signal, sont reconnus par ses pairs comme étant d’une portée majeure, et ses domaines de prédilection, comme la compression des images et vidéos ou les systèmes de communication auto-organisés, sont au cœur du développement des nouvelles technologies de l’information. En tant que directeur fondateur du Pôle de Recherche National Systèmes mobiles d’information et de communication, le professeur Vetterli est un fervent défenseur de la recherche transdisciplinaire.\n\n\nMartin Vetterli connaît l’EPFL de l’intérieur. Alumnus de l’Ecole, il y enseigne depuis 1995, a été le vice-président chargé des relations internationales puis des affaires institutionnelles de l’Ecole entre 2004 à 2011, et doyen de la Faculté Informatique et Communication en 2011 et 2012. En parallèle à sa fonction de président du Conseil national de la recherche du Fonds national suisse qu’il a occupé de 2013 à 2016, il dirige le Laboratoire de Communications Audiovisuelles (LCAV) de l’EPFL depuis 1995.\n\n\nMartin Vetterli a accompagné plus de 60 doctorants en Suisse et aux Etats-Unis pendant leur thèse et se fait un point d’honneur de suivre l’évolution de leur parcours au plus haut niveau, académique ou dans le monde entrepreneurial.\n\n\nL’ingénieur est l’auteur d’une cinquantaine de brevets qui ont conduit à la création de plusieurs startups issues de son laboratoire, comme Dartfish ou Illusonic, ainsi qu’à des transferts de technologie par le biais de vente de brevets (Qualcomm). Il encourage activement les jeunes chercheurs à poursuivre ces efforts et commercialiser les résultats de leurs travaux."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Martin Vetterli was appointed president of EPFL by the Federal Council following a selection process conducted by the ETH Board, which unanimously nominated him.\n\n\nProfessor Vetterli was born on 4 October 1957 in Solothurn and received his elementary and secondary education in Neuchâtel Canton. He earned a Bachelor’s degree in electrical engineering from ETH Zurich (ETHZ) in 1981, a Master’s of Science degree from Stanford University in 1982, and a PhD from EPFL in 1986. Professor Vetterli taught at Columbia University as an assistant and then associate professor. He was subsequently named full professor in the Department of Electrical Engineering and Computer Sciences at the University of California at Berkeley before returning to EPFL as a full professor at the age of 38. He has also taught at ETHZ and Stanford University.\n\n\nProfessor Vetterli has earned numerous national and international awards for his research in electrical engineering, computer science and applied mathematics, including the National Latsis Prize in 1996. He is a fellow of both the Association for Computing Machinery and the Institute of Electrical and Electronics Engineers and a member the US National Academy of Engineering. He has published over 170 articles and three reference works.\n\n\nProfessor Vetterli’s work on the theory of wavelets, which are used in signal processing, is considered to be of major importance by his peers, and his areas of expertise, including image and video compression and self-organized communication systems, are central to the development of new information technologies. As the founding director of the National Centre of Competence in Research on Mobile Information and Communication Systems, Professor Vetterli is a staunch advocate of transdisciplinary research.\n\n\nProfessor Vetterli knows EPFL inside and out. An EPFL graduate himself, he began been teaching at the school in 1995, was vice president for International Affairs and then Institutional Affairs from 2004 to 2011, and served as dean of the School of Computer and Communication Sciences in 2011 and 2012. In addition to his role as president of the National Research Council of the Swiss National Science Foundation, a position he held from 2013 to 2016, he heads the EPFL’s Audiovisual Communications Laboratory (LCAV) since 1995.\n\n\nProfessor Vetterli has supported more than 60 students in Switzerland and the United States in their doctoral work and makes a point of following their highly successful careers, whether it is in the academic or business world.\n\n\nHe is the author of some 50 patents, some of which were the basis for start-ups coming out of his lab, such as Dartfish and Illusonic, while others were sold (e.g. Qualcomm) as successful examples of technology transfer. He actively encourages young researchers to market the results of their work."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Martin Vetterli a été nommé Président de l'École polytechnique fédérale de Lausanne (EPFL) par le Conseil fédéral à l’issue d’un processus de sélection mené par le Conseil des EPF - qui l'a désigné à l'unanimité.\n\n\nNé à Soleure le 4 octobre 1957, Martin Vetterli a suivi sa scolarité et effectué sa maturité dans le canton de Neuchâtel. Ingénieur en génie électrique de l’ETHZ (1981), diplômé de l’Université de Stanford (1982) et docteur en sciences de l’EPFL (1986), Martin Vetterli a enseigné à Columbia University comme professeur assistant puis associé. Il a ensuite été nommé professeur ordinaire au département du génie électrique et des sciences de l’informatique de l’Université de Berkeley, avant de revenir à l’EPFL en tant que professeur ordinaire à l’âge de 38 ans. Il a également enseigné à l’ETHZ et à l’Université de Stanford.\n\n\nSes activités de recherche centrées sur le génie électrique, les sciences de l’informatique et les mathématiques appliquées lui ont valu de nombreuses récompenses nationales et internationales, parmi lesquelles le Prix Latsis National, en 1996. Il est Fellow de l’Association for Computing Machinery et de l'Institute of Electrical and Electronics Engineers et membre de la National Academy of Engineering (NAE) notamment. Martin Vetterli a publié plus de 170 articles et trois ouvrages de référence.\n\n\nSes travaux sur la théorie des ondelettes, utilisées dans le traitement du signal, sont reconnus par ses pairs comme étant d’une portée majeure, et ses domaines de prédilection, comme la compression des images et vidéos ou les systèmes de communication auto-organisés, sont au cœur du développement des nouvelles technologies de l’information. En tant que directeur fondateur du Pôle de Recherche National Systèmes mobiles d’information et de communication, le professeur Vetterli est un fervent défenseur de la recherche transdisciplinaire.\n\n\nMartin Vetterli connaît l’EPFL de l’intérieur. Alumnus de l’Ecole, il y enseigne depuis 1995, a été le vice-président chargé des relations internationales puis des affaires institutionnelles de l’Ecole entre 2004 à 2011, et doyen de la Faculté Informatique et Communication en 2011 et 2012. En parallèle à sa fonction de président du Conseil national de la recherche du Fonds national suisse qu’il a occupé de 2013 à 2016, il dirige le Laboratoire de Communications Audiovisuelles (LCAV) de l’EPFL depuis 1995.\n\n\nMartin Vetterli a accompagné plus de 60 doctorants en Suisse et aux Etats-Unis pendant leur thèse et se fait un point d’honneur de suivre l’évolution de leur parcours au plus haut niveau, académique ou dans le monde entrepreneurial.\n\n\nL’ingénieur est l’auteur d’une cinquantaine de brevets qui ont conduit à la création de plusieurs startups issues de son laboratoire, comme Dartfish ou Illusonic, ainsi qu’à des transferts de technologie par le biais de vente de brevets (Qualcomm). Il encourage activement les jeunes chercheurs à poursuivre ces efforts et commercialiser les résultats de leurs travaux."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://people.epfl.ch/martin.vetterli"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://people.epfl.ch/martin.vetterli?lang=fr"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "biography",
+                        "field_value": "Martin Vetterli was appointed president of EPFL by the Federal Council following a selection process conducted by the ETH Board, which unanimously nominated him.\n\n\nProfessor Vetterli was born on 4 October 1957 in Solothurn and received his elementary and secondary education in Neuchâtel Canton. He earned a Bachelor’s degree in electrical engineering from ETH Zurich (ETHZ) in 1981, a Master’s of Science degree from Stanford University in 1982, and a PhD from EPFL in 1986. Professor Vetterli taught at Columbia University as an assistant and then associate professor. He was subsequently named full professor in the Department of Electrical Engineering and Computer Sciences at the University of California at Berkeley before returning to EPFL as a full professor at the age of 38. He has also taught at ETHZ and Stanford University.\n\n\nProfessor Vetterli has earned numerous national and international awards for his research in electrical engineering, computer science and applied mathematics, including the National Latsis Prize in 1996. He is a fellow of both the Association for Computing Machinery and the Institute of Electrical and Electronics Engineers and a member the US National Academy of Engineering. He has published over 170 articles and three reference works.\n\n\nProfessor Vetterli’s work on the theory of wavelets, which are used in signal processing, is considered to be of major importance by his peers, and his areas of expertise, including image and video compression and self-organized communication systems, are central to the development of new information technologies. As the founding director of the National Centre of Competence in Research on Mobile Information and Communication Systems, Professor Vetterli is a staunch advocate of transdisciplinary research.\n\n\nProfessor Vetterli knows EPFL inside and out. An EPFL graduate himself, he began been teaching at the school in 1995, was vice president for International Affairs and then Institutional Affairs from 2004 to 2011, and served as dean of the School of Computer and Communication Sciences in 2011 and 2012. In addition to his role as president of the National Research Council of the Swiss National Science Foundation, a position he held from 2013 to 2016, he heads the EPFL’s Audiovisual Communications Laboratory (LCAV) since 1995.\n\n\nProfessor Vetterli has supported more than 60 students in Switzerland and the United States in their doctoral work and makes a point of following their highly successful careers, whether it is in the academic or business world.\n\n\nHe is the author of some 50 patents, some of which were the basis for start-ups coming out of his lab, such as Dartfish and Illusonic, while others were sold (e.g. Qualcomm) as successful examples of technology transfer. He actively encourages young researchers to market the results of their work."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "gender",
+                        "field_value": "Male"
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "biography",
+                        "field_value": "Martin Vetterli a été nommé Président de l'École polytechnique fédérale de Lausanne (EPFL) par le Conseil fédéral à l’issue d’un processus de sélection mené par le Conseil des EPF - qui l'a désigné à l'unanimité.\n\n\nNé à Soleure le 4 octobre 1957, Martin Vetterli a suivi sa scolarité et effectué sa maturité dans le canton de Neuchâtel. Ingénieur en génie électrique de l’ETHZ (1981), diplômé de l’Université de Stanford (1982) et docteur en sciences de l’EPFL (1986), Martin Vetterli a enseigné à Columbia University comme professeur assistant puis associé. Il a ensuite été nommé professeur ordinaire au département du génie électrique et des sciences de l’informatique de l’Université de Berkeley, avant de revenir à l’EPFL en tant que professeur ordinaire à l’âge de 38 ans. Il a également enseigné à l’ETHZ et à l’Université de Stanford.\n\n\nSes activités de recherche centrées sur le génie électrique, les sciences de l’informatique et les mathématiques appliquées lui ont valu de nombreuses récompenses nationales et internationales, parmi lesquelles le Prix Latsis National, en 1996. Il est Fellow de l’Association for Computing Machinery et de l'Institute of Electrical and Electronics Engineers et membre de la National Academy of Engineering (NAE) notamment. Martin Vetterli a publié plus de 170 articles et trois ouvrages de référence.\n\n\nSes travaux sur la théorie des ondelettes, utilisées dans le traitement du signal, sont reconnus par ses pairs comme étant d’une portée majeure, et ses domaines de prédilection, comme la compression des images et vidéos ou les systèmes de communication auto-organisés, sont au cœur du développement des nouvelles technologies de l’information. En tant que directeur fondateur du Pôle de Recherche National Systèmes mobiles d’information et de communication, le professeur Vetterli est un fervent défenseur de la recherche transdisciplinaire.\n\n\nMartin Vetterli connaît l’EPFL de l’intérieur. Alumnus de l’Ecole, il y enseigne depuis 1995, a été le vice-président chargé des relations internationales puis des affaires institutionnelles de l’Ecole entre 2004 à 2011, et doyen de la Faculté Informatique et Communication en 2011 et 2012. En parallèle à sa fonction de président du Conseil national de la recherche du Fonds national suisse qu’il a occupé de 2013 à 2016, il dirige le Laboratoire de Communications Audiovisuelles (LCAV) de l’EPFL depuis 1995.\n\n\nMartin Vetterli a accompagné plus de 60 doctorants en Suisse et aux Etats-Unis pendant leur thèse et se fait un point d’honneur de suivre l’évolution de leur parcours au plus haut niveau, académique ou dans le monde entrepreneurial.\n\n\nL’ingénieur est l’auteur d’une cinquantaine de brevets qui ont conduit à la création de plusieurs startups issues de son laboratoire, comme Dartfish ou Illusonic, ainsi qu’à des transferts de technologie par le biais de vente de brevets (Qualcomm). Il encourage activement les jeunes chercheurs à poursuivre ces efforts et commercialiser les résultats de leurs travaux."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "email",
+                        "field_value": "martin.vetterli@epfl.ch"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_first",
+                        "field_value": "Martin"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_last",
+                        "field_value": "Vetterli"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "sciper",
+                        "field_value": "107537"
+                    }
+                ]
+            },
+            {
+                "type": "Person",
+                "id": "110610",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Paolo Prandoni"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Paolo Prandoni"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://people.epfl.ch/paolo.prandoni"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://people.epfl.ch/paolo.prandoni?lang=fr"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "biography",
+                        "field_value": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "biography",
+                        "field_value": "I appeared about at the same time as the White Album and, upon being born, I immediately took the one and only sabbatical of my life, which lasted a leisurely four years. I then proceeded to be pre-schooled, schooled, middle- and high-schooled, college educated, and finally grad-schooled here at EPFL. As a kid I was fascinated by those expensive long-distance phone calls and so I specialized in communication systems. And then I did this and I did that. But do we really want to go into details? I thought so."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "email",
+                        "field_value": "paolo.prandoni@epfl.ch"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "gender",
+                        "field_value": "Male"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_first",
+                        "field_value": "Paolo"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_last",
+                        "field_value": "Prandoni"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "sciper",
+                        "field_value": "110610"
+                    }
+                ]
+            },
+            {
+                "type": "Person",
+                "id": "115227",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Michaël Unser"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Michaël Unser"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Professor, working on signal processing, analysis, data analysis"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Professor, working on signal processing, analysis, data analysis"
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://people.epfl.ch/michael.unser"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://people.epfl.ch/michael.unser?lang=fr"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "email",
+                        "field_value": "michael.unser@epfl.ch"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "gender",
+                        "field_value": "Male"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_first",
+                        "field_value": "Michaël"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_last",
+                        "field_value": "Unser"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "sciper",
+                        "field_value": "115227"
+                    }
+                ]
+            },
+            {
+                "type": "Person",
+                "id": "115533",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Daniel Sage"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Daniel Sage"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Researcher, working on anatomy, signal processing, artificial intelligence"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Researcher, working on anatomy, signal processing, artificial intelligence"
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://people.epfl.ch/daniel.sage"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://people.epfl.ch/daniel.sage?lang=fr"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "email",
+                        "field_value": "daniel.sage@epfl.ch"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "gender",
+                        "field_value": "Male"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_first",
+                        "field_value": "Daniel"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_last",
+                        "field_value": "Sage"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "sciper",
+                        "field_value": "115533"
+                    }
+                ]
+            },
+            {
+                "type": "Person",
+                "id": "120906",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Pierre Vandergheynst"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Pierre Vandergheynst"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Professor, working on signal processing, discrete mathematics, artificial intelligence"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Professor, working on signal processing, discrete mathematics, artificial intelligence"
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Pierre Vandergheynst received the M.S. degree in physics and the Ph.D. degree in mathematical physics from the Université catholique de Louvain, Louvain-la-Neuve, Belgium, in 1995 and 1998, respectively. From 1998 to 2001, he was a Postdoctoral Researcher with the Signal Processing Laboratory, Swiss Federal Institute of Technology (EPFL), Lausanne, Switzerland. He was Assistant Professor at EPFL (2002-2007), where he is now a Full Professor of Electrical Engineering and, by courtesy, of Computer and Communication Sciences. As of 2015, Prof. Vandergheynst serves as EPFL’s Vice-Provost for Education.  His research focuses on harmonic analysis, sparse approximations and mathematical data processing in general with applications covering signal, image and high dimensional data processing, computer vision, machine learning, data science and graph-based data processing.  He was co-Editor-in-Chief of Signal Processing (2002-2006), Associate Editor of the IEEE Transactions on Signal Processing (2007-2011), the flagship journal of the signal processing community and currently serves as Associate Editor of Computer Vision and Image Understanding and SIAM Imaging Sciences. He has been on the Technical Committee of various conferences, serves on the steering committee of the SPARS workshop and was co-General Chairman of the EUSIPCO 2008 conference.   Pierre Vandergheynst is the author or co-author of more than 70 journal papers, one monograph and several book chapters. He has received two IEEE best paper awards. Professor Vandergheynst is a laureate of the Apple 2007 ARTS award and of the 2009-2010 De Boelpaepe prize of the Royal Academy of Sciences of Belgium."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Pierre Vandergheynst received the M.S. degree in physics and the Ph.D. degree in mathematical physics from the Université catholique de Louvain, Louvain-la-Neuve, Belgium, in 1995 and 1998, respectively. From 1998 to 2001, he was a Postdoctoral Researcher with the Signal Processing Laboratory, Swiss Federal Institute of Technology (EPFL), Lausanne, Switzerland. He was Assistant Professor at EPFL (2002-2007), where he is now a Full Professor of Electrical Engineering and, by courtesy, of Computer and Communication Sciences. As of 2015, Prof. Vandergheynst serves as EPFL’s Vice-Provost for Education.  His research focuses on harmonic analysis, sparse approximations and mathematical data processing in general with applications covering signal, image and high dimensional data processing, computer vision, machine learning, data science and graph-based data processing.  He was co-Editor-in-Chief of Signal Processing (2002-2006), Associate Editor of the IEEE Transactions on Signal Processing (2007-2011), the flagship journal of the signal processing community and currently serves as Associate Editor of Computer Vision and Image Understanding and SIAM Imaging Sciences. He has been on the Technical Committee of various conferences, serves on the steering committee of the SPARS workshop and was co-General Chairman of the EUSIPCO 2008 conference.   Pierre Vandergheynst is the author or co-author of more than 70 journal papers, one monograph and several book chapters. He has received two IEEE best paper awards. Professor Vandergheynst is a laureate of the Apple 2007 ARTS award and of the 2009-2010 De Boelpaepe prize of the Royal Academy of Sciences of Belgium."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Pierre Vandergheynst received the M.S. degree in physics and the Ph.D. degree in mathematical physics from the Université catholique de Louvain, Louvain-la-Neuve, Belgium, in 1995 and 1998, respectively. From 1998 to 2001, he was a Postdoctoral Researcher with the Signal Processing Laboratory, Swiss Federal Institute of Technology (EPFL), Lausanne, Switzerland. He was Assistant Professor at EPFL (2002-2007), where he is now a Full Professor of Electrical Engineering and, by courtesy, of Computer and Communication Sciences. As of 2015, Prof. Vandergheynst serves as EPFL’s Vice-Provost for Education.  His research focuses on harmonic analysis, sparse approximations and mathematical data processing in general with applications covering signal, image and high dimensional data processing, computer vision, machine learning, data science and graph-based data processing.  He was co-Editor-in-Chief of Signal Processing (2002-2006), Associate Editor of the IEEE Transactions on Signal Processing (2007-2011), the flagship journal of the signal processing community and currently serves as Associate Editor of Computer Vision and Image Understanding and SIAM Imaging Sciences. He has been on the Technical Committee of various conferences, serves on the steering committee of the SPARS workshop and was co-General Chairman of the EUSIPCO 2008 conference.   Pierre Vandergheynst is the author or co-author of more than 70 journal papers, one monograph and several book chapters. He has received two IEEE best paper awards. Professor Vandergheynst is a laureate of the Apple 2007 ARTS award and of the 2009-2010 De Boelpaepe prize of the Royal Academy of Sciences of Belgium."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Pierre Vandergheynst received the M.S. degree in physics and the Ph.D. degree in mathematical physics from the Université catholique de Louvain, Louvain-la-Neuve, Belgium, in 1995 and 1998, respectively. From 1998 to 2001, he was a Postdoctoral Researcher with the Signal Processing Laboratory, Swiss Federal Institute of Technology (EPFL), Lausanne, Switzerland. He was Assistant Professor at EPFL (2002-2007), where he is now a Full Professor of Electrical Engineering and, by courtesy, of Computer and Communication Sciences. As of 2015, Prof. Vandergheynst serves as EPFL’s Vice-Provost for Education.  His research focuses on harmonic analysis, sparse approximations and mathematical data processing in general with applications covering signal, image and high dimensional data processing, computer vision, machine learning, data science and graph-based data processing.  He was co-Editor-in-Chief of Signal Processing (2002-2006), Associate Editor of the IEEE Transactions on Signal Processing (2007-2011), the flagship journal of the signal processing community and currently serves as Associate Editor of Computer Vision and Image Understanding and SIAM Imaging Sciences. He has been on the Technical Committee of various conferences, serves on the steering committee of the SPARS workshop and was co-General Chairman of the EUSIPCO 2008 conference.   Pierre Vandergheynst is the author or co-author of more than 70 journal papers, one monograph and several book chapters. He has received two IEEE best paper awards. Professor Vandergheynst is a laureate of the Apple 2007 ARTS award and of the 2009-2010 De Boelpaepe prize of the Royal Academy of Sciences of Belgium."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://people.epfl.ch/pierre.vandergheynst"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://people.epfl.ch/pierre.vandergheynst?lang=fr"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "en",
+                        "field_name": "biography",
+                        "field_value": "Pierre Vandergheynst received the M.S. degree in physics and the Ph.D. degree in mathematical physics from the Université catholique de Louvain, Louvain-la-Neuve, Belgium, in 1995 and 1998, respectively. From 1998 to 2001, he was a Postdoctoral Researcher with the Signal Processing Laboratory, Swiss Federal Institute of Technology (EPFL), Lausanne, Switzerland. He was Assistant Professor at EPFL (2002-2007), where he is now a Full Professor of Electrical Engineering and, by courtesy, of Computer and Communication Sciences. As of 2015, Prof. Vandergheynst serves as EPFL’s Vice-Provost for Education.  His research focuses on harmonic analysis, sparse approximations and mathematical data processing in general with applications covering signal, image and high dimensional data processing, computer vision, machine learning, data science and graph-based data processing.  He was co-Editor-in-Chief of Signal Processing (2002-2006), Associate Editor of the IEEE Transactions on Signal Processing (2007-2011), the flagship journal of the signal processing community and currently serves as Associate Editor of Computer Vision and Image Understanding and SIAM Imaging Sciences. He has been on the Technical Committee of various conferences, serves on the steering committee of the SPARS workshop and was co-General Chairman of the EUSIPCO 2008 conference.   Pierre Vandergheynst is the author or co-author of more than 70 journal papers, one monograph and several book chapters. He has received two IEEE best paper awards. Professor Vandergheynst is a laureate of the Apple 2007 ARTS award and of the 2009-2010 De Boelpaepe prize of the Royal Academy of Sciences of Belgium."
+                    },
+                    {
+                        "field_language": "fr",
+                        "field_name": "biography",
+                        "field_value": "Pierre Vandergheynst received the M.S. degree in physics and the Ph.D. degree in mathematical physics from the Université catholique de Louvain, Louvain-la-Neuve, Belgium, in 1995 and 1998, respectively. From 1998 to 2001, he was a Postdoctoral Researcher with the Signal Processing Laboratory, Swiss Federal Institute of Technology (EPFL), Lausanne, Switzerland. He was Assistant Professor at EPFL (2002-2007), where he is now a Full Professor of Electrical Engineering and, by courtesy, of Computer and Communication Sciences. As of 2015, Prof. Vandergheynst serves as EPFL’s Vice-Provost for Education.  His research focuses on harmonic analysis, sparse approximations and mathematical data processing in general with applications covering signal, image and high dimensional data processing, computer vision, machine learning, data science and graph-based data processing.  He was co-Editor-in-Chief of Signal Processing (2002-2006), Associate Editor of the IEEE Transactions on Signal Processing (2007-2011), the flagship journal of the signal processing community and currently serves as Associate Editor of Computer Vision and Image Understanding and SIAM Imaging Sciences. He has been on the Technical Committee of various conferences, serves on the steering committee of the SPARS workshop and was co-General Chairman of the EUSIPCO 2008 conference.   Pierre Vandergheynst is the author or co-author of more than 70 journal papers, one monograph and several book chapters. He has received two IEEE best paper awards. Professor Vandergheynst is a laureate of the Apple 2007 ARTS award and of the 2009-2010 De Boelpaepe prize of the Royal Academy of Sciences of Belgium."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "email",
+                        "field_value": "pierre.vandergheynst@epfl.ch"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "gender",
+                        "field_value": "Male"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_first",
+                        "field_value": "Pierre"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "name_last",
+                        "field_value": "Vandergheynst"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "sciper",
+                        "field_value": "120906"
+                    }
+                ]
+            },
+            {
+                "type": "Publication",
+                "subtype": "Conference Papers",
+                "id": "007deab2-1573-42e3-8849-d395833a8b9a",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Generalizing Learning-Based Lensless Image Reconstruction to Mask Pattern Changes"
+                    }
+                ],
+                "description": {
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Previous work has not shown if learned components for lensless image reconstruction can generalize to physical modifications. In this work, we train a reconstruction approach on an open-sourced, multi-mask dataset, and demonstrate improved generalizability ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Previous work has not shown if learned components for lensless image reconstruction can generalize to physical modifications. In this work, we train a reconstruction approach on an open-sourced, multi-mask dataset, and demonstrate improved generalizability."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://infoscience.epfl.ch/entities/publication/007deab2-1573-42e3-8849-d395833a8b9a"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "abstract",
+                        "field_value": "Previous work has not shown if learned components for lensless image reconstruction can generalize to physical modifications. In this work, we train a reconstruction approach on an open-sourced, multi-mask dataset, and demonstrate improved generalizability."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_issued",
+                        "field_value": "2024-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_doi",
+                        "field_value": "10.1364/COSI.2024.CF1A.3"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in",
+                        "field_value": "Computational Optical Sensing and Imaging, COSI 2024 in Proceedings Optica Imaging Congress 2024, 3D, AOMS, COSI, ISA, pcAOP - Part of Optica Imaging Congress"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publisher",
+                        "field_value": "Optical Society of America"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "year",
+                        "field_value": "2024"
+                    }
+                ]
+            },
+            {
+                "type": "Publication",
+                "subtype": "Journal Articles",
+                "id": "01c8229a-28ac-4750-9b09-3dc5d1e99997",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Ultrawide Bandwidth Signals as Shot-Noise: a Unifying Approach"
+                    }
+                ],
+                "description": {
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "We present a shot noise based model for a large family of ultrawide bandwidth (UWB) signals. These include time-hopping and direct-sequence signaling with pulse position, interval, and amplitude modulations. Each specific signal is constructed by adding fe ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "We present a shot noise based model for a large family of ultrawide bandwidth (UWB) signals. These include time-hopping and direct-sequence signaling with pulse position, interval, and amplitude modulations. Each specific signal is constructed by adding features to a basic model in a modular, simple, and tractable way. Our work unifies the contributions scattered in the literature and provides a general approach that allows various extensions of previous works as well as new results. The exact power spectrum is then evaluated using shot noise spectral theory, which provides a simpler, systematic, and rigorous approach to the spectra evaluation of complicated UWB signals. The strength of our methodology is that different features of the signal model contribute clearly and separately to the resulting spectral expressions."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://infoscience.epfl.ch/entities/publication/01c8229a-28ac-4750-9b09-3dc5d1e99997"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "abstract",
+                        "field_value": "We present a shot noise based model for a large family of ultrawide bandwidth (UWB) signals. These include time-hopping and direct-sequence signaling with pulse position, interval, and amplitude modulations. Each specific signal is constructed by adding features to a basic model in a modular, simple, and tractable way. Our work unifies the contributions scattered in the literature and provides a general approach that allows various extensions of previous works as well as new results. The exact power spectrum is then evaluated using shot noise spectral theory, which provides a simpler, systematic, and rigorous approach to the spectra evaluation of complicated UWB signals. The strength of our methodology is that different features of the signal model contribute clearly and separately to the resulting spectral expressions."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_issued",
+                        "field_value": "2006-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "download_url",
+                        "field_value": "https://infoscience.epfl.ch/bitstreams/18286ca4-d5db-465b-82cc-adf5ca12b830/download"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_doi",
+                        "field_value": "10.1109/JSAC.2005.863881"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_issn",
+                        "field_value": "0733-8716"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publication_id_v1",
+                        "field_value": "51034"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in",
+                        "field_value": "IEEE Journal on Selected Areas in Communications"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_number",
+                        "field_value": "899 - 905"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_part",
+                        "field_value": "899 - 905"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_temporal",
+                        "field_value": "24"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publisher",
+                        "field_value": "Institute of Electrical and Electronics Engineers"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "year",
+                        "field_value": "2006"
+                    }
+                ]
+            },
+            {
+                "type": "Publication",
+                "subtype": "Conference Papers",
+                "id": "0e887671-8804-4bfa-a092-469d9183890f",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Non-Intrusive Speech Quality Assessment with Transfer Learning and Subject-specific Scaling"
+                    }
+                ],
+                "description": {
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "In communication systems, it is crucial to estimate the perceived quality of audio and speech. The industrial standards for many years have been PESQ, 3QUEST, and POLQA, which are intrusive methods. This restricts the possibilities of using these metrics i ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "In communication systems, it is crucial to estimate the perceived quality of audio and speech. The industrial standards for many years have been PESQ, 3QUEST, and POLQA, which are intrusive methods. This restricts the possibilities of using these metrics in real-world conditions, where we might not have access to the clean reference signal. In this work, we develop a new non-intrusive metric based on crowd-sourced data. We build a new speech dataset by combining publicly available speech, noises, and reverberations. Then we follow the ITU P.808 recommendation to label the dataset with mean opinion scores (MOS). Finally, we train a deep neural network to estimate the MOS from the speech data in a non-intrusive way. We propose two novelties in our work. First, we explore transfer learning by pre-training a model using a larger set of POLQA scores and finetuning with the smaller (and thus cheaper) human-labeled set. Secondly, we perform a subject-specific scaling in the MOS scores to adjust for their different subjective scales. Our model yields better accuracy than PESQ, POLQA, and other non-intrusive methods when evaluated on the independent VCTK test set. We also report misleading POLQA scores for reverberant speech."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://infoscience.epfl.ch/entities/publication/0e887671-8804-4bfa-a092-469d9183890f"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "abstract",
+                        "field_value": "In communication systems, it is crucial to estimate the perceived quality of audio and speech. The industrial standards for many years have been PESQ, 3QUEST, and POLQA, which are intrusive methods. This restricts the possibilities of using these metrics in real-world conditions, where we might not have access to the clean reference signal. In this work, we develop a new non-intrusive metric based on crowd-sourced data. We build a new speech dataset by combining publicly available speech, noises, and reverberations. Then we follow the ITU P.808 recommendation to label the dataset with mean opinion scores (MOS). Finally, we train a deep neural network to estimate the MOS from the speech data in a non-intrusive way. We propose two novelties in our work. First, we explore transfer learning by pre-training a model using a larger set of POLQA scores and finetuning with the smaller (and thus cheaper) human-labeled set. Secondly, we perform a subject-specific scaling in the MOS scores to adjust for their different subjective scales. Our model yields better accuracy than PESQ, POLQA, and other non-intrusive methods when evaluated on the independent VCTK test set. We also report misleading POLQA scores for reverberant speech."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "collection_name",
+                        "field_value": "WoS"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_issued",
+                        "field_value": "2021-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_doi",
+                        "field_value": "10.21437/Interspeech.2021-1685"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_issn",
+                        "field_value": "2308-457X"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "place_term",
+                        "field_value": "Baixas"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publication_id_v1",
+                        "field_value": "296830"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in",
+                        "field_value": "Interspeech 2021"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_number",
+                        "field_value": "2406 - 2410"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_part",
+                        "field_value": "2406 - 2410"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publisher",
+                        "field_value": "ISCA-INT SPEECH COMMUNICATION ASSOC"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "status",
+                        "field_value": "approved"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "year",
+                        "field_value": "2021"
+                    }
+                ]
+            },
+            {
+                "type": "Publication",
+                "subtype": "Journal Articles",
+                "id": "1852946c-39fb-4a0e-9c6b-2cd47efa317e",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Single-molecule localization microscopy"
+                    }
+                ],
+                "description": {
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Single-molecule localization microscopy (SMLM) describes a family of powerful imaging techniques that dramatically improve spatial resolution over standard, diffraction-limited microscopy techniques and can image biological structures at the molecular scal ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Single-molecule localization microscopy (SMLM) describes a family of powerful imaging techniques that dramatically improve spatial resolution over standard, diffraction-limited microscopy techniques and can image biological structures at the molecular scale. In SMLM, individual fluorescent molecules are computationally localized from diffraction-limited image sequences and the localizations are used to generate a super-resolution image or a time course of super-resolution images, or to define molecular trajectories. In this Primer, we introduce the basic principles of SMLM techniques before describing the main experimental considerations when performing SMLM, including fluorescent labelling, sample preparation, hardware requirements and image acquisition in fixed and live cells. We then explain how low-resolution image sequences are computationally processed to reconstruct super-resolution images and/or extract quantitative information, and highlight a selection of biological discoveries enabled by SMLM and closely related methods. We discuss some of the main limitations and potential artefacts of SMLM, as well as ways to alleviate them. Finally, we present an outlook on advanced techniques and promising new developments in the fast-evolving field of SMLM. We hope that this Primer will be a useful reference for both newcomers and practitioners of SMLM."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://infoscience.epfl.ch/entities/publication/1852946c-39fb-4a0e-9c6b-2cd47efa317e"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "abstract",
+                        "field_value": "Single-molecule localization microscopy (SMLM) describes a family of powerful imaging techniques that dramatically improve spatial resolution over standard, diffraction-limited microscopy techniques and can image biological structures at the molecular scale. In SMLM, individual fluorescent molecules are computationally localized from diffraction-limited image sequences and the localizations are used to generate a super-resolution image or a time course of super-resolution images, or to define molecular trajectories. In this Primer, we introduce the basic principles of SMLM techniques before describing the main experimental considerations when performing SMLM, including fluorescent labelling, sample preparation, hardware requirements and image acquisition in fixed and live cells. We then explain how low-resolution image sequences are computationally processed to reconstruct super-resolution images and/or extract quantitative information, and highlight a selection of biological discoveries enabled by SMLM and closely related methods. We discuss some of the main limitations and potential artefacts of SMLM, as well as ways to alleviate them. Finally, we present an outlook on advanced techniques and promising new developments in the fast-evolving field of SMLM. We hope that this Primer will be a useful reference for both newcomers and practitioners of SMLM."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "collection_name",
+                        "field_value": "WoS"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_issued",
+                        "field_value": "2021-06-03"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "download_url",
+                        "field_value": "https://infoscience.epfl.ch/bitstreams/c0f3f63f-61d3-40d4-9a03-98326a83e6a1/download"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_doi",
+                        "field_value": "10.1038/s43586-021-00038-x"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_issn",
+                        "field_value": "2662-8449"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "place_term",
+                        "field_value": "London"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publication_id_v1",
+                        "field_value": "298985"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in",
+                        "field_value": "Nature Reviews Methods Primers"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_number",
+                        "field_value": "39"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_part",
+                        "field_value": "39"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_temporal",
+                        "field_value": "1"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publisher",
+                        "field_value": "SPRINGERNATURE"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "status",
+                        "field_value": "approved"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "year",
+                        "field_value": "2021"
+                    }
+                ]
+            },
+            {
+                "type": "Publication",
+                "subtype": "Journal Articles",
+                "id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Towards Robust and Generalizable Lensless Imaging With Modular Learned Reconstruction"
+                    }
+                ],
+                "description": {
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Lensless cameras disregard the conventional design that imaging should mimic the human eye. This is done by replacing the lens with a thin mask, and moving image formation to the digital post-processing. State-of-the-art lensless imaging techniques use lea ..."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Lensless cameras disregard the conventional design that imaging should mimic the human eye. This is done by replacing the lens with a thin mask, and moving image formation to the digital post-processing. State-of-the-art lensless imaging techniques use learned approaches that combine physical modeling and neural networks. However, these approaches make simplifying modeling assumptions for ease of calibration and computation. Moreover, the generalizability of learned approaches to lensless measurements of new masks has not been studied. To this end, we utilize a modular learned reconstruction in which a key component is a pre-processor prior to image recovery. We theoretically demonstrate the pre-processor's necessity for standard image recovery techniques (Wiener filtering and iterative algorithms), and through extensive experiments show its effectiveness for multiple lensless imaging approaches and across datasets of different mask types (amplitude and phase). We also perform the first generalization benchmark across mask types to evaluate how well reconstructions trained with one system generalize to others. Our modular reconstruction enables us to use pre-trained components and transfer learning on new systems to cut down weeks of tedious measurements and training. As part of our work, we open-source four datasets, and software for measuring datasets and for training our modular reconstruction."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://infoscience.epfl.ch/entities/publication/19264d25-2de7-4be5-b0a7-18b8aa81d5cf"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "abstract",
+                        "field_value": "Lensless cameras disregard the conventional design that imaging should mimic the human eye. This is done by replacing the lens with a thin mask, and moving image formation to the digital post-processing. State-of-the-art lensless imaging techniques use learned approaches that combine physical modeling and neural networks. However, these approaches make simplifying modeling assumptions for ease of calibration and computation. Moreover, the generalizability of learned approaches to lensless measurements of new masks has not been studied. To this end, we utilize a modular learned reconstruction in which a key component is a pre-processor prior to image recovery. We theoretically demonstrate the pre-processor's necessity for standard image recovery techniques (Wiener filtering and iterative algorithms), and through extensive experiments show its effectiveness for multiple lensless imaging approaches and across datasets of different mask types (amplitude and phase). We also perform the first generalization benchmark across mask types to evaluate how well reconstructions trained with one system generalize to others. Our modular reconstruction enables us to use pre-trained components and transfer learning on new systems to cut down weeks of tedious measurements and training. As part of our work, we open-source four datasets, and software for measuring datasets and for training our modular reconstruction."
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "note",
+                        "field_value": "Swiss National Science Foundation (SNSF"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_issued",
+                        "field_value": "2025-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "year",
+                        "field_value": "2025"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "publisher",
+                        "field_value": "IEEE-INST ELECTRICAL ELECTRONICS ENGINEERS INC"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in",
+                        "field_value": "IEEE TRANSACTIONS ON COMPUTATIONAL IMAGING"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_temporal",
+                        "field_value": "11"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_number",
+                        "field_value": "213 - 227"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "published_in_part",
+                        "field_value": "213 - 227"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_doi",
+                        "field_value": "10.1109/TCI.2025.3539448"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "identifier_issn",
+                        "field_value": "2573-0436"
+                    }
+                ]
+            },
+            {
+                "type": "Unit",
+                "subtype": [
+                    {
+                        "language": "en",
+                        "text": "School"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "École"
+                    }
+                ],
+                "id": "EPFL",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Ecole polytechnique fédérale de Lausanne"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Ecole polytechnique fédérale de Lausanne"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "School active in genetic research, quantum materials and energy production."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "École active dans la recherche génétique, les matériaux quantiques et la production d'énergie."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Active in genetic research, quantum materials and energy production. EPFL leads genetic research, develops innovative photoconductive circuits on glass, explores quantum materials, and promotes healthy eating habits among students."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Actif dans la recherche génétique, les matériaux quantiques et la production d'énergie. L'EPFL dirige la recherche génétique, développe des circuits photoconducteurs innovants sur verre, explore les matériaux quantiques et favorise des habitudes alimentaires saines chez les étudiants."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "Ecole polytechnique federale de Lausanne (EPFL) is at the forefront of genetic research, unveiling a new method to discover genetic elements from ancient parasites, shedding light on human evolution and health. EPFL scientists have developed an innovative way to create photoconductive circuits by printing them directly on glass using a femtosecond laser, potentially revolutionizing energy production. With a focus on quantum materials, EPFL researcher Gregor Jotzu explores the emergence of complex properties in quantum systems. Additionally, EPFL promotes healthy and budget-friendly eating habits among students through initiatives like the 180degC student association."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "L'Ecole polytechnique fédérale de Lausanne (EPFL) est à l'avant-garde de la recherche génétique, révélant une nouvelle méthode pour découvrir les éléments génétiques des parasites anciens, éclairant l'évolution et la santé humaines. Les scientifiques de l'EPFL ont développé une façon novatrice de créer des circuits photoconducteurs en les imprimant directement sur du verre à l'aide d'un laser femtoseconde, ce qui pourrait révolutionner la production d'énergie. En mettant l'accent sur les matériaux quantiques, le chercheur de l'EPFL Gregor Jotzu explore l'émergence de propriétés complexes dans les systèmes quantiques. En outre, l'EPFL promeut des habitudes alimentaires saines et favorables au budget chez les étudiants grâce à des initiatives comme l'association étudiante 180degC."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://www.epfl.ch/"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://www.epfl.ch/"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_established",
+                        "field_value": "2001-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "subtype_name",
+                        "field_value": "School"
+                    }
+                ]
+            },
+            {
+                "type": "Unit",
+                "subtype": [
+                    {
+                        "language": "en",
+                        "text": "University"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Faculté"
+                    }
+                ],
+                "id": "IC",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "School of Computer and Communication Sciences "
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Faculté informatique et communications"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "University active in research, education and innovation."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Université active dans la recherche, l'éducation et l'innovation."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Active in research, education and innovation. EPFL's Faculty of Computer Science and Communications is a top European center for computing education and research, offering diverse programs and conducting cutting-edge research in collaboration with industry."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Actif dans la recherche, l'éducation et l'innovation. La Faculté d'informatique et de communication de l'EPFL est un centre européen de premier plan pour l'enseignement et la recherche en informatique, offrant divers programmes et menant des recherches de pointe en collaboration avec l'industrie."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "The Faculty of Computer Science and Communications at EPFL is a leading European center for education and research in computing. They offer bachelor programs in Computer Science and Communications, along with master's programs in Computer Science, Communications, Data Science, and Cyber Security. Research areas include digital education, computer architecture, machine learning, signal processing, and distributed computing. The faculty members are world leaders in these fields, with research funded by various sources. The unit collaborates closely with industry partners to solve challenging problems and drive innovation."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "La Faculté d'informatique et de communication de l'EPFL est un centre européen de premier plan pour l'éducation et la recherche en informatique. Ils offrent des programmes de baccalauréat en informatique et en communications, ainsi que des programmes de maîtrise en informatique, en communications, en sciences des données et en cybersécurité. Les domaines de recherche comprennent l'éducation numérique, l'architecture informatique, l'apprentissage automatique, le traitement des signaux et l'informatique distribuée. Les membres du corps professoral sont des leaders mondiaux dans ces domaines, avec des recherches financées par diverses sources. L'unité collabore étroitement avec les partenaires de l'industrie pour résoudre les problèmes difficiles et stimuler l'innovation."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://ic.epfl.ch/"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://ic.epfl.ch/"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_established",
+                        "field_value": "2002-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "subtype_name",
+                        "field_value": "University"
+                    }
+                ]
+            },
+            {
+                "type": "Unit",
+                "subtype": [
+                    {
+                        "language": "en",
+                        "text": "Institute"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Institut"
+                    }
+                ],
+                "id": "IEM",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Institute of Electrical and Micro Engineering"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Institut d'Electricité et de Microtechnique"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Institute active in technology, innovation and research."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Institut actif dans les domaines de la technologie, de l'innovation et de la recherche."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Active in technology, innovation and research. EPFL's Institute of Electricity and Microtechnology pioneers advanced technologies, including image data compression and environmental innovation."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Actif dans les domaines de la technologie, de l'innovation et de la recherche. L'Institut de l'électricité et de la microtechnologie de l'EPFL est le pionnier des technologies de pointe, y compris la compression des données d'image et l'innovation environnementale."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "The Institute of Electricity and Microtechnology at EPFL is at the forefront of developing cutting-edge technologies, such as a machine learning framework for compressing image data with high accuracy, with potential applications in sensory prostheses. Researchers at the institute are also involved in innovative projects like developing technology to collect CO2 from truck exhaust pipes and creating robots that can adapt to their environment."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "L'Institut de l'électricité et de la microtechnologie de l'EPFL est à l'avant-garde du développement de technologies de pointe, comme un cadre d'apprentissage automatique pour la compression des données d'image avec une grande précision, avec des applications potentielles dans les prothèses sensorielles. Les chercheurs de l'institut participent également à des projets novateurs comme le développement de technologies pour collecter le CO2 des tuyaux d'échappement des camions et la création de robots qui peuvent s'adapter à leur environnement."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://sti.epfl.ch/"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://sti.epfl.ch/"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_established",
+                        "field_value": "2021-05-23"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "subtype_name",
+                        "field_value": "Institute"
+                    }
+                ]
+            },
+            {
+                "type": "Unit",
+                "subtype": [
+                    {
+                        "language": "en",
+                        "text": "Institute"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Institut"
+                    }
+                ],
+                "id": "IINFCOM",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Institute of Computer and Communication Sciences"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Institut d'informatique et de communications"
+                    }
+                ],
+                "description": "",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_established",
+                        "field_value": "2016-02-08"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "subtype_name",
+                        "field_value": "Institute"
+                    }
+                ]
+            },
+            {
+                "type": "Unit",
+                "subtype": [
+                    {
+                        "language": "en",
+                        "text": "Laboratory"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Laboratoire"
+                    }
+                ],
+                "id": "LCAV",
+                "title": [
+                    {
+                        "language": "en",
+                        "text": "Audiovisual Communications Laboratory"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Laboratoire de communications audiovisuelles"
+                    }
+                ],
+                "description": {
+                    "short": [
+                        {
+                            "language": "en",
+                            "text": "Laboratory active in computational geometry, functional analysis and signal processing."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Laboratoire actif dans la géométrie computationnelle, l'analyse fonctionnelle et le traitement des signaux."
+                        }
+                    ],
+                    "medium": [
+                        {
+                            "language": "en",
+                            "text": "Active in computational geometry, functional analysis and signal processing. EPFL's Laboratory of AudioVisual Communications (LCAV) conducts cutting-edge research in signal processing, audio processing, and image and video processing, following the Reproducible Research philosophy."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Active dans la géométrie computationnelle, l'analyse fonctionnelle et le traitement des signaux. Le Laboratoire d'AudioVisual Communications (LCAV) de l'EPFL mène des recherches de pointe sur le traitement des signaux, le traitement audio et le traitement des images et des vidéos, conformément à la philosophie Reproductible Research."
+                        }
+                    ],
+                    "long": [
+                        {
+                            "language": "en",
+                            "text": "The Laboratory of AudioVisual Communications (LCAV) at EPFL, part of the School of Computer and Communication Sciences, focuses on signal processing research, teaching, and technology transfer. Research areas include mathematical signal processing, audio processing, spatial signal processing, and image and video processing. LCAV follows the Reproducible Research philosophy, ensuring all papers, source code, and data sets are available for download. The lab's work in mathematical signal processing explores new sampling techniques for sparse signals, signal representations, and linear time-frequency analysis methods. In audio processing, LCAV researches 3D-audio, room acoustics, sound perception, and spatial audio coding. The image and video processing group works on image acquisition, modeling, multi-view imaging, and augmented reality."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Le Laboratoire des communications audiovisuelles de l'EPFL, qui fait partie de l'École des sciences informatiques et de la communication, se concentre sur la recherche, l'enseignement et le transfert de technologie dans le domaine du traitement des signaux. Les domaines de recherche comprennent le traitement mathématique des signaux, le traitement audio, le traitement des signaux spatiaux et le traitement des images et des vidéos. LCAV suit la philosophie de la recherche reproductible, s'assurant que tous les documents, le code source et les ensembles de données sont disponibles en téléchargement. Le travail du laboratoire dans le traitement mathématique des signaux explore de nouvelles techniques d'échantillonnage pour les signaux clairs, les représentations des signaux et les méthodes d'analyse linéaire des fréquences temporelles. Dans le traitement audio, LCAV recherche l'audio en 3D, l'acoustique de la pièce, la perception du son et le codage audio spatial. Le groupe de traitement d'images et de vidéos travaille sur l'acquisition d'images, la modélisation, l'imagerie multi-vues et la réalité augmentée."
+                        }
+                    ]
+                },
+                "url": [
+                    {
+                        "language": "en",
+                        "text": "https://lcav.epfl.ch/"
+                    },
+                    {
+                        "language": "fr",
+                        "text": "https://lcav.epfl.ch/"
+                    }
+                ],
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "date_established",
+                        "field_value": "2001-01-01"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "subtype_name",
+                        "field_value": "Laboratory"
+                    }
+                ]
+            }
+        ],
+        "edge_list": [
+            {
+                "from_type": "Course",
+                "from_id": "BIO-410",
+                "to_type": "Person",
+                "to_id": "115533",
+                "context": "teacher",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "teaching_assignment_year",
+                        "field_value": "2025-2026"
+                    }
+                ]
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-202",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "teacher",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "teaching_assignment_year",
+                        "field_value": "2025-2026"
+                    }
+                ]
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-303",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "teacher",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "teaching_assignment_year",
+                        "field_value": "2023-2024"
+                    }
+                ]
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-418",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "teacher",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "teaching_assignment_year",
+                        "field_value": "2021-2022"
+                    }
+                ]
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-500",
+                "to_type": "Person",
+                "to_id": "145758",
+                "context": "teacher",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "teaching_assignment_year",
+                        "field_value": "2024-2025"
+                    }
+                ]
+            },
+            {
+                "from_type": "Person",
+                "from_id": "106643",
+                "to_type": "Unit",
+                "to_id": "LTS2",
+                "context": "accreditation",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "end_datetime",
+                        "field_value": "2023-06-02"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "start_datetime",
+                        "field_value": "2022-12-01"
+                    }
+                ]
+            },
+            {
+                "from_type": "Person",
+                "from_id": "107537",
+                "to_type": "Unit",
+                "to_id": "LCAV",
+                "context": "accreditation",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "end_datetime",
+                        "field_value": "2025-12-11"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "last_position_name",
+                        "field_value": "Full Professor"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "longest_position_name",
+                        "field_value": "Full Professor"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "start_datetime",
+                        "field_value": "2003-05-05"
+                    }
+                ]
+            },
+            {
+                "from_type": "Person",
+                "from_id": "110610",
+                "to_type": "Unit",
+                "to_id": "LCAV",
+                "context": "accreditation",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "end_datetime",
+                        "field_value": "2025-12-31"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "last_position_name",
+                        "field_value": "Scientist"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "longest_position_name",
+                        "field_value": "Scientist"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "start_datetime",
+                        "field_value": "2004-10-14"
+                    }
+                ]
+            },
+            {
+                "from_type": "Person",
+                "from_id": "115227",
+                "to_type": "Unit",
+                "to_id": "LIB",
+                "context": "accreditation",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "end_datetime",
+                        "field_value": "9999-12-31"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "last_position_name",
+                        "field_value": "Full Professor"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "longest_position_name",
+                        "field_value": "Full Professor"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "start_datetime",
+                        "field_value": "2003-05-05"
+                    }
+                ]
+            },
+            {
+                "from_type": "Person",
+                "from_id": "115533",
+                "to_type": "Unit",
+                "to_id": "LIB",
+                "context": "accreditation",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "end_datetime",
+                        "field_value": "9999-12-31"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "last_position_name",
+                        "field_value": "Engineer"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "longest_position_name",
+                        "field_value": "Engineer"
+                    },
+                    {
+                        "field_language": "n/a",
+                        "field_name": "start_datetime",
+                        "field_value": "2003-05-05"
+                    }
+                ]
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "007deab2-1573-42e3-8849-d395833a8b9a",
+                "to_type": "Person",
+                "to_id": "107537",
+                "context": "authorship",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "01c8229a-28ac-4750-9b09-3dc5d1e99997",
+                "to_type": "Person",
+                "to_id": "145758",
+                "context": "authorship",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "0e887671-8804-4bfa-a092-469d9183890f",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "authorship",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf",
+                "to_type": "Person",
+                "to_id": "107537",
+                "context": "authorship",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "57bfdd32-e5f2-4ed8-8829-ecfe92e0ae48",
+                "to_type": "Person",
+                "to_id": "157878",
+                "context": "authorship",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "IC",
+                "to_type": "Unit",
+                "to_id": "EPFL",
+                "context": "affiliation",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "IEM",
+                "to_type": "Unit",
+                "to_id": "STI",
+                "context": "affiliation",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "IINFCOM",
+                "to_type": "Unit",
+                "to_id": "IC",
+                "context": "affiliation",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "LCAV",
+                "to_type": "Unit",
+                "to_id": "IINFCOM",
+                "context": "affiliation",
+                "custom_fields": []
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "LIB",
+                "to_type": "Unit",
+                "to_id": "IEM",
+                "context": "affiliation",
+                "custom_fields": []
+            }
+        ]
+    }
+}

@@ -1,0 +1,135 @@
+{
+    "node": {
+        "type": "Course",
+        "id": "BIO-410",
+        "title": [
+            {
+                "language": "en",
+                "text": "Bioimage informatics"
+            },
+            {
+                "language": "fr",
+                "text": "Bioimage informatics"
+            }
+        ],
+        "description": {
+            "short": [
+                {
+                    "language": "en",
+                    "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioi ..."
+                },
+                {
+                    "language": "fr",
+                    "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioi ..."
+                }
+            ],
+            "medium": [
+                {
+                    "language": "en",
+                    "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using ..."
+                },
+                {
+                    "language": "fr",
+                    "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using ..."
+                }
+            ],
+            "long": [
+                {
+                    "language": "en",
+                    "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning. ..."
+                },
+                {
+                    "language": "fr",
+                    "text": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning. ..."
+                }
+            ]
+        },
+        "url": [
+            {
+                "language": "en",
+                "text": "https://edu.epfl.ch/coursebook/en/bioimage-informatics-BIO-410"
+            },
+            {
+                "language": "fr",
+                "text": "https://edu.epfl.ch/coursebook/fr/bioimage-informatics-BIO-410"
+            }
+        ],
+        "custom_fields": [
+            {
+                "field_language": "en",
+                "field_name": "concepts_to_master",
+                "field_value": "Basic knowledge in signal or image processing\nBaisc knowledge in programming"
+            },
+            {
+                "field_language": "en",
+                "field_name": "content",
+                "field_value": "To investigate biological processes, bioimage informatics emerges as a growing field on the interface between microscopy, signal-processing, and computer science. The recent microscopes are producing large volumes of high-resolution multidimensional data (up to 5D). Therefore, algorithms and software tools are needed to automatically extract quantitative data from these images.\nThe course gives the theoretical concepts and practical aspects of the most common image reconstruction and image analysis techniques. It explains how to code algorithms and to deploy software tools to build an automatic analysis workflow using the most common used software, Fiji/ImageJ (Java-based) and Jupyter Notebook (Python-based). The lecture is tailored to the needs of life sciences and driven by biological questions.\nAddressed topics include (but not restricted to): presentation of microscopy modalities, digital images, multi-dimensional data (3D, time, multiple channels) manipulation, 3D image-processing algorithms, 5D visualization, image metrics, reconstruction, deconvolution, denoising, stitching, visual feature detection, segmentation, active contours, image analysis workflow, pixel classification, machine learning, deep learning for image analysis, large datasets, tracking of particles, and super-resolution localization microscopy.\nThe course is composed of lectures, workshops, practices, and a mini-project.\nA personal laptop is recommended to run (open-source) image analysis software and to develop short scripts.\nShow more"
+            },
+            {
+                "field_language": "en",
+                "field_name": "evaluation_method",
+                "field_value": "20% Homework, individual\nIn the first half of the semester: 4 homeworks on computer (2 weeks)\n40% Mini-project by groups of 2-3 students\nIn the second half of the semester: Development of an image analysis tool for a real application in biology\n40% End-term exam, individual\nwritten exam with handwritten notes"
+            },
+            {
+                "field_language": "en",
+                "field_name": "keywords",
+                "field_value": "Bioimage, microscopy, image processing, image reconstruction, image analysis, visualization, multidimensional data analysis, machine learning, deep learning"
+            },
+            {
+                "field_language": "en",
+                "field_name": "required_courses_obl",
+                "field_value": "Baisc knowledge in programming"
+            },
+            {
+                "field_language": "en",
+                "field_name": "summary",
+                "field_value": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning."
+            },
+            {
+                "field_language": "fr",
+                "field_name": "concepts_to_master",
+                "field_value": "Basic knowledge in signal or image processing\nBaisc knowledge in programming"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "content",
+                "field_value": "To investigate biological processes, bioimage informatics emerges as a growing field on the interface between microscopy, signal-processing, and computer science. The recent microscopes are producing large volumes of high-resolution multidimensional data (up to 5D). Therefore, algorithms and software tools are needed to automatically extract quantitative data from these images.\nThe course gives the theoretical concepts and practical aspects of the most common image reconstruction and image analysis techniques. It explains how to code algorithms and to deploy software tools to build an automatic analysis workflow using the most common used software, Fiji/ImageJ (Java-based) and Jupyter Notebook (Python-based). The lecture is tailored to the needs of life sciences and driven by biological questions.\nAddressed topics include (but not restricted to): presentation of microscopy modalities, digital images, multi-dimensional data (3D, time, multiple channels) manipulation, 3D image-processing algorithms, 5D visualization, image metrics, reconstruction, deconvolution, denoising, stitching, visual feature detection, segmentation, active contours, image analysis workflow, pixel classification, machine learning, deep learning for image analysis, large datasets, tracking of particles, and super-resolution localization microscopy.\nThe course is composed of lectures, workshops, practices, and a mini-project.\nA personal laptop is recommended to run (open-source) image analysis software and to develop short scripts.\nLire la suite"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "evaluation_method",
+                "field_value": "20% Homework, individual\nIn the first half of the semester: 4 homeworks on computer (2 weeks)\n40% Mini-project by groups of 2-3 students\nIn the second half of the semester: Development of an image analysis tool for a real application in biology\n40% End-term exam, individual\nwritten exam with handwritten notes"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "keywords",
+                "field_value": "Bioimage, microscopy, image processing, image reconstruction, image analysis, visualization, multidimensional data analysis, machine learning, deep learning"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "required_courses_obl",
+                "field_value": "Baisc knowledge in programming"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "summary",
+                "field_value": "The course provides a comprehensive overview of methods, algorithms, and computer tools used in bioimage analysis. It exposes fundamental concepts and practical computer solutions to extract quantitative information from multidimensional images, both using engineering methods and deep learning."
+            },
+            {
+                "field_language": "n/a",
+                "field_name": "course_code",
+                "field_value": "BIO-410"
+            },
+            {
+                "field_language": "n/a",
+                "field_name": "exam_type",
+                "field_value": "Summer session\nWritten"
+            },
+            {
+                "field_language": "n/a",
+                "field_name": "section_code",
+                "field_value": "SV"
+            }
+        ]
+    }
+}

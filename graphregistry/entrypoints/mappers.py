@@ -1,14 +1,11 @@
 # graphregistry/entrypoints/mappers.py
 from __future__ import annotations
 from typing import Any, cast
-from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
-from graphregistry.domain.models.entities.mdl_base import Field, NodeKey, NodeKeyList
+from graphregistry.domain.models.entities.mdl_base import Field, NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList, NodeFieldList
-from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
-from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
-from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 from graphregistry.entrypoints.schemas import (
     MultilingualTextSpec,
     CustomFieldSpec,
@@ -21,7 +18,7 @@ from graphregistry.entrypoints.schemas import (
     EdgeSpec,
     EdgeListSpec,
 )
-from graphregistry.domain.types import TextLanguage, FieldLanguage, ObjectType
+from graphregistry.domain.types import TextLanguage, ObjectType
 
 INSTITUTION_ID = "EPFL"
 
