@@ -120,7 +120,7 @@ class MySQLEdgeRepository(EdgeRepository):
         if isinstance(key_list, EdgeKeyList):
             key_list = key_list.item_list
         out = [edge for edge in (self.get(key) for key in key_list) if edge is not None]
-        return EdgeList(edge_list=out)
+        return EdgeList(item_list=out)
 
     # Method: Save (insert or update) edge data to persistence
     def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:

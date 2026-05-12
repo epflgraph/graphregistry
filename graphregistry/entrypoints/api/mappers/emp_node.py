@@ -4,7 +4,7 @@ from typing import Any, cast
 from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
 from graphregistry.domain.models.entities.mdl_base import Field, NodeKey, NodeKeyList
-from graphregistry.domain.models.entities.mdl_node import Node, NodeFieldList
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList, NodeFieldList
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 INSTITUTION_ID = "EPFL"
@@ -135,6 +135,13 @@ class APINodeMapper:
             url           = url,
             custom_fields = custom_fields,
         )
+
+    @staticmethod
+    def to_get_request_list(node_list: NodeList | list[Node | dict[str, Any]]) -> list[schemas.NodeMinimalFormat]:
+        if isinstance(node_list, list):
+            return [APINodeMapper.to_get_request(node) for node in node_list]
+        elif isinstance(node_list, NodeList):
+            return [APINodeMapper.to_get_request(node) for node in node_list.item_list]
 
     @staticmethod
     def from_save_request(request: schemas.NodeSaveAPIRequest | dict[str, Any]) -> Node:

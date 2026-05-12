@@ -235,7 +235,7 @@ def nodes_get(request: schemas.NodeGetRequest, node_ops: NodeOperations = Depend
     json_output = APINodeMapper.to_get_request(node)
 
     # Return the node data in the response
-    return schemas.NodeGetResponse(found=True, node=json_output.model_dump())
+    return schemas.NodeGetResponse(found=True, node=json_output.model_dump(exclude_none=True))
 
 #-----------------------------------#
 # API Endpoint: /api/nodes/get_many #
@@ -422,10 +422,10 @@ def edges_get(request: schemas.EdgeGetRequest, edge_ops: EdgeOperations = Depend
         return schemas.EdgeGetResponse(found=False, edge=None)
 
     # Get simplified dict representation of the edge for the response
-    json_output = MySQLEdgeMapper.to_simplified_dict(edge)
+    json_output = APIEdgeMapper.to_get_request(edge)
 
     # Return the edge data in the response
-    return schemas.EdgeGetResponse(found=True, edge=json_output)
+    return schemas.EdgeGetResponse(found=True, edge=json_output.model_dump(exclude_none=True))
 
 #-----------------------------------#
 # API Endpoint: /api/edges/get_many #

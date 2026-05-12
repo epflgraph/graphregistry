@@ -4,7 +4,7 @@ from typing import Any, cast
 from graphregistry.entrypoints.api import schemas
 from graphregistry.domain.models.entities.mdl_text import DEFAULT_LANGUAGE_CODES
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList
-from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList, EdgeFieldList
 
 INSTITUTION_ID = "EPFL"
 
@@ -42,6 +42,13 @@ class APIEdgeMapper:
             context       = edge.key.context,
             custom_fields = custom_fields,
         )
+
+    @staticmethod
+    def to_get_request_list(edge_list: EdgeList | list[Edge | dict[str, Any]]) -> list[schemas.EdgeMinimalFormat]:
+        if isinstance(edge_list, list):
+            return [APIEdgeMapper.to_get_request(edge) for edge in edge_list]
+        elif isinstance(edge_list, EdgeList):
+            return [APIEdgeMapper.to_get_request(edge) for edge in edge_list.item_list]
 
     @staticmethod
     def from_save_request(request: schemas.EdgeSaveAPIRequest | dict[str, Any]) -> Edge:
