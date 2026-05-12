@@ -1,5 +1,6 @@
 # graphregistry/entrypoints/cli/specs.py
 from typing import Any, Dict
+from pathlib import Path
 
 # Import all command handler functions
 from graphregistry.entrypoints.cli.cmd_config import (
@@ -52,7 +53,10 @@ from graphregistry.entrypoints.cli.cmd_index import (
 
 # Import db config
 from graphdb.core.config import GraphDBConfig
-db_config = GraphDBConfig.from_file("config/config_db.yaml")
+
+from graphregistry.common.paths import CONFIG_DB_PATH
+db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
+# db_config = GraphDBConfig.from_file("config/config_db.yaml")
 
 # Global common arguments
 global_common_args = {
@@ -235,22 +239,24 @@ cli_definitions: Dict[str, Any] = {
                 help = "Import data from input or json file.",
                 func = cmd_data_get,
                 args = [
-                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
-                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
+                    dict(flags=('--node_key',      ), kwargs=dict(required=False, type=str, default=None, help="Path to node key JSON file.")),
+                    dict(flags=('--edge_key',      ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key JSON file.")),
+                    dict(flags=('--node_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to node key list JSON file.")),
+                    dict(flags=('--edge_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key list JSON file.")),
                 ],
                 common_args = ['env']
             ),
             'save' : dict(
-                help = "save data from input or json file.",
+                help = "Save node(s) or edge(s) from JSON file.",
                 func = cmd_data_save,
                 args = [
-                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="save node from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="save edge from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="save node list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="save edge list from JSON string, or '@path/to/file.json' to load JSON from a file.")),
-                    dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="save node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
+                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="Path to node JSON file.")),
+                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="Path to edge JSON file.")),
+                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to node list JSON file.")),
+                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to edge list JSON file.")),
+                    # dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="save node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
                     dict(flags=('--actions',   ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
-                    dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on save.")),
+                    # dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on save.")),
                 ],
                 common_args = ['env']
             ),
