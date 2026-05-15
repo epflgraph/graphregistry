@@ -7,6 +7,10 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
 from graphregistry.entrypoints.api.router import router
 
+# import global config
+from graphregistry.common.config import GlobalConfig
+glbcfg = GlobalConfig()
+
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
 
@@ -15,8 +19,8 @@ def create_app() -> FastAPI:
 
     # Initialize the FastAPI app with metadata and documentation settings
     app = FastAPI(
-        title       = "GraphRegistry API",
-        summary     = "HTTP API for graph registry node, edge, and subgraph operations.",
+        title       = glbcfg.api_title,
+        summary     = glbcfg.api_summary,
         version     = "0.1.0",
         docs_url    = "/docs",
         redoc_url   = "/redoc",
