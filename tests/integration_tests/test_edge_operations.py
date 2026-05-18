@@ -1,4 +1,4 @@
-# tests/integration_tests/edge_operations.py
+# tests/integration_tests/test_edge_operations.py
 from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast

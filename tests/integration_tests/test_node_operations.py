@@ -1,4 +1,4 @@
-# tests/integration_tests/node_operations.py
+# tests/integration_tests/test_node_operations.py
 from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
