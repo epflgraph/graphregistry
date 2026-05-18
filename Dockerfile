@@ -18,6 +18,7 @@ WORKDIR /app
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
+        default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file and install dependencies
