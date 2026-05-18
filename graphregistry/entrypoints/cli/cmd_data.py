@@ -16,6 +16,7 @@ from graphregistry.adapters.services.schema.asv_schema_default import DefaultSch
 from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
 from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 import rich, json
+from graphregistry.domain.types import ActionSet, ActionName
 
 # Helper: Build default schema resolver
 def _make_schema_resolver(args) -> DefaultSchemaResolver:
@@ -115,27 +116,49 @@ def _load_json_input(raw_input: str, label: str):
 # Handler: Check if node or edge exists in Registry
 def cmd_data_list(args):
 
-    # Fetch context objects
-    db = args.ctx.db
-
-    # Fetch environment from input options
-    env = args.env
-
     # Fetch input options
-    object_type = tuple(args.object_type.split(',')) if ',' in args.object_type else str(args.object_type)
-    id_pattern = args.id_pattern
+    node_request_input = args.node_request
+    edge_request_input = args.edge_request
 
     # Node list requested
-    if type(object_type) is str:
+    if node_request_input:
+
+        # Load JSON data from input file
+        json_input = _load_json_input(node_request_input, "--node_request")
+
+        # Initialize node repository
         node_repo: NodeRepository = _make_node_repo(args)
-        node_list = node_repo.list(object_type=object_type, id_pattern=id_pattern)
-        rich.print(node_list)
+
+        # Get list of nodes matching request parameters
+        node_key_list = node_repo.list(object_type=json_input['type'], id_pattern=json_input.get('id_pattern'))
+
+        # Print results
+        if len(node_key_list)>0:
+            rich.print("✅ Node(s) found matching request parameters:")
+            for node_key in node_key_list:
+                rich.print(node_key)
+        else:
+            rich.print("❌ No node(s) found matching request parameters.")
 
     # Edge list requested
-    elif type(object_type) is tuple:
+    if edge_request_input:
+
+        # Load JSON data from input file
+        json_input = _load_json_input(edge_request_input, "--edge_request")
+
+        # Initialize edge repository
         edge_repo: EdgeRepository = _make_edge_repo(args)
-        edge_list = edge_repo.list(object_type=object_type, id_pattern=id_pattern)
-        rich.print(edge_list)
+
+        # Get list of edges matching request parameters
+        edge_key_list = edge_repo.list(object_type=(json_input.get('from_type'), json_input.get('to_type')), id_pattern=json_input.get('id_pattern'))
+
+        # Print results
+        if len(edge_key_list)>0:
+            rich.print("✅ Edge(s) found matching request parameters:")
+            for edge_key in edge_key_list:
+                rich.print(edge_key)
+        else:
+            rich.print("❌ No edge(s) found matching request parameters.")
 
 # Handler: Check if node or edge exists in Registry
 def cmd_data_exists(args):
@@ -147,31 +170,95 @@ def cmd_data_exists(args):
     env = args.env
 
     # Fetch input options
-    node_key_tuple = tuple(args.node.split(',')) if args.node else None
-    edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
+    node_key_input      = args.node_key
+    edge_key_input      = args.edge_key
+    node_key_list_input = args.node_key_list
+    edge_key_list_input = args.edge_key_list
 
-    # Get input options
-    node_key = NodeKey.from_tuple(node_key_tuple) if node_key_tuple else None
-    edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
+    # Build repositories
+    node_repo: NodeRepository = _make_node_repo(args)
+    edge_repo: EdgeRepository = _make_edge_repo(args)
 
-    # Check if node and print results
-    if node_key:
-        node_repo: NodeRepository = _make_node_repo(args)
-        print(f"""{"✅ Exists" if node_repo.exists(node_key) else "❌ Not found"}: Node ~ ({node_key.institution_id}, {node_key.object_type}, {node_key.object_id})""")
+    # Process node input
+    if node_key_input:
 
-    # Check if edge and print results
-    if edge_key:
-        edge_repo: EdgeRepository = _make_edge_repo(args)
-        print(f"""{"✅ Exists" if edge_repo.exists(edge_key) else "❌ Not found"}: Edge ~ ({edge_key.from_institution_id}, {edge_key.from_object_type}, {edge_key.from_object_id}, {edge_key.to_institution_id}, {edge_key.to_object_type}, {edge_key.to_object_id}, {edge_key.context})""")
+        # Load JSON data from input file
+        json_input = _load_json_input(node_key_input, "--node_key")
+
+        # Handle case where user passes in a full node spec with "node" wrapper vs just the node spec directly
+        node_key_spec = json_input['key'] if list(json_input.keys())==['key'] else json_input
+
+        # Create node object from JSON data using factory to leverage concept detection if requested
+        node_key = SpecMapper.from_node_key_spec(node_key_spec)
+
+        # Check if node exists
+        exists = node_repo.exists(node_key)
+
+        # Print result as JSON
+        rich.print_json(data={"exists": exists})
+
+    # Process edge input
+    if edge_key_input:
+
+        # Load JSON data from input file
+        json_input = _load_json_input(edge_key_input, "--edge_key")
+
+        # Handle case where user passes in a full edge spec with "edge" wrapper vs just the edge spec directly
+        edge_key_spec = json_input['key'] if list(json_input.keys())==['key'] else json_input
+
+        # Create edge object from JSON data using factory to leverage concept detection if requested
+        edge_key = SpecMapper.from_edge_key_spec(edge_key_spec)
+
+        # Check if edge exists
+        exists = edge_repo.exists(edge_key)
+
+        # Print result as JSON
+        rich.print_json(data={"exists": exists})
+
+    # Process node list input
+    if node_key_list_input:
+
+        # Load JSON data from input file
+        node_list_json_data = _load_json_input(node_key_list_input, "--node_key_list")
+
+        # Handle case where user passes in a full node spec with "node" wrapper vs just the node spec directly
+        node_key_list_spec = node_list_json_data['key_list'] if list(node_list_json_data.keys())==['key_list'] else node_list_json_data
+
+        # Create node object from JSON data using factory to leverage concept detection if requested
+        node_key_list = SpecMapper.from_node_key_list_spec(node_key_list_spec)
+
+        # Check if nodes exist
+        exists_list = node_repo.exists_many(node_key_list)
+
+        # Print result as JSON
+        rich.print_json(data={
+            "exist_keys": exists_list,
+            "count": len(exists_list)
+        })
+
+    # Process edge list input
+    if edge_key_list_input:
+
+        # Load JSON data from input file
+        edge_list_json_data = _load_json_input(edge_key_list_input, "--edge_key_list")
+
+        # Handle case where user passes in a full edge spec with "edge" wrapper vs just the edge spec directly
+        edge_key_list_spec = edge_list_json_data['key_list'] if list(edge_list_json_data.keys())==['key_list'] else edge_list_json_data
+
+        # Create edge object from JSON data using factory to leverage concept detection if requested
+        edge_key_list = SpecMapper.from_edge_key_list_spec(edge_key_list_spec)
+
+        # Check if edges exist
+        exists_list = edge_repo.exists_many(edge_key_list)
+
+        # Print result as JSON
+        rich.print_json(data={
+            "exist_keys": exists_list,
+            "count": len(exists_list)
+        })
 
 # Handler: Fetch node or edge from Registry
 def cmd_data_get(args):
-
-    # Fetch context objects
-    db = args.ctx.db
-
-    # Fetch environment from input options
-    env = args.env
 
     # Fetch input options
     node_key_input      = args.node_key
@@ -342,89 +429,97 @@ def cmd_data_save(args):
         # Insert edge list into registry
         edge_ops.save_many(edge_list, actions=actions)
 
-    # # Process subgraph input
-    # if subgraph_input:
-
-    #     # Case 1: --subgraph=@path/to/file.json
-    #     # Case 2: --subgraph='<json>'
-    #     subgraph_json_data = _load_json_input(subgraph_input, "--subgraph")
-
-    #     # Create subgraph object from JSON data
-    #     subgraph = SubGraph(
-    #         nodes=NodeList(
-    #             item_list=[
-    #                 SpecMapper.from_save_request(node_json)
-    #                 for node_json in subgraph_json_data.get("nodes", [])
-    #             ]
-    #         ),
-    #         edges=EdgeList(
-    #             item_list=[
-    #                 SpecMapper.from_save_request(edge_json)
-    #                 for edge_json in subgraph_json_data.get("edges", [])
-    #             ]
-    #         ),
-    #     )
-
-    #     # Insert subgraph into registry
-    #     node_ops.save_many(subgraph.nodes, actions=actions)
-    #     edge_ops.save_many(subgraph.edges, actions=actions)
-
-    #     if detect_concepts:
-    #         print("⚠️  detect_concepts requested but not yet wired into the new CLI workflow for subgraph.")
-
-# Handler: Check if node or edge exists in Registry
+# Handler: Delete node or edge from Registry
 def cmd_data_delete(args):
 
     # Fetch context objects
-    db = args.ctx.db
+    actions: ActionSet = tuple(args.actions.split(',')) if args.actions else ()
 
     # Fetch input options
-    env = args.env
-    node_key_tuple = tuple(args.node.split(',')) if args.node else None
-    edge_key_tuple = tuple(args.edge.split(',')) if args.edge else None
-
-    # Get input options
-    node_key = NodeKey.from_tuple(node_key_tuple) if node_key_tuple else None
-    edge_key = EdgeKey.from_tuple(edge_key_tuple) if edge_key_tuple else None
-    actions  = tuple(args.actions.split(','))  if args.actions  else ()
+    node_key_input      = args.node_key
+    edge_key_input      = args.edge_key
+    node_key_list_input = args.node_key_list
+    edge_key_list_input = args.edge_key_list
 
     # Build repositories
     node_repo: NodeRepository = _make_node_repo(args)
     edge_repo: EdgeRepository = _make_edge_repo(args)
 
-    # Fetch node and print results
-    if node_key:
-        node_repo.delete(node_key, actions=actions)
+    # Process node input
+    if node_key_input:
 
-    # Fetch edge and print results
-    if edge_key:
-        edge_repo.delete(edge_key, actions=actions)
+        # Load JSON data from input file
+        json_input = _load_json_input(node_key_input, "--node_key")
 
-    # Fetch node list and print results
-    if args.node_list:
+        # Handle case where user passes in a full node spec with "node" wrapper vs just the node spec directly
+        node_key_spec = json_input['key'] if list(json_input.keys())==['key'] else json_input
 
-        # Case 1: --node_list=@path/to/file.json
-        # Case 2: --node_list='<json>'
-        node_list_json_data = _load_json_input(args.node_list, "--node_list")
+        # Create node object from JSON data using factory to leverage concept detection if requested
+        node_key = SpecMapper.from_node_key_spec(node_key_spec)
 
-        # Build key list
-        node_key_list = NodeKeyList.from_tuple_list(node_list_json_data)
+        # Delete node from registry
+        result = node_repo.delete(node_key, actions=actions)
 
-        # Delete node list
-        node_repo.delete_many(node_key_list, actions=actions)
+        # Print result as JSON
+        if result==False and 'commit' not in actions:
+            print("⚠️  Node not deleted. To delete, add 'commit' to actions.")
 
-    # Fetch edge list and print results
-    if args.edge_list:
+    # Process edge input
+    if edge_key_input:
 
-        # Case 1: --edge_list=@path/to/file.json
-        # Case 2: --edge_list='<json>'
-        edge_list_json_data = _load_json_input(args.edge_list, "--edge_list")
+        # Load JSON data from input file
+        json_input = _load_json_input(edge_key_input, "--edge_key")
 
-        # Build key list
-        edge_key_list = EdgeKeyList.from_tuple_list(edge_list_json_data)
+        # Handle case where user passes in a full edge spec with "edge" wrapper vs just the edge spec directly
+        edge_key_spec = json_input['key'] if list(json_input.keys())==['key'] else json_input
 
-        # Delete edge list
-        edge_repo.delete_many(edge_key_list, actions=actions)
+        # Create edge object from JSON data using factory to leverage concept detection if requested
+        edge_key = SpecMapper.from_edge_key_spec(edge_key_spec)
+
+        # Delete edge from registry
+        result = edge_repo.delete(edge_key, actions=actions)
+
+        # Print result as JSON
+        if result==False and 'commit' not in actions:
+            print("⚠️  Edge not deleted. To delete, add 'commit' to actions.")
+
+    # Process node list input
+    if node_key_list_input:
+
+        # Load JSON data from input file
+        node_list_json_data = _load_json_input(node_key_list_input, "--node_key_list")
+
+        # Handle case where user passes in a full node spec with "node" wrapper vs just the node spec directly
+        node_key_list_spec = node_list_json_data['key_list'] if list(node_list_json_data.keys())==['key_list'] else node_list_json_data
+
+        # Create node object from JSON data using factory to leverage concept detection if requested
+        node_key_list = SpecMapper.from_node_key_list_spec(node_key_list_spec)
+
+        # Delete nodes from registry
+        result = node_repo.delete_many(node_key_list, actions=actions)
+
+        # Print result as JSON
+        if result==False and 'commit' not in actions:
+            print("⚠️  Node list not deleted. To delete, add 'commit' to actions.")
+
+    # Process edge list input
+    if edge_key_list_input:
+
+        # Load JSON data from input file
+        edge_list_json_data = _load_json_input(edge_key_list_input, "--edge_key_list")
+
+        # Handle case where user passes in a full edge spec with "edge" wrapper vs just the edge spec directly
+        edge_key_list_spec = edge_list_json_data['key_list'] if list(edge_list_json_data.keys())==['key_list'] else edge_list_json_data
+
+        # Create edge object from JSON data using factory to leverage concept detection if requested
+        edge_key_list = SpecMapper.from_edge_key_list_spec(edge_key_list_spec)
+
+        # Delete edges from registry
+        result = edge_repo.delete_many(edge_key_list, actions=actions)
+
+        # Print result as JSON
+        if result==False and 'commit' not in actions:
+            print("⚠️  Edge list not deleted. To delete, add 'commit' to actions.")
 
 # Handler: Import data from JSON file into Registry
 def cmd_data_import(args):
