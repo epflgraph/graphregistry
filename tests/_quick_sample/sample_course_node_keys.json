@@ -2,6 +2,10 @@
     "key_list": [
         {
             "type": "Course",
+            "id": "TEST-101"
+        },
+        {
+            "type": "Course",
             "id": "TEST-101(a)"
         },
         {
