@@ -33,3 +33,5 @@
 - ✅ Node endpoints are mostly fixed
 - ✅ Edge endpoints need work, fix output format of 'get edge'. also, 'get many edges' is not returning results
 - 👉 need to fix global/local paths issue in graphdb repo
+- 👉 ./examples/entrypoints/node_list/api.sh is still returning DB format json, not API format
+- 👉 this is not working: ./examples/entrypoints/node_delete/api.sh
