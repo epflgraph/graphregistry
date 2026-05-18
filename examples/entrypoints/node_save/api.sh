@@ -1,5 +1,5 @@
-jq '.' examples/entrypoints/node_get/request.json \
-| curl -sS -X POST 'https://graphregistry.graphcert.cede-apps.ch/api/nodes/get' \
+jq '.' examples/entrypoints/node_save/request.json \
+| curl -sS -X POST 'http://127.0.0.1:9999/api/nodes/save' \
     -H 'accept: application/json' \
     -H 'Content-Type: application/json' \
     -d @- \

@@ -1,0 +1,289 @@
+{
+    "edge_list": [
+        {
+            "from_type": "Course",
+            "from_id": "BIO-410",
+            "to_type": "Person",
+            "to_id": "115533",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2025-2026"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-202",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2025-2026"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-303",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2023-2024"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-418",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2021-2022"
+                }
+            ]
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-500",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "teacher",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "teaching_assignment_year",
+                    "field_value": "2024-2025"
+                }
+            ]
+        },
+        {
+            "from_type": "Person",
+            "from_id": "106643",
+            "to_type": "Unit",
+            "to_id": "LTS2",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2023-06-02"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2022-12-01"
+                }
+            ]
+        },
+        {
+            "from_type": "Person",
+            "from_id": "107537",
+            "to_type": "Unit",
+            "to_id": "LCAV",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2025-12-11"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "last_position_name",
+                    "field_value": "Full Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "longest_position_name",
+                    "field_value": "Full Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2003-05-05"
+                }
+            ]
+        },
+        {
+            "from_type": "Person",
+            "from_id": "110610",
+            "to_type": "Unit",
+            "to_id": "LCAV",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "2025-12-31"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "last_position_name",
+                    "field_value": "Scientist"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "longest_position_name",
+                    "field_value": "Scientist"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2004-10-14"
+                }
+            ]
+        },
+        {
+            "from_type": "Person",
+            "from_id": "115227",
+            "to_type": "Unit",
+            "to_id": "LIB",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "9999-12-31"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "last_position_name",
+                    "field_value": "Full Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "longest_position_name",
+                    "field_value": "Full Professor"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2003-05-05"
+                }
+            ]
+        },
+        {
+            "from_type": "Person",
+            "from_id": "115533",
+            "to_type": "Unit",
+            "to_id": "LIB",
+            "context": "accreditation",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "end_datetime",
+                    "field_value": "9999-12-31"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "last_position_name",
+                    "field_value": "Engineer"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "longest_position_name",
+                    "field_value": "Engineer"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "start_datetime",
+                    "field_value": "2003-05-05"
+                }
+            ]
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "007deab2-1573-42e3-8849-d395833a8b9a",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "01c8229a-28ac-4750-9b09-3dc5d1e99997",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "authorship",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "0e887671-8804-4bfa-a092-469d9183890f",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "authorship",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "57bfdd32-e5f2-4ed8-8829-ecfe92e0ae48",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "authorship",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "IC",
+            "to_type": "Unit",
+            "to_id": "EPFL",
+            "context": "affiliation",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "IEM",
+            "to_type": "Unit",
+            "to_id": "STI",
+            "context": "affiliation",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "IINFCOM",
+            "to_type": "Unit",
+            "to_id": "IC",
+            "context": "affiliation",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "LCAV",
+            "to_type": "Unit",
+            "to_id": "IINFCOM",
+            "context": "affiliation",
+            "custom_fields": []
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "LIB",
+            "to_type": "Unit",
+            "to_id": "IEM",
+            "context": "affiliation",
+            "custom_fields": []
+        }
+    ]
+}

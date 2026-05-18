@@ -1,0 +1,9 @@
+{
+    "key": {
+        "from_type": "Course",
+        "from_id": "BIO-410",
+        "to_type": "Person",
+        "to_id": "115533",
+        "context": "teacher"
+    }
+}
