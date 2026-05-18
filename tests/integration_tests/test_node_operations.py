@@ -16,7 +16,12 @@ from graphdb.core.graphdb import GraphDB
 glbcfg = GlobalConfig()
 
 # Resolve the fixture path relative to this test file, going up to the project root and then into tests/fixtures
-FIXTURE_PATH = Path("./tests/fixtures/node_operations_sample.json")
+FIXTURE_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "integration_tests"
+    / "node_operations_sample.json"
+)
 
 # Define the engine name constant used in the schema resolver
 ENGINE_NAME = 'xaas_coresrv'
