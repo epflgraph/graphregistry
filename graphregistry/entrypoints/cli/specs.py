@@ -210,8 +210,8 @@ cli_definitions: Dict[str, Any] = {
                 help = "List existing nodes or edges for given object type(s).",
                 func = cmd_data_list,
                 args = [
-                    dict(flags=('--object_type', ), kwargs=dict(required=True,  type=str, default=None, help="Object type for node (single string) or edge (two comma-separated strings).")),
-                    dict(flags=('--id_pattern',  ), kwargs=dict(required=False, type=str, default=None, help="String pattern to search for in node or edge ids.")),
+                    dict(flags=('--node_request',), kwargs=dict(required=False, type=str, default=None, help="Request JSON file containing object type(s) and optional filters for listing nodes.")),
+                    dict(flags=('--edge_request',), kwargs=dict(required=False, type=str, default=None, help="Request JSON file containing object type(s) and optional filters for listing edges.")),
                 ],
                 common_args = ['env']
             ),
@@ -227,11 +227,13 @@ cli_definitions: Dict[str, Any] = {
                 common_args = ['env']
             ),
             'exists' : dict(
-                help = "Check if node or edge exists.",
+                help = "Check if node or edge exists in the registry.",
                 func = cmd_data_exists,
                 args = [
-                    dict(flags=('--node', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated node key.")),
-                    dict(flags=('--edge', ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated edge key.")),
+                    dict(flags=('--node_key',      ), kwargs=dict(required=False, type=str, default=None, help="Path to node key JSON file.")),
+                    dict(flags=('--edge_key',      ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key JSON file.")),
+                    dict(flags=('--node_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to node key list JSON file.")),
+                    dict(flags=('--edge_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key list JSON file.")),
                 ],
                 common_args = ['env']
             ),
@@ -264,11 +266,11 @@ cli_definitions: Dict[str, Any] = {
                 help = "Delete data from Registry.",
                 func = cmd_data_delete,
                 args = [
-                    dict(flags=('--node',      ), kwargs=dict(required=False, type=str, default=None, help="Delete node by comma-separated node key.")),
-                    dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="Delete edge by comma-separated edge key.")),
-                    dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Delete node list by comma-separated node keys.")),
-                    dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Delete edge list by comma-separated edge keys.")),
-                    dict(flags=('--actions',      ), kwargs=dict(required=False, type=str, default='eval',   help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
+                    dict(flags=('--node_key',      ), kwargs=dict(required=False, type=str, default=None, help="Path to node key JSON file.")),
+                    dict(flags=('--edge_key',      ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key JSON file.")),
+                    dict(flags=('--node_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to node key list JSON file.")),
+                    dict(flags=('--edge_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key list JSON file.")),
+                    dict(flags=('--actions',       ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval)."))
                 ],
                 common_args = ['env']
             ),
