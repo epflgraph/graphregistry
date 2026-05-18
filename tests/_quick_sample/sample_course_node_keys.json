@@ -1,0 +1,28 @@
+{
+    "key_list": [
+        {
+            "type": "Course",
+            "id": "TEST-101"
+        },
+        {
+            "type": "Course",
+            "id": "TEST-101(a)"
+        },
+        {
+            "type": "Course",
+            "id": "TEST-101(b)"
+        },
+        {
+            "type": "Course",
+            "id": "TEST-101(c)"
+        },
+        {
+            "type": "Course",
+            "id": "TEST-101(d)"
+        },
+        {
+            "type": "Course",
+            "id": "TEST-101(e)"
+        }
+    ]
+}

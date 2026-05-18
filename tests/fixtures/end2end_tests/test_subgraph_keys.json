@@ -1,0 +1,232 @@
+{
+    "subgraph": {
+        "node_list": [
+            {
+                "type": "Course",
+                "id": "BIO-410"
+            },
+            {
+                "type": "Course",
+                "id": "COM-202"
+            },
+            {
+                "type": "Course",
+                "id": "COM-303"
+            },
+            {
+                "type": "Course",
+                "id": "COM-418"
+            },
+            {
+                "type": "Course",
+                "id": "COM-500"
+            },
+            {
+                "type": "Person",
+                "id": "106643"
+            },
+            {
+                "type": "Person",
+                "id": "107537"
+            },
+            {
+                "type": "Person",
+                "id": "110610"
+            },
+            {
+                "type": "Person",
+                "id": "115227"
+            },
+            {
+                "type": "Person",
+                "id": "115533"
+            },
+            {
+                "type": "Person",
+                "id": "120906"
+            },
+            {
+                "type": "Publication",
+                "id": "007deab2-1573-42e3-8849-d395833a8b9a"
+            },
+            {
+                "type": "Publication",
+                "id": "01c8229a-28ac-4750-9b09-3dc5d1e99997"
+            },
+            {
+                "type": "Publication",
+                "id": "0e887671-8804-4bfa-a092-469d9183890f"
+            },
+            {
+                "type": "Publication",
+                "id": "1852946c-39fb-4a0e-9c6b-2cd47efa317e"
+            },
+            {
+                "type": "Publication",
+                "id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf"
+            },
+            {
+                "type": "Unit",
+                "id": "EPFL"
+            },
+            {
+                "type": "Unit",
+                "id": "IC"
+            },
+            {
+                "type": "Unit",
+                "id": "IEM"
+            },
+            {
+                "type": "Unit",
+                "id": "IINFCOM"
+            },
+            {
+                "type": "Unit",
+                "id": "LCAV"
+            }
+        ],
+        "edge_list": [
+            {
+                "from_type": "Course",
+                "from_id": "BIO-410",
+                "to_type": "Person",
+                "to_id": "115533",
+                "context": "teacher"
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-202",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "teacher"
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-303",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "teacher"
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-418",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "teacher"
+            },
+            {
+                "from_type": "Course",
+                "from_id": "COM-500",
+                "to_type": "Person",
+                "to_id": "145758",
+                "context": "teacher"
+            },
+            {
+                "from_type": "Person",
+                "from_id": "106643",
+                "to_type": "Unit",
+                "to_id": "LTS2",
+                "context": "accreditation"
+            },
+            {
+                "from_type": "Person",
+                "from_id": "107537",
+                "to_type": "Unit",
+                "to_id": "LCAV",
+                "context": "accreditation"
+            },
+            {
+                "from_type": "Person",
+                "from_id": "110610",
+                "to_type": "Unit",
+                "to_id": "LCAV",
+                "context": "accreditation"
+            },
+            {
+                "from_type": "Person",
+                "from_id": "115227",
+                "to_type": "Unit",
+                "to_id": "LIB",
+                "context": "accreditation"
+            },
+            {
+                "from_type": "Person",
+                "from_id": "115533",
+                "to_type": "Unit",
+                "to_id": "LIB",
+                "context": "accreditation"
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "007deab2-1573-42e3-8849-d395833a8b9a",
+                "to_type": "Person",
+                "to_id": "107537",
+                "context": "authorship"
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "01c8229a-28ac-4750-9b09-3dc5d1e99997",
+                "to_type": "Person",
+                "to_id": "145758",
+                "context": "authorship"
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "0e887671-8804-4bfa-a092-469d9183890f",
+                "to_type": "Person",
+                "to_id": "110610",
+                "context": "authorship"
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf",
+                "to_type": "Person",
+                "to_id": "107537",
+                "context": "authorship"
+            },
+            {
+                "from_type": "Publication",
+                "from_id": "57bfdd32-e5f2-4ed8-8829-ecfe92e0ae48",
+                "to_type": "Person",
+                "to_id": "157878",
+                "context": "authorship"
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "IC",
+                "to_type": "Unit",
+                "to_id": "EPFL",
+                "context": "affiliation"
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "IEM",
+                "to_type": "Unit",
+                "to_id": "STI",
+                "context": "affiliation"
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "IINFCOM",
+                "to_type": "Unit",
+                "to_id": "IC",
+                "context": "affiliation"
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "LCAV",
+                "to_type": "Unit",
+                "to_id": "IINFCOM",
+                "context": "affiliation"
+            },
+            {
+                "from_type": "Unit",
+                "from_id": "LIB",
+                "to_type": "Unit",
+                "to_id": "IEM",
+                "context": "affiliation"
+            }
+        ]
+    }
+}

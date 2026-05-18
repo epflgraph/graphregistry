@@ -247,7 +247,6 @@ config_scores.json
 # Exclude symlinks
 *.lnk
 .gitleaks.toml
-security_scan.sh
 setup.sh
 node_modules/
 *.crt
@@ -264,3 +263,24 @@ test_delete_orphans.py
 payload.json
 config/config_db.yaml
 config/config_global.dev.yaml
+config/config_index.prod.json
+config/config_es.yaml
+sample_course_test.sh
+scripts/init/sample_sets/epfl_graph_sample_set_EDGEs.json
+scripts/init/sample_sets/epfl_graph_sample_set_NODEs.json
+scripts/init/sample_sets/MATH-132_Lecture_01_Method_1.json
+config/config_graphai_client copy.json
+scripts/init/sample_sets/*.json
+config/config_graphai_client.rcp.json
+config/config_graphai_client.switch.json
+database/init/sample_sets/*
+sample_set_graph_ontology.sql
+services_path.txt
+nginx.graphregistry-https.conf
+.temp*
+promtail*
+restart.sh
+test.sh
+epfl_graph_sample_set_EDGEs.json
+epfl_graph_sample_set_NODEs.json
+.archive

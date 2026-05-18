@@ -1,14 +1,13 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-import json, rich
+# graphregistry/common/config.py
 from collections import defaultdict
 from pathlib import Path
 from yaml import safe_load
+import json, rich, copy
 
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#================================#
+#================================#`1`
 # Class definition: GlobalConfig #
 #================================#
 class GlobalConfig:
@@ -28,6 +27,9 @@ class GlobalConfig:
         # Set MySQL schema names from config file #
         #-----------------------------------------#
 
+        # Get execution mode [dev, prod] from config file
+        self.mysql_execution_mode = self.settings['mysql']['mode']
+
         # Fetch schema names from config file
         self.mysql_schema_names = {
             'test' : {
@@ -44,8 +46,14 @@ class GlobalConfig:
                 'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
             }
         }
-        self.mysql_schema_names['xaas_coresrv'] = self.mysql_schema_names['test']
-        self.mysql_schema_names['xaas_prod']    = self.mysql_schema_names['prod']
+        self.mysql_schema_names['xaas_coresrv'] = copy.deepcopy(self.mysql_schema_names['test'])
+        self.mysql_schema_names['xaas_prod']    = copy.deepcopy(self.mysql_schema_names['prod'])
+
+        # Add prefix to schema names if in 'dev' mode
+        if self.mysql_execution_mode == 'dev':
+            for env in self.mysql_schema_names:
+                for schema in self.mysql_schema_names[env]:
+                    self.mysql_schema_names[env].update({schema: "_1_DEV_" + self.mysql_schema_names[env][schema]})
 
         # Assign to local variables (to act as aliases)
         self.schema_ontology = self.mysql_schema_names['test']['ontology']
@@ -77,6 +85,30 @@ class GlobalConfig:
             'Widget'         : self.schema_registry,
         }
 
+        # Object-to-object type to schema mapping
+        self.object2object_type_to_schema = {
+            ('Course'     , 'Course')          : self.schema_registry,
+            ('Course'     , 'Person')          : self.schema_registry,
+            ('Course'     , 'Specialisation')  : self.schema_registry,
+            ('Course'     , 'StudyPlan')       : self.schema_registry,
+            ('Course'     , 'Unit')            : self.schema_registry,
+            ('Exercise'   , 'Person')          : self.schema_registry,
+            ('MOOC'       , 'Person')          : self.schema_registry,
+            ('Notebook'   , 'Person')          : self.schema_registry,
+            ('Person'     , 'Unit')            : self.schema_registry,
+            ('Person'     , 'Publication')     : self.schema_registry,
+            ('Publication', 'Unit')            : self.schema_registry,
+            ('Unit'       , 'Unit')            : self.schema_registry,
+            ('Course'     , 'Lecture')         : self.schema_lectures,
+            ('Lecture'    , 'MOOC')            : self.schema_lectures,
+            ('Lecture'    , 'Slide')           : self.schema_lectures,
+            ('Lecture'    , 'Transcript')      : self.schema_lectures,
+            ('Lecture'    , 'Widget')          : self.schema_lectures,
+            ('Category'   , 'Category')        : self.schema_ontology,
+            ('Category'   , 'Concept')         : self.schema_ontology
+        }
+
+
         # Also build the inverted mapping
         from collections import defaultdict
         self.schema_to_object_types = defaultdict(list)
@@ -104,9 +136,19 @@ class GlobalConfig:
             'Widget'         : 'EPFL',
         }
 
+        # Page profile columns
+        self.page_profile_columns = ["numeric_id_en", "numeric_id_fr", "numeric_id_de", "numeric_id_it", "short_code", "subtype_en", "subtype_fr", "subtype_de", "subtype_it", "name_en_is_auto_generated", "name_en_is_auto_corrected", "name_en_is_auto_translated", "name_en_translated_from", "name_en_value", "name_fr_is_auto_generated", "name_fr_is_auto_corrected", "name_fr_is_auto_translated", "name_fr_translated_from", "name_fr_value", "name_de_is_auto_generated", "name_de_is_auto_corrected", "name_de_is_auto_translated", "name_de_translated_from", "name_de_value", "name_it_is_auto_generated", "name_it_is_auto_corrected", "name_it_is_auto_translated", "name_it_translated_from", "name_it_value", "description_short_en_is_auto_generated", "description_short_en_is_auto_corrected", "description_short_en_is_auto_translated", "description_short_en_translated_from", "description_short_en_value", "description_short_fr_is_auto_generated", "description_short_fr_is_auto_corrected", "description_short_fr_is_auto_translated", "description_short_fr_translated_from", "description_short_fr_value", "description_short_de_is_auto_generated", "description_short_de_is_auto_corrected", "description_short_de_is_auto_translated", "description_short_de_translated_from", "description_short_de_value", "description_short_it_is_auto_generated", "description_short_it_is_auto_corrected", "description_short_it_is_auto_translated", "description_short_it_translated_from", "description_short_it_value", "description_medium_en_is_auto_generated", "description_medium_en_is_auto_corrected", "description_medium_en_is_auto_translated", "description_medium_en_translated_from", "description_medium_en_value", "description_medium_fr_is_auto_generated", "description_medium_fr_is_auto_corrected", "description_medium_fr_is_auto_translated", "description_medium_fr_translated_from", "description_medium_fr_value", "description_medium_de_is_auto_generated", "description_medium_de_is_auto_corrected", "description_medium_de_is_auto_translated", "description_medium_de_translated_from", "description_medium_de_value", "description_medium_it_is_auto_generated", "description_medium_it_is_auto_corrected", "description_medium_it_is_auto_translated", "description_medium_it_translated_from", "description_medium_it_value", "description_long_en_is_auto_generated", "description_long_en_is_auto_corrected", "description_long_en_is_auto_translated", "description_long_en_translated_from", "description_long_en_value", "description_long_fr_is_auto_generated", "description_long_fr_is_auto_corrected", "description_long_fr_is_auto_translated", "description_long_fr_translated_from", "description_long_fr_value", "description_long_de_is_auto_generated", "description_long_de_is_auto_corrected", "description_long_de_is_auto_translated", "description_long_de_translated_from", "description_long_de_value", "description_long_it_is_auto_generated", "description_long_it_is_auto_corrected", "description_long_it_is_auto_translated", "description_long_it_translated_from", "description_long_it_value", "external_key_en", "external_key_fr", "external_key_de", "external_key_it", "external_url_en", "external_url_fr", "external_url_de", "external_url_it", "is_visible"]
+
+        # API title and summary
+        self.api_title = self.settings['api']['title']
+        self.api_summary = self.settings['api']['summary']
+
     # Print method
     def print(self):
+        print('Raw config:')
         rich.print_json(data=self.settings)
+        print('mysql_schema_names:')
+        rich.print_json(data=self.mysql_schema_names)
 
 #===============================#
 # Class definition: IndexConfig #
@@ -503,8 +545,8 @@ class ScoresConfig:
 # Main execution #
 #================#
 if __name__ == "__main__":
-    # self = GlobalConfig()
-    # self.print()
+    self = GlobalConfig()
+    self.print()
     idxcfg = IndexConfig()
     idxcfg.print(compact=True)
     scrcfg = ScoresConfig()

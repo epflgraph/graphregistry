@@ -1,0 +1,964 @@
+{
+    "samples": [
+        {
+            "input": {
+                "node": {
+                    "type": "Course",
+                    "subtype": null,
+                    "id": "CS-433",
+                    "title": "Machine Learning",
+                    "description": "Introduction to supervised and unsupervised machine learning, model evaluation, regularization, clustering, dimensionality reduction, and practical applications.",
+                    "url": "https://edu.epfl.ch/coursebook/en/machine-learning-CS-433",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "credits",
+                            "field_value": "7"
+                        },
+                        {
+                            "field_language": "en",
+                            "field_name": "level",
+                            "field_value": "Master"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "institution_id": "EPFL",
+                    "object_type": "Course",
+                    "object_id": "CS-433"
+                },
+                "title": "Machine Learning",
+                "text_source": "user input",
+                "raw_text": "Introduction to supervised and unsupervised machine learning, model evaluation, regularization, clustering, dimensionality reduction, and practical applications.",
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Course",
+                                    "object_id": "CS-433"
+                                },
+                                "field_language": "en",
+                                "field_name": "credits"
+                            },
+                            "field_value": "7"
+                        },
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Course",
+                                    "object_id": "CS-433"
+                                },
+                                "field_language": "en",
+                                "field_name": "level"
+                            },
+                            "field_value": "Master"
+                        }
+                    ]
+                },
+                "page_profile": {
+                    "key": {
+                        "institution_id": "EPFL",
+                        "object_type": "Course",
+                        "object_id": "CS-433"
+                    },
+                    "numeric_id": {
+                        "item_map": {}
+                    },
+                    "short_code": "",
+                    "subtype": {
+                        "item_map": {}
+                    },
+                    "name": {
+                        "item_map": {},
+                        "LANGUAGES": [
+                            "en",
+                            "fr",
+                            "de",
+                            "it"
+                        ]
+                    },
+                    "description": {
+                        "short": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "medium": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "long": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        }
+                    },
+                    "external_key": {
+                        "item_map": {}
+                    },
+                    "external_url": {
+                        "item_map": {
+                            "en": "https://edu.epfl.ch/coursebook/en/machine-learning-CS-433",
+                            "fr": "https://edu.epfl.ch/coursebook/en/machine-learning-CS-433",
+                            "de": "https://edu.epfl.ch/coursebook/en/machine-learning-CS-433",
+                            "it": "https://edu.epfl.ch/coursebook/en/machine-learning-CS-433"
+                        }
+                    },
+                    "is_visible": true
+                },
+                "detected_concepts": {
+                    "item_list": []
+                }
+            }
+        },
+        {
+            "input": {
+                "node": {
+                    "type": "Course",
+                    "id": "MATH-203",
+                    "title": [
+                        {
+                            "language": "en",
+                            "text": "Probability and Statistics"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Probabilités et statistiques"
+                        }
+                    ],
+                    "description": [
+                        {
+                            "language": "en",
+                            "text": "This course covers probability theory, random variables, estimation, hypothesis testing, and linear models."
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Ce cours couvre la théorie des probabilités, les variables aléatoires, l’estimation, les tests d’hypothèses et les modèles linéaires."
+                        }
+                    ],
+                    "url": [
+                        {
+                            "language": "en",
+                            "text": "https://edu.epfl.ch/coursebook/en/probability-and-statistics-MATH-203"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "https://edu.epfl.ch/coursebook/fr/probabilites-et-statistiques-MATH-203"
+                        }
+                    ],
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "credits",
+                            "field_value": "5"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "institution_id": "EPFL",
+                    "object_type": "Course",
+                    "object_id": "MATH-203"
+                },
+                "title": "Probability and Statistics",
+                "text_source": "user input",
+                "raw_text": "This course covers probability theory, random variables, estimation, hypothesis testing, and linear models.",
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Course",
+                                    "object_id": "MATH-203"
+                                },
+                                "field_language": "en",
+                                "field_name": "credits"
+                            },
+                            "field_value": "5"
+                        }
+                    ]
+                },
+                "page_profile": {
+                    "key": {
+                        "institution_id": "EPFL",
+                        "object_type": "Course",
+                        "object_id": "MATH-203"
+                    },
+                    "numeric_id": {
+                        "item_map": {}
+                    },
+                    "short_code": "",
+                    "subtype": {
+                        "item_map": {}
+                    },
+                    "name": {
+                        "item_map": {
+                            "en": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Probability and Statistics"
+                            },
+                            "fr": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Probabilités et statistiques"
+                            }
+                        },
+                        "LANGUAGES": [
+                            "en",
+                            "fr",
+                            "de",
+                            "it"
+                        ]
+                    },
+                    "description": {
+                        "short": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "medium": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "long": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "This course covers probability theory, random variables, estimation, hypothesis testing, and linear models."
+                                },
+                                "fr": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "Ce cours couvre la théorie des probabilités, les variables aléatoires, l’estimation, les tests d’hypothèses et les modèles linéaires."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        }
+                    },
+                    "external_key": {
+                        "item_map": {}
+                    },
+                    "external_url": {
+                        "item_map": {
+                            "en": "https://edu.epfl.ch/coursebook/en/probability-and-statistics-MATH-203",
+                            "fr": "https://edu.epfl.ch/coursebook/fr/probabilites-et-statistiques-MATH-203"
+                        }
+                    },
+                    "is_visible": true
+                },
+                "detected_concepts": {
+                    "item_list": []
+                }
+            }
+        },
+        {
+            "input": {
+                "node": {
+                    "type": "Course",
+                    "id": "CS-250",
+                    "title": [
+                        {
+                            "language": "en",
+                            "text": "Algorithms"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Algorithmes"
+                        },
+                        {
+                            "language": "de",
+                            "text": "Algorithmen"
+                        },
+                        {
+                            "language": "it",
+                            "text": "Algoritmi"
+                        }
+                    ],
+                    "description": {
+                        "short": [
+                            {
+                                "language": "en",
+                                "text": "Core algorithms and data structures."
+                            }
+                        ],
+                        "medium": [
+                            {
+                                "language": "en",
+                                "text": "A course on algorithm design, analysis, correctness, complexity, and data structures."
+                            }
+                        ],
+                        "long": [
+                            {
+                                "language": "en",
+                                "text": "This course introduces fundamental algorithms and data structures, including sorting, searching, graph algorithms, dynamic programming, greedy algorithms, complexity analysis, and proofs of correctness."
+                            },
+                            {
+                                "language": "fr",
+                                "text": "Ce cours introduit les algorithmes et structures de données fondamentaux, notamment le tri, la recherche, les algorithmes de graphes, la programmation dynamique, les algorithmes gloutons, l’analyse de complexité et les preuves de correction."
+                            }
+                        ]
+                    },
+                    "url": "https://edu.epfl.ch/coursebook/en/algorithms-CS-250",
+                    "custom_fields": []
+                }
+            },
+            "output": {
+                "key": {
+                    "institution_id": "EPFL",
+                    "object_type": "Course",
+                    "object_id": "CS-250"
+                },
+                "title": "Algorithms",
+                "text_source": "user input",
+                "raw_text": "This course introduces fundamental algorithms and data structures, including sorting, searching, graph algorithms, dynamic programming, greedy algorithms, complexity analysis, and proofs of correctness.",
+                "field_list": {
+                    "item_list": []
+                },
+                "page_profile": {
+                    "key": {
+                        "institution_id": "EPFL",
+                        "object_type": "Course",
+                        "object_id": "CS-250"
+                    },
+                    "numeric_id": {
+                        "item_map": {}
+                    },
+                    "short_code": "",
+                    "subtype": {
+                        "item_map": {}
+                    },
+                    "name": {
+                        "item_map": {
+                            "en": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Algorithms"
+                            },
+                            "fr": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Algorithmes"
+                            },
+                            "de": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Algorithmen"
+                            },
+                            "it": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Algoritmi"
+                            }
+                        },
+                        "LANGUAGES": [
+                            "en",
+                            "fr",
+                            "de",
+                            "it"
+                        ]
+                    },
+                    "description": {
+                        "short": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "Core algorithms and data structures."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "medium": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "A course on algorithm design, analysis, correctness, complexity, and data structures."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "long": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "This course introduces fundamental algorithms and data structures, including sorting, searching, graph algorithms, dynamic programming, greedy algorithms, complexity analysis, and proofs of correctness."
+                                },
+                                "fr": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "Ce cours introduit les algorithmes et structures de données fondamentaux, notamment le tri, la recherche, les algorithmes de graphes, la programmation dynamique, les algorithmes gloutons, l’analyse de complexité et les preuves de correction."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        }
+                    },
+                    "external_key": {
+                        "item_map": {}
+                    },
+                    "external_url": {
+                        "item_map": {
+                            "en": "https://edu.epfl.ch/coursebook/en/algorithms-CS-250",
+                            "fr": "https://edu.epfl.ch/coursebook/en/algorithms-CS-250",
+                            "de": "https://edu.epfl.ch/coursebook/en/algorithms-CS-250",
+                            "it": "https://edu.epfl.ch/coursebook/en/algorithms-CS-250"
+                        }
+                    },
+                    "is_visible": true
+                },
+                "detected_concepts": {
+                    "item_list": []
+                }
+            }
+        },
+        {
+            "input": {
+                "node": {
+                    "type": "Person",
+                    "subtype": "Faculty",
+                    "id": "person-12345",
+                    "title": "Jane Smith",
+                    "description": {
+                        "short": [
+                            {
+                                "language": "en",
+                                "text": "Professor of machine learning and data science."
+                            }
+                        ],
+                        "long": [
+                            {
+                                "language": "en",
+                                "text": "Jane Smith is a professor whose research focuses on machine learning, statistical learning theory, optimization, and applications of artificial intelligence in science and engineering."
+                            }
+                        ]
+                    },
+                    "url": "https://people.epfl.ch/jane.smith",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "role",
+                            "field_value": "Professor"
+                        },
+                        {
+                            "field_language": "en",
+                            "field_name": "unit",
+                            "field_value": "School of Computer and Communication Sciences"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "institution_id": "EPFL",
+                    "object_type": "Person",
+                    "object_id": "person-12345"
+                },
+                "title": "Jane Smith",
+                "text_source": "user input",
+                "raw_text": "Jane Smith is a professor whose research focuses on machine learning, statistical learning theory, optimization, and applications of artificial intelligence in science and engineering.",
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Person",
+                                    "object_id": "person-12345"
+                                },
+                                "field_language": "en",
+                                "field_name": "role"
+                            },
+                            "field_value": "Professor"
+                        },
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Person",
+                                    "object_id": "person-12345"
+                                },
+                                "field_language": "en",
+                                "field_name": "unit"
+                            },
+                            "field_value": "School of Computer and Communication Sciences"
+                        }
+                    ]
+                },
+                "page_profile": {
+                    "key": {
+                        "institution_id": "EPFL",
+                        "object_type": "Person",
+                        "object_id": "person-12345"
+                    },
+                    "numeric_id": {
+                        "item_map": {}
+                    },
+                    "short_code": "",
+                    "subtype": {
+                        "item_map": {
+                            "en": "Faculty"
+                        }
+                    },
+                    "name": {
+                        "item_map": {},
+                        "LANGUAGES": [
+                            "en",
+                            "fr",
+                            "de",
+                            "it"
+                        ]
+                    },
+                    "description": {
+                        "short": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "Professor of machine learning and data science."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "medium": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "long": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "Jane Smith is a professor whose research focuses on machine learning, statistical learning theory, optimization, and applications of artificial intelligence in science and engineering."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        }
+                    },
+                    "external_key": {
+                        "item_map": {}
+                    },
+                    "external_url": {
+                        "item_map": {
+                            "en": "https://people.epfl.ch/jane.smith",
+                            "fr": "https://people.epfl.ch/jane.smith",
+                            "de": "https://people.epfl.ch/jane.smith",
+                            "it": "https://people.epfl.ch/jane.smith"
+                        }
+                    },
+                    "is_visible": true
+                },
+                "detected_concepts": {
+                    "item_list": []
+                }
+            }
+        },
+        {
+            "input": {
+                "node": {
+                    "type": "Publication",
+                    "subtype": [
+                        {
+                            "language": "en",
+                            "text": "Journal article"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Article de journal"
+                        }
+                    ],
+                    "id": "doi-10.1234-example-ml-2024",
+                    "title": "Robust Representation Learning for Scientific Data",
+                    "description": "This publication presents methods for learning robust representations from noisy scientific datasets, with applications to prediction, clustering, and downstream model interpretation.",
+                    "url": "https://doi.org/10.1234/example-ml-2024",
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "year",
+                            "field_value": "2024"
+                        },
+                        {
+                            "field_language": "en",
+                            "field_name": "venue",
+                            "field_value": "International Conference on Machine Learning"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "institution_id": "EPFL",
+                    "object_type": "Publication",
+                    "object_id": "doi-10.1234-example-ml-2024"
+                },
+                "title": "Robust Representation Learning for Scientific Data",
+                "text_source": "user input",
+                "raw_text": "This publication presents methods for learning robust representations from noisy scientific datasets, with applications to prediction, clustering, and downstream model interpretation.",
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Publication",
+                                    "object_id": "doi-10.1234-example-ml-2024"
+                                },
+                                "field_language": "en",
+                                "field_name": "year"
+                            },
+                            "field_value": "2024"
+                        },
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Publication",
+                                    "object_id": "doi-10.1234-example-ml-2024"
+                                },
+                                "field_language": "en",
+                                "field_name": "venue"
+                            },
+                            "field_value": "International Conference on Machine Learning"
+                        }
+                    ]
+                },
+                "page_profile": {
+                    "key": {
+                        "institution_id": "EPFL",
+                        "object_type": "Publication",
+                        "object_id": "doi-10.1234-example-ml-2024"
+                    },
+                    "numeric_id": {
+                        "item_map": {}
+                    },
+                    "short_code": "",
+                    "subtype": {
+                        "item_map": {
+                            "en": "Journal article",
+                            "fr": "Article de journal"
+                        }
+                    },
+                    "name": {
+                        "item_map": {},
+                        "LANGUAGES": [
+                            "en",
+                            "fr",
+                            "de",
+                            "it"
+                        ]
+                    },
+                    "description": {
+                        "short": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "medium": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "long": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        }
+                    },
+                    "external_key": {
+                        "item_map": {}
+                    },
+                    "external_url": {
+                        "item_map": {
+                            "en": "https://doi.org/10.1234/example-ml-2024",
+                            "fr": "https://doi.org/10.1234/example-ml-2024",
+                            "de": "https://doi.org/10.1234/example-ml-2024",
+                            "it": "https://doi.org/10.1234/example-ml-2024"
+                        }
+                    },
+                    "is_visible": true
+                },
+                "detected_concepts": {
+                    "item_list": []
+                }
+            }
+        },
+        {
+            "input": {
+                "node": {
+                    "type": "Unit",
+                    "subtype": [
+                        {
+                            "language": "en",
+                            "text": "Laboratory"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Laboratoire"
+                        }
+                    ],
+                    "id": "ml-lab",
+                    "title": [
+                        {
+                            "language": "en",
+                            "text": "Machine Learning Laboratory"
+                        },
+                        {
+                            "language": "fr",
+                            "text": "Laboratoire d’apprentissage automatique"
+                        }
+                    ],
+                    "description": {
+                        "short": [
+                            {
+                                "language": "en",
+                                "text": "Research laboratory focused on machine learning."
+                            }
+                        ],
+                        "medium": [
+                            {
+                                "language": "en",
+                                "text": "The Machine Learning Laboratory conducts research on statistical machine learning, optimization, representation learning, and trustworthy AI."
+                            }
+                        ]
+                    },
+                    "url": null,
+                    "custom_fields": [
+                        {
+                            "field_language": "en",
+                            "field_name": "unit_type",
+                            "field_value": "Laboratory"
+                        }
+                    ]
+                }
+            },
+            "output": {
+                "key": {
+                    "institution_id": "EPFL",
+                    "object_type": "Unit",
+                    "object_id": "ml-lab"
+                },
+                "title": "Machine Learning Laboratory",
+                "text_source": null,
+                "raw_text": null,
+                "field_list": {
+                    "item_list": [
+                        {
+                            "key": {
+                                "key": {
+                                    "institution_id": "EPFL",
+                                    "object_type": "Unit",
+                                    "object_id": "ml-lab"
+                                },
+                                "field_language": "en",
+                                "field_name": "unit_type"
+                            },
+                            "field_value": "Laboratory"
+                        }
+                    ]
+                },
+                "page_profile": {
+                    "key": {
+                        "institution_id": "EPFL",
+                        "object_type": "Unit",
+                        "object_id": "ml-lab"
+                    },
+                    "numeric_id": {
+                        "item_map": {}
+                    },
+                    "short_code": "",
+                    "subtype": {
+                        "item_map": {
+                            "en": "Laboratory",
+                            "fr": "Laboratoire"
+                        }
+                    },
+                    "name": {
+                        "item_map": {
+                            "en": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Machine Learning Laboratory"
+                            },
+                            "fr": {
+                                "is_auto_generated": false,
+                                "is_auto_corrected": false,
+                                "is_auto_translated": false,
+                                "translated_from": null,
+                                "value": "Laboratoire d’apprentissage automatique"
+                            }
+                        },
+                        "LANGUAGES": [
+                            "en",
+                            "fr",
+                            "de",
+                            "it"
+                        ]
+                    },
+                    "description": {
+                        "short": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "Research laboratory focused on machine learning."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "medium": {
+                            "item_map": {
+                                "en": {
+                                    "is_auto_generated": false,
+                                    "is_auto_corrected": false,
+                                    "is_auto_translated": false,
+                                    "translated_from": null,
+                                    "value": "The Machine Learning Laboratory conducts research on statistical machine learning, optimization, representation learning, and trustworthy AI."
+                                }
+                            },
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        },
+                        "long": {
+                            "item_map": {},
+                            "LANGUAGES": [
+                                "en",
+                                "fr",
+                                "de",
+                                "it"
+                            ]
+                        }
+                    },
+                    "external_key": {
+                        "item_map": {}
+                    },
+                    "external_url": {
+                        "item_map": {}
+                    },
+                    "is_visible": true
+                },
+                "detected_concepts": {
+                    "item_list": []
+                }
+            }
+        }
+    ]
+}

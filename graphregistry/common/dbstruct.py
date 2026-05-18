@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+# graphregistry/common/dbstruct.py
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
-from graphregistry.clients.mysql import GraphDB
+from graphdb.core.config import GraphDBConfig
+from graphdb.core.graphdb import GraphDB
 import rich, json, re
 from pathlib import Path
 
@@ -13,8 +13,27 @@ glbcfg = GlobalConfig()
 idxcfg = IndexConfig()
 scrcfg = ScoresConfig()
 
-# Initialize GraphDB
-db = GraphDB()
+
+def _find_repo_root(start: Path | None = None) -> Path:
+    start = (start or Path(__file__)).resolve()
+
+    for parent in [start, *start.parents]:
+        if (parent / "graphregistry").is_dir() and (parent / "config").is_dir():
+            return parent
+
+    raise RuntimeError(f"Could not find repository root from: {start}")
+
+
+REPO_ROOT = _find_repo_root()
+CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
+
+db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
+
+
+
+# Initialise MySQL client
+# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+db = GraphDB(config=db_cfg)
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -40,6 +59,47 @@ cast_mapping = {
     "DATETIME"           : "CAST(%s AS DATETIME)",
     "MEDIUMINT UNSIGNED" : "CAST(%s AS UNSIGNED)"
 }
+
+#--------------------------------------------------------#
+# Get list of SQL queries paths and store them as a dict #
+#--------------------------------------------------------#
+
+# Initialize empty dict to store SQL query paths
+sql_queries_paths = {}
+
+# Loop through all SQL query files in the "database/queries" folder and subfolders and store their paths in the dict
+for file_path in (Path(__file__).resolve().parents[2] / 'database/queries').rglob('*.sql'):
+
+    # Get subfolders
+    subfolder_2, subfolder_1 = file_path.parent.name, file_path.parent.parent.name
+
+    # Initialize nested dicts if they don't exist
+    if subfolder_1 not in sql_queries_paths:
+        sql_queries_paths[subfolder_1] = {}
+    if subfolder_2 not in sql_queries_paths[subfolder_1]:
+        sql_queries_paths[subfolder_1][subfolder_2] = {}
+
+    # Store file path in dict using subfolder names and file stem as keys
+    sql_queries_paths[subfolder_1][subfolder_2][file_path.stem] = file_path
+
+#---------------------#
+# Auxiliary functions #
+#---------------------#
+
+# Function that takes a query template with placeholders and replaces them with values from kwargs
+def resolve_sql_query(file_path, **kwargs):
+
+    # Open SQL query template file and read as string
+    with open(file_path, 'r', encoding="utf-8") as f:
+        query_template = f.read()
+
+    # Replace placeholders in the query template with values from kwargs
+    for key, value in kwargs.items():
+        placeholder = f"[[{key}]]"
+        query_template = query_template.replace(placeholder, str(value))
+
+    # Return resolved query
+    return query_template
 
 # Function to flatten config schema and remove duplicates
 def flatten_schema_remove_duplicates(schema: dict) -> dict:
@@ -403,8 +463,7 @@ class DynamicSQL():
             elif idxcfg.settings['data_types'].get(field_name) is not None:
                 datatypes_list += [sql_data_type_mapping[idxcfg.settings['data_types'][field_name]]]
             else:
-                print(f"❌ No datatype found in config: {field_name}")
-                exit()
+                raise Exception(f"❌ No datatype found in config: {field_name}")
         return datatypes_list
 
     # Get SQL table name for a given doc type, link type, link subtype, and index group

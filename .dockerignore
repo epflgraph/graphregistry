@@ -1,0 +1,103 @@
+# VCS / editor
+.git
+.gitignore
+.gitleaks.toml
+.vscode
+.idea
+.cursorignore
+.cursorindexingignore
+.DS_Store
+
+# Python cache / tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+*.egg-info/
+build/
+dist/
+wheels/
+.eggs/
+
+# Environments / secrets
+.env
+.envrc
+.venv*
+venv/
+env/
+ENV/
+pyvenv.cfg
+.certs/
+resources/credentials/
+resources/certificates/
+*.crt
+*.pem
+*.key
+
+# Node / frontend
+node_modules/
+package-lock.json
+
+# Local/generated data
+.archive/
+.trash/
+_trash/
+_local_data/
+.temp*
+*.pkl
+*.gexf
+*data_exports/
+geckodriver.log
+payload.json
+
+# Tests / dev scripts / samples
+tests/
+database/tests/
+test_delete_orphans.py
+test.sh
+sample_course_test.sh
+sample_course_node_list.json
+scripts/tests/
+scripts/init/sample_sets/
+database/init/sample_sets/
+database/init/data_patches/
+
+# Deployment-only files
+docker-compose.yml
+docker-compose.*.yml
+docker-compose.*.yaml
+nginx.graphregistry-https.conf
+promtail*
+restart.sh
+services_path.txt
+setup.sh
+
+# Runtime config files: mounted at runtime, not baked into image
+config/config_db.yaml
+config/config_global.yaml
+config/config_global.*.yaml
+config/config_index.json
+config/config_index.*.json
+config/config_scores.json
+config/config_scores.*.json
+config/config_graphai_client*.json
+config/config_es.yaml
+config.ini
+example_config_dict.json
+
+# Misc local files
+pyrightconfig.json
+memhog.py
+sample_set_graph_ontology.sql
+epfl_graph_sample_set_EDGEs.json
+epfl_graph_sample_set_NODEs.json

@@ -25,13 +25,16 @@ dependencies = [
     "pymysql",
     "flatten_dict",
     "dictdiffer",
+    "pytest",
     # Git dependency (PEP 508 syntax)
+    "graphdb-client @ git+https://github.com/epflgraph/graphdb-client.git",
+    "graphes-client @ git+https://github.com/epflgraph/graphes-client.git",
     "graphai-client @ git+https://github.com/epflgraph/graphai-client.git",
 ]
 
 [project.scripts]
-# CLI entrypoint – note the path: graphregistry/core/cli.py -> main()
-graphregistry = "graphregistry.cli.main:main"
+# CLI entrypoint for the graphregistry package
+graphregistry = "graphregistry.entrypoints.cli.main:main"
 
 # Tell setuptools what to package (and what to ignore)
 [tool.setuptools.packages.find]
@@ -43,4 +46,11 @@ exclude = [
     "node_modules*",
     "scripts*",
     "tests*",
+]
+
+# Pytest configuration for the project
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that hit real external systems (DB, APIs, etc.)",
+    "e2e: end-to-end tests hitting real systems (DB, CLI, etc.)"
 ]
