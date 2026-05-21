@@ -1,4 +1,4 @@
-# graphregistry/workflows/factories/fct_text.py
+# graphregistry/application/factories/fct_text.py
 from __future__ import annotations
 from graphregistry.domain.models.entities.mdl_text import (
     DEFAULT_LANGUAGE_CODES,
@@ -7,7 +7,7 @@ from graphregistry.domain.models.entities.mdl_text import (
     LanguageCodeList,
     MultilingualGeneratedText,
 )
-from graphregistry.workflows.operations.entities.ops_text import GeneratedTextOperations
+from graphregistry.application.operations.ops_text import GeneratedTextOperations
 
 # Factory definition
 class MultilingualGeneratedTextFactory:

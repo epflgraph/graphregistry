@@ -1,9 +1,8 @@
 # graphregistry/domain/models/entities/mdl_text.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, TypeAlias, Iterator, Any
+from typing import TYPE_CHECKING, Iterator, Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.types import LanguageCode, LanguageCodeList, DEFAULT_LANGUAGE_CODES
-import rich
 
 # Check type if running in a type-checking context to avoid circular imports
 if TYPE_CHECKING:
@@ -70,14 +69,6 @@ class MultilingualText(BaseModel):
     # Method: Set the text for a specific language
     def set(self, language: LanguageCode, value: str) -> None:
         self.item_map[language] = str(value)
-
-    #-----------------#
-    # Display methods #
-    #-----------------#
-
-    # Method: Pretty-print the multilingual text using rich
-    def print(self) -> None:
-        rich.print_json(data=self.to_json())
 
 # Model definition
 class GeneratedText(BaseModel):

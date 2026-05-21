@@ -1,6 +1,6 @@
 # graphregistry/domain/interfaces/__init__.py
 from graphregistry.domain.interfaces.gateways import (
-    ConceptGateway,
+    ConceptDetectionGateway,
     TextGenerationGateway,
     TextTranslationGateway,
 )
@@ -12,7 +12,7 @@ from graphregistry.domain.interfaces.services import (
     SchemaResolver,
 )
 __all__ = [
-    "ConceptGateway",
+    "ConceptDetectionGateway",
     "TextTranslationGateway",
     "TextGenerationGateway",
     "NodeRepository",

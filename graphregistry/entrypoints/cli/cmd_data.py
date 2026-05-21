@@ -6,15 +6,13 @@ from graphregistry.domain.models.entities.mdl_node import NodeList
 from graphregistry.domain.models.entities.mdl_edge import EdgeList
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.workflows.operations.entities.ops_node import NodeOperations
-from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
-from graphregistry.workflows.factories.fct_node import NodeFactory
+from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.application.operations.ops_edge import EdgeOperations
+from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.entrypoints.mappers import SpecMapper
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
-from graphregistry.domain.models.entities.mdl_subgraph import SubGraph
 import rich, json
 from graphregistry.domain.types import ActionSet, ActionName
 

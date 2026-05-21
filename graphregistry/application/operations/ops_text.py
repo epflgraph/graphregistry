@@ -1,5 +1,4 @@
-# graphregistry/workflows/operations/ops_text.py
-# graphregistry/workflows/operations/ops_text.py
+# graphregistry/application/operations/ops_text.py
 from __future__ import annotations
 from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
 from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway

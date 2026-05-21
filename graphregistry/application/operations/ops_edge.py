@@ -1,4 +1,4 @@
-# graphregistry/workflows/operations/entities/ops_edge.py
+# graphregistry/application/operations/ops_edge.py
 from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet

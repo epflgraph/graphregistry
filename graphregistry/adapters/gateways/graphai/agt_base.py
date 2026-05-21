@@ -147,6 +147,8 @@ class GraphAIBaseGateway:
                 return response
 
             if response.status_code == 401:
+                if "/token" in url:
+                    raise RuntimeError("GraphAI authentication failed: invalid credentials")
                 self._log("Token expired, refreshing...")
                 new_token = self._login(login_info["graph_api_json"])["token"]
                 login_info["token"] = new_token

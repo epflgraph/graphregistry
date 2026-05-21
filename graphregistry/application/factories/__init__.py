@@ -1,8 +1,8 @@
 # graphregistry/workflows/factories/__init__.py
-from graphregistry.workflows.factories.fct_node import (
+from graphregistry.application.factories.fct_node import (
     NodeFactory,
 )
-from graphregistry.workflows.factories.fct_text import (
+from graphregistry.application.factories.fct_text import (
     MultilingualGeneratedTextFactory,
 )
 __all__ = [

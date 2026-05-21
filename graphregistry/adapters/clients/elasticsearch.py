@@ -1,4 +1,4 @@
-# graphregistry/clients/elasticsearch.py
+# graphregistry/adapters/clients/elasticsearch.py
 import warnings
 from elastic_transport import SecurityWarning
 from urllib3.exceptions import InsecureRequestWarning

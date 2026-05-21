@@ -1,4 +1,4 @@
-# graphregistry/domain/models/tasks/mdl_concept.py
+# graphregistry/domain/models/tasks/mdl_conceptdet.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
