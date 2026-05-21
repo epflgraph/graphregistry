@@ -30,7 +30,11 @@ dynsql = DynamicSQL()
 
 # Initialise MySQL client
 # db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
-from graphregistry.common.paths import CONFIG_DB_PATH
+from graphregistry.common.paths import (
+    CONFIG_DB_PATH,
+    DATABASE_CONFIG_DATATYPES_PATH,
+    REPO_ROOT as PROJECT_ROOT,
+)
 db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
 db = GraphDB(config=db_cfg)
 
@@ -60,7 +64,7 @@ sysmsg.add(
 #---------------#
 
 # Resolve repository root path
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = PROJECT_ROOT
 
 # Function to resolve paths
 from typing import Union
@@ -81,7 +85,7 @@ ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearc
 #------------------------------#
 
 # Fetch index field datatypes from config file
-with open(REPO_ROOT / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
+with open(DATABASE_CONFIG_DATATYPES_PATH, 'r', encoding="utf-8") as f:
     datatypes_config = json.load(f)
 
 # SQL data type mapping dictionary
