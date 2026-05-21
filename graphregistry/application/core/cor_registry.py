@@ -375,9 +375,11 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;"
-                        , query_id='DFEkXX4A', verbose=verbose)
+                        db.execute_query_in_shell(engine_name = 'xaas_coresrv',
+                            query    = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;",
+                            query_id = 'DFEkXX4A',
+                            verbose  = verbose
+                        )
 
                 # Print status
                 sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_graph_cache_test}' tables.")
