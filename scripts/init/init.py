@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from graphdb.core.graphdb import GraphDB
-from graphregistry.clients.elasticsearch import GraphES
+from graphregistry.adapters.clients.elasticsearch import GraphES
 from graphregistry.common.config import GlobalConfig
 from sqlalchemy import create_engine as SQLEngine, text
 from loguru import logger as sysmsg

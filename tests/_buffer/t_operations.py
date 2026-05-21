@@ -3,8 +3,8 @@ from dataclasses import dataclass
 
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey
-from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
-from graphregistry.workflows.operations.entities.ops_node import NodeOperations
+from graphregistry.application.operations.ops_edge import EdgeOperations
+from graphregistry.application.operations.ops_node import NodeOperations
 
 
 @dataclass
