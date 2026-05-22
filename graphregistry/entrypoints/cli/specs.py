@@ -17,7 +17,7 @@ from graphregistry.entrypoints.cli.cmd_es import (
     cmd_es_index
 )
 from graphregistry.entrypoints.cli.cmd_ai import (
-    cmd_ai_test,
+    cmd_ai_detect_concepts,
 )
 from graphregistry.entrypoints.cli.cmd_data import (
     cmd_data_list,
@@ -188,9 +188,9 @@ cli_definitions: Dict[str, Any] = {
         help = "Interact with GraphAI API.",
         common_args = dict(),
         commands = {
-            'test' : dict(
-                help = "Test connectivity to the GraphAI server using a simple translation request.",
-                func = cmd_ai_test,
+            'detect_concepts' : dict(
+                help = "Detect concepts for nodes using GraphAI.",
+                func = cmd_ai_detect_concepts,
                 args = [],
                 common_args = []
             )
