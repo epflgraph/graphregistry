@@ -44,8 +44,13 @@ run_step() {
 # MySQL data update steps #
 #=========================#
 
+
+
 # run_step "import new data" \
 #   graphregistry data import --input_file=scripts/init/sample_sets/epfl_graph_sample_set.json --import_method=object --actions=eval,commit
+
+run_step "concept detection" \
+    graphregistry ai detect_concepts
 
 run_step "airflow reset" \
   graphregistry airflow reset --options=typeflags,airflow,cache
@@ -83,25 +88,25 @@ run_step "index generate mixed views" \
 run_step "index patch" \
   graphregistry index patch --actions=commit,eval
 
-# run_step "airflow rollover" \
-#   graphregistry airflow rollover --actions=commit
+run_step "airflow rollover" \
+  graphregistry airflow rollover --actions=commit
 
-# run_step "airflow update_dates" \
-#   graphregistry airflow update_dates --actions=commit
+run_step "airflow update_dates" \
+  graphregistry airflow update_dates --actions=commit
 
-# run_step "airflow reset (again)" \
-#   graphregistry airflow reset --options=typeflags,airflow
+run_step "airflow reset (again)" \
+  graphregistry airflow reset --options=typeflags,airflow
 
 #=================================#
 # ElasticSearch data update steps #
 #=================================#
 
 # run_step "index generate (elasticsearch)" \
-#   graphregistry index generate --target=elasticsearch --index_date=2026-03-13 -r
+#   graphregistry index generate --target=elasticsearch --index_date=2026-05-21 -r
 
 # run_step "es import" \
 #   graphregistry es import --env=xaas_coresrv \
-#     --input_folder=/home/dockerhost/data/es_exports/2026-03-13/es_fullindex_2026-03-13 \
-#     --rename_to=graphsearch_test_2026-03-13_sample -r
+#     --input_folder=/home/dockerhost/data/es_exports/2026-05-21/es_fullindex_2026-05-21 \
+#     --rename_to=graphsearch_test_2026-05-21_sample -r
 
 echo "End of script." >&2

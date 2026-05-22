@@ -4,7 +4,7 @@ from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.domain.interfaces.gateways.types import GatewayDict
-from graphregistry.domain.models.entities.mdl_node import Node
+from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 from graphregistry.domain.models.entities.mdl_base import NodeKey
 from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
@@ -17,7 +17,9 @@ node_ops = NodeOperations(
         db = GraphDB(),
         schema_resolver = DefaultSchemaResolver(engine_name='xaas_coresrv', glbcfg=GlobalConfig())
     ),
-    ai_gateways = {"concept_detection": GraphAIConceptDetectionGateway()}
+    ai_gateways = {
+        "concept_detection": GraphAIConceptDetectionGateway()
+    }
 )
 
 # Example node to enrich with concept detection
@@ -41,9 +43,19 @@ node = Node(
 )
 
 # Enrich the node with detected concepts using the NodeOperations class
-enriched_node = node_ops.enrich_with_concepts(node)
+node_list = node_ops.get_with_no_concepts()
+for node in node_list.item_list:
+    rich.print(node.key)
+
+# Enrich the node with detected concepts using the NodeOperations class
+enriched_node_list = node_ops.enrich_with_concepts(node_list)
 
 # Print the detected concepts
 print("\nDetected concepts:")
-for c in enriched_node.detected_concepts.item_list:
-    rich.print(c)
+if isinstance(enriched_node_list, NodeList):
+    for node in enriched_node_list.item_list:
+        for c in node.detected_concepts.item_list:
+            rich.print(c)
+else:
+    for c in enriched_node_list.detected_concepts.item_list:
+        rich.print(c)

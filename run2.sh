@@ -26,11 +26,12 @@ graphregistry cache update --matrix --actions=commit,eval
 graphregistry index build --actions=commit,eval
 graphregistry index mixed_views
 graphregistry index patch --actions=commit,eval
+./out_tables_stats.sh
 
 # Step 6: Wrap up processing cycle
-# graphregistry airflow rollover --actions=commit
-# graphregistry airflow update_dates --actions=commit
-# graphregistry airflow reset --options=airflow,cache
+graphregistry airflow rollover --actions=commit
+graphregistry airflow update_dates --actions=commit
+graphregistry airflow reset --options=airflow,cache
 
 # ♻️ Repeat Steps 4-6 until no more left to process
 
