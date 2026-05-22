@@ -24,14 +24,14 @@ class EdgeRepository(Protocol):
     def get_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> EdgeList:
         ...
 
-    def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
+    def save(self, edge: Edge, actions: ActionSet = ('commit',)) -> Edge:
         ...
 
-    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("eval",)) -> EdgeList:
+    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ('commit',)) -> EdgeList:
         ...
 
-    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
+    def delete(self, key: EdgeKey, actions: ActionSet = ('commit',)) -> bool | None:
         ...
 
-    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
         ...

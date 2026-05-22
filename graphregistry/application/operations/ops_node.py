@@ -43,20 +43,20 @@ class NodeOperations:
     def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
         return self.repo.get_many(key_list)
 
-    # Method: Save a node, with optional actions to perform (default is ("eval",)), returning the saved Node instance
-    def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
+    # Method: Save a node, with optional actions to perform (default is ('commit',)), returning the saved Node instance
+    def save(self, node: Node, actions: ActionSet = ('commit',)) -> Node:
         return self.repo.save(node, actions=actions)
 
-    # Method: Save multiple nodes, with optional actions to perform (default is ("eval",)), returning a list of the saved Node instances
-    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("eval",)) -> NodeList:
+    # Method: Save multiple nodes, with optional actions to perform (default is ('commit',)), returning a list of the saved Node instances
+    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ('commit',)) -> NodeList:
         return self.repo.save_many(node_list, actions=actions)
 
-    # Method: Delete a node by its key, with optional actions to perform (default is ("eval",)), returning True if the node was deleted, False if it was not found, or None if the deletion was not performed due to the actions
-    def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:
+    # Method: Delete a node by its key, with optional actions to perform (default is ('commit',)), returning True if the node was deleted, False if it was not found, or None if the deletion was not performed due to the actions
+    def delete(self, key: NodeKey, actions: ActionSet = ('commit',)) -> bool | None:
         return self.repo.delete(key, actions=actions)
 
-    # Method: Delete multiple nodes by their keys, with optional actions to perform (default is ("eval",)), returning a list of booleans corresponding to the input keys indicating whether each node was deleted (True), not found (False), or not deleted due to the actions (None)
-    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+    # Method: Delete multiple nodes by their keys, with optional actions to perform (default is ('commit',)), returning a list of booleans corresponding to the input keys indicating whether each node was deleted (True), not found (False), or not deleted due to the actions (None)
+    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
         return self.repo.delete_many(key_list, actions=actions)
 
     #--------------------------------------------------#

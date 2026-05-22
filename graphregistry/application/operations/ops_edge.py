@@ -33,31 +33,31 @@ class EdgeOperations:
     def get_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> EdgeList:
         return self.repo.get_many(key_list)
 
-    def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
+    def save(self, edge: Edge, actions: ActionSet = ('commit',)) -> Edge:
         return self.repo.save(edge, actions=actions)
 
-    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("eval",)) -> EdgeList:
+    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ('commit',)) -> EdgeList:
         return self.repo.save_many(edge_list, actions=actions)
 
-    def insert(self, edge: Edge, actions: ActionSet = ("eval",)) -> bool:
+    def insert(self, edge: Edge, actions: ActionSet = ('commit',)) -> bool:
         """
         Backward-compatible alias for save/upsert semantics.
         """
         return bool(self.repo.save(edge, actions=actions))
 
-    def update(self, edge: Edge, actions: ActionSet = ("eval",)) -> bool:
+    def update(self, edge: Edge, actions: ActionSet = ('commit',)) -> bool:
         """
         Backward-compatible alias for save/upsert semantics.
         """
         return bool(self.repo.save(edge, actions=actions))
 
-    def upsert(self, edge: Edge, actions: ActionSet = ("eval",)) -> EdgeUpsertResult:
+    def upsert(self, edge: Edge, actions: ActionSet = ('commit',)) -> EdgeUpsertResult:
         created = not self.repo.exists(edge.key)
         success = bool(self.repo.save(edge, actions=actions))
         return EdgeUpsertResult(success=success, created=created)
 
-    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
+    def delete(self, key: EdgeKey, actions: ActionSet = ('commit',)) -> bool | None:
         return self.repo.delete(key, actions=actions)
 
-    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
         return self.repo.delete_many(key_list, actions=actions)
