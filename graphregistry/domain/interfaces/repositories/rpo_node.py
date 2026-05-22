@@ -24,14 +24,17 @@ class NodeRepository(Protocol):
     def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
         ...
 
-    def save(self, node: Node, actions: ActionSet = ("eval",)) -> Node:
+    def save(self, node: Node, actions: ActionSet = ('commit',)) -> Node:
         ...
 
-    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("eval",)) -> NodeList:
+    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ('commit',)) -> NodeList:
         ...
 
-    def delete(self, key: NodeKey, actions: ActionSet = ("eval",)) -> bool | None:
+    def delete(self, key: NodeKey, actions: ActionSet = ('commit',)) -> bool | None:
         ...
 
-    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
+        ...
+
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
         ...

@@ -1,8 +1,8 @@
 # graphregistry/domain/interfaces/gateways/gtw_translation.py
 from __future__ import annotations
 from typing import Protocol
+from graphregistry.domain.types import DEFAULT_LANGUAGE_CODES
 from graphregistry.domain.models.entities.mdl_text import (
-    DEFAULT_LANGUAGE_CODES,
     LanguageCode,
     LanguageCodeList,
     MultilingualGeneratedText,

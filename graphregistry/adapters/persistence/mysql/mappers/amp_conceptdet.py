@@ -51,7 +51,7 @@ class MySQLConceptDetectionResultMapper:
     @staticmethod
     def to_upsert_row(
         node_key: NodeKey,
-        text_source: str,
+        text_source: str | None,
         concept: ConceptDetectionResult,
     ) -> dict[str, Any]:
         """
@@ -70,7 +70,7 @@ class MySQLConceptDetectionResultMapper:
     @staticmethod
     def to_upsert_rows(
         node_key: NodeKey,
-        text_source: str,
+        text_source: str | None,
         detected_concepts: ConceptDetectionResultList,
     ) -> list[dict[str, Any]]:
         """

@@ -70,6 +70,12 @@ class SpecMapper:
             page_profile = PageProfile(key=node_key)
         )
 
+        # Verify page profile is correctly initialised
+        assert node.page_profile is not None
+
+        # Add short code to page profile
+        node.page_profile.short_code = node_spec.short_code if node_spec.short_code is not None else node_spec.id
+
         #-----------------------#
         # Handle object subtype #
         #-----------------------#
@@ -77,12 +83,10 @@ class SpecMapper:
 
             # Input format: String
             if isinstance(node_spec.subtype, str):
-                assert node.page_profile is not None
                 node.page_profile.subtype.set(language='en', value=node_spec.subtype)
 
             # Input format: List of multilingual texts
             elif isinstance(node_spec.subtype, list):
-                assert node.page_profile is not None
                 for mt in node_spec.subtype:
                     # If the language is English, set the node title to this text (assuming it's the most complete title).
                     if mt.language == 'en':
@@ -100,7 +104,6 @@ class SpecMapper:
 
             # Input format: List of multilingual texts
             elif isinstance(node_spec.title, list):
-                assert node.page_profile is not None
                 for mt in node_spec.title:
                     # If the language is English, set the node title to this text (assuming it's the most complete title).
                     if mt.language == 'en':
@@ -118,7 +121,6 @@ class SpecMapper:
 
             # Input format: List of multilingual texts (assumed to be long descriptions, since no length info provided)
             elif isinstance(node_spec.description, list):
-                assert node.page_profile is not None
                 for mt in node_spec.description:
                     if mt.language == 'en':
                         node.text_source, node.raw_text = "user input", mt.text
@@ -126,7 +128,6 @@ class SpecMapper:
 
             # Input format: Dict of text length to list of multilingual texts
             elif isinstance(node_spec.description, dict):
-                assert node.page_profile is not None
                 for text_length in node_spec.description:
                     for mt in node_spec.description[text_length]:
                         # Set short description
@@ -148,14 +149,12 @@ class SpecMapper:
 
             # Input format: String
             if isinstance(node_spec.url, str):
-                assert node.page_profile is not None
                 # Set the same URL for all languages, since no language info provided
                 for lang in DEFAULT_LANGUAGE_CODES:
                     node.page_profile.external_url.set(language=lang, value=node_spec.url)
 
             # Input format: List of multilingual texts
             elif isinstance(node_spec.url, list):
-                assert node.page_profile is not None
                 for mt in node_spec.url:
                     node.page_profile.external_url.set(language=mt.language, value=mt.text)
 
@@ -194,6 +193,11 @@ class SpecMapper:
 
         # Initialise page profile shortcut
         page_profile = node.page_profile
+
+        # Handle short code
+        short_code: str | None = None
+        if page_profile is not None and page_profile.short_code is not None:
+            short_code = page_profile.short_code
 
         #-----------------------#
         # Handle object subtype #
@@ -300,6 +304,7 @@ class SpecMapper:
             type          = cast(ObjectType, node.key.object_type),
             subtype       = subtype,
             id            = node.key.object_id,
+            short_code    = short_code,
             title         = title,
             description   = description,
             url           = url,

@@ -3,6 +3,9 @@ from typing import Any, Dict
 from pathlib import Path
 
 # Import all command handler functions
+from graphregistry.entrypoints.cli.cmd_setup import (
+    cmd_setup_init,
+)
 from graphregistry.entrypoints.cli.cmd_config import (
     cmd_config_index,
 )
@@ -17,7 +20,7 @@ from graphregistry.entrypoints.cli.cmd_es import (
     cmd_es_index
 )
 from graphregistry.entrypoints.cli.cmd_ai import (
-    cmd_ai_test,
+    cmd_ai_detect_concepts,
 )
 from graphregistry.entrypoints.cli.cmd_data import (
     cmd_data_list,
@@ -76,17 +79,39 @@ global_common_args = {
 cli_definitions: Dict[str, Any] = {
 
     #---------------------#
+    # Command: setup      #
+    #---------------------#
+    'setup' : dict(
+        help = "Initialize a new Registry instance with base data and configuration.",
+        common_args = {
+            'env': global_common_args['env']
+        },
+        commands = {
+            'init' : dict(
+                help = "Initialize the Registry instance.",
+                func = cmd_setup_init,
+                args = [dict(flags = ('--dry_run' , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
+                        dict(flags = ('--verbose' , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
+                ],
+                common_args = ['env'],
+            )
+        }
+    ),
+
+    #---------------------#
     # Command: config     #
     #---------------------#
     'config' : dict(
         help = "Inspect and validate Registry configuration files.",
-        common_args = {},
+        common_args = {
+            'env': global_common_args['env']
+        },
         commands = {
             'index' : dict(
                 help = "Print out index config.",
                 func = cmd_config_index,
                 args = [],
-                common_args = [],
+                common_args = ['env'],
             )
         }
     ),
@@ -188,9 +213,9 @@ cli_definitions: Dict[str, Any] = {
         help = "Interact with GraphAI API.",
         common_args = dict(),
         commands = {
-            'test' : dict(
-                help = "Test connectivity to the GraphAI server using a simple translation request.",
-                func = cmd_ai_test,
+            'detect_concepts' : dict(
+                help = "Detect concepts for nodes using GraphAI.",
+                func = cmd_ai_detect_concepts,
                 args = [],
                 common_args = []
             )

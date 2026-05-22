@@ -1,0 +1,431 @@
+{
+    "key_list": [
+        {
+            "from_type": "Course",
+            "from_id": "BIO-410",
+            "to_type": "Person",
+            "to_id": "115533",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-202",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-303",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-418",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "COM-500",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-312",
+            "to_type": "Person",
+            "to_id": "120906",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-348",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-390(c)",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-490(a)",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-512",
+            "to_type": "Person",
+            "to_id": "106643",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-548",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-714",
+            "to_type": "Person",
+            "to_id": "106643",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-726",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-804",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-804",
+            "to_type": "Person",
+            "to_id": "115533",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-805",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "EE-805",
+            "to_type": "Person",
+            "to_id": "115533",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-310(a)",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-310(b)",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-311(a)",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-311(a)",
+            "to_type": "Person",
+            "to_id": "120906",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-311(b)",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-311(b)",
+            "to_type": "Person",
+            "to_id": "120906",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-511",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-511",
+            "to_type": "Person",
+            "to_id": "152027",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-512",
+            "to_type": "Person",
+            "to_id": "115227",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-512",
+            "to_type": "Person",
+            "to_id": "115533",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-512",
+            "to_type": "Person",
+            "to_id": "152027",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "MICRO-513",
+            "to_type": "Person",
+            "to_id": "152027",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Course",
+            "from_id": "NX-421",
+            "to_type": "Person",
+            "to_id": "152027",
+            "context": "teacher"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "106643",
+            "to_type": "Unit",
+            "to_id": "LTS2",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "107537",
+            "to_type": "Unit",
+            "to_id": "LCAV",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "110610",
+            "to_type": "Unit",
+            "to_id": "LCAV",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "115227",
+            "to_type": "Unit",
+            "to_id": "LIB",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "115533",
+            "to_type": "Unit",
+            "to_id": "LIB",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "120906",
+            "to_type": "Unit",
+            "to_id": "LTS2",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "145758",
+            "to_type": "Unit",
+            "to_id": "LCAV",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "152027",
+            "to_type": "Unit",
+            "to_id": "LIB",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Person",
+            "from_id": "157878",
+            "to_type": "Unit",
+            "to_id": "LTS2",
+            "context": "accreditation"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "007deab2-1573-42e3-8849-d395833a8b9a",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "01c8229a-28ac-4750-9b09-3dc5d1e99997",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "0e887671-8804-4bfa-a092-469d9183890f",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "57bfdd32-e5f2-4ed8-8829-ecfe92e0ae48",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "5dfda9fc-48cc-40f0-b244-36e5c774ed72",
+            "to_type": "Person",
+            "to_id": "157878",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "72c8cf18-8981-4a15-bf60-6654025c6dd8",
+            "to_type": "Person",
+            "to_id": "152027",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "a5fbac94-8388-454d-b85d-556c9f9dd432",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "c78e0a6e-e498-4b2c-9890-bd09b7408250",
+            "to_type": "Person",
+            "to_id": "152027",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "cfd37c33-d9bd-41c4-aa7c-17442dd2e1e0",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "cfd37c33-d9bd-41c4-aa7c-17442dd2e1e0",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "d588a875-5742-4712-ae45-ce3bdb9c68ad",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "d588a875-5742-4712-ae45-ce3bdb9c68ad",
+            "to_type": "Person",
+            "to_id": "145758",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "dad67762-7219-4bb7-880b-76da44098a54",
+            "to_type": "Person",
+            "to_id": "110610",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Publication",
+            "from_id": "f2dc6b23-8d48-4255-ad37-f1759b3961f6",
+            "to_type": "Person",
+            "to_id": "107537",
+            "context": "authorship"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "IC",
+            "to_type": "Unit",
+            "to_id": "EPFL",
+            "context": "affiliation"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "IEM",
+            "to_type": "Unit",
+            "to_id": "STI",
+            "context": "affiliation"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "IINFCOM",
+            "to_type": "Unit",
+            "to_id": "IC",
+            "context": "affiliation"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "LCAV",
+            "to_type": "Unit",
+            "to_id": "IINFCOM",
+            "context": "affiliation"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "LIB",
+            "to_type": "Unit",
+            "to_id": "IEM",
+            "context": "affiliation"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "LTS2",
+            "to_type": "Unit",
+            "to_id": "IEM",
+            "context": "affiliation"
+        },
+        {
+            "from_type": "Unit",
+            "from_id": "STI",
+            "to_type": "Unit",
+            "to_id": "EPFL",
+            "context": "affiliation"
+        }
+    ]
+}

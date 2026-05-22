@@ -1,0 +1,268 @@
+{
+    "key_list": [
+        {
+            "type": "Course",
+            "id": "BIO-410"
+        },
+        {
+            "type": "Course",
+            "id": "COM-202"
+        },
+        {
+            "type": "Course",
+            "id": "COM-303"
+        },
+        {
+            "type": "Course",
+            "id": "COM-418"
+        },
+        {
+            "type": "Course",
+            "id": "COM-500"
+        },
+        {
+            "type": "Course",
+            "id": "EE-312"
+        },
+        {
+            "type": "Course",
+            "id": "EE-348"
+        },
+        {
+            "type": "Course",
+            "id": "EE-390(c)"
+        },
+        {
+            "type": "Course",
+            "id": "EE-490(a)"
+        },
+        {
+            "type": "Course",
+            "id": "EE-512"
+        },
+        {
+            "type": "Course",
+            "id": "EE-548"
+        },
+        {
+            "type": "Course",
+            "id": "EE-714"
+        },
+        {
+            "type": "Course",
+            "id": "EE-726"
+        },
+        {
+            "type": "Course",
+            "id": "EE-804"
+        },
+        {
+            "type": "Course",
+            "id": "EE-805"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-310(a)"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-310(b)"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-311(a)"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-311(b)"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-511"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-512"
+        },
+        {
+            "type": "Course",
+            "id": "MICRO-513"
+        },
+        {
+            "type": "Course",
+            "id": "NX-421"
+        },
+        {
+            "type": "Person",
+            "id": "106643"
+        },
+        {
+            "type": "Person",
+            "id": "107537"
+        },
+        {
+            "type": "Person",
+            "id": "110610"
+        },
+        {
+            "type": "Person",
+            "id": "115227"
+        },
+        {
+            "type": "Person",
+            "id": "115533"
+        },
+        {
+            "type": "Person",
+            "id": "120906"
+        },
+        {
+            "type": "Person",
+            "id": "145758"
+        },
+        {
+            "type": "Person",
+            "id": "152027"
+        },
+        {
+            "type": "Person",
+            "id": "157878"
+        },
+        {
+            "type": "Publication",
+            "id": "007deab2-1573-42e3-8849-d395833a8b9a"
+        },
+        {
+            "type": "Publication",
+            "id": "01c8229a-28ac-4750-9b09-3dc5d1e99997"
+        },
+        {
+            "type": "Publication",
+            "id": "0e887671-8804-4bfa-a092-469d9183890f"
+        },
+        {
+            "type": "Publication",
+            "id": "1852946c-39fb-4a0e-9c6b-2cd47efa317e"
+        },
+        {
+            "type": "Publication",
+            "id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf"
+        },
+        {
+            "type": "Publication",
+            "id": "2346639a-3461-400f-9182-e2b8eb8fe979"
+        },
+        {
+            "type": "Publication",
+            "id": "57bfdd32-e5f2-4ed8-8829-ecfe92e0ae48"
+        },
+        {
+            "type": "Publication",
+            "id": "5dfda9fc-48cc-40f0-b244-36e5c774ed72"
+        },
+        {
+            "type": "Publication",
+            "id": "6497a4fc-7459-4304-bff4-a7c82dfc1bef"
+        },
+        {
+            "type": "Publication",
+            "id": "6c925656-35d7-48f3-bf3d-99a46d7237a3"
+        },
+        {
+            "type": "Publication",
+            "id": "72c8cf18-8981-4a15-bf60-6654025c6dd8"
+        },
+        {
+            "type": "Publication",
+            "id": "7c46e18f-8cbc-406a-b3cc-c88270a58155"
+        },
+        {
+            "type": "Publication",
+            "id": "96fa91a9-35c5-4440-9557-8ccd32f5c554"
+        },
+        {
+            "type": "Publication",
+            "id": "9809a0ce-dfea-47d6-addf-32a3d82d2393"
+        },
+        {
+            "type": "Publication",
+            "id": "9a8a55ff-5e09-476c-9348-61e7d79f3f09"
+        },
+        {
+            "type": "Publication",
+            "id": "a5fbac94-8388-454d-b85d-556c9f9dd432"
+        },
+        {
+            "type": "Publication",
+            "id": "aa6e01af-2863-4e8d-812e-44ec7cb24e6b"
+        },
+        {
+            "type": "Publication",
+            "id": "b47f0810-3224-440b-9208-0fb401dc0d23"
+        },
+        {
+            "type": "Publication",
+            "id": "b8091a87-4b44-464a-9c4c-d14e6999d326"
+        },
+        {
+            "type": "Publication",
+            "id": "c78e0a6e-e498-4b2c-9890-bd09b7408250"
+        },
+        {
+            "type": "Publication",
+            "id": "cfd37c33-d9bd-41c4-aa7c-17442dd2e1e0"
+        },
+        {
+            "type": "Publication",
+            "id": "d588a875-5742-4712-ae45-ce3bdb9c68ad"
+        },
+        {
+            "type": "Publication",
+            "id": "dad67762-7219-4bb7-880b-76da44098a54"
+        },
+        {
+            "type": "Publication",
+            "id": "f2dc6b23-8d48-4255-ad37-f1759b3961f6"
+        },
+        {
+            "type": "Publication",
+            "id": "f3e9ee25-b36c-4513-ba77-570be625832a"
+        },
+        {
+            "type": "Publication",
+            "id": "f490228a-12f1-4a6c-b14b-7eb47fc43c0d"
+        },
+        {
+            "type": "Unit",
+            "id": "EPFL"
+        },
+        {
+            "type": "Unit",
+            "id": "IC"
+        },
+        {
+            "type": "Unit",
+            "id": "IEM"
+        },
+        {
+            "type": "Unit",
+            "id": "IINFCOM"
+        },
+        {
+            "type": "Unit",
+            "id": "LCAV"
+        },
+        {
+            "type": "Unit",
+            "id": "LIB"
+        },
+        {
+            "type": "Unit",
+            "id": "LTS2"
+        },
+        {
+            "type": "Unit",
+            "id": "STI"
+        }
+    ]
+}

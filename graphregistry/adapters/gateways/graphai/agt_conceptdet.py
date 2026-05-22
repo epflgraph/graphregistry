@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptGateway
+from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.domain.models.tasks.mdl_conceptdet import (
     ConceptDetectionTask,
     ConceptDetectionResult,
@@ -14,32 +14,48 @@ from graphregistry.domain.models.tasks.mdl_conceptdet import (
 from requests import post
 
 
-class GraphAIConceptGateway(GraphAIBaseGateway, ConceptGateway):
-    def detect_concepts(self, text: str) -> ConceptDetectionResultList:
-        if not text or not text.strip():
-            return ConceptDetectionResultList()
+class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway):
 
+    def extract_keywords(self, text: str) -> list[str]:
+        raise NotImplementedError("Keyword extraction is not implemented for GraphAIConceptDetectionGateway")
+
+    def detect_concepts(self, text: str | list[str]) -> ConceptDetectionResultList:
         login_info = self._ensure_login_info()
 
-        task = ConceptDetectionTask(text=text)
+        if isinstance(text, str):
+            task = ConceptDetectionTask(text=text)
+            params = task.get_params_dict()
+            payload: dict[str, Any] = task.get_payload_dict()
+        else:
+            task = ConceptDetectionTask()
+            params = task.get_params_dict()
+            payload = {"keywords": text}
 
         url = (
             login_info["host"]
             + "/text/wikify?"
-            + urlencode(task.get_params_dict())
+            + urlencode(params)
         )
 
         response = self._request(
             url=url,
             login_info=login_info,
             request_func=post,
-            headers={"Content-Type": "application/json"},
-            json=task.get_payload_dict(),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json=payload,
             timeout=900,
             max_tries=5,
         )
 
         data = response.json()
+
+        if not isinstance(data, list):
+            raise ValueError(
+                f"Unexpected /text/wikify response shape: expected list, got {type(data).__name__}"
+            )
 
         return ConceptDetectionResultList(
             item_list=[
@@ -52,7 +68,7 @@ class GraphAIConceptGateway(GraphAIBaseGateway, ConceptGateway):
     @staticmethod
     def _to_detected_concept(item: dict[str, Any]) -> ConceptDetectionResult:
         return ConceptDetectionResult(
-            concept_id=str(item.get("concept_id") or item.get("id") or ""),
-            concept_name=str(item.get("concept_name") or item.get("name") or ""),
-            score=float(item.get("mixed_score", 0.0)),
+            concept_id=str(item["concept_id"]),
+            concept_name=str(item["concept_name"]),
+            score=float(item.get("mixed_score") or 0.0),
         )

@@ -1304,6 +1304,7 @@
                 "type": "Publication",
                 "subtype": "Conference Papers",
                 "id": "007deab2-1573-42e3-8849-d395833a8b9a",
+                "short_code": "007deab2",
                 "title": [
                     {
                         "language": "en",
@@ -1367,6 +1368,7 @@
                 "type": "Publication",
                 "subtype": "Journal Articles",
                 "id": "01c8229a-28ac-4750-9b09-3dc5d1e99997",
+                "short_code": "01c8229a",
                 "title": [
                     {
                         "language": "en",
@@ -1460,6 +1462,7 @@
                 "type": "Publication",
                 "subtype": "Conference Papers",
                 "id": "0e887671-8804-4bfa-a092-469d9183890f",
+                "short_code": "0e887671",
                 "title": [
                     {
                         "language": "en",
@@ -1558,6 +1561,7 @@
                 "type": "Publication",
                 "subtype": "Journal Articles",
                 "id": "1852946c-39fb-4a0e-9c6b-2cd47efa317e",
+                "short_code": "1852946c",
                 "title": [
                     {
                         "language": "en",
@@ -1666,6 +1670,7 @@
                 "type": "Publication",
                 "subtype": "Journal Articles",
                 "id": "19264d25-2de7-4be5-b0a7-18b8aa81d5cf",
+                "short_code": "19264d25",
                 "title": [
                     {
                         "language": "en",

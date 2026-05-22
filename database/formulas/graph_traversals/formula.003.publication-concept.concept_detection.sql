@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Publication_N_Concept_T_C
            USING (institution_id, object_type, object_id)
 
            WHERE a2c.object_type = 'Publication'
-             AND a2c.text_source = 'abstract'
              AND a2c.score >= 0.1
 
              AND tp.to_process = 1

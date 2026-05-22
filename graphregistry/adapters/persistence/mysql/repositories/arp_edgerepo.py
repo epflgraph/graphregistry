@@ -123,7 +123,7 @@ class MySQLEdgeRepository(EdgeRepository):
         return EdgeList(item_list=out)
 
     # Method: Save (insert or update) edge data to persistence
-    def save(self, edge: Edge, actions: ActionSet = ("eval",)) -> Edge:
+    def save(self, edge: Edge, actions: ActionSet = ('commit',)) -> Edge:
 
         # Get schema name for object-to-object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_edge(edge.key)
@@ -204,13 +204,13 @@ class MySQLEdgeRepository(EdgeRepository):
         return edge
 
     # Method: Save (insert or update) multiple edges data to persistence from an EdgeList object
-    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("eval",)) -> EdgeList:
+    def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ('commit',)) -> EdgeList:
         if isinstance(edge_list, EdgeList):
             edge_list = edge_list.item_list
         return EdgeList(item_list=[self.save(edge, actions=actions) for edge in edge_list])
 
     # Method: Delete edge data from persistence based on the edge key
-    def delete(self, key: EdgeKey, actions: ActionSet = ("eval",)) -> bool | None:
+    def delete(self, key: EdgeKey, actions: ActionSet = ('commit',)) -> bool | None:
 
         # Check if edge exists first (return None if not found)
         if not self.exists(key):
@@ -249,7 +249,7 @@ class MySQLEdgeRepository(EdgeRepository):
         return False
 
     # Method: Delete multiple edges data from persistence based on a list of edge keys
-    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
+    def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
         if isinstance(key_list, EdgeKeyList):
             key_list = key_list.item_list
         return [self.delete(key, actions=actions) for key in key_list]

@@ -35,6 +35,7 @@ class NodeSpec(BaseModel):
     type          : ObjectType
     subtype       : str | list[MultilingualTextSpec] | None = None
     id            : str
+    short_code    : str | None = None
     title         : str | list[MultilingualTextSpec] | None = None
     description   : str | list[MultilingualTextSpec] | dict[str, list[MultilingualTextSpec]] | None = None
     url           : str | list[MultilingualTextSpec] | None = None

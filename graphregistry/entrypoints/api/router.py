@@ -12,10 +12,10 @@ from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
-from graphregistry.workflows.operations.entities.ops_edge import EdgeOperations
-from graphregistry.workflows.operations.entities.ops_node import NodeOperations
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
-from graphregistry.workflows.factories.fct_node import NodeFactory
+from graphregistry.application.operations.ops_edge import EdgeOperations
+from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.entrypoints.mappers import SpecMapper
 import graphregistry.entrypoints.api.schemas as apispecs
 
@@ -114,7 +114,7 @@ def get_node_factory() -> NodeFactory:
     """
     Build NodeFactory for one request.
     """
-    gtw = GraphAIConceptGateway(debug=True)
+    gtw = GraphAIConceptDetectionGateway(debug=True)
     return NodeFactory(concept_gateway=gtw)
 
 @dataclass(frozen=True)

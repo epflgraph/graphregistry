@@ -4,15 +4,15 @@
                  SELECT institution_id, object_type, object_id, concept_id, score_1, score_2, score_3, to_process
                    FROM (SELECT institution_id, object_type, object_id, concept_id,
 
-                      CASE WHEN (object_type = 'Person'      AND calculation_type = 'concept detection on biography')
-                             OR (object_type = 'Course'      AND calculation_type = 'manual mapping on course page description')
+                      CASE WHEN (object_type = 'Person'      AND calculation_type = 'concept detection on user input')
+                             OR (object_type = 'Course'      AND calculation_type = 'manual mapping on user input')
                              OR (object_type = 'Lecture'     AND calculation_type = 'LLM keyword extraction (bounded)')
                              OR (object_type = 'MOOC'        AND calculation_type = 'slide sum-scores aggregation (bounded)')
-                             OR (object_type = 'Person'      AND calculation_type = 'concept detection on biography')
-                             OR (object_type = 'Publication' AND calculation_type = 'concept detection on abstract')
-                             OR (object_type = 'Startup'     AND calculation_type = 'concept detection on startup website')
-                             OR (object_type = 'Unit'        AND calculation_type = 'concept detection on unit website')
-                             OR (object_type = 'Widget'      AND calculation_type = 'concept detection on quiz description')
+                             OR (object_type = 'Person'      AND calculation_type = 'concept detection on user input')
+                             OR (object_type = 'Publication' AND calculation_type = 'concept detection on user input')
+                             OR (object_type = 'Startup'     AND calculation_type = 'concept detection on user input')
+                             OR (object_type = 'Unit'        AND calculation_type = 'concept detection on user input')
+                             OR (object_type = 'Widget'      AND calculation_type = 'concept detection on user input')
                              OR (object_type = 'Category'    AND calculation_type = 'concept sum-scores aggregation (bounded)')
                            THEN score END AS score_1,
 
@@ -20,10 +20,10 @@
                              OR (object_type = 'Course'      AND calculation_type = 'slide sum-scores aggregation (bounded)')
                              OR (object_type = 'Lecture'     AND calculation_type = 'slide sum-scores aggregation (bounded)')
                              OR (object_type = 'MOOC'        AND calculation_type = 'people sum-scores aggregation (bounded)')
-                             OR (object_type = 'Unit'        AND calculation_type = 'manual mapping on unit website')
+                             OR (object_type = 'Unit'        AND calculation_type = 'manual mapping on user input')
                            THEN score END AS score_2,
 
-                      CASE WHEN (object_type = 'Course'      AND calculation_type = 'concept detection on course page description')
+                      CASE WHEN (object_type = 'Course'      AND calculation_type = 'concept detection on user input')
                              OR (object_type = 'Unit'        AND calculation_type = 'abstract sum-scores aggregation (bounded)')
                            THEN score END AS score_3,
 
