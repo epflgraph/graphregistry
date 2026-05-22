@@ -4,6 +4,7 @@
             "type": "Course",
             "subtype": null,
             "id": "BIO-410",
+            "short_code": "BIO-410",
             "title": [
                 {
                     "language": "en",
@@ -138,6 +139,7 @@
             "type": "Course",
             "subtype": null,
             "id": "COM-202",
+            "short_code": "COM-202",
             "title": [
                 {
                     "language": "en",
@@ -292,6 +294,7 @@
             "type": "Course",
             "subtype": null,
             "id": "COM-303",
+            "short_code": "COM-303",
             "title": [
                 {
                     "language": "en",
@@ -502,6 +505,7 @@
             "type": "Course",
             "subtype": null,
             "id": "COM-418",
+            "short_code": "COM-418",
             "title": [
                 {
                     "language": "en",
@@ -656,6 +660,7 @@
             "type": "Course",
             "subtype": null,
             "id": "COM-500",
+            "short_code": "COM-500",
             "title": [
                 {
                     "language": "en",
@@ -850,6 +855,7 @@
             "type": "Course",
             "subtype": null,
             "id": "EE-312",
+            "short_code": "EE-312",
             "title": [
                 {
                     "language": "en",
@@ -994,6 +1000,7 @@
             "type": "Course",
             "subtype": null,
             "id": "EE-348",
+            "short_code": "EE-348",
             "title": [
                 {
                     "language": "en",
@@ -1178,6 +1185,7 @@
             "type": "Course",
             "subtype": null,
             "id": "EE-390(c)",
+            "short_code": "EE-390(c)",
             "title": [
                 {
                     "language": "en",
@@ -1322,6 +1330,7 @@
             "type": "Course",
             "subtype": null,
             "id": "EE-490(a)",
+            "short_code": "EE-490(a)",
             "title": [
                 {
                     "language": "en",
@@ -1506,6 +1515,7 @@
             "type": "Course",
             "subtype": null,
             "id": "EE-512",
+            "short_code": "EE-512",
             "title": [
                 {
                     "language": "en",
@@ -1660,6 +1670,7 @@
             "type": "Course",
             "subtype": null,
             "id": "EE-548",
+            "short_code": "EE-548",
             "title": [
                 {
                     "language": "en",
