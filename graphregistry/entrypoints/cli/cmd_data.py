@@ -347,19 +347,11 @@ def cmd_data_get(args):
 # Handler: Insert node or edge in Registry
 def cmd_data_save(args):
 
-    # Fetch context objects
-    db = args.ctx.db
-
-    # Fetch environment from input options
-    env = args.env
-
     # Fetch input options
     node_input      = args.node
     edge_input      = args.edge
     node_list_input = args.node_list
     edge_list_input = args.edge_list
-    # subgraph_input  = args.subgraph
-    actions         = tuple(args.actions.split(',')) if args.actions else ()
 
     # Build repositories
     node_repo: NodeRepository = _make_node_repo(args)
@@ -380,7 +372,7 @@ def cmd_data_save(args):
         node = SpecMapper.from_node_spec(node_spec)
 
         # Insert node into registry
-        node_ops.save(node, actions=actions)
+        node_ops.save(node, actions=('commit',))
 
     # Process edge input
     if edge_input:
@@ -395,7 +387,7 @@ def cmd_data_save(args):
         edge = SpecMapper.from_edge_spec(edge_spec)
 
         # Insert edge into registry
-        edge_ops.save(edge, actions=actions)
+        edge_ops.save(edge, actions=('commit',))
 
     # Process node list input
     if node_list_input:
@@ -410,7 +402,7 @@ def cmd_data_save(args):
         node_list = SpecMapper.from_node_list_spec(node_list_spec)
 
         # Insert node list into registry
-        node_ops.save_many(node_list, actions=actions)
+        node_ops.save_many(node_list, actions=('commit',))
 
     # Process edge list input
     if edge_list_input:
@@ -425,7 +417,7 @@ def cmd_data_save(args):
         edge_list = SpecMapper.from_edge_list_spec(edge_list_spec)
 
         # Insert edge list into registry
-        edge_ops.save_many(edge_list, actions=actions)
+        edge_ops.save_many(edge_list, actions=('commit',))
 
 # Handler: Delete node or edge from Registry
 def cmd_data_delete(args):
@@ -456,7 +448,7 @@ def cmd_data_delete(args):
         node_key = SpecMapper.from_node_key_spec(node_key_spec)
 
         # Delete node from registry
-        result = node_repo.delete(node_key, actions=actions)
+        result = node_repo.delete(node_key, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -475,7 +467,7 @@ def cmd_data_delete(args):
         edge_key = SpecMapper.from_edge_key_spec(edge_key_spec)
 
         # Delete edge from registry
-        result = edge_repo.delete(edge_key, actions=actions)
+        result = edge_repo.delete(edge_key, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -494,7 +486,7 @@ def cmd_data_delete(args):
         node_key_list = SpecMapper.from_node_key_list_spec(node_key_list_spec)
 
         # Delete nodes from registry
-        result = node_repo.delete_many(node_key_list, actions=actions)
+        result = node_repo.delete_many(node_key_list, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -513,7 +505,7 @@ def cmd_data_delete(args):
         edge_key_list = SpecMapper.from_edge_key_list_spec(edge_key_list_spec)
 
         # Delete edges from registry
-        result = edge_repo.delete_many(edge_key_list, actions=actions)
+        result = edge_repo.delete_many(edge_key_list, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -558,7 +550,7 @@ def cmd_data_import(args):
         # Process nodes
         for node_json in sample_set.get('nodes', []):
             node = SpecMapper.from_save_request(node_json)
-            node_ops.save(node, actions=actions)
+            node_ops.save(node, actions=('commit',))
 
             if detect_concepts:
                 print(f"⚠️  detect_concepts requested but not yet wired into the new CLI workflow for node {node.key.to_tuple()}.")
@@ -566,7 +558,7 @@ def cmd_data_import(args):
         # Process edges
         for edge_json in sample_set.get('edges', []):
             edge = SpecMapper.from_save_request(edge_json)
-            edge_ops.save(edge, actions=actions)
+            edge_ops.save(edge, actions=('commit',))
 
     # Method 2: Process and commit as list of objects
     elif import_method == 'list':
@@ -578,7 +570,7 @@ def cmd_data_import(args):
                 for node_json in sample_set.get('nodes', [])
             ]
         )
-        node_ops.save_many(node_list, actions=actions)
+        node_ops.save_many(node_list, actions=('commit',))
 
         # Process edges list
         edge_list = EdgeList(
@@ -587,7 +579,7 @@ def cmd_data_import(args):
                 for edge_json in sample_set.get('edges', [])
             ]
         )
-        edge_ops.save_many(edge_list, actions=actions)
+        edge_ops.save_many(edge_list, actions=('commit',))
 
         if detect_concepts:
             print("⚠️  detect_concepts requested but not yet wired into the new CLI workflow for list import.")

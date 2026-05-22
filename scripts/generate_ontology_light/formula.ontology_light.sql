@@ -3,10 +3,10 @@
         REPLACE INTO [[ontology_light]]._concept_ids
      SELECT DISTINCT concept_id
                 FROM [[registry]].Edges_N_Object_N_Concept_T_ConceptDetection;
-     
+
                   -- List of categories to keep
         REPLACE INTO [[ontology_light]]._category_ids
-        
+
               SELECT 'academic-disciplines' AS category_id
 
                UNION
@@ -17,9 +17,9 @@
                   ON a1.to_id = a2.from_id
           INNER JOIN [[ontology_light]]._concept_ids a3
                   ON a2.to_id = a3.concept_id
-        
+
                UNION
-        
+
      SELECT DISTINCT b4.to_id AS category_id
                 FROM [[ontology_full]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild b1
           INNER JOIN [[ontology_full]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild b2
@@ -28,9 +28,9 @@
                   ON b2.to_id = b3.concept_id
           INNER JOIN [[ontology_full]].Edges_N_Category_N_Category_T_ChildToParent b4
                   ON b1.from_id = b4.from_id
-          
+
                UNION
-               
+
      SELECT DISTINCT t5.to_id AS category_id
                 FROM [[ontology_full]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild t1
           INNER JOIN [[ontology_full]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild t2
@@ -41,9 +41,9 @@
                   ON t1.from_id = t4.from_id
           INNER JOIN [[ontology_full]].Edges_N_Category_N_Category_T_ChildToParent t5
                   ON t4.to_id = t5.from_id
-        
+
                UNION
-        
+
      SELECT DISTINCT c6.to_id AS category_id
                 FROM [[ontology_full]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild c1
           INNER JOIN [[ontology_full]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild c2
@@ -56,7 +56,7 @@
                   ON c4.to_id = c5.from_id
           INNER JOIN [[ontology_full]].Edges_N_Category_N_Category_T_ChildToParent c6
                   ON c5.to_id = c6.from_id;
-              
+
                   -- TABLE: Data_N_Object_T_CustomFields
         REPLACE INTO [[ontology_light]].Data_N_Object_T_CustomFields
                     (institution_id, object_type, object_id, field_language, field_name, field_value)
@@ -98,7 +98,7 @@
                 FROM [[ontology_full]].Edges_N_Category_N_Category_T_ChildToParent a
           INNER JOIN [[ontology_light]]._category_ids b
                   ON a.from_id = b.category_id OR a.to_id = b.category_id;
-            
+
                   -- TABLE: Edges_N_Category_N_ConceptsCluster_T_ParentToChild
         REPLACE INTO [[ontology_light]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild
                      (from_id, to_id)
@@ -106,7 +106,7 @@
                 FROM [[ontology_full]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild a
           INNER JOIN [[ontology_light]]._category_ids b
                   ON a.from_id = b.category_id OR a.to_id = b.category_id;
-                  
+
                   -- TABLE: Edges_N_Category_N_Concept_T_AnchorPage
         REPLACE INTO [[ontology_light]].Edges_N_Category_N_Concept_T_AnchorPage
                      (from_id, to_id)
@@ -132,7 +132,7 @@
                 FROM [[ontology_full]].Edges_N_Concept_N_Concept_T_Directed c
           INNER JOIN [[ontology_light]]._concept_ids d
                   ON c.to_id = d.concept_id;
-      
+
                   -- TABLE: Edges_N_Concept_N_Concept_T_Embeddings (from total of 192'581'518) 
         REPLACE INTO [[ontology_light]].Edges_N_Concept_N_Concept_T_Embeddings
                      (from_id, to_id, score)
@@ -145,7 +145,7 @@
                 FROM [[ontology_full]].Edges_N_Concept_N_Concept_T_Embeddings c
           INNER JOIN [[ontology_light]]._concept_ids d
                   ON c.to_id = d.concept_id;
-      
+
                   -- TABLE: Edges_N_Concept_N_Concept_T_Symmetric (from total of 3'100'436)
         REPLACE INTO [[ontology_light]].Edges_N_Concept_N_Concept_T_Symmetric
                      (id, from_id, to_id, score)
@@ -158,7 +158,7 @@
                 FROM [[ontology_full]].Edges_N_Concept_N_Concept_T_Symmetric c
           INNER JOIN [[ontology_light]]._concept_ids d
                   ON c.to_id = d.concept_id;
-      
+
                   -- TABLE: Edges_N_Concept_N_Concept_T_Symmetric (from total of 1'497'301)
         REPLACE INTO [[ontology_light]].Edges_N_Concept_N_Concept_T_Undirected
                      (from_id, to_id, score, normalised_score)
@@ -171,7 +171,7 @@
                 FROM [[ontology_full]].Edges_N_Concept_N_Concept_T_Undirected c
           INNER JOIN [[ontology_light]]._concept_ids d
                   ON c.to_id = d.concept_id;
-      
+
                   -- TABLE: Edges_N_ConceptsCluster_N_Concept_T_ParentToChild
         REPLACE INTO [[ontology_light]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild
                      (from_id, to_id)
@@ -179,7 +179,7 @@
                 FROM [[ontology_full]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild a
           INNER JOIN [[ontology_light]]._concept_ids b
                   ON a.to_id = b.concept_id;
-                  
+
                   -- TABLE: Nodes_N_Category
         REPLACE INTO [[ontology_light]].Nodes_N_Category
                     (institution_id, object_type, object_id, id, name, depth, reference_page_id, reference_page_key, reference_page_url)
@@ -187,7 +187,7 @@
                 FROM [[ontology_full]].Nodes_N_Category a
           INNER JOIN [[ontology_light]]._category_ids b
                   ON a.object_id = b.category_id;
-                  
+
                   -- TABLE: Nodes_N_Concept
         REPLACE INTO [[ontology_light]].Nodes_N_Concept
                     (institution_id, object_type, object_id, id, name, is_ontology_category, is_ontology_concept, is_ontology_neighbour, is_noise, is_unused)
@@ -214,6 +214,6 @@ CREATE OR REPLACE VIEW [[ontology_light]].Edges_N_Object_N_Object_T_ChildToParen
 CREATE OR REPLACE VIEW [[ontology_light]].Nodes_N_Object AS
                 SELECT institution_id, object_type, object_id, name AS object_title, NULL AS text_source, NULL AS raw_text, row_id
                   FROM [[ontology_light]].Nodes_N_Concept
-             UNION ALL  
+             UNION ALL
                 SELECT institution_id, object_type, object_id, name AS object_title, NULL AS text_source, NULL AS raw_text, row_id
                   FROM [[ontology_light]].Nodes_N_Category;

@@ -3,6 +3,9 @@ from typing import Any, Dict
 from pathlib import Path
 
 # Import all command handler functions
+from graphregistry.entrypoints.cli.cmd_setup import (
+    cmd_setup_init,
+)
 from graphregistry.entrypoints.cli.cmd_config import (
     cmd_config_index,
 )
@@ -76,17 +79,39 @@ global_common_args = {
 cli_definitions: Dict[str, Any] = {
 
     #---------------------#
+    # Command: setup      #
+    #---------------------#
+    'setup' : dict(
+        help = "Initialize a new Registry instance with base data and configuration.",
+        common_args = {
+            'env': global_common_args['env']
+        },
+        commands = {
+            'init' : dict(
+                help = "Initialize the Registry instance.",
+                func = cmd_setup_init,
+                args = [dict(flags = ('--dry_run' , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
+                        dict(flags = ('--verbose' , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
+                ],
+                common_args = ['env'],
+            )
+        }
+    ),
+
+    #---------------------#
     # Command: config     #
     #---------------------#
     'config' : dict(
         help = "Inspect and validate Registry configuration files.",
-        common_args = {},
+        common_args = {
+            'env': global_common_args['env']
+        },
         commands = {
             'index' : dict(
                 help = "Print out index config.",
                 func = cmd_config_index,
                 args = [],
-                common_args = [],
+                common_args = ['env'],
             )
         }
     ),
