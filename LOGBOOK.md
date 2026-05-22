@@ -36,3 +36,4 @@
 - 👉 ./examples/entrypoints/node_list/api.sh is still returning DB format json, not API format
 - 👉 this is not working: ./examples/entrypoints/node_delete/api.sh
 - 👉 Why is `SELECT * FROM _1_DEV_graphsearch_test.Index_D_Course_L_Course_T_SEM;` empy?! See comment `GRW24tg`
+- 👉 In `run2.sh`, add alternative way of importing data using API endpoints
