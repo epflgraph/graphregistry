@@ -13,8 +13,15 @@ def _edge_tuple(key: EdgeKey) -> str:
     return f"([cyan]{key.from_institution_id}[/cyan], [cyan]{key.from_object_type}[/cyan], [bold][cyan]{key.from_object_id}[/cyan][/bold], [cyan]{key.to_institution_id}[/cyan], [cyan]{key.to_object_type}[/cyan], [bold][cyan]{key.to_object_id}[/cyan][/bold], [cyan]{key.context}[/cyan])"
 
 def _node_or_edge_action(key: NodeKey | EdgeKey, action) -> str:
-    icon = {'exists':'✅', 'not found':'❌', 'saved':'💾', 'deleted':'🗑️ '}[action]
-    return f"{icon} [green]{action.title()}:[/green] [yellow]{'Node' if isinstance(key, NodeKey) else 'Edge'}[/yellow] [cyan]~[/cyan] {_node_tuple(key) if isinstance(key, NodeKey) else _edge_tuple(key)}"
+    icon = {
+        'exists'    : '✅',
+        'not found' : '❌',
+        'saved'     : '💾',
+        'deleted'   : '🗑️ ',
+        'concepts detected' : '🧬',
+        'translated'        : '🌐',
+    }[action]
+    return f"{icon} [green]{action.capitalize()}:[/green] [yellow]{'Node' if isinstance(key, NodeKey) else 'Edge'}[/yellow] [cyan]~[/cyan] {_node_tuple(key) if isinstance(key, NodeKey) else _edge_tuple(key)}"
 
 
 # Class definition
@@ -39,3 +46,11 @@ class GraphLogger:
     # Print method: Node or Edge deleted from database
     def deleted(self, key: NodeKey | EdgeKey) -> None:
         rich.print(_node_or_edge_action(key, 'deleted'))
+
+    # Print method: Concepts detected for a Node
+    def concepts_detected(self, key: NodeKey) -> None:
+        rich.print(_node_or_edge_action(key, 'concepts detected'))
+
+    # Print method: Node translated
+    def translated(self, key: NodeKey) -> None:
+        rich.print(_node_or_edge_action(key, 'translated'))

@@ -10,6 +10,7 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeM
 from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
+from graphregistry.domain.types import ObjectType
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
@@ -23,6 +24,10 @@ class MySQLNodeRepository(NodeRepository):
         self.db = db
         self.schema_resolver = schema_resolver
         self.msg = GraphLogger()
+
+    #----------------------------------------#
+    # Basic Node CRUD/persistence operations #
+    #----------------------------------------#
 
     # Method: Get list of existing nodes given an object type and id string pattern
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str, str]]:
@@ -323,3 +328,36 @@ class MySQLNodeRepository(NodeRepository):
             return [self.delete(key, actions=actions) for key in key_list.item_list]
         else:
             return [self.delete(key, actions=actions) for key in key_list]
+
+    #--------------------------------------------------#
+    # Node diagnostics and special get/save operations #
+    #--------------------------------------------------#
+
+    # Method: Get nodes with no detected concepts based on optional object type and id pattern filters, returning a NodeList of the matching nodes
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+
+        # Get schema name from object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_object_type(object_type if object_type is not None else "Course")
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['node_get_with_no_concepts'],
+            registry    = schema_name,
+            object_type = object_type if object_type is not None else "%",
+            id_pattern  = id_pattern.replace('*', '%') if id_pattern is not None else "%"
+        )
+
+        # Execute SQL query and fetch result
+        node_keys_data = cast(list[tuple[str, str, str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Construct NodeKey objects from fetched data
+        node_keys = [
+            NodeKey(
+                institution_id = row[0],
+                object_type    = cast(ObjectType, row[1]),
+                object_id      = row[2]
+            ) for row in node_keys_data
+        ]
+
+        # Fetch full Node objects for the NodeKeys and return as a NodeList
+        return self.get_many(node_keys)

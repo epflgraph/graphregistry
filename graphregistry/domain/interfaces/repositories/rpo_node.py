@@ -35,3 +35,6 @@ class NodeRepository(Protocol):
 
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
         ...
+
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+        ...

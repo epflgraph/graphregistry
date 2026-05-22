@@ -8,6 +8,7 @@ from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
 from graphregistry.domain.interfaces.gateways.types import GatewayDict
+from graphregistry.common.logger import GraphLogger
 
 # Class definition
 class NodeOperations:
@@ -16,6 +17,7 @@ class NodeOperations:
     def __init__(self, repo: NodeRepository, ai_gateways: GatewayDict | None = None) -> None:
         self.repo = repo
         self.ai_gateways = ai_gateways or {}
+        self.msg = GraphLogger()
 
     #----------------------------------------#
     # Basic Node CRUD/persistence operations #
@@ -57,12 +59,37 @@ class NodeOperations:
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("eval",)) -> list[bool | None]:
         return self.repo.delete_many(key_list, actions=actions)
 
+    #--------------------------------------------------#
+    # Node diagnostics and special get/save operations #
+    #--------------------------------------------------#
+
+    # Method: Check if a node has detected concepts by its key or Node instance
+    def has_concepts(self, node_or_key: Node | NodeKey) -> bool:
+        if isinstance(node_or_key, NodeKey):
+            node = self.repo.get(node_or_key)
+            if not node:
+                raise ValueError(f"Node with key {node_or_key} not found")
+        else:
+            node = node_or_key
+        if not node.detected_concepts:
+            return False
+        elif not node.detected_concepts.item_list:
+            return False
+        elif len(node.detected_concepts.item_list) == 0:
+            return False
+        else:
+            return True
+
+    # Method: Get nodes that have no detected concepts, optionally filtered by object type and ID pattern
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+        return self.repo.get_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+
     #----------------------------------#
     # Node field enrichment operations #
     #----------------------------------#
 
     # Method: Enrich a node with detected concepts using the concept detection gateway, returning the enriched Node instance
-    def enrich_with_concepts(self, node: Node) -> Node:
+    def enrich_with_concepts(self, nodes: Node | NodeList) -> Node | NodeList:
 
         # Get gateway for concept detection
         gateway = self.ai_gateways.get("concept_detection")
@@ -70,8 +97,15 @@ class NodeOperations:
             raise ValueError("Concept detection gateway not configured")
 
         # Perform concept detection using the gateway and populate the detected_concepts field
-        concepts = gateway.detect_concepts(node.raw_text or "")
-        node.detected_concepts = concepts
+        if isinstance(nodes, NodeList):
+            for node in nodes.item_list:
+                concepts = gateway.detect_concepts(node.raw_text or "")
+                node.detected_concepts = concepts
+                self.msg.concepts_detected(node.key)
+        else:
+            concepts = gateway.detect_concepts(nodes.raw_text or "")
+            nodes.detected_concepts = concepts
+            self.msg.concepts_detected(nodes.key)
 
-        # Return the node with detected concepts
-        return node
+        # Return the node(s) with detected concepts
+        return nodes
