@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   numeric_id_fr int unsigned DEFAULT NULL,
   numeric_id_de int unsigned DEFAULT NULL,
   numeric_id_it int unsigned DEFAULT NULL,
-  short_code varchar(32) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  short_code varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   subtype_en varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   subtype_fr varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   subtype_de varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,

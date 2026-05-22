@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   numeric_id_fr int(10) unsigned DEFAULT NULL,
   numeric_id_de int(10) unsigned DEFAULT NULL,
   numeric_id_it int(10) unsigned DEFAULT NULL,
-  short_code varchar(32) DEFAULT NULL,
+  short_code varchar(255) DEFAULT NULL,
   subtype_en varchar(255) DEFAULT NULL,
   subtype_fr varchar(255) DEFAULT NULL,
   subtype_de varchar(255) DEFAULT NULL,
