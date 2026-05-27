@@ -1,7 +1,7 @@
 # graphregistry/adapters/gateways/graphai/agt_voice.py
 from __future__ import annotations
 from typing import Any
-from graphregistry.domain.models.entities.mdl_lecture import Voice, Transcript
+from graphregistry.domain.models.entities.mdl_lecture import TranscriptSegment, Voice, Transcript
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 import rich
 
@@ -52,30 +52,33 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         if task_result is None:
             return None
 
-        rich.print(task_result)
-        return None
+        # Create a Transcript object to hold the transcription results, starting with an empty list of segments
+        transcript = Transcript(
+            language  = task_result['language'],
+            full_text = task_result['transcript_results']
+        )
 
-        language = task_result.get("language")
-        subtitle_results = task_result.get("subtitle_results")
-        if not isinstance(subtitle_results, list):
-            return (str(language) if language is not None else None), None
+        # Loop over the transcription results
+        for transcript_segment_json in task_result['subtitle_results']:
 
-        if not isinstance(language, str) or not language:
-            language = "text"
+            # Extract parameters for the TranscriptSegment object
+            start = transcript_segment_json['start']
+            end   = transcript_segment_json['end']
+            text  = transcript_segment_json['text']
 
-        segments: list[dict[str, Any]] = []
-        for segment in subtitle_results:
-            if not isinstance(segment, dict):
-                continue
-            segments.append(
-                {
-                    "start": segment.get("start"),
-                    "end": segment.get("end"),
-                    language: str(segment.get("text", "")).strip(),
-                }
+            # Create a TranscriptSegment object and add it to the list of segments for the Transcript object
+            transcript_segment = TranscriptSegment(
+                start = start,
+                end   = end,
+                text  = text,
             )
 
-        return language, segments
+            # Add the TranscriptSegment object to the list of segments for the Transcript object
+            transcript.item_list.append(transcript_segment)
+
+        # Return the Transcript object containing the transcription results
+        return transcript
+
 
     def detect_language(
         self,

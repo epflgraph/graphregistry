@@ -145,7 +145,7 @@ class Transcript(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    language  : str
+    language  : str | None = None
     full_text : str | None = None
     item_list : list[TranscriptSegment] = Field(default_factory=list)
 
@@ -171,8 +171,8 @@ class Lecture(BaseModel):
     # Internal variables #
     #--------------------#
     video      : Video
-    voice      : Voice | None = None
-    slides     : SlideList | None = None
+    voice      : Voice      | None = None
+    slides     : SlideList  | None = None
     transcript : Transcript | None = None
 
     #-----------------------#
