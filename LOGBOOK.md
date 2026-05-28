@@ -29,7 +29,7 @@
 ### May
 - ✅ Implement mysql mapping function for concepts [DONE]
 - ✅ Edge custom fields are not being imported. [FIXED]
-- 👉 Keep modifying input formats in API endpoints
+- ✅ Keep modifying input formats in API endpoints
 - ✅ Node endpoints are mostly fixed
 - ✅ Edge endpoints need work, fix output format of 'get edge'. also, 'get many edges' is not returning results
 - 👉 need to fix global/local paths issue in graphdb repo
@@ -37,3 +37,5 @@
 - 👉 this is not working: ./examples/entrypoints/node_delete/api.sh
 - 👉 Why is `SELECT * FROM _1_DEV_graphsearch_test.Index_D_Course_L_Course_T_SEM;` empy?! See comment `GRW24tg`
 - 👉 In `run2.sh`, add alternative way of importing data using API endpoints
+- 👉 working on `t_video.py` script
+- ✅ in graphdb, the copy command is not working [solution: missing temporary export folder parameter in global config]

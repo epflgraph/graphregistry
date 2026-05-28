@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field, model_validator
+from graphregistry.domain.models.entities.mdl_node import Node
 
 # Model definition
 class Video(BaseModel):
@@ -170,6 +171,7 @@ class Lecture(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
+    node       : Node
     video      : Video
     voice      : Voice      | None = None
     slides     : SlideList  | None = None
