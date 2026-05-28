@@ -14,7 +14,8 @@ class GraphAIImageGateway(GraphAIBaseGateway):
         max_processing_time_s: int = 600,
         ocr_model: str = "google",
         google_api_token: str | None = None,
-    ) -> dict[str, str] | None:
+        launch_only: bool = False,
+    ) -> dict[str, str] | str | None:
         login_info = self._ensure_login_info()
 
         task_result = self._call_async_endpoint(
@@ -28,9 +29,13 @@ class GraphAIImageGateway(GraphAIBaseGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         language = str(task_result.get("language", ""))
         result_items = task_result.get("result")
@@ -63,6 +68,7 @@ class GraphAIImageGateway(GraphAIBaseGateway):
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 120,
+        launch_only: bool = False,
     ) -> str | None:
         login_info = self._ensure_login_info()
 
@@ -72,9 +78,13 @@ class GraphAIImageGateway(GraphAIBaseGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         result = task_result.get("result")
         return str(result) if result is not None else None

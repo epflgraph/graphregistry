@@ -23,7 +23,8 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         max_processing_time_s: int = 600,
         split_characters: tuple[str, ...] = ("\n", ".", ";", ",", " ", "$"),
         no_cache: bool = False,
-    ) -> list[float] | list[list[float] | None] | None:
+        launch_only: bool = False,
+    ) -> list[float] | list[list[float] | None] | str | list[str | None] | None:
         if isinstance(text, str):
             return self.embed_text_str(
                 text=text,
@@ -34,6 +35,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
                 max_processing_time_s=max_processing_time_s,
                 split_characters=split_characters,
                 no_cache=no_cache,
+                launch_only=launch_only,
             )
 
         return self.embed_text_list(
@@ -45,6 +47,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
             max_processing_time_s=max_processing_time_s,
             split_characters=split_characters,
             no_cache=no_cache,
+            launch_only=launch_only,
         )
 
     def embed_text_str(
@@ -58,8 +61,9 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         max_processing_time_s: int = 600,
         split_characters: tuple[str, ...] = ("\n", ".", ";", ",", " ", "$"),
         no_cache: bool = False,
-    ) -> list[float] | None:
-        if max_text_length and len(text) > max_text_length:
+        launch_only: bool = False,
+    ) -> list[float] | str | None:
+        if not launch_only and max_text_length and len(text) > max_text_length:
             chunks = self._split_text(text, max_text_length=max_text_length, split_characters=split_characters)
             chunk_embeddings = self.embed_text_list(
                 list_of_texts=chunks,
@@ -89,9 +93,13 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         if task_result.get("text_too_large", False):
             next_len = self._next_text_length_for_split(len(text), previous_text_length=max_text_length)
@@ -121,8 +129,9 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         max_processing_time_s: int = 600,
         split_characters: tuple[str, ...] = ("\n", ".", ";", ",", " "),
         no_cache: bool = False,
-    ) -> list[list[float] | None] | None:
-        results: list[list[float] | None] = []
+        launch_only: bool = False,
+    ) -> list[list[float] | None] | list[str | None] | None:
+        results: list[list[float] | str | None] = []
         for text in list_of_texts:
             if text is None:
                 results.append(None)
@@ -137,7 +146,8 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
                     max_processing_time_s=max_processing_time_s,
                     split_characters=split_characters,
                     no_cache=no_cache,
-                )
+                launch_only=launch_only,
+            )
             )
         return results
 

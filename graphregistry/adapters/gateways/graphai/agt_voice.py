@@ -22,7 +22,8 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         strict: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 7200,
-    ) -> Transcript | None:
+        launch_only: bool = False,
+    ) -> Transcript | str | None:
     #---------------------------------------------------------------------------#
 
         # Ensure we have valid login information before making the request
@@ -45,12 +46,16 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
             login_info = login_info,
             max_processing_time_s = max_processing_time_s,
             max_tries  = max_tries,
+            wait_for_result = not launch_only,
         )
 
         # If the task result is None, it means the request failed and the
         # transcription results could not be obtained, so we return None
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         # Create a Transcript object to hold the transcription results, starting with an empty list of segments
         transcript = Transcript(
@@ -87,6 +92,7 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 3600,
+        launch_only: bool = False,
     ) -> str | None:
         login_info = self._ensure_login_info()
 
@@ -96,9 +102,13 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         language = task_result.get("language")
         return str(language) if language is not None else None
@@ -110,6 +120,7 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 300,
+        launch_only: bool = False,
     ) -> str | None:
         login_info = self._ensure_login_info()
 
@@ -122,9 +133,13 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         result = task_result.get("result")
         return str(result) if result is not None else None

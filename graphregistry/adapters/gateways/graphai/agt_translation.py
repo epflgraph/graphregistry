@@ -96,6 +96,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         no_cache: bool = False,
         skip_segmentation: bool = False,
         clean: bool = False,
+        launch_only: bool = False,
         ) -> str:
         """
         Translate one text string.
@@ -125,6 +126,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             no_cache=no_cache,
             skip_segmentation=skip_segmentation,
             clean=clean,
+            launch_only=launch_only,
             debug=self.debug,
         )
 
@@ -258,6 +260,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         max_text_list_length: int = 20000,
         max_tries: int = 5,
         max_processing_time_s: int = 3600,
+        launch_only: bool = False,
         ) -> str | None:
         """
         Translate one string.
@@ -270,7 +273,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             return text
 
         # Pre-split if caller already knows the chunk size limit.
-        if max_text_length is not None and len(text) > max_text_length:
+        if not launch_only and max_text_length is not None and len(text) > max_text_length:
             chunks = self._split_text(text, max_text_length)
             translated_chunks = self._translate_list(
                 texts = cast(list[str | None], chunks),
@@ -307,13 +310,17 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
 
         if task_result is None:
             return None
 
+        if launch_only:
+            return str(task_result)
+
         # GraphAI tells us this text is too large -> retry with chunking.
-        if task_result.get("text_too_large", False):
+        if not launch_only and task_result.get("text_too_large", False):
             next_max_text_length = self._get_next_text_length_for_split(
                 text_length=len(text),
                 previous_text_length=max_text_length,
@@ -332,6 +339,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
                 max_text_list_length=max_text_list_length,
                 max_tries=max_tries,
                 max_processing_time_s=max_processing_time_s,
+                launch_only=False,
             )
 
         result = task_result.get("result")
@@ -359,7 +367,8 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         max_processing_time_s: int = 3600,
         mapping_from_input_to_original: dict[int, int] | None = None,
         num_output: int | None = None,
-        ) -> list[str | None] | None:
+        launch_only: bool = False,
+        ) -> list[str | None] | str | None:
         """
         Translate a list of strings while preserving original list shape.
 
@@ -406,10 +415,14 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             login_info=login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
 
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         result = task_result.get("result")
         if not isinstance(result, list):

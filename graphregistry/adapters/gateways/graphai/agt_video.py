@@ -23,7 +23,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 900,
-    ) -> Video | None:
+        launch_only: bool = False,
+    ) -> Video | str | None:
     #----------------------------------------------------------------#
 
         # Ensure we have valid login information before making the request
@@ -36,11 +37,16 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             login_info = login_info,
             max_processing_time_s = max_processing_time_s,
             max_tries  = max_tries,
+            wait_for_result = not launch_only,
         )
 
         # If the task result is None, it means the request failed or the video could not be processed
         if task_result is None:
             return None
+
+        # Non-blocking mode: return GraphAI task id immediately
+        if launch_only:
+            return str(task_result)
 
         # Get video parameters
         token       = task_result['token']
@@ -76,6 +82,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 900,
+        launch_only: bool = False,
     ) -> str | None:
     #---------------------------------------------------------------------------------#
 
@@ -92,11 +99,15 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             login_info = login_info,
             max_processing_time_s=max_processing_time_s,
             max_tries  = max_tries,
+            wait_for_result = not launch_only,
         )
 
         # If the task result is None, it means the request failed or the fingerprint could not be calculated
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         # Get the fingerprint result from the task result
         result = task_result.get("result")
@@ -115,7 +126,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 300,
-    ) -> Voice | None:
+        launch_only: bool = False,
+    ) -> Voice | str | None:
     #-----------------------------------------------------------------#
 
         # Ensure we have valid login information before making the request
@@ -135,11 +147,15 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             login_info = login_info,
             max_processing_time_s = max_processing_time_s,
             max_tries  = max_tries,
+            wait_for_result = not launch_only,
         )
 
         # If the task result is None, it means the request failed or the audio could not be extracted
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         # Initialize the GraphAIVoiceGateway to use its fingerprint method for getting the audio fingerprint
         gtw_voice = GraphAIVoiceGateway()
@@ -175,7 +191,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         default_threshold: float = 0.05,
         include_first: bool = True,
         include_last: bool = True,
-    ) -> SlideList | None:
+        launch_only: bool = False,
+    ) -> SlideList | str | None:
     #-------------------------------------------------------------------#
 
         # Ensure we have valid login information before making the request
@@ -202,11 +219,15 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             login_info = login_info,
             max_processing_time_s = max_processing_time_s,
             max_tries = max_tries,
+            wait_for_result = not launch_only,
         )
 
         # If the task result is None, it means the request failed or the slides could not be extracted
         if task_result is None:
             return None
+
+        if launch_only:
+            return str(task_result)
 
         # Create empty slide list
         slide_list = SlideList()

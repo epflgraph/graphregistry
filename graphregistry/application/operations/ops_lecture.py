@@ -70,24 +70,76 @@ class LectureOperations:
     # Content processing operations #
     #-------------------------------#
 
-    # def get_video(self, file_url: str) -> Video:
-    #     gtw_video = GraphAIVideoGateway(debug=False)
-    #     video = gtw_video.get_video(file_url=file_url)
-    #     assert video is not None, "Failed to get video object"
-    #     return video
+    def run_processing_iteration(self) -> dict[str, int]:
 
-    # # Extract audio from video and get audio token
-    # voice = gtw_video.extract_audio(input=video)
+        # Initialize the gateway (TODO: is there an abstraction of these?)
+        gtw_video = GraphAIVideoGateway(debug=False)
+        gtw_voice = GraphAIVoiceGateway(debug=False)
 
-    # # Extract slides from video and get slide list
-    # slides = gtw_video.extract_slides(input=video)
+        #----------------#
+        # Video download #
+        #----------------#
 
-    # # Transcribe audio from video and get transcription results
-    # transcript = gtw_voice.transcribe_audio(input=voice)
+        # Get lecture keys for which video has not been downloaded
+        lecture_keys_undownloaded = self.get_undownloaded()
 
-    #--------------------------------------------------#
+        # Loop over undownloaded videos and launch download tasks
+        for lecture_key in lecture_keys_undownloaded:
+            file_url = self.get_file_url(lecture_key)
+            video_token = gtw_video.get_video(file_url=file_url, launch_only=True)
+            self.save_video_token(lecture_key, video_token)
+
+        #------------------#
+        # Slide extraction #
+        #------------------#
+
+        # Get video tokens for which slides have not been extracted
+        video_tokens_no_slides = self.get_video_tokens_no_slides()
+
+        # Loop over video tokens and launch slide extraction tasks
+        for video_token in video_tokens_no_slides:
+            slide_tokens = gtw_video.extract_slides(video_token=video_token, launch_only=True)
+            self.save_slide_tokens(lecture_key, slide_tokens)
+
+        #-----------#
+        # Slide OCR #
+        #-----------#
+
+        # Get slide tokens for which slides have not been extracted
+        slide_tokens_no_ocr = self.get_slide_tokens_no_ocr()
+
+        # Loop over video tokens and launch slide extraction tasks
+        for slide_token in slide_tokens_no_ocr:
+            gtw_slide.extract_text(slide_token=slide_token, launch_only=True)
+            self.set_slide_ocr_done(lecture_key, slide_token)
+
+        #------------------#
+        # Audio extraction #
+        #------------------#
+
+        # Get video tokens for which audio has not been extracted
+        video_tokens_no_audio = self.get_video_tokens_no_audio()
+
+        # Loop over video tokens and launch slide extraction tasks
+        for video_token in video_tokens_no_audio:
+            audio_token = gtw_video.extract_audio(video_token=video_token, launch_only=True)
+
+        #---------------------#
+        # Audio transcription #
+        #---------------------#
+
+        # Get video tokens for which audio has not been extracted
+        audio_tokens_no_transcript = self.get_audio_tokens_no_transcript()
+
+        # Loop over audio tokens and launch audio transcription tasks
+        for video_token in video_tokens_no_audio:
+            transcript_token = gtw_voice.transcribe_audio(video_token=video_token, launch_only=True)
+            self.save_transcript_token(lecture_key, transcript_token)
+
+
+    #-----------------------------------------------------#
     # Lecture diagnostics and special get/save operations #
-    #--------------------------------------------------#
+    #-----------------------------------------------------#
 
     # Method: Check if a lecture has detected concepts by its key or Lecture instance
     def has_concepts(self, lecture_or_key: Lecture | NodeKey) -> bool:

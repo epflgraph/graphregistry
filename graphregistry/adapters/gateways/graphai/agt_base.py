@@ -196,9 +196,10 @@ class GraphAIBaseGateway:
         *,
         max_processing_time_s: int = 6000,
         max_tries: int = 5,
-    ) -> dict[str, Any] | None:
+        wait_for_result: bool = True,
+    ) -> dict[str, Any] | str | None:
         """
-        Submit an async GraphAI job and poll until completion.
+        Submit an async GraphAI job and optionally poll until completion.
         """
         for attempt in range(1, max_tries + 1):
             submit_response = self._request(
@@ -213,6 +214,9 @@ class GraphAIBaseGateway:
             self._log(f"Submitted async task to {endpoint}")
 
             task_id = submit_response.json()["task_id"]
+            if not wait_for_result:
+                return str(task_id)
+
             deadline = datetime.now() + timedelta(seconds=max_processing_time_s)
 
             while datetime.now() < deadline:
