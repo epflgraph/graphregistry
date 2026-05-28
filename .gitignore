@@ -285,3 +285,4 @@ epfl_graph_sample_set_EDGEs.json
 epfl_graph_sample_set_NODEs.json
 .archive
 graphregistry/adapters/gateways/graphai/_graphai_client/
+copy.sh
