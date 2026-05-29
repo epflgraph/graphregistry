@@ -15,8 +15,9 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
     #---------------------------------------------------------------------------#
     def transcribe_audio(
         self,
-        input: Voice | str,
+        input: Voice | str | None = None,
         *,
+        audio_token: str | None = None,
         force: bool = False,
         force_lang: str | None = None,
         strict: bool = False,
@@ -29,8 +30,11 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         # Ensure we have valid login information before making the request
         login_info = self._ensure_login_info()
 
-        # Get audio token depending on whether we received a Voice object or a token string
-        audio_token = input.token if isinstance(input, Voice) else input
+        # Resolve audio token from explicit token param or from input object/string
+        if audio_token is None:
+            if input is None:
+                raise ValueError("Either input or audio_token must be provided")
+            audio_token = input.token if isinstance(input, Voice) else input
 
         # Prepare payload for the request to the GraphAI endpoint to transcribe the audio
         # corresponding to the given audio token and get the transcription results
@@ -115,8 +119,9 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
 
     def fingerprint(
         self,
-        input: Voice | str,
+        input: Voice | str | None = None,
         *,
+        audio_token: str | None = None,
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 300,
@@ -124,8 +129,11 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
     ) -> str | None:
         login_info = self._ensure_login_info()
 
-        # Get audio token depending on whether we received a Voice object or a token string
-        audio_token = input.token if isinstance(input, Voice) else input
+        # Resolve audio token from explicit token param or from input object/string
+        if audio_token is None:
+            if input is None:
+                raise ValueError("Either input or audio_token must be provided")
+            audio_token = input.token if isinstance(input, Voice) else input
 
         task_result = self._call_async_endpoint(
             endpoint="/voice/calculate_fingerprint",

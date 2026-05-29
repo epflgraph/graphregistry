@@ -47,15 +47,28 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Non-blocking mode: return GraphAI task id immediately
         if launch_only:
             return str(task_result)
+        # Extract token and stream metadata defensively: GraphAI can return a
+        # successful task with missing/partial token_status payload.
+        token = task_result.get("token")
+        if token is None:
+            return None
+        token = str(token)
 
-        # Get video parameters
-        token       = task_result['token']
-        fingerprint = self.fingerprint(input=token)
-        codec       = task_result['token_status']['streams'][0]['codec_name']
-        duration    = task_result['token_status']['streams'][0]['duration']
-        bit_rate    = task_result['token_status']['streams'][0]['bit_rate']
-        sample_rate = task_result['token_status']['streams'][0]['sample_rate']
-        resolution  = task_result['token_status']['streams'][0]['resolution']
+        token_status = task_result.get("token_status")
+        streams = token_status.get("streams") if isinstance(token_status, dict) else None
+        first_stream = streams[0] if isinstance(streams, list) and streams else None
+        first_stream = first_stream if isinstance(first_stream, dict) else {}
+
+        try:
+            fingerprint = self.fingerprint(input=token)
+        except Exception:
+            fingerprint = None
+
+        codec       = first_stream.get("codec_name")
+        duration    = first_stream.get("duration")
+        bit_rate    = first_stream.get("bit_rate")
+        sample_rate = first_stream.get("sample_rate")
+        resolution  = first_stream.get("resolution")
 
         # Create video object with available information
         video = Video(
@@ -77,8 +90,9 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     #---------------------------------------------------------------------------------#
     def fingerprint(
         self,
-        input: Video | str,
+        input: Video | str | None = None,
         *,
+        video_token: str | None = None,
         force: bool = False,
         max_tries: int = 5,
         max_processing_time_s: int = 900,
@@ -89,8 +103,11 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Ensure we have valid login information before making the request
         login_info = self._ensure_login_info()
 
-        # Get video token depending on whether we received a Video object or a token string
-        video_token = input.token if isinstance(input, Video) else input
+        # Resolve video token from explicit token param or from input object/string
+        if video_token is None:
+            if input is None:
+                raise ValueError("Either input or video_token must be provided")
+            video_token = input.token if isinstance(input, Video) else input
 
         # Make the request to the GraphAI endpoint to calculate the fingerprint for the given video token
         task_result = self._call_async_endpoint(
@@ -120,8 +137,9 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     #-----------------------------------------------------------------#
     def extract_audio(
         self,
-        input: Video | str,
+        input: Video | str | None = None,
         *,
+        video_token: str | None = None,
         recalculate_cached: bool = False,
         force: bool = False,
         max_tries: int = 5,
@@ -133,8 +151,11 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Ensure we have valid login information before making the request
         login_info = self._ensure_login_info()
 
-        # Get video token depending on whether we received a Video object or a token string
-        video_token = input.token if isinstance(input, Video) else input
+        # Resolve video token from explicit token param or from input object/string
+        if video_token is None:
+            if input is None:
+                raise ValueError("Either input or video_token must be provided")
+            video_token = input.token if isinstance(input, Video) else input
 
         # Make the request to the GraphAI endpoint to extract audio from the given video token and create an audio token
         task_result = self._call_async_endpoint(
@@ -180,8 +201,9 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     #-------------------------------------------------------------------#
     def extract_slides(
         self,
-        input: Video | str,
+        input: Video | str | None = None,
         *,
+        video_token: str | None = None,
         recalculate_cached: bool = False,
         force: bool = False,
         max_tries: int = 5,
@@ -198,8 +220,11 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Ensure we have valid login information before making the request
         login_info = self._ensure_login_info()
 
-        # Get video token depending on whether we received a Video object or a token string
-        video_token = input.token if isinstance(input, Video) else input
+        # Resolve video token from explicit token param or from input object/string
+        if video_token is None:
+            if input is None:
+                raise ValueError("Either input or video_token must be provided")
+            video_token = input.token if isinstance(input, Video) else input
 
         # Make the request to the GraphAI endpoint to extract slides from the given video token and create slide tokens
         task_result = self._call_async_endpoint(

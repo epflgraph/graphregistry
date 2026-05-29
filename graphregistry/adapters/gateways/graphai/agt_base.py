@@ -246,8 +246,18 @@ class GraphAIBaseGateway:
                     if not task_result.get("successful", True):
                         if task_result.get("text_too_large", False):
                             return task_result
-                        error_message = task_result.get("result", "Unknown GraphAI task error")
-                        raise RuntimeError(str(error_message))
+
+                        # failure_reason is currently provided by /video/retrieve_url only.
+                        if endpoint == "/video/retrieve_url":
+                            failure_reason = task_result.get("failure_reason")
+                            if isinstance(failure_reason, str) and failure_reason.strip():
+                                raise RuntimeError(failure_reason)
+
+                        result_message = task_result.get("result")
+                        if isinstance(result_message, str) and result_message.strip():
+                            raise RuntimeError(result_message)
+
+                        raise RuntimeError("Unknown GraphAI task error")
 
                     return task_result
 

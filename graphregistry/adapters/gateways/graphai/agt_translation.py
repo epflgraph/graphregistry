@@ -8,7 +8,7 @@ from typing import Any, Callable, cast
 from requests import Response, get, post
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
+from graphregistry.application.gateways.gtw_translation import TextTranslationGateway
 from graphregistry.domain.models.entities.mdl_text import (
     DEFAULT_LANGUAGE_CODES,
     LanguageCode,

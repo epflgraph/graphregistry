@@ -5,7 +5,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.domain.models.tasks.mdl_conceptdet import (
     ConceptDetectionTask,
     ConceptDetectionResult,
