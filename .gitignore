@@ -286,3 +286,7 @@ epfl_graph_sample_set_NODEs.json
 .archive
 graphregistry/adapters/gateways/graphai/_graphai_client/
 copy.sh
+export_video_url_token_sql.py
+get_video_tokens_from_urls.py
+input_urls.txt
+output_tokens.json
