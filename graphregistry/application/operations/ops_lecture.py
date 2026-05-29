@@ -3,12 +3,12 @@ from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.interfaces.repositories.rpo_lecture import LectureRepository
+from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, NodeKey, LectureList, Video
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
-from graphregistry.domain.interfaces.gateways.types import GatewayDict
+from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.common.logger import GraphLogger
 
 
@@ -70,7 +70,37 @@ class LectureOperations:
     # Content processing operations #
     #-------------------------------#
 
-    def run_processing_iteration(self) -> dict[str, int]:
+    def get_undownloaded(self) -> list[NodeKey]:
+        raise NotImplementedError("Method get_undownloaded not implemented")
+
+    def get_file_url(self, lecture_key: NodeKey) -> str:
+        raise NotImplementedError("Method get_file_url not implemented")
+
+    def save_video_token(self, lecture_key: NodeKey, video_token: str) -> None:
+        raise NotImplementedError("Method save_video_token not implemented")
+
+    def get_video_tokens_no_slides(self) -> list[str]:
+        raise NotImplementedError("Method get_video_tokens_no_slides not implemented")
+
+    def save_slide_tokens(self, lecture_key: NodeKey, slide_tokens: list[str]) -> None:
+        raise NotImplementedError("Method save_slide_tokens not implemented")
+
+    def get_slide_tokens_no_ocr(self) -> list[str]:
+        raise NotImplementedError("Method get_slide_tokens_no_ocr not implemented")
+
+    def set_slide_ocr_done(self, lecture_key: NodeKey, slide_token: str) -> None:
+        raise NotImplementedError("Method set_slide_ocr_done not implemented")
+
+    def get_video_tokens_no_audio(self) -> list[str]:
+        raise NotImplementedError("Method get_video_tokens_no_audio not implemented")
+
+    def get_audio_tokens_no_transcript(self) -> list[str]:
+        raise NotImplementedError("Method get_audio_tokens_no_transcript not implemented")
+
+    def save_transcript_token(self, lecture_key: NodeKey, transcript_token: str) -> None:
+        raise NotImplementedError("Method save_transcript_token not implemented")
+
+    def run_processing_iteration(self) -> dict[str, int] | None:
 
         # Initialize the gateway (TODO: is there an abstraction of these?)
         gtw_video = GraphAIVideoGateway(debug=False)
@@ -136,6 +166,7 @@ class LectureOperations:
             transcript_token = gtw_voice.transcribe_audio(video_token=video_token, launch_only=True)
             self.save_transcript_token(lecture_key, transcript_token)
 
+        return None
 
     #-----------------------------------------------------#
     # Lecture diagnostics and special get/save operations #
@@ -143,24 +174,11 @@ class LectureOperations:
 
     # Method: Check if a lecture has detected concepts by its key or Lecture instance
     def has_concepts(self, lecture_or_key: Lecture | NodeKey) -> bool:
-        if isinstance(lecture_or_key, NodeKey):
-            lecture = self.repo.get(lecture_or_key)
-            if not lecture:
-                raise ValueError(f"Lecture with key {lecture_or_key} not found")
-        else:
-            lecture = lecture_or_key
-        if not lecture.detected_concepts:
-            return False
-        elif not lecture.detected_concepts.item_list:
-            return False
-        elif len(lecture.detected_concepts.item_list) == 0:
-            return False
-        else:
-            return True
+        raise NotImplementedError("Method has_concepts not implemented")
 
     # Method: Get lectures that have no detected concepts, optionally filtered by object type and ID pattern
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> LectureList:
-        return self.repo.get_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+        raise NotImplementedError("Method get_with_no_concepts not implemented")
 
     #----------------------------------#
     # Lecture field enrichment operations #
@@ -168,23 +186,4 @@ class LectureOperations:
 
     # Method: Enrich a lecture with detected concepts using the concept detection gateway, returning the enriched Lecture instance
     def enrich_with_concepts(self, lectures: Lecture | LectureList) -> Lecture | LectureList:
-
-        # Get gateway for concept detection
-        gateway = self.ai_gateways.get("concept_detection")
-        if not gateway:
-            raise ValueError("Concept detection gateway not configured")
-
-        # Perform concept detection using the gateway and populate the detected_concepts field
-        if isinstance(lectures, LectureList):
-            for lecture in lectures.item_list:
-                concepts = gateway.detect_concepts(lecture.raw_text or "")
-                lecture.detected_concepts = concepts
-                self.msg.concepts_detected(lecture.key)
-        else:
-            concepts = gateway.detect_concepts(lectures.raw_text or "")
-            lectures.detected_concepts = concepts
-            self.msg.concepts_detected(lectures.key)
-
-        # Return the lecture(s) with detected concepts
-        return lectures
-
+        raise NotImplementedError("Method enrich_with_concepts not implemented")
