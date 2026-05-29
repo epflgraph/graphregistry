@@ -6,7 +6,7 @@ from graphregistry.domain.types import LanguageCode, LanguageCodeList, DEFAULT_L
 
 # Check type if running in a type-checking context to avoid circular imports
 if TYPE_CHECKING:
-    from graphregistry.domain.interfaces.gateways.gtw_translation import TextTranslationGateway
+    from graphregistry.application.gateways.gtw_translation import TextTranslationGateway
 
 # Model definition
 class MultilingualText(BaseModel):

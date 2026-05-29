@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Any, cast
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import EdgeKey, Edge, EdgeList
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
+from graphregistry.domain.repositories.rpo_edge import EdgeRepository
+from graphregistry.application.services.srv_schema import SchemaResolver
 from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeMapper
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger

@@ -6,7 +6,7 @@ from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey
-from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
+from graphregistry.application.services.srv_schema import SchemaResolver
 import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere

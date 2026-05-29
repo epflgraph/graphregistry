@@ -4,15 +4,15 @@ from pathlib import Path
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeList
 from graphregistry.domain.models.entities.mdl_edge import EdgeList
-from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
-from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
+from graphregistry.domain.repositories.rpo_edge import EdgeRepository
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.entrypoints.mappers import SpecMapper
-from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 import rich, json
 from graphregistry.domain.types import ActionSet, ActionName
 

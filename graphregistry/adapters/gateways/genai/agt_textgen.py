@@ -1,6 +1,6 @@
 # graphregistry/adapters/gateways/genai/agt_textgen.py
 from __future__ import annotations
-from graphregistry.domain.interfaces.gateways.gtw_textgen import TextGenerationGateway
+from graphregistry.application.gateways.gtw_textgen import TextGenerationGateway
 from graphregistry.domain.models.entities.mdl_text import GeneratedText, LanguageCode
 
 # Class definitio

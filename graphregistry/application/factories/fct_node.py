@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any
 from graphregistry.domain.models.entities.mdl_node import Node
-from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.entrypoints.mappers import SpecMapper
 from graphregistry.entrypoints.schemas import NodeSpec
 

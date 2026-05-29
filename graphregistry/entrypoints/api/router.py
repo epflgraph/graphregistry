@@ -7,10 +7,10 @@ from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 from graphregistry.common.config import GlobalConfig
-from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.domain.repositories.rpo_edge import EdgeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations

@@ -1,6 +1,6 @@
 # graphregistry/adapters/services/schema/asv_schema_default.py
 from __future__ import annotations
-from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver, EngineSchema
+from graphregistry.application.services.srv_schema import SchemaResolver, EngineSchema
 from graphregistry.domain.models.entities.mdl_node import NodeKey
 from graphregistry.domain.models.entities.mdl_edge import EdgeKey
 from graphregistry.common.config import GlobalConfig

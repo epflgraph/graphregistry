@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
-from graphregistry.domain.interfaces.gateways.types import GatewayDict
+from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.common.logger import GraphLogger
 
 # Class definition

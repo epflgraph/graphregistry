@@ -6,7 +6,7 @@ from graphregistry.common.config import GlobalConfig
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.domain.models.entities.mdl_base import EdgeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
-from graphregistry.domain.interfaces.services.srv_schema import SchemaResolver
+from graphregistry.application.services.srv_schema import SchemaResolver
 import pytest, json
 
 # Adjust this import if your actual DB class lives elsewhere
