@@ -26,6 +26,7 @@ dependencies = [
     "flatten_dict",
     "dictdiffer",
     "pytest",
+    "openai",
     # Git dependency (PEP 508 syntax)
     "graphdb-client @ git+https://github.com/epflgraph/graphdb-client.git",
     "graphes-client @ git+https://github.com/epflgraph/graphes-client.git",

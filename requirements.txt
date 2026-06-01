@@ -15,4 +15,5 @@ pyyaml
 pymysql
 flatten_dict
 dictdiffer
+openai
 graphai-client@git+https://github.com/epflgraph/graphai-client.git

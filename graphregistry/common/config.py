@@ -7,7 +7,7 @@ import json, rich, copy
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-#================================#`1`
+#================================#
 # Class definition: GlobalConfig #
 #================================#
 class GlobalConfig:
@@ -22,6 +22,11 @@ class GlobalConfig:
 
         # Initialise settings
         self.settings = json.loads(json.dumps(global_config, default=str))
+
+        # Get llm parameters from config file
+        self.llm_api_key  = self.settings['genai']['llm_api_key']
+        self.llm_base_url = self.settings['genai']['llm_base_url']
+        self.llm_model    = self.settings['genai']['llm_model']
 
         #-----------------------------------------#
         # Set MySQL schema names from config file #
@@ -107,7 +112,6 @@ class GlobalConfig:
             ('Category'   , 'Category')        : self.schema_ontology,
             ('Category'   , 'Concept')         : self.schema_ontology
         }
-
 
         # Also build the inverted mapping
         from collections import defaultdict

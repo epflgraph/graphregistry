@@ -1,2 +1,4 @@
-# graphregistry/clients/__init__.py
-# (empty file, serves as a package initializer)
+# graphregistry/adapters/clients/__init__.py
+from graphregistry.adapters.clients.rcp_models import RCPModelsClient, send_llm_request
+
+__all__ = ["RCPModelsClient", "send_llm_request"]
