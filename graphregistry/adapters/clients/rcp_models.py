@@ -120,8 +120,12 @@ class RCPModelsClient:
         temperature: float | None = None,
         timeout: float | None = None,
     ) -> str | PydanticModelT:
+        selected_model = llm_model or self.llm_model
+
+        sysmsg.info("RCP LLM request model={}", selected_model)
+
         request: dict[str, Any] = {
-            "model": llm_model or self.llm_model,
+            "model": selected_model,
             "messages": list(messages),
         }
 

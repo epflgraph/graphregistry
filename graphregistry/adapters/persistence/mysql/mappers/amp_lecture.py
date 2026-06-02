@@ -239,7 +239,7 @@ class MySQLLectureEnrichmentTaskMapper:
                 {
                     'keyframe_id': keyframe.slide_id,
                     'ocr_content': keyframe.ocr_content,
-                    'concepts': keyframe.concepts.item_list,
+                    'concepts': keyframe.concepts.ai_refined_list,
                 }
                 for keyframe in enrich_task.keyframes
             ]

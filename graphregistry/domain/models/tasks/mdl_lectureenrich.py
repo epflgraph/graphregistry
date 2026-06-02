@@ -1,4 +1,4 @@
-# graphregistry/domain/models/tasks/mdl_conceptdet.py
+# graphregistry/domain/models/tasks/mdl_lectureenrich.py
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
@@ -10,8 +10,8 @@ class LectureConceptTitleList(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    item_list      : list[str] = Field(default_factory=list)
-    validated_list : list[str] = Field(default_factory=list)
+    ai_refined_list     : list[str] = Field(default_factory=list)
+    post_validated_list : list[str] = Field(default_factory=list)
 
     #-----------------------#
     # Serialization methods #

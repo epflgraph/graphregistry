@@ -6,6 +6,7 @@ from graphregistry.application.operations.ops_lecture import LectureOperations
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.adapters.gateways.genai.agt_lectureenrich import GenAILectureEnrichmentGateway
 from typing import cast
+import rich
 
 # Initialize the lecture operations with the MySQL repository and the GenAI enrichment gateway
 lecture_ops = LectureOperations(
@@ -17,4 +18,5 @@ lecture_ops = LectureOperations(
 )
 
 # Run the enrichment operation for a specific lecture ID
-lecture_ops.enrich(lecture_id="0_192jngsv")
+result = lecture_ops.enrich(lecture_id="0_192jngsv")
+rich.print(result)

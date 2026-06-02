@@ -9,7 +9,7 @@ from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureLis
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.common.logger import GraphLogger
 # LectureEnrichmentTask
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask
+from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
 
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
 from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
@@ -229,7 +229,7 @@ class LectureOperations:
 
 
     # Method: Enrich one lecture by lecture_id
-    def enrich(self, lecture_id: str) -> None:
+    def enrich(self, lecture_id: str) -> LectureEnrichmentResult:
 
         # Get the enrichment gateway
         gtw = self.ai_gateways.get("lecture_enrichment")
@@ -251,4 +251,4 @@ class LectureOperations:
         result = gtw.enrich(task)
 
         # Return None for now, as the enrichment result saving and lecture updating is not yet implemented
-        return None
+        return result
