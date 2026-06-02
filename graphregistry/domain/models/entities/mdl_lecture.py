@@ -188,3 +188,22 @@ class Lecture(BaseModel):
             slides=SlideList.from_list(input_json.get("slides", [])) if input_json.get("slides") else None,
             transcript=Transcript.from_json(input_json.get("transcript", {})) if input_json.get("transcript") else None
         )
+
+# Model definition
+class LectureList(BaseModel):
+    """Model representing a list of lectures.
+    """
+    #--------------------#
+    # Internal variables #
+    #--------------------#
+    item_list: list[Lecture] = Field(default_factory=list)
+
+    #-----------------------#
+    # Serialization methods #
+    #-----------------------#
+    @classmethod
+    def from_list(cls, input_list: list[dict[str, Any]]) -> "LectureList":
+        return cls(item_list=[Lecture.from_json(doc) for doc in (input_list or [])])
+
+    def to_list(self) -> list[dict[str, Any]]:
+        return self.model_dump(mode='json')['item_list']

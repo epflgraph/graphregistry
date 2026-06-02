@@ -25,15 +25,24 @@ class RCPModelsClient:
         llm_base_url: str | None = None,
         llm_api_key: str | None = None,
         llm_model: str | None = None,
-        timeout: float = 30.0,
+        timeout: float = 3600.0,
         config: GlobalConfig | None = None,
     ) -> None:
         cfg = config or GlobalConfig()
         rcp_cfg = cfg.settings.get("llm", {}).get("rcp", {})
+        genai_cfg = cfg.settings.get("genai", {})
 
-        self.llm_base_url = llm_base_url or rcp_cfg.get("llm_base_url")
-        self.llm_api_key = llm_api_key or rcp_cfg.get("llm_api_key")
-        self.llm_model = llm_model or rcp_cfg.get("llm_model")
+        self.llm_base_url = (
+            llm_base_url
+            or rcp_cfg.get("llm_base_url")
+            or genai_cfg.get("llm_base_url")
+        )
+        self.llm_api_key = (
+            llm_api_key or rcp_cfg.get("llm_api_key") or genai_cfg.get("llm_api_key")
+        )
+        self.llm_model = llm_model or rcp_cfg.get("llm_model") or genai_cfg.get(
+            "llm_model"
+        )
         self.timeout = timeout
 
         missing = [
@@ -50,7 +59,8 @@ class RCPModelsClient:
             raise ValueError(
                 "Missing RCP LLM configuration: "
                 + ", ".join(missing)
-                + ". Expected config_global.yaml -> llm.rcp.{llm_base_url, llm_api_key, llm_model}, "
+                + ". Expected config_global.yaml -> llm.rcp.{llm_base_url, llm_api_key, llm_model} "
+                "or genai.{llm_base_url, llm_api_key, llm_model}, "
                 "or pass values explicitly."
             )
 
@@ -71,7 +81,7 @@ class RCPModelsClient:
             "type": "json_schema",
             "json_schema": {
                 "name": llm_model_cls.__name__,
-                "schema": llm_model_cls.llm_model_json_schema(),
+                "schema": llm_model_cls.model_json_schema(),
                 "strict": True,
             },
         }
@@ -111,7 +121,7 @@ class RCPModelsClient:
         timeout: float | None = None,
     ) -> str | PydanticModelT:
         request: dict[str, Any] = {
-            "llm_model": llm_model or self.llm_model,
+            "model": llm_model or self.llm_model,
             "messages": list(messages),
         }
 
@@ -145,7 +155,7 @@ class RCPModelsClient:
             return content
 
         try:
-            return response_llm_model.llm_model_validate_json(content)
+            return response_llm_model.model_validate_json(content)
         except ValidationError as exc:
             raise ValueError(
                 f"RCP LLM response did not match {response_llm_model.__name__}: {content}"
@@ -158,7 +168,7 @@ def send_llm_request(
     *,
     response_llm_model: type[PydanticModelT],
     max_tokens: int | None = None,
-    timeout: float = 30.0,
+    timeout: float = 3600.0,
     llm_model: str | None = None,
     llm_base_url: str | None = None,
     llm_api_key: str | None = None,
@@ -172,7 +182,7 @@ def send_llm_request(
     *,
     response_llm_model: None = None,
     max_tokens: int | None = None,
-    timeout: float = 30.0,
+    timeout: float = 3600.0,
     llm_model: str | None = None,
     llm_base_url: str | None = None,
     llm_api_key: str | None = None,
@@ -185,7 +195,7 @@ def send_llm_request(
     *,
     response_llm_model: type[PydanticModelT] | None = None,
     max_tokens: int | None = None,
-    timeout: float = 30.0,
+    timeout: float = 3600.0,
     llm_model: str | None = None,
     llm_base_url: str | None = None,
     llm_api_key: str | None = None,

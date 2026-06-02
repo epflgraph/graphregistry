@@ -39,3 +39,6 @@
 - 👉 In `run2.sh`, add alternative way of importing data using API endpoints
 - 👉 working on `t_video.py` script
 - ✅ in graphdb, the copy command is not working [solution: missing temporary export folder parameter in global config]
+
+### June
+- 👉 Create a lecture sample set for dev

@@ -4,10 +4,8 @@ from typing import Any
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
-from graphregistry.domain.models.entities.mdl_base import NodeKeyList
-from graphregistry.domain.models.entities.mdl_lecture import Lecture, NodeKey, LectureList, Video
-from graphregistry.domain.models.entities.mdl_lecture import Lecture
-from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
+from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.common.logger import GraphLogger
 
@@ -180,10 +178,50 @@ class LectureOperations:
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> LectureList:
         raise NotImplementedError("Method get_with_no_concepts not implemented")
 
-    #----------------------------------#
+    #-------------------------------------#
     # Lecture field enrichment operations #
-    #----------------------------------#
+    #-------------------------------------#
 
-    # Method: Enrich a lecture with detected concepts using the concept detection gateway, returning the enriched Lecture instance
-    def enrich_with_concepts(self, lectures: Lecture | LectureList) -> Lecture | LectureList:
-        raise NotImplementedError("Method enrich_with_concepts not implemented")
+    # Method: Enrich lectures with missing descriptions and refined concepts
+    def enrich(self, lectures: Lecture | LectureList) -> Lecture | LectureList:
+
+        # Handle both single Lecture input and list of Lectures input
+        single_input = isinstance(lectures, Lecture)
+        lecture_list = [lectures] if single_input else list(lectures)
+
+        # Get the enrichment gateway
+        gtw = self.ai_gateways.get("lecture_enrichment")
+        if gtw is None:
+            raise ValueError("Missing gateway: lecture_enrichment")
+
+        # Initialize list to hold enriched lectures
+        enriched: list[Lecture] = []
+
+        # Loop over lectures and enrich each one
+        for lecture in lecture_list:
+
+            # Normalize possible (key, lecture) tuple entries
+            lecture_obj = lecture[1] if isinstance(lecture, tuple) else lecture
+
+            # Get the enrichment task for the lecture
+            task = self.repo.get_enrichment_task(lecture_obj.node.key)
+
+            # Verify that the enrichment task was found
+            if task is None:
+                print(f"Enrichment task not found for lecture key: {lecture_obj.node.key}")
+                continue
+
+            # Run the enrichment task through the gateway to get the enrichment result
+            result = gtw.enrich(task)
+
+            # Save the enrichment result back to the repository and get the saved lecture key
+            saved_lecture_key = self.repo.save_enrichment_result(result)
+
+            # Load the saved lecture and add it to the enriched list
+            saved_lecture = self.repo.get(saved_lecture_key)
+            if saved_lecture is None:
+                raise ValueError(f"Saved lecture not found for key: {saved_lecture_key}")
+            enriched.append(saved_lecture)
+
+        # Return the enriched lecture(s) in the same format as the input (single Lecture or LectureList)
+        return enriched[0] if single_input else LectureList(item_list=enriched)

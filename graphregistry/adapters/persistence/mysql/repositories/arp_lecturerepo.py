@@ -1,12 +1,13 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_lecturerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
-from graphregistry.domain.models.entities.mdl_base import LectureKeyList
-from graphregistry.domain.models.entities.mdl_lecture import LectureKey, Lecture, LectureList
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
+from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList
+from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.types import ActionSet
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.application.services.srv_schema import SchemaResolver
-from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureMapper
+from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureEnrichmentTaskMapper
 from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
@@ -25,9 +26,9 @@ class MySQLLectureRepository(LectureRepository):
         self.schema_resolver = schema_resolver
         self.msg = GraphLogger()
 
-    #----------------------------------------#
+    #-------------------------------------------#
     # Basic Lecture CRUD/persistence operations #
-    #----------------------------------------#
+    #-------------------------------------------#
 
     # Method: Get list of existing lectures given an object type and id string pattern
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str, str]]:
@@ -50,10 +51,10 @@ class MySQLLectureRepository(LectureRepository):
         return cast(list[tuple[str, str, str]], lecture_list)
 
     # Method: Check if a lecture exists in persistence from the lecture key
-    def exists(self, key: LectureKey) -> bool:
+    def exists(self, key: NodeKey) -> bool:
 
         # Get schema name from object type using the schema resolver
-        engine_name, schema_name = self.schema_resolver.for_lecture(key)
+        engine_name, schema_name = self.schema_resolver.for_node(key)
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
@@ -71,14 +72,14 @@ class MySQLLectureRepository(LectureRepository):
         return lecture_exists
 
     # Method: Check if multiple lectures exist in persistence from a list of lecture keys
-    def exists_many(self, key_list: LectureKeyList | list[LectureKey]) -> list[bool]:
-        if isinstance(key_list, LectureKeyList):
+    def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
+        if isinstance(key_list, NodeKeyList):
             return [self.exists(key) for key in key_list.item_list]
         else:
             return [self.exists(key) for key in key_list]
 
     # Method: Fetch lecture data and construct Lecture object
-    def get(self, key: LectureKey) -> Lecture | None:
+    def get(self, key: NodeKey) -> Lecture | None:
 
         # Check if lecture exists first (return None if not found)
         if not self.exists(key):
@@ -86,11 +87,11 @@ class MySQLLectureRepository(LectureRepository):
             return None
 
         # Get schema name from object type using the schema resolver
-        engine_name, schema_name = self.schema_resolver.for_lecture(key)
+        engine_name, schema_name = self.schema_resolver.for_node(key)
 
-        #-------------------------#
+        #----------------------------#
         # Get lecture's basic fields #
-        #-------------------------#
+        #----------------------------#
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
@@ -110,9 +111,9 @@ class MySQLLectureRepository(LectureRepository):
             self.msg.not_found(key)
             return None
 
-        #--------------------------#
+        #-----------------------------#
         # Get lecture's custom fields #
-        #--------------------------#
+        #-----------------------------#
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
@@ -126,9 +127,9 @@ class MySQLLectureRepository(LectureRepository):
         # Execute query and fetch result
         custom_fields = cast(list[tuple[str, str, Any]], self.db.execute_query(engine_name=engine_name, query=sql_query))
 
-        #-------------------------#
+        #----------------------------#
         # Get lecture's page profile #
-        #-------------------------#
+        #----------------------------#
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
@@ -148,9 +149,9 @@ class MySQLLectureRepository(LectureRepository):
         else:
             page_profile_dict = {}
 
-        #------------------------------#
+        #---------------------------------#
         # Get lecture's detected concepts #
-        #------------------------------#
+        #---------------------------------#
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
@@ -177,8 +178,8 @@ class MySQLLectureRepository(LectureRepository):
         return lecture
 
     # Method: Fetch multiple lectures data and construct LectureList object from a list of lecture keys
-    def get_many(self, key_list: LectureKeyList | list[LectureKey]) -> LectureList:
-        if isinstance(key_list, LectureKeyList):
+    def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> LectureList:
+        if isinstance(key_list, NodeKeyList):
             key_list = key_list.item_list
         out = [lecture for lecture in (self.get(key) for key in key_list) if lecture is not None]
         return LectureList(item_list=out)
@@ -187,7 +188,7 @@ class MySQLLectureRepository(LectureRepository):
     def save(self, lecture: Lecture, actions: ActionSet = ('commit',)) -> Lecture:
 
         # Get schema name from object type using the schema resolver
-        engine_name, schema_name = self.schema_resolver.for_lecture(lecture.key)
+        engine_name, schema_name = self.schema_resolver.for_node(lecture.node.key)
 
         #---------------------#
         # Upsert basic fields #
@@ -202,7 +203,7 @@ class MySQLLectureRepository(LectureRepository):
             schema_name       = schema_name,
             table_name        = "Lectures_N_Object",
             key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture.key.institution_id, lecture.key.object_type, lecture.key.object_id],
+            key_column_values = [lecture.node.key.institution_id, lecture.node.key.object_type, lecture.node.key.object_id],
             upd_column_names  = list(basic_row.keys()),
             upd_column_values = list(basic_row.values()),
             actions           = actions,
@@ -244,7 +245,7 @@ class MySQLLectureRepository(LectureRepository):
             schema_name       = schema_name,
             table_name        = "Data_N_Object_T_PageProfile",
             key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture.key.institution_id, lecture.key.object_type, lecture.key.object_id],
+            key_column_values = [lecture.node.key.institution_id, lecture.node.key.object_type, lecture.node.key.object_id],
             upd_column_names  = list(page_profile_row.keys()),
             upd_column_values = list(page_profile_row.values()),
             actions           = actions,
@@ -276,7 +277,7 @@ class MySQLLectureRepository(LectureRepository):
         #---------------------#
 
         # Print status message
-        self.msg.saved(lecture.key)
+        self.msg.saved(lecture.node.key)
 
         # Return lecture for chaining
         return lecture
@@ -288,7 +289,7 @@ class MySQLLectureRepository(LectureRepository):
         return LectureList(item_list=[self.save(lecture, actions=actions) for lecture in lecture_list])
 
     # Method: Delete lecture data from persistence based on the lecture key
-    def delete(self, key: LectureKey, actions: ActionSet = ('commit',)) -> bool | None:
+    def delete(self, key: NodeKey, actions: ActionSet = ('commit',)) -> bool | None:
 
         # Check if lecture exists first (return None if not found)
         if not self.exists(key):
@@ -296,7 +297,7 @@ class MySQLLectureRepository(LectureRepository):
             return None
 
         # Get schema name from object type using the schema resolver
-        engine_name, schema_name = self.schema_resolver.for_lecture(key)
+        engine_name, schema_name = self.schema_resolver.for_node(key)
 
         # Execute in commit mode
         if 'commit' in actions:
@@ -323,15 +324,15 @@ class MySQLLectureRepository(LectureRepository):
         return False
 
     # Method: Delete multiple lectures data from persistence based on a list of lecture keys
-    def delete_many(self, key_list: LectureKeyList | list[LectureKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
-        if isinstance(key_list, LectureKeyList):
+    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
+        if isinstance(key_list, NodeKeyList):
             return [self.delete(key, actions=actions) for key in key_list.item_list]
         else:
             return [self.delete(key, actions=actions) for key in key_list]
 
-    #--------------------------------------------------#
+    #-----------------------------------------------------#
     # Lecture diagnostics and special get/save operations #
-    #--------------------------------------------------#
+    #-----------------------------------------------------#
 
     # Method: Get lectures with no detected concepts based on optional object type and id pattern filters, returning a LectureList of the matching lectures
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> LectureList:
@@ -350,14 +351,54 @@ class MySQLLectureRepository(LectureRepository):
         # Execute SQL query and fetch result
         lecture_keys_data = cast(list[tuple[str, str, str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
 
-        # Construct LectureKey objects from fetched data
+        # Construct NodeKey objects from fetched data
         lecture_keys = [
-            LectureKey(
+            NodeKey(
                 institution_id = row[0],
                 object_type    = cast(ObjectType, row[1]),
                 object_id      = row[2]
             ) for row in lecture_keys_data
         ]
 
-        # Fetch full Lecture objects for the LectureKeys and return as a LectureList
+        # Fetch full Lecture objects for the NodeKeys and return as a LectureList
         return self.get_many(lecture_keys)
+
+    # Method: Get enrichment task for a lecture based on the lecture key, returning a LectureEnrichmentTask object
+    def get_enrichment_task(self, key: NodeKey) -> LectureEnrichmentTask | None:
+
+        # # Check if lecture exists first (return None if not found)
+        # if not self.exists(key):
+        #     self.msg.not_found(key)
+        #     return None
+
+        # Get schema name from object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_node(key)
+
+        #----------------------------#
+        # Get lecture's basic fields #
+        #----------------------------#
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path      = sql_queries_paths['registry']['commit']['lecture_get_enrich_task'],
+            registry       = schema_name,
+            lecture_id     = key.object_id
+        )
+
+        # Execute query and fetch result
+        enrich_data = cast(list[tuple[Any, ...]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Any rows returned?
+        if not enrich_data:
+            self.msg.not_found(key)
+            return None
+
+        # Build enrichment task object from fetched data
+        enrich_task = MySQLLectureEnrichmentTaskMapper.from_rows(enrich_data, lecture_id=key.object_id)
+
+        # Return the constructed enrichment task object
+        return enrich_task
+
+    # Method: Save enrichment result for a lecture to persistence and return the saved lecture key
+    def save_enrichment_result(self, result: LectureEnrichmentResult, actions: ActionSet = ("commit",)) -> NodeKey:
+        raise NotImplementedError("Method not implemented yet")
