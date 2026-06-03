@@ -2,68 +2,21 @@
 from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
-from graphregistry.domain.types import ActionSet
-from graphregistry.domain.repositories.rpo_lecture import LectureRepository
-from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
-from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
-from graphregistry.application.gateways.types import GatewayDict
-from graphregistry.common.logger import GraphLogger
-# LectureEnrichmentTask
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
-
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
 from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.application.gateways.types import GatewayDict
+from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.common.logger import GraphLogger
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
-import rich
+from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
+from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
+from graphregistry.domain.repositories.rpo_lecture import LectureRepository
+from graphregistry.domain.types import ActionSet
+import rich, pickle
 
 # Class definition
-class LectureOperations:
-
-    # Class constructor
-    def __init__(self, repo: LectureRepository, ai_gateways: GatewayDict | None = None) -> None:
-        self.repo = repo
-        self.ai_gateways = ai_gateways or {}
-        self.msg = GraphLogger()
-
-    #-------------------------------------------#
-    # Basic Lecture CRUD/persistence operations #
-    #-------------------------------------------#
-
-    # Method: List lectures by object type and optional ID pattern, returning a list of (object_type, id, title) tuples
-    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str, str]]:
-        return self.repo.list(object_type=object_type, id_pattern=id_pattern)
-
-    # Method: Check if a lecture exists by its key
-    def exists(self, key: NodeKey) -> bool:
-        return self.repo.exists(key)
-
-    # Method: Check if multiple lectures exist by their keys, returning a list of booleans corresponding to the input keys
-    def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
-        return self.repo.exists_many(key_list)
-
-    # Method: Get a lecture by its key, returning the Lecture instance or None if not found
-    def get(self, key: NodeKey) -> Lecture | None:
-        return self.repo.get(key)
-
-    # Method: Get multiple lectures by their keys, returning a list of Lecture instances corresponding to the input keys (with None for keys that are not found)
-    def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> LectureList:
-        return self.repo.get_many(key_list)
-
-    # Method: Save a lecture, with optional actions to perform (default is ('commit',)), returning the saved Lecture instance
-    def save(self, lecture: Lecture, actions: ActionSet = ('commit',)) -> Lecture:
-        return self.repo.save(lecture, actions=actions)
-
-    # Method: Save multiple lectures, with optional actions to perform (default is ('commit',)), returning a list of the saved Lecture instances
-    def save_many(self, lecture_list: LectureList | list[Lecture], actions: ActionSet = ('commit',)) -> LectureList:
-        return self.repo.save_many(lecture_list, actions=actions)
-
-    # Method: Delete a lecture by its key, with optional actions to perform (default is ('commit',)), returning True if the lecture was deleted, False if it was not found, or None if the deletion was not performed due to the actions
-    def delete(self, key: NodeKey, actions: ActionSet = ('commit',)) -> bool | None:
-        return self.repo.delete(key, actions=actions)
-
-    # Method: Delete multiple lectures by their keys, with optional actions to perform (default is ('commit',)), returning a list of booleans corresponding to the input keys indicating whether each lecture was deleted (True), not found (False), or not deleted due to the actions (None)
-    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
-        return self.repo.delete_many(key_list, actions=actions)
+class LectureOperations(NodeOperations):
 
     #-------------------------------#
     # Content processing operations #
@@ -167,18 +120,6 @@ class LectureOperations:
 
         return None
 
-    #-----------------------------------------------------#
-    # Lecture diagnostics and special get/save operations #
-    #-----------------------------------------------------#
-
-    # Method: Check if a lecture has detected concepts by its key or Lecture instance
-    def has_concepts(self, lecture_or_key: Lecture | NodeKey) -> bool:
-        raise NotImplementedError("Method has_concepts not implemented")
-
-    # Method: Get lectures that have no detected concepts, optionally filtered by object type and ID pattern
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> LectureList:
-        raise NotImplementedError("Method get_with_no_concepts not implemented")
-
     #-------------------------------------#
     # Lecture field enrichment operations #
     #-------------------------------------#
@@ -229,7 +170,7 @@ class LectureOperations:
 
 
     # Method: Enrich one lecture by lecture_id
-    def enrich(self, lecture_id: str) -> LectureEnrichmentResult:
+    def enrich(self, lecture_id: str) -> LectureEnrichmentResult | None:
 
         # Get the enrichment gateway
         gtw = self.ai_gateways.get("lecture_enrichment")
@@ -249,6 +190,7 @@ class LectureOperations:
 
         # Run the enrichment task through the gateway to get the enrichment result
         result = gtw.enrich(task)
+
 
         # Return None for now, as the enrichment result saving and lecture updating is not yet implemented
         return result

@@ -55,4 +55,4 @@ def cmd_ai_detect_concepts(args) -> None:
 #--------------------------------------------------#
 # Handler: Launch interation of lecture processing #
 #--------------------------------------------------#
-def cmd_ai_process_lectures(args) -> None:
+# def cmd_ai_process_lectures(args) -> None:

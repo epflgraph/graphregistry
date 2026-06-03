@@ -8,5 +8,5 @@ class LectureEnrichmentGateway(Protocol):
     """Gateway protocol for lecture enrichment operations
     """
 
-    def enrich(self, task: LectureEnrichmentTask) -> LectureEnrichmentResult:
+    def enrich(self, task: LectureEnrichmentTask) -> LectureEnrichmentResult | None:
         ...

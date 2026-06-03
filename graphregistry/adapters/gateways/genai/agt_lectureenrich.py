@@ -35,7 +35,6 @@ class GenAILectureEnrichmentGateway:
         )
 
         print(llm_prompt)
-        # return None
 
         result = send_llm_request(
             timeout=self.timeout,
