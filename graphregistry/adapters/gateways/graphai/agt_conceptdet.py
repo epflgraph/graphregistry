@@ -16,6 +16,34 @@ from requests import post
 
 class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway):
 
+    def wiki_search(self, search_term: str) -> list[dict[str, Any]]:
+        login_info = self._ensure_login_info()
+
+        url = login_info["host"] + "/text/wiki_search"
+        payload: dict[str, Any] = {"search_term": search_term}
+
+        response = self._request(
+            url=url,
+            login_info=login_info,
+            request_func=post,
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            json=payload,
+            timeout=900,
+            max_tries=5,
+        )
+
+        data = response.json()
+
+        if not isinstance(data, list):
+            raise ValueError(
+                f"Unexpected /text/wiki_search response shape: expected list, got {type(data).__name__}"
+            )
+
+        return [item for item in data if isinstance(item, dict)]
+
     def extract_keywords(self, text: str) -> list[str]:
         raise NotImplementedError("Keyword extraction is not implemented for GraphAIConceptDetectionGateway")
 
@@ -70,5 +98,5 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
         return ConceptDetectionResult(
             concept_id=str(item["concept_id"]),
             concept_name=str(item["concept_name"]),
-            score=float(item.get("mixed_score") or 0.0),
+            score=float(item.get("mixed_score") or item.get("score") or 0.0),
         )

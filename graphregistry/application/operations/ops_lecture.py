@@ -13,6 +13,7 @@ from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureLis
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.types import ActionSet
+from graphregistry.common.auxfcn import normalized_levenshtein
 import rich, pickle
 
 # Class definition
@@ -195,11 +196,22 @@ class LectureOperations(NodeOperations):
             f"Expected enrichment task for lecture_id {lecture_id}, but got {task}"
 
         # Run the enrichment task through the gateway to get the enrichment result
-        # result = gtw.enrich(task)
+        result = gtw.enrich(task)
 
-        # Load enrichment result from pickle for testing
-        with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
-            result = pickle.load(f)
+        # Print status
+        self.msg.enriched(NodeKey(
+            institution_id = 'EPFL',
+            object_type    = 'Lecture',
+            object_id      = lecture_id,
+        ))
+
+        # Check that the result is of the expected type
+        assert isinstance(result, LectureEnrichmentResult), \
+            f"Expected enrichment result for lecture_id {lecture_id}, but got {result}"
+
+        # # Load enrichment result from pickle for testing
+        # with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
+        #     result = pickle.load(f)
 
         # # Save to pickle
         # with open(f"enrichment_result_{lecture_id}.pkl", "wb") as f:
@@ -209,33 +221,54 @@ class LectureOperations(NodeOperations):
         # Concept list post-validation #
         #------------------------------#
 
-        # Loop over concepts and remove those that are not Wikipedia pages
-        ai_refined_list = result.keyframes[0].refined_concepts.ai_refined_list
+        # Loop over keyframes and remove those that do not have any AI-refined concepts
+        for k in [-1] + list(range(len(result.keyframes))):
 
-        # Get concept detection gateway
-        gtw_conceptdet = self.ai_gateways.get("concept_detection")
-        if gtw_conceptdet is None:
-            raise ValueError("Missing gateway: concept_detection")
+            # Loop over concepts and remove those that are not Wikipedia pages
+            # For the keyframe-level concepts (k=-1), we check the top concepts,
+            # while for the keyframe-specific concepts (k>=0) we check the refined concepts for each keyframe
+            if k == -1:
+                ai_refined_list = result.top_concepts.ai_refined_list
+            else:
+                ai_refined_list = result.keyframes[k].refined_concepts.ai_refined_list
 
-        # Load concept detection result from pickle for testing
-        with open(f"concept_detection_result_{lecture_id}.pkl", "rb") as f:
-            concept_detection_result = pickle.load(f)
+            # Get concept detection gateway
+            gtw_conceptdet = self.ai_gateways.get("concept_detection")
+            if gtw_conceptdet is None:
+                raise ValueError("Missing gateway: concept_detection")
 
-        # execute API call to wikify using keywords:[...] input
-        # out = gtw_conceptdet.detect_concepts(ai_refined_list)
-        # rich.print(out)
+            # Initialise post-validation list
+            post_validated_list = []
 
-        # # Save as pickle
-        # with open(f"concept_detection_result_{lecture_id}.pkl", "wb") as f:
-        #     pickle.dump(out, f)
+            # Loop over AI-refined concepts and check if they are valid Wikipedia concepts using the concept detection gateway
+            for ai_refined_concept in ai_refined_list:
 
+                # Execute wiki search for the AI-refined concept
+                wiki_suggestions = gtw_conceptdet.wiki_search(search_term=ai_refined_concept)
 
+                # Loop over wiki search suggestions and calculate similarity with the AI-refined concept,
+                # keeping those above a certain similarity threshold (e.g., 0.75)
+                for suggestion in wiki_suggestions:
 
-        detected_concepts = [res.concept_name for res in concept_detection_result.item_list]
+                    # Calculate similarity between the AI-refined concept and the wiki search suggestions
+                    similarity = normalized_levenshtein(ai_refined_concept, suggestion['concept_name'])
 
-        rich.print(ai_refined_list)
-        rich.print(detected_concepts)
-        rich.print(set(ai_refined_list) & set(detected_concepts))
+                    # If the similarity is above the threshold, add the suggestion to the post-validation list
+                    if similarity >= 0.75:
+                        post_validated_list.append(suggestion['concept_name'])
+
+            # Assign the post-validated list to the result (for now, we overwrite the AI-refined list, but in the future we could keep both)
+            if k == -1:
+                result.top_concepts.post_validated_list = post_validated_list
+            else:
+                result.keyframes[k].refined_concepts.post_validated_list = post_validated_list
+
+        # Print status
+        self.msg.concepts_validated(NodeKey(
+            institution_id = 'EPFL',
+            object_type    = 'Lecture',
+            object_id      = lecture_id,
+        ))
 
         # Return None for now, as the enrichment result saving and lecture updating is not yet implemented
         return result

@@ -1,6 +1,7 @@
 # graphregistry/common/auxfcn.py
 from tabulate import tabulate
 import sys, re, termios, tty, Levenshtein
+from rapidfuzz.distance import Levenshtein
 
 #----------------------#
 # Set up sysmsg logger #
@@ -78,23 +79,27 @@ def print_dataframe(df, title):
     print('')
 
 # Calculate the normalized Levenshtein distance between two strings
-def normalized_levenshtein(str1, str2):
+def normalized_levenshtein(a: str, b: str) -> float:
+    return Levenshtein.normalized_similarity(
+        a.casefold().strip(),
+        b.casefold().strip(),
+    )
 
-    # Calculate the raw Levenshtein distance
-    distance = Levenshtein.distance(str1, str2)
+    # # Calculate the raw Levenshtein distance
+    # distance = Levenshtein.distance(str1, str2)
 
-    # Get the length of the longer string
-    max_len = max(len(str1), len(str2))
+    # # Get the length of the longer string
+    # max_len = max(len(str1), len(str2))
 
-    # If both strings are empty, consider them identical
-    if max_len == 0:
-        return 1.0
+    # # If both strings are empty, consider them identical
+    # if max_len == 0:
+    #     return 1.0
 
-    # Normalize the distance to a value between 0 and 1
-    normalized_distance = 1 - (distance / max_len)
+    # # Normalize the distance to a value between 0 and 1
+    # normalized_distance = 1 - (distance / max_len)
 
-    # Return the normalized distance
-    return normalized_distance
+    # # Return the normalized distance
+    # return normalized_distance
 
 # Get input key from keyboard
 def get_keypress():

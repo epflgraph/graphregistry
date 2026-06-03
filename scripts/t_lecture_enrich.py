@@ -4,6 +4,7 @@ from graphregistry.adapters.services.asv_schema_default import DefaultSchemaReso
 from graphregistry.adapters.persistence.mysql.repositories.arp_lecturerepo import MySQLLectureRepository
 from graphregistry.application.operations.ops_lecture import LectureOperations
 from graphregistry.application.gateways.types import GatewayDict
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.adapters.gateways.genai.agt_lectureenrich import GenAILectureEnrichmentGateway
 from typing import cast
 import rich
@@ -14,7 +15,10 @@ lecture_ops = LectureOperations(
         db = GraphDB(),
         schema_resolver = DefaultSchemaResolver(engine_name="xaas_coresrv", glbcfg=GlobalConfig())
     ),
-    ai_gateways = cast(GatewayDict, {"lecture_enrichment": GenAILectureEnrichmentGateway()})
+    ai_gateways = cast(GatewayDict, {
+        "concept_detection"  : GraphAIConceptDetectionGateway(),
+        "lecture_enrichment" : GenAILectureEnrichmentGateway()
+    })
 )
 
 # Run the enrichment operation for a specific lecture ID

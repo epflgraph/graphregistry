@@ -34,7 +34,7 @@ class GenAILectureEnrichmentGateway:
             + json.dumps(task_payload, ensure_ascii=False, indent=2)
         )
 
-        print(llm_prompt)
+        # print(llm_prompt)
 
         result = send_llm_request(
             timeout=self.timeout,

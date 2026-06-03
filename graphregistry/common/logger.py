@@ -18,8 +18,10 @@ def _node_or_edge_action(key: NodeKey | EdgeKey, action) -> str:
         'not found' : '❌',
         'saved'     : '💾',
         'deleted'   : '🗑️ ',
-        'concepts detected' : '🧬',
-        'translated'        : '🌐',
+        'concepts detected'  : '🧬',
+        'concepts validated' : '🧬👍',
+        'translated'         : '🌐',
+        'ai enriched'        : '🤖✨',
     }[action]
     return f"{icon} [green]{action.capitalize()}:[/green] [yellow]{'Node' if isinstance(key, NodeKey) else 'Edge'}[/yellow] [cyan]~[/cyan] {_node_tuple(key) if isinstance(key, NodeKey) else _edge_tuple(key)}"
 
@@ -51,6 +53,14 @@ class GraphLogger:
     def concepts_detected(self, key: NodeKey) -> None:
         rich.print(_node_or_edge_action(key, 'concepts detected'))
 
+    # Print method: Concepts validated for a Node
+    def concepts_validated(self, key: NodeKey) -> None:
+        rich.print(_node_or_edge_action(key, 'concepts validated'))
+
     # Print method: Node translated
     def translated(self, key: NodeKey) -> None:
         rich.print(_node_or_edge_action(key, 'translated'))
+
+    # Print method: Node enriched through GenAI
+    def enriched(self, key: NodeKey) -> None:
+        rich.print(_node_or_edge_action(key, 'ai enriched'))
