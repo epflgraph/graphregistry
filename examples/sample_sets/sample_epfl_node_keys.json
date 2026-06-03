@@ -93,6 +93,10 @@
             "id": "NX-421"
         },
         {
+            "type": "Course",
+            "id": "CS-119(d)"
+        },
+        {
             "type": "Person",
             "id": "106643"
         },
@@ -263,6 +267,166 @@
         {
             "type": "Unit",
             "id": "STI"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_2hrj7yhs"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_2tkijpio"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_2u12qncc"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_2ywkd3lf"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_3smu9zlp"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_3va3yxhk"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_3vmurlph"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_4ondynnq"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_5u9rj2o7"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_6kpqrb9x"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_9ord4g52"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_9sp29pst"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_cma06sds"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_e1rnaa1s"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_e3kho7ez"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_eroeej6a"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_fh3q4ndi"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_fldkdp2u"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_fmwwpwy6"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_gri9d4et"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_gwzqiv7p"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_ifznl912"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_iw7cvsz0"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_kj6ok9qd"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_kmjfjb6c"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_l0tneu2m"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_lhsbv9v6"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_lig83yog"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_llxarjrz"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_mr7ninsd"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_n3lm9ud2"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_rj1u1rsm"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_ro16rdac"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_rtxn7ozt"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_siq3i856"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_sqss4txz"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_u753twog"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_w1733kmc"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_x64vi1sl"
+        },
+        {
+            "type": "Lecture",
+            "id": "0_zw8hsr84"
         }
     ]
 }

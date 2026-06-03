@@ -3419,6 +3419,150 @@
             ]
         },
         {
+            "type": "Course",
+            "id": "CS-119(d)",
+            "short_code": "CS-119(d)",
+            "title": [
+                {
+                    "language": "en",
+                    "text": "Information, Computation, Communication"
+                },
+                {
+                    "language": "fr",
+                    "text": "Information, calcul, communication"
+                }
+            ],
+            "description": {
+                "short": [
+                    {
+                        "language": "en",
+                        "text": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser ..."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser ..."
+                    }
+                ],
+                "medium": [
+                    {
+                        "language": "en",
+                        "text": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser avec les fondamentaux de l'Informatique et de développer une première compétence en programmation (langage C++). ..."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser avec les fondamentaux de l'Informatique et de développer une première compétence en programmation (langage C++). ..."
+                    }
+                ],
+                "long": [
+                    {
+                        "language": "en",
+                        "text": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser avec les fondamentaux de l'Informatique et de développer une première compétence en programmation (langage C++). ..."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser avec les fondamentaux de l'Informatique et de développer une première compétence en programmation (langage C++). ..."
+                    }
+                ]
+            },
+            "url": [
+                {
+                    "language": "en",
+                    "text": "https://edu.epfl.ch/coursebook/en/information-computation-communication-CS-119-D"
+                },
+                {
+                    "language": "fr",
+                    "text": "https://edu.epfl.ch/coursebook/fr/information-calcul-communication-CS-119-D"
+                }
+            ],
+            "custom_fields": [
+                {
+                    "field_language": "en",
+                    "field_name": "content",
+                    "field_value": "La partie théorique est organisée en trois modules : calcul (algorithmes, récursion, complexité, représentation des nombres), information (échantillonnage, reconstruction, th. de Nyquist-Shannon, compression, 1er th. de Shannon), systèmes et sécurité (ordinateur de von Neumann, hiérarchies de mémoire, réseaux, menaces et défenses, cryptographie à clé secrète, RSA).\nLa partie pratique (initiation à la programmation en langage C++) aborde les notions suivantes : variables, expressions, structures de contrôle, fonctions, entrées-sorties, ...\nLes concepts théoriques introduits lors des cours magistraux seront mis en pratique dans le cadre d'exercices de programmation sur machines.\nShow more"
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "evaluation_method",
+                    "field_value": "Contrôle continu pendant le semestre sous forme de deux examens, un « homework » et un quiz noté ."
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "expected_work",
+                    "field_value": "Participation au cours (en salle et en ligne), résolutions d'exercices, travail personnel «à la maison»."
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "handouts",
+                    "field_value": "Découvrir le numérique / A. Schiper, R.Guerraoui"
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "keywords",
+                    "field_value": "Informatique, Ordinateurs, Algorithmes, Communications, Programmation, C++"
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "summary",
+                    "field_value": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser avec les fondamentaux de l'Informatique et de développer une première compétence en programmation (langage C++)."
+                },
+                {
+                    "field_language": "en",
+                    "field_name": "teaching_method",
+                    "field_value": "Partie théorique : Ex cathedra avec exercices\nPartie pratique (programmation) : séances ex cathedra complétant un cours en ligne (MOOC), travaux pratiques sur ordinateur."
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "content",
+                    "field_value": "La partie théorique est organisée en trois modules : calcul (algorithmes, récursion, complexité, représentation des nombres), information (échantillonnage, reconstruction, th. de Nyquist-Shannon, compression, 1er th. de Shannon), systèmes et sécurité (ordinateur de von Neumann, hiérarchies de mémoire, réseaux, menaces et défenses, cryptographie à clé secrète, RSA).\nLa partie pratique (initiation à la programmation en langage C++) aborde les notions suivantes : variables, expressions, structures de contrôle, fonctions, entrées-sorties, ...\nLes concepts théoriques introduits lors des cours magistraux seront mis en pratique dans le cadre d'exercices de programmation sur machines.\nLire la suite"
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "evaluation_method",
+                    "field_value": "Contrôle continu pendant le semestre sous forme de deux examens, un « homework » et un quiz noté ."
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "expected_work",
+                    "field_value": "Participation au cours (en salle et en ligne), résolutions d'exercices, travail personnel «à la maison»."
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "handouts",
+                    "field_value": "Découvrir le numérique / A. Schiper, R.Guerraoui"
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "keywords",
+                    "field_value": "Informatique, Ordinateurs, Algorithmes, Communications, Programmation, C++"
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "summary",
+                    "field_value": "L'objectif de ce cours est d'introduire les étudiants à la pensée algorithmique, de les familiariser avec les fondamentaux de l'Informatique et de développer une première compétence en programmation (langage C++)."
+                },
+                {
+                    "field_language": "fr",
+                    "field_name": "teaching_method",
+                    "field_value": "Partie théorique : Ex cathedra avec exercices\nPartie pratique (programmation) : séances ex cathedra complétant un cours en ligne (MOOC), travaux pratiques sur ordinateur."
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "course_code",
+                    "field_value": "CS-119(d)"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "exam_type",
+                    "field_value": "Winter session\nDuring the semester"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "section_code",
+                    "field_value": "IN"
+                }
+            ]
+        },
+        {
             "type": "Person",
             "id": "106643",
             "title": [
@@ -7265,6 +7409,476 @@
                     "field_language": "n/a",
                     "field_name": "subtype_name",
                     "field_value": "University"
+                }
+            ]
+        },
+        {
+            "type": "Lecture",
+            "id": "0_2tkijpio",
+            "short_code": "",
+            "title": [
+                {
+                    "language": "en",
+                    "text": "Search Algorithms: Dichotomy Search"
+                },
+                {
+                    "language": "fr",
+                    "text": "Recherche d'algorithmes: Recherche de dichotomie"
+                }
+            ],
+            "description": {
+                "short": [
+                    {
+                        "language": "en",
+                        "text": "Lecture about dichotomy search, search algorithms and complexity analysis."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Séance de cours sur la recherche de dichotomie, les algorithmes de recherche et l'analyse de complexité."
+                    }
+                ],
+                "medium": [
+                    {
+                        "language": "en",
+                        "text": "Explores dichotomy search algorithms, analyzing complexity and implementation details for efficient searching in sorted lists."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Explore les algorithmes de recherche de dichotomie, en analysant la complexité et les détails de mise en œuvre pour une recherche efficace dans les listes triées."
+                    }
+                ],
+                "long": [
+                    {
+                        "language": "en",
+                        "text": "This lecture covers the concept of dichotomy search algorithms, focusing on the complexity analysis and implementation details. It explains how to divide a sorted list into two subsets, efficiently narrowing down the search space. The instructor demonstrates the step-by-step process of dichotomy search, highlighting its advantages and worst-case scenario. The lecture also delves into the number of operations required for a dichotomy search in the worst-case scenario, emphasizing the logarithmic nature of the algorithm. By the end of the lecture, students will have a clear understanding of how dichotomy search works and its implications in solving various computational problems."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Cette séance de cours couvre le concept d'algorithmes de recherche de dichotomie, en se concentrant sur l'analyse de complexité et les détails de mise en œuvre. Il explique comment diviser une liste triée en deux sous-ensembles, réduisant efficacement l'espace de recherche. L'instructeur démontre le processus étape par étape de la recherche de dichotomie, en soulignant ses avantages et le pire scénario. La séance de cours se penche également sur le nombre d'opérations nécessaires à une recherche de dichotomie dans le pire des scénarios, en mettant l'accent sur la nature logarithmique de l'algorithme. À la fin de la séance de cours, les étudiants auront une compréhension claire du fonctionnement de la recherche de dichotomie et de ses implications dans la résolution de divers problèmes computationnels."
+                    }
+                ]
+            },
+            "url": [
+                {
+                    "language": "en",
+                    "text": "https://mediaspace.epfl.ch/media/0_2tkijpio"
+                },
+                {
+                    "language": "fr",
+                    "text": "https://mediaspace.epfl.ch/media/0_2tkijpio"
+                }
+            ],
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "is_restricted",
+                    "field_value": "0"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "original_title",
+                    "field_value": "I.1 Calcul et algorithmes 2.5 : algorithmes de recherche (2) : recherche par dichotomie"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "platform",
+                    "field_value": "mediaspace"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_duration",
+                    "field_value": "687.702"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_modified_date",
+                    "field_value": "2024-07-17T15:30:12"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_stream_url",
+                    "field_value": "https://api.cast.switch.ch/p/113/sp/11300/serveFlavor/entryId/0_2tkijpio/v/2/ev/3/flavorId/0_h35gf2ca/fileName/I.1_Calcul_et_algorithmes_2.5_:_algorithmes_de_recherche_(2)_:_recherche_par_dichotomie_(HD_1080_-_WEB_(H264_4000)).mp4/forceproxy/true/name/a.mp4"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_upload_date",
+                    "field_value": "2022-09-02T13:17:27"
+                }
+            ]
+        },
+        {
+            "type": "Lecture",
+            "id": "0_2u12qncc",
+            "short_code": "",
+            "title": [
+                {
+                    "language": "en",
+                    "text": "Algorithmic Complexity: Theta Notation"
+                },
+                {
+                    "language": "fr",
+                    "text": "Complexité algorithmique: Notation Theta"
+                }
+            ],
+            "description": {
+                "short": [
+                    {
+                        "language": "en",
+                        "text": "Lecture about algorithmic complexity, theta notation and worst-case time complexity."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Séance de cours sur la complexité algorithmique, la notation thêta et la complexité temporelle dans le pire des cas."
+                    }
+                ],
+                "medium": [
+                    {
+                        "language": "en",
+                        "text": "Explores algorithmic complexity, comparing growth rates using Theta notation and characterizing different complexity classes."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Explore la complexité algorithmique, en comparant les taux de croissance en utilisant la notation Theta et en caractérisant différentes classes de complexité."
+                    }
+                ],
+                "long": [
+                    {
+                        "language": "en",
+                        "text": "This lecture covers the concept of algorithmic complexity, focusing on the worst-case time complexity as the number of basic instructions used by an algorithm. It explores how to compare algorithms based on their complexity evolution with input size, analyzing asymptotic orders of magnitude and the dominant term. The lecture introduces the Theta notation for comparing algorithms' growth rates and characterizes different complexity classes, such as constant, logarithmic, linear, quasi-linear, polynomial, and exponential. It also explains the comparison between functions using the Theta notation, highlighting the significance of understanding algorithmic complexity for analyzing and designing efficient algorithms."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Cette séance de cours couvre le concept de complexité algorithmique, en se concentrant sur la complexité temporelle la plus défavorable comme le nombre d'instructions de base utilisées par un algorithme. Il explore comment comparer les algorithmes basés sur leur évolution de complexité avec la taille des entrées, en analysant les ordres de grandeur asymptotiques et le terme dominant. La séance de cours introduit la notation Theta pour comparer les taux de croissance des algorithmes et caractérise différentes classes de complexité, telles que constante, logarithmique, linéaire, quasi-linéaire, polynôme et exponentielle. Il explique également la comparaison entre les fonctions utilisant la notation Theta, soulignant l'importance de comprendre la complexité algorithmique pour analyser et concevoir des algorithmes efficaces."
+                    }
+                ]
+            },
+            "url": [
+                {
+                    "language": "en",
+                    "text": "https://mediaspace.epfl.ch/media/0_2u12qncc"
+                },
+                {
+                    "language": "fr",
+                    "text": "https://mediaspace.epfl.ch/media/0_2u12qncc"
+                }
+            ],
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "is_restricted",
+                    "field_value": "0"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "original_title",
+                    "field_value": "I.1 Calcul et algorithmes 2.6 : complexité (temporelle) d'un algorithme (2) : notation Theta"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "platform",
+                    "field_value": "mediaspace"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_duration",
+                    "field_value": "457.643"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_modified_date",
+                    "field_value": "2024-07-17T15:56:33"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_stream_url",
+                    "field_value": "https://api.cast.switch.ch/p/113/sp/11300/serveFlavor/entryId/0_2u12qncc/v/2/ev/3/flavorId/0_6n9bgwci/fileName/I.1_Calcul_et_algorithmes_2.6_:_complexit___(temporelle)_d_un_algorithme_(2)_:_notation_Theta_(HD_1080_-_WEB_(H264_4000)).mp4/forceproxy/true/name/a.mp4"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_upload_date",
+                    "field_value": "2022-09-02T13:18:36"
+                }
+            ]
+        },
+        {
+            "type": "Lecture",
+            "id": "0_3smu9zlp",
+            "short_code": "",
+            "title": [
+                {
+                    "language": "en",
+                    "text": "Algorithms: Definition and Origins"
+                },
+                {
+                    "language": "fr",
+                    "text": "Algorithmes : définition et origines"
+                }
+            ],
+            "description": {
+                "short": [
+                    {
+                        "language": "en",
+                        "text": "Lecture about algorithms, definition and origins."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Séance de cours sur les algorithmes, la définition et les origines."
+                    }
+                ],
+                "medium": [
+                    {
+                        "language": "en",
+                        "text": "Explores the definition and origins of algorithms, including examples and types."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Explore la définition et les origines des algorithmes, y compris les exemples et les types."
+                    }
+                ],
+                "long": [
+                    {
+                        "language": "en",
+                        "text": "This lecture explores the definition of an algorithm, tracing its origins back to ancient times and its role in explaining processes to humans. The instructor discusses examples of non-computer algorithms, such as sorting a deck of cards or finding the shortest route to a location. The lecture delves into the formal definition of algorithms, emphasizing the importance of deterministic operations and finite data sets. Different types of algorithms, including sequential, parallel, and distributed, are explained with real-world analogies. The instructor also touches on the efficiency of parallel and distributed algorithms, highlighting potential challenges like redundancy and blocking. The session concludes with a brief overview of deterministic algorithms and the limitations of introducing randomness in algorithms."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Cette séance de cours explore la définition d'un algorithme, retraçant ses origines dans l'Antiquité et son rôle dans l'explication des processus à l'homme. L'instructeur discute d'exemples d'algorithmes non informatiques, tels que le tri d'un jeu de cartes ou la recherche du chemin le plus court vers un emplacement. La séance de cours se penche sur la définition formelle des algorithmes, en soulignant l'importance des opérations déterministes et des ensembles de données finis. Différents types d'algorithmes, y compris séquentiel, parallèle et distribué, sont expliqués avec des analogies du monde réel. L'instructeur aborde également l'efficacité des algorithmes parallèles et distribués, en soulignant les défis potentiels tels que la redondance et le blocage. La session se termine par un bref aperçu des algorithmes déterministes et des limites de l’introduction du hasard dans les algorithmes."
+                    }
+                ]
+            },
+            "url": [
+                {
+                    "language": "en",
+                    "text": "https://mediaspace.epfl.ch/media/0_3smu9zlp"
+                },
+                {
+                    "language": "fr",
+                    "text": "https://mediaspace.epfl.ch/media/0_3smu9zlp"
+                }
+            ],
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "is_restricted",
+                    "field_value": "0"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "original_title",
+                    "field_value": "I.1 Calcul et algorithmes 1.4 : première définition de « algorithme »"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "platform",
+                    "field_value": "mediaspace"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_duration",
+                    "field_value": "615.019"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_modified_date",
+                    "field_value": "2024-07-17T11:17:33"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_stream_url",
+                    "field_value": "https://api.cast.switch.ch/p/113/sp/11300/serveFlavor/entryId/0_3smu9zlp/v/2/ev/3/flavorId/0_8gcgbzcd/fileName/I.1_Calcul_et_algorithmes_1.4_:_premi__re_d__finition_de____algorithme____(HD_1080_-_WEB_(H264_4000)).mp4/forceproxy/true/name/a.mp4"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_upload_date",
+                    "field_value": "2022-08-25T08:41:58"
+                }
+            ]
+        },
+        {
+            "type": "Lecture",
+            "id": "0_6kpqrb9x",
+            "short_code": "",
+            "title": [
+                {
+                    "language": "en",
+                    "text": "Data Compression and Shannon's Theorem: Shannon-Fano Coding"
+                },
+                {
+                    "language": "fr",
+                    "text": "Compression des données et théorème de Shannon: Codage Shannon-Fano"
+                }
+            ],
+            "description": {
+                "short": [
+                    {
+                        "language": "en",
+                        "text": "Lecture about data compression, Shannon-Fano coding and entropy."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Séance de cours sur la compression des données, le codage Shannon-Fano et l'entropie."
+                    }
+                ],
+                "medium": [
+                    {
+                        "language": "en",
+                        "text": "Explores Shannon-Fano coding for efficient data compression and its comparison to Huffman coding."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Explore le codage Shannon-Fano pour une compression efficace des données et sa comparaison avec le codage Huffman."
+                    }
+                ],
+                "long": [
+                    {
+                        "language": "en",
+                        "text": "This lecture covers the Shannon-Fano coding method, which aims to represent sequences with the fewest bits per letter. By analyzing letter frequencies and minimizing differences between left and right partitions, the algorithm constructs efficient codes. The lecture demonstrates the step-by-step process of creating Shannon-Fano codes and compares them to Huffman codes. It also explores the concept of entropy and how it relates to the efficiency of the coding process. Through examples and calculations, students learn how to apply Shannon-Fano coding to achieve optimal data compression. The lecture concludes by discussing the implications of lossy compression methods in data storage and transmission."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Cette séance de cours couvre la méthode de codage Shannon-Fano, qui vise à représenter des séquences avec les moins de bits par lettre. En analysant les fréquences des lettres et en minimisant les différences entre les partitions gauche et droite, l'algorithme construit des codes efficaces. La séance de cours démontre le processus étape par étape de la création des codes Shannon-Fano et les compare aux codes Huffman. Il explore également le concept d'entropie et la façon dont il est lié à l'efficacité du processus de codage. Au moyen d'exemples et de calculs, les élèves apprennent à appliquer le codage Shannon-Fano pour obtenir une compression optimale des données. La séance de cours se termine par une discussion des implications des méthodes de compression des pertes dans le stockage et la transmission des données."
+                    }
+                ]
+            },
+            "url": [
+                {
+                    "language": "en",
+                    "text": "https://mediaspace.epfl.ch/media/0_6kpqrb9x"
+                },
+                {
+                    "language": "fr",
+                    "text": "https://mediaspace.epfl.ch/media/0_6kpqrb9x"
+                }
+            ],
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "is_restricted",
+                    "field_value": "0"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "original_title",
+                    "field_value": "II.4 Compression des données et th. de Shannon 2 : code de Shannon-Fano (général)"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "platform",
+                    "field_value": "mediaspace"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_duration",
+                    "field_value": "954.539"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_modified_date",
+                    "field_value": "2024-07-17T14:09:39"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_stream_url",
+                    "field_value": "https://api.cast.switch.ch/p/113/sp/11300/serveFlavor/entryId/0_6kpqrb9x/v/2/ev/3/flavorId/0_ic6pcz2j/fileName/II.4_Compression_des_donn__es_et_th._de_Shannon_2_:_code_de_Shannon-Fano_(g__n__ral)_(HD_1080_-_WEB_(H264_4000)).mp4/forceproxy/true/name/a.mp4"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_upload_date",
+                    "field_value": "2022-10-10T14:23:23"
+                }
+            ]
+        },
+        {
+            "type": "Lecture",
+            "id": "0_9sp29pst",
+            "short_code": "",
+            "title": [
+                {
+                    "language": "en",
+                    "text": "The Fourth Pillar of Culture: Informatics"
+                },
+                {
+                    "language": "fr",
+                    "text": "Le quatrième pilier de la culture : l'informatique"
+                }
+            ],
+            "description": {
+                "short": [
+                    {
+                        "language": "en",
+                        "text": "Lecture about informatics, culture and evolution."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Séance de cours sur l'informatique, la culture et l'évolution."
+                    }
+                ],
+                "medium": [
+                    {
+                        "language": "en",
+                        "text": "Explores informatics as the fourth pillar of culture, its evolution, integration into society, and applications in modern physics and mathematics."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Explore l'informatique comme le quatrième pilier de la culture, son évolution, son intégration dans la société et ses applications dans la physique et les mathématiques modernes."
+                    }
+                ],
+                "long": [
+                    {
+                        "language": "en",
+                        "text": "This lecture introduces the concept of informatics as the fourth pillar of culture, highlighting its role in various sectors such as medicine, economics, and robotics. It discusses the evolution of informatics, its integration into society, and its fundamental principles. The importance of informatics in modern physics and mathematics is also emphasized, showcasing its applications in solving real-world problems and advancing scientific research."
+                    },
+                    {
+                        "language": "fr",
+                        "text": "Cette séance de cours présente le concept de l'informatique comme le quatrième pilier de la culture, soulignant son rôle dans divers secteurs tels que la médecine, l'économie et la robotique. Il traite de l'évolution de l'informatique, de son intégration dans la société et de ses principes fondamentaux. L'importance de l'informatique dans la physique et les mathématiques modernes est également soulignée, mettant en évidence ses applications pour résoudre les problèmes réels et faire progresser la recherche scientifique."
+                    }
+                ]
+            },
+            "url": [
+                {
+                    "language": "en",
+                    "text": "https://mediaspace.epfl.ch/media/0_9sp29pst"
+                },
+                {
+                    "language": "fr",
+                    "text": "https://mediaspace.epfl.ch/media/0_9sp29pst"
+                }
+            ],
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "is_restricted",
+                    "field_value": "0"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "original_title",
+                    "field_value": "0 Introduction, 3 : quatrième pilier de la culture"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "platform",
+                    "field_value": "mediaspace"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_duration",
+                    "field_value": "625.963"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_modified_date",
+                    "field_value": "2024-07-17T14:15:18"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_stream_url",
+                    "field_value": "https://api.cast.switch.ch/p/113/sp/11300/serveFlavor/entryId/0_9sp29pst/v/2/ev/3/flavorId/0_41m3s3gd/fileName/0_Introduction,_3_:_quatri__me_pilier_de_la_culture_(HD_1080_-_WEB_(H264_4000)).mp4/forceproxy/true/name/a.mp4"
+                },
+                {
+                    "field_language": "n/a",
+                    "field_name": "video_upload_date",
+                    "field_value": "2022-08-25T08:35:59"
                 }
             ]
         }

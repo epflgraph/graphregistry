@@ -426,6 +426,202 @@
             "to_type": "Unit",
             "to_id": "EPFL",
             "context": "affiliation"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_2tkijpio",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_2u12qncc",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_3smu9zlp",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_6kpqrb9x",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_9sp29pst",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_e1rnaa1s",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_e3kho7ez",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_eroeej6a",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_fh3q4ndi",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_fldkdp2u",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_fmwwpwy6",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_gri9d4et",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_gwzqiv7p",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_ifznl912",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_kj6ok9qd",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_kmjfjb6c",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_lhsbv9v6",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_lig83yog",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_llxarjrz",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_mr7ninsd",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_rj1u1rsm",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_ro16rdac",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_rtxn7ozt",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_siq3i856",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_u753twog",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_w1733kmc",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_x64vi1sl",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_zw8hsr84",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
         }
     ]
 }

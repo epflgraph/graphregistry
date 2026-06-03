@@ -284,6 +284,76 @@
             "to_id": "IEM",
             "context": "affiliation",
             "custom_fields": []
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_2tkijpio",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "sort_number_per_academic_year",
+                    "field_value": "{\"n/a\": 8}"
+                }
+            ]
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_2u12qncc",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "sort_number_per_academic_year",
+                    "field_value": "{\"n/a\": 9}"
+                }
+            ]
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_3smu9zlp",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "sort_number_per_academic_year",
+                    "field_value": "{\"n/a\": 3}"
+                }
+            ]
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_6kpqrb9x",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "sort_number_per_academic_year",
+                    "field_value": "{\"2022-2023\": 1}"
+                }
+            ]
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_9sp29pst",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of",
+            "custom_fields": [
+                {
+                    "field_language": "n/a",
+                    "field_name": "sort_number_per_academic_year",
+                    "field_value": "{\"2021-2022\": 2}"
+                }
+            ]
         }
     ]
 }
