@@ -52,5 +52,6 @@ Notes:
 - Some slides are heavily poluted because of OCR noise. If words are likely to be noise, like "powerpoint", "acrobat", "zoom", or "gmail", you should be able to detect and remove them.
 - try and keep the title less than 60 characters
 - no line breaks in any of the descriptions
+- put the refined concepts in the "ai_refined_list" field
 
 Here's your data.
