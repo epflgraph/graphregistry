@@ -18,6 +18,12 @@ import rich, pickle
 # Class definition
 class LectureOperations(NodeOperations):
 
+    # Class constructor
+    def __init__(self, repo: LectureRepository, ai_gateways: GatewayDict | None = None) -> None:
+        self.repo = repo
+        self.ai_gateways = ai_gateways or {}
+        self.msg = GraphLogger()
+
     #-------------------------------#
     # Content processing operations #
     #-------------------------------#
@@ -189,8 +195,47 @@ class LectureOperations(NodeOperations):
             f"Expected enrichment task for lecture_id {lecture_id}, but got {task}"
 
         # Run the enrichment task through the gateway to get the enrichment result
-        result = gtw.enrich(task)
+        # result = gtw.enrich(task)
 
+        # Load enrichment result from pickle for testing
+        with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
+            result = pickle.load(f)
+
+        # # Save to pickle
+        # with open(f"enrichment_result_{lecture_id}.pkl", "wb") as f:
+        #     pickle.dump(result, f)
+
+        #------------------------------#
+        # Concept list post-validation #
+        #------------------------------#
+
+        # Loop over concepts and remove those that are not Wikipedia pages
+        ai_refined_list = result.keyframes[0].refined_concepts.ai_refined_list
+
+        # Get concept detection gateway
+        gtw_conceptdet = self.ai_gateways.get("concept_detection")
+        if gtw_conceptdet is None:
+            raise ValueError("Missing gateway: concept_detection")
+
+        # Load concept detection result from pickle for testing
+        with open(f"concept_detection_result_{lecture_id}.pkl", "rb") as f:
+            concept_detection_result = pickle.load(f)
+
+        # execute API call to wikify using keywords:[...] input
+        # out = gtw_conceptdet.detect_concepts(ai_refined_list)
+        # rich.print(out)
+
+        # # Save as pickle
+        # with open(f"concept_detection_result_{lecture_id}.pkl", "wb") as f:
+        #     pickle.dump(out, f)
+
+
+
+        detected_concepts = [res.concept_name for res in concept_detection_result.item_list]
+
+        rich.print(ai_refined_list)
+        rich.print(detected_concepts)
+        rich.print(set(ai_refined_list) & set(detected_concepts))
 
         # Return None for now, as the enrichment result saving and lecture updating is not yet implemented
         return result
