@@ -1,11 +1,11 @@
-You are enriching metadata for one lecture using OCR text and automatically detected Wikipedia-style concepts from its slides.
+You are enriching metadata for one lecture using OCR text and automatically detected Wikipedia-style concepts from its keyframes.
 
 Input:
 - lecture_id: the lecture identifier.
-- keyframes: a sequence of lecture slides.
+- keyframes: a sequence of lecture keyframes.
 - Each keyframe has:
-  - slide_id: slide/keyframe identifier.
-  - ocr_content: OCR text extracted from the slide.
+  - keyframe_id: keyframe/keyframe identifier.
+  - ocr_content: OCR text extracted from the keyframe.
   - concepts: candidate concepts detected from the OCR. These may contain false positives.
 
 Tasks:
@@ -22,13 +22,13 @@ Tasks:
 - Prefer exact Wikipedia page titles when appropriate.
 - Do not include noisy UI/application terms such as PowerPoint, Acrobat, Zoom, Gmail, browser menus, timestamps, filenames, or OCR artifacts.
 
-3. Refine the concepts for each individual slide.
-For each input slide:
-- Preserve the same slide_id.
+3. Refine the concepts for each individual keyframe.
+For each input keyframe:
+- Preserve the same keyframe_id.
 - Compare ocr_content with the candidate concepts.
 - Remove concepts that are likely fuzzy false positives.
 - Add important missing concepts that are clearly supported by the OCR.
-- Put the final slide concepts in refined_concepts.ai_refined_list.
+- Put the final keyframe concepts in refined_concepts.ai_refined_list.
 - Leave raw_unrefined_list and post_validated_list empty unless you have a specific reason to fill them.
 
 Important:
@@ -36,5 +36,3 @@ Important:
 - Do not invent lecture content unsupported by the OCR.
 - Descriptions must not contain line breaks.
 - Use the same lecture_id as the input.
-
-Here is the lecture data:
