@@ -25,13 +25,13 @@ class LectureConceptTitleList(BaseModel):
         return self.model_dump(mode='json')
 
 # Model definition
-class LectureSlideOCTandConcepts(BaseModel):
-    """Model representing OCR content and detected concepts for a lecture slide
+class LectureKeyframeOCTandConcepts(BaseModel):
+    """Model representing OCR content and detected concepts for a lecture keyframe
     """
     #--------------------#
     # Internal variables #
     #--------------------#
-    slide_id: str
+    keyframe_id: str
     ocr_content: str
     concepts: LectureConceptTitleList
 
@@ -39,27 +39,27 @@ class LectureSlideOCTandConcepts(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_json(cls, json_input: dict[str, Any]) -> "LectureSlideOCTandConcepts":
+    def from_json(cls, json_input: dict[str, Any]) -> "LectureKeyframeOCTandConcepts":
         return cls.model_validate(json_input)
 
     def to_json(self) -> dict[str, Any]:
         return self.model_dump(mode='json')
 
 # Model definition
-class LectureSlideRefinedConcepts(BaseModel):
-    """Model representing refined concepts for a lecture slide
+class LectureKeyframeRefinedConcepts(BaseModel):
+    """Model representing refined concepts for a lecture keyframe
     """
     #--------------------#
     # Internal variables #
     #--------------------#
-    slide_id: str
+    keyframe_id: str
     refined_concepts: LectureConceptTitleList
 
     #-----------------------#
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_json(cls, json_input: dict[str, Any]) -> "LectureSlideRefinedConcepts":
+    def from_json(cls, json_input: dict[str, Any]) -> "LectureKeyframeRefinedConcepts":
         return cls.model_validate(json_input)
 
     def to_json(self) -> dict[str, Any]:
@@ -73,7 +73,7 @@ class LectureEnrichmentTask(BaseModel):
     # Internal variables #
     #--------------------#
     lecture_id: str
-    keyframes: list[LectureSlideOCTandConcepts] = Field(default_factory=list)
+    keyframes: list[LectureKeyframeOCTandConcepts] = Field(default_factory=list)
 
     #-----------------------#
     # Serialization methods #
@@ -98,7 +98,7 @@ class LectureEnrichmentResult(BaseModel):
     medium_description: str
     short_description: str
     top_concepts: LectureConceptTitleList
-    keyframes: list[LectureSlideRefinedConcepts] = Field(default_factory=list)
+    keyframes: list[LectureKeyframeRefinedConcepts] = Field(default_factory=list)
 
     #-----------------------#
     # Serialization methods #

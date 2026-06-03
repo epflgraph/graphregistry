@@ -183,10 +183,11 @@ class Lecture(BaseModel):
     @classmethod
     def from_json(cls, input_json: dict) -> "Lecture":
         return cls(
-            video=Video.from_json(input_json.get("video", {})),
-            voice=Voice.from_json(input_json.get("voice", {})) if input_json.get("voice") else None,
-            slides=SlideList.from_list(input_json.get("slides", [])) if input_json.get("slides") else None,
-            transcript=Transcript.from_json(input_json.get("transcript", {})) if input_json.get("transcript") else None
+            node       =       Node.from_json(input_json.get("node",       {})),
+            video      =      Video.from_json(input_json.get("video",      {})),
+            voice      =      Voice.from_json(input_json.get("voice",      {})) if input_json.get("voice")      else None,
+            slides     =  SlideList.from_list(input_json.get("slides",     [])) if input_json.get("slides")     else None,
+            transcript = Transcript.from_json(input_json.get("transcript", {})) if input_json.get("transcript") else None
         )
 
 # Model definition

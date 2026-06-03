@@ -1,32 +1,53 @@
 # graphregistry/adapters/gateways/genai/agt_lectureenrich.py
 from __future__ import annotations
+
 import json
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
-from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureEnrichmentTaskMapper
+from pathlib import Path
+
+from graphregistry.domain.models.tasks.mdl_lectureenrich import (
+    LectureEnrichmentResult,
+    LectureEnrichmentTask,
+)
 from graphregistry.adapters.clients.rcp_models import send_llm_request
+from graphregistry.adapters.gateways.mappers.agm_lectureenrich import GenAILectureEnrichmentMapper
+
 
 class GenAILectureEnrichmentGateway:
     """Concrete gateway that prepares lecture enrichment prompts for GenAI models."""
 
+    def __init__(
+        self,
+        prompt_path: Path = Path("prompts/lecture_description_and_concepts_v2.txt"),
+        timeout: int = 3600,
+    ) -> None:
+        self.prompt_path = prompt_path
+        self.timeout = timeout
+
     def enrich(self, task: LectureEnrichmentTask) -> LectureEnrichmentResult | None:
-        # Load prompt template
-        with open("prompts/lecture_description_and_concepts_v2.txt", "r") as f:
-            prompt_template = f.read()
+        prompt_template = self.prompt_path.read_text(encoding="utf-8")
 
-        # Serialize the enrichment task to a dictionary format suitable for LLM processing
-        task_dict = MySQLLectureEnrichmentTaskMapper.to_dict(task)
+        task_payload = GenAILectureEnrichmentMapper.to_prompt_dict(task)
 
-        # Append the serialized task payload; do not use str.format because the prompt contains JSON braces.
-        llm_prompt = f"{prompt_template}\n\n{json.dumps(task_dict, ensure_ascii=False, indent=2)}"
+        llm_prompt = (
+            prompt_template
+            + "\n\nHere is the lecture data:\n"
+            + json.dumps(task_payload, ensure_ascii=False, indent=2)
+        )
 
-        # Send the enrichment task to the LLM and receive the enrichment result
-        llm_response = send_llm_request(
-            timeout=3600,
+        print(llm_prompt)
+        # return None
+
+        result = send_llm_request(
+            timeout=self.timeout,
             response_llm_model=LectureEnrichmentResult,
             messages=[
                 {
                     "role": "system",
-                    "content": "Return only valid JSON that matches the requested schema.",
+                    "content": (
+                        "You produce structured lecture-enrichment metadata. "
+                        "Follow the provided response schema exactly. "
+                        "Return no prose outside the structured response."
+                    ),
                 },
                 {
                     "role": "user",
@@ -35,5 +56,7 @@ class GenAILectureEnrichmentGateway:
             ],
         )
 
-        # Return the enrichment result as a domain model instance
-        return llm_response
+        if result is None:
+            return None
+
+        return GenAILectureEnrichmentMapper.normalize(result)

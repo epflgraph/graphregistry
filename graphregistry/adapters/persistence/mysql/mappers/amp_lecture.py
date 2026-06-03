@@ -6,7 +6,7 @@ from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MyS
 from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.entities.mdl_node import NodeField, NodeFieldList, Node
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureSlideOCTandConcepts, LectureConceptTitleList
+from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureKeyframeOCTandConcepts, LectureConceptTitleList
 from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeFieldMapper
 
 # Class definition
@@ -122,14 +122,14 @@ class MySQLLectureEnrichmentTaskMapper:
     def from_rows(rows: list[tuple[Any, ...]], lecture_id: str) -> LectureEnrichmentTask:
 
         # Initialize the keyframes list
-        keyframes: list[LectureSlideOCTandConcepts] = []
+        keyframes: list[LectureKeyframeOCTandConcepts] = []
 
         # Build keyframes list from row data (if any)
         for row in (rows or []):
 
             # Build the keyframe object for this row
-            keyframe = LectureSlideOCTandConcepts(
-                slide_id    = row[0],
+            keyframe = LectureKeyframeOCTandConcepts(
+                keyframe_id = row[0],
                 ocr_content = row[1],
                 concepts    = LectureConceptTitleList(
                     raw_unrefined_list = row[2].split('|') if row[2] else []
@@ -146,17 +146,3 @@ class MySQLLectureEnrichmentTaskMapper:
 
         # Return the enrichment task
         return enrich_task
-
-    @staticmethod
-    def to_dict(enrich_task: LectureEnrichmentTask) -> dict[str, Any]:
-        return {
-            'lecture_id': enrich_task.lecture_id,
-            'keyframes': [
-                {
-                    'keyframe_id': keyframe.slide_id,
-                    'ocr_content': keyframe.ocr_content,
-                    'concepts': keyframe.concepts.ai_refined_list,
-                }
-                for keyframe in enrich_task.keyframes
-            ]
-        }
