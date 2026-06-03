@@ -10,6 +10,7 @@ class LectureConceptTitleList(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
+    raw_unrefined_list  : list[str] = Field(default_factory=list)
     ai_refined_list     : list[str] = Field(default_factory=list)
     post_validated_list : list[str] = Field(default_factory=list)
 

@@ -7,7 +7,7 @@ from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmen
 from graphregistry.domain.types import ActionSet
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.application.services.srv_schema import SchemaResolver
-from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureEnrichmentTaskMapper
+from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureMapper, MySQLLectureEnrichmentTaskMapper
 from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
@@ -40,7 +40,6 @@ class MySQLLectureRepository(LectureRepository):
         sql_query = resolve_sql_query(
             file_path   = sql_queries_paths['registry']['commit']['lecture_list'],
             registry    = schema_name,
-            object_type = object_type,
             id_pattern  = id_pattern.replace('*', '%') if id_pattern is not None else "%"
         )
 
@@ -61,8 +60,7 @@ class MySQLLectureRepository(LectureRepository):
             file_path      = sql_queries_paths['registry']['commit']['lecture_exists'],
             registry       = schema_name,
             institution_id = key.institution_id,
-            object_type    = key.object_type,
-            object_id      = key.object_id
+            lecture_id     = key.object_id
         )
 
         # Execute commit query
@@ -98,8 +96,7 @@ class MySQLLectureRepository(LectureRepository):
             file_path      = sql_queries_paths['registry']['commit']['lecture_get_basic'],
             registry       = schema_name,
             institution_id = key.institution_id,
-            object_type    = key.object_type,
-            object_id      = key.object_id
+            lecture_id     = key.object_id
         )
 
         # Execute query and fetch result
@@ -120,8 +117,7 @@ class MySQLLectureRepository(LectureRepository):
             file_path      = sql_queries_paths['registry']['commit']['lecture_get_custom'],
             registry       = schema_name,
             institution_id = key.institution_id,
-            object_type    = key.object_type,
-            object_id      = key.object_id
+            lecture_id     = key.object_id
         )
 
         # Execute query and fetch result
@@ -136,8 +132,7 @@ class MySQLLectureRepository(LectureRepository):
             file_path      = sql_queries_paths['registry']['commit']['lecture_get_profile'],
             registry       = schema_name,
             institution_id = key.institution_id,
-            object_type    = key.object_type,
-            object_id      = key.object_id
+            lecture_id     = key.object_id
         )
 
         # Execute query and fetch result
@@ -158,8 +153,7 @@ class MySQLLectureRepository(LectureRepository):
             file_path      = sql_queries_paths['registry']['commit']['lecture_get_concepts'],
             registry       = schema_name,
             institution_id = key.institution_id,
-            object_type    = key.object_type,
-            object_id      = key.object_id
+            lecture_id     = key.object_id
         )
 
         # Execute query and fetch result
@@ -308,7 +302,7 @@ class MySQLLectureRepository(LectureRepository):
                 registry       = schema_name,
                 institution_id = key.institution_id,
                 object_type    = key.object_type,
-                object_id      = key.object_id
+                lecture_id      = key.object_id
             )
 
             # Execute commit query

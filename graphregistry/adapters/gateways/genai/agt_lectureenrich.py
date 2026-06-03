@@ -10,7 +10,7 @@ class GenAILectureEnrichmentGateway:
 
     def enrich(self, task: LectureEnrichmentTask) -> LectureEnrichmentResult | None:
         # Load prompt template
-        with open("prompts/lecture_description_and_concepts.txt", "r") as f:
+        with open("prompts/lecture_description_and_concepts_v2.txt", "r") as f:
             prompt_template = f.read()
 
         # Serialize the enrichment task to a dictionary format suitable for LLM processing

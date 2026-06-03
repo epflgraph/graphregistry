@@ -172,7 +172,7 @@ class Lecture(BaseModel):
     # Internal variables #
     #--------------------#
     node       : Node
-    video      : Video
+    video      : Video      | None = None
     voice      : Voice      | None = None
     slides     : SlideList  | None = None
     transcript : Transcript | None = None
