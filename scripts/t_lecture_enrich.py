@@ -18,5 +18,5 @@ lecture_ops = LectureOperations(
 )
 
 # Run the enrichment operation for a specific lecture ID
-result = lecture_ops.enrich(lecture_id="0_192jngsv")
+result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
 rich.print(result)
