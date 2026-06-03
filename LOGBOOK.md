@@ -41,4 +41,6 @@
 - ✅ in graphdb, the copy command is not working [solution: missing temporary export folder parameter in global config]
 
 ### June
-- 👉 Create a lecture sample set for dev
+- ✅ Create a lecture sample set for dev
+- 👉 execute all operations with the operations object, not with the repo class directly
+- 👉 centralize initalization of operations object in a single function
