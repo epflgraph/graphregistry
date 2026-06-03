@@ -1,6 +1,6 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_noderepo.py
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, cast, get_args
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeKey, Node, NodeList
 from graphregistry.domain.types import ActionSet
@@ -11,6 +11,8 @@ from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAG
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.types import ObjectType
+from graphregistry.domain.models.entities.types import ConceptMapType
+import rich
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
@@ -152,17 +154,23 @@ class MySQLNodeRepository(NodeRepository):
         # Get node's detected concepts #
         #------------------------------#
 
-        # Resolve placeholdes in template query
-        sql_query = resolve_sql_query(
-            file_path      = sql_queries_paths['registry']['commit']['node_get_concepts'],
-            registry       = schema_name,
-            institution_id = key.institution_id,
-            object_type    = key.object_type,
-            object_id      = key.object_id
-        )
+        # Init concept map structure
+        concepts = {}
 
-        # Execute query and fetch result
-        detected_concepts = cast(list[tuple[str, float]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        # Loop over concept mapping types
+        for map_type in get_args(ConceptMapType):
+
+            # Resolve placeholdes in template query
+            sql_query = resolve_sql_query(
+                file_path      = sql_queries_paths['registry']['commit'][f'node_get_concepts_{map_type}'],
+                registry       = schema_name,
+                institution_id = key.institution_id,
+                object_type    = key.object_type,
+                object_id      = key.object_id
+            )
+
+            # Execute query and fetch result
+            concepts[map_type] = cast(list[tuple[str, float]], self.db.execute_query(engine_name=engine_name, query=sql_query))
 
         # Construct Node object from fetched data
         node = MySQLNodeMapper.from_parts(
@@ -170,10 +178,13 @@ class MySQLNodeRepository(NodeRepository):
             basic_row         = basic_row,
             custom_field_rows = custom_fields,
             page_profile_row  = page_profile_dict,
-            concept_rows      = detected_concepts
+            detected_concept_rows     = concepts['detected'],
+            ai_validated_concept_rows = concepts['ai_validated'],
+            manually_mapped_rows      = concepts['manually_mapped']
         )
 
         # Return the constructed Node object
+        rich.print(node)
         return node
 
     # Method: Fetch multiple nodes data and construct NodeList object from a list of node keys
@@ -254,24 +265,34 @@ class MySQLNodeRepository(NodeRepository):
         # Upsert detected concepts #
         #--------------------------#
 
-        # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
-        for row in MySQLNodeMapper.to_detected_concepts_rows(node):
-            self.db.execute_upsert_row(
-                engine_name       = engine_name,
-                schema_name       = schema_name,
-                table_name        = "Edges_N_Object_N_Concept_T_ConceptDetection",
-                key_column_names  = ["institution_id", "object_type", "object_id", "concept_id", "text_source"],
-                key_column_values = [
-                    row["institution_id"],
-                    row["object_type"],
-                    row["object_id"],
-                    row["concept_id"],
-                    row["text_source"]
-                ],
-                upd_column_names  = ["score"],
-                upd_column_values = [row["score"]],
-                actions           = actions,
-            )
+        # Loop over concept mapping types
+        for map_type, table_name in zip(
+            get_args(ConceptMapType),
+            [
+                "Edges_N_Object_N_Concept_T_ConceptDetection",
+                "Edges_N_Object_N_Concept_T_LLMPostValidated",
+                "Edges_N_Object_N_Concept_T_ManualMapping",
+            ],
+            strict=True,
+        ):
+            # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
+            for row in MySQLNodeMapper.to_scored_concepts_rows(node, map_to=map_type):
+                self.db.execute_upsert_row(
+                    engine_name       = engine_name,
+                    schema_name       = schema_name,
+                    table_name        = table_name,
+                    key_column_names  = ["institution_id", "object_type", "object_id", "concept_id", "text_source"],
+                    key_column_values = [
+                        row["institution_id"],
+                        row["object_type"],
+                        row["object_id"],
+                        row["concept_id"],
+                        row["text_source"]
+                    ],
+                    upd_column_names  = ["score"],
+                    upd_column_values = [row["score"]],
+                    actions           = actions,
+                )
 
         #---------------------#
 

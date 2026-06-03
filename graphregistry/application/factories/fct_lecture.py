@@ -15,7 +15,7 @@ class LectureFactory:
     """Factory for creating Lecture instances, with optional concept detection.
     If a ConceptDetectionGateway is provided and detect_concepts is True, the factory
     will use the gateway to detect concepts from the lecture's raw text and
-    populate the detected_concepts field.
+    populate the concepts.detected field.
     """
     # Class constructor
     def __init__(self, concept_gateway: ConceptDetectionGateway | None = None) -> None:

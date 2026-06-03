@@ -1,16 +1,11 @@
 # graphregistry/adapters/gateways/graphai/agt_conceptdet.py
 from __future__ import annotations
-
 from typing import Any
 from urllib.parse import urlencode
-
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
-from graphregistry.domain.models.tasks.mdl_conceptdet import (
-    ConceptDetectionTask,
-    ConceptDetectionResult,
-    ConceptDetectionResultList,
-)
+from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConcept, ScoredConceptList
+from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionTask
 from requests import post
 
 
@@ -47,7 +42,7 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
     def extract_keywords(self, text: str) -> list[str]:
         raise NotImplementedError("Keyword extraction is not implemented for GraphAIConceptDetectionGateway")
 
-    def detect_concepts(self, text: str | list[str]) -> ConceptDetectionResultList:
+    def detect_concepts(self, text: str | list[str]) -> ScoredConceptList:
         login_info = self._ensure_login_info()
 
         if isinstance(text, str):
@@ -85,7 +80,7 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
                 f"Unexpected /text/wikify response shape: expected list, got {type(data).__name__}"
             )
 
-        return ConceptDetectionResultList(
+        return ScoredConceptList(
             item_list=[
                 self._to_detected_concept(item)
                 for item in data
@@ -94,8 +89,8 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
         )
 
     @staticmethod
-    def _to_detected_concept(item: dict[str, Any]) -> ConceptDetectionResult:
-        return ConceptDetectionResult(
+    def _to_detected_concept(item: dict[str, Any]) -> ScoredConcept:
+        return ScoredConcept(
             concept_id=str(item["concept_id"]),
             concept_name=str(item["concept_name"]),
             score=float(item.get("mixed_score") or item.get("score") or 0.0),

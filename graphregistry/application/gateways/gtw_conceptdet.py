@@ -1,7 +1,7 @@
 # graphregistry/domain/interfaces/gateways/gtw_conceptdet.py
 from __future__ import annotations
 from typing import Protocol, Any
-from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
+from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
 
 # Model definition
 class ConceptDetectionGateway(Protocol):
@@ -12,5 +12,5 @@ class ConceptDetectionGateway(Protocol):
     def extract_keywords(self, text: str) -> list[str]:
         ...
 
-    def detect_concepts(self, text: str | list[str]) -> ConceptDetectionResultList:
+    def detect_concepts(self, text: str | list[str]) -> ScoredConceptList:
         ...

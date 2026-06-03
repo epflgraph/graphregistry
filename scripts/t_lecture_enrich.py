@@ -21,6 +21,17 @@ lecture_ops = LectureOperations(
     })
 )
 
-# Run the enrichment operation for a specific lecture ID
-result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
-rich.print(result)
+# # Run the enrichment operation for a specific lecture ID
+# result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
+# rich.print(result)
+
+# # Write to pickle file
+import pickle
+# with open("enrichment_result.pkl", "wb") as f:
+#     pickle.dump(result, f)
+
+# Load from pickle file (for testing)
+with open("enrichment_result.pkl", "rb") as f:
+    loaded_result = pickle.load(f)
+# rich.print(loaded_result)
+lecture_ops.save_enrichment(loaded_result)

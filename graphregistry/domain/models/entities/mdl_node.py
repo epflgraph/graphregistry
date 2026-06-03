@@ -4,7 +4,7 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeFieldKey
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
-from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
+from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
 
 # Model definition
 class NodeField(BaseModel):
@@ -68,19 +68,27 @@ class NodeFieldList(BaseModel):
         return [field.to_json() for field in self.item_list]
 
 # Model definition
+class NodeConceptList(BaseModel):
+    """Model representing a list of concepts related to a node.
+    """
+    detected        : ScoredConceptList = Field(default_factory=ScoredConceptList)
+    ai_validated    : ScoredConceptList = Field(default_factory=ScoredConceptList)
+    manually_mapped : ScoredConceptList = Field(default_factory=ScoredConceptList)
+
+# Model definition
 class Node(BaseModel):
     """Model representing a graph node.
     """
     #--------------------#
     # Internal variables #
     #--------------------#
-    key: NodeKey
-    title: str = ""
-    text_source: str | None = None
-    raw_text: str | None = None
-    field_list: NodeFieldList = Field(default_factory=NodeFieldList)
-    page_profile: PageProfile | None = None
-    detected_concepts: ConceptDetectionResultList = Field(default_factory=ConceptDetectionResultList)
+    key          : NodeKey
+    title        : str = ""
+    text_source  : str | None = None
+    raw_text     : str | None = None
+    field_list   : NodeFieldList = Field(default_factory=NodeFieldList)
+    page_profile : PageProfile | None = None
+    concepts     : NodeConceptList = Field(default_factory=NodeConceptList)
 
     #-----------------------------------#
     # Model constructors and validators #

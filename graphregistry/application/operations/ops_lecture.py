@@ -272,3 +272,7 @@ class LectureOperations(NodeOperations):
 
         # Return None for now, as the enrichment result saving and lecture updating is not yet implemented
         return result
+
+    # Method: Save enrichment result for a lecture to persistence and return the saved lecture key
+    def save_enrichment(self, result: LectureEnrichmentResult, actions: ActionSet = ("commit",)) -> NodeKey:
+        return self.repo.save_enrichment_result(result, actions)

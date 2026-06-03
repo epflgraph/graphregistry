@@ -1,6 +1,8 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_lecturerepo.py
 from __future__ import annotations
 from typing import Any, cast
+
+import rich
 from graphregistry.domain.models.entities.mdl_base import NodeKey
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.types import ActionSet
@@ -50,4 +52,11 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
 
     # Method: Save enrichment result for a lecture to persistence and return the saved lecture key
     def save_enrichment_result(self, result: LectureEnrichmentResult, actions: ActionSet = ("commit",)) -> NodeKey:
-        raise NotImplementedError("Method not implemented yet")
+
+        rich.print(result)
+
+        return NodeKey(
+            institution_id = 'EPFL',
+            object_type    = 'Lecture',
+            object_id      = result.lecture_id
+        )

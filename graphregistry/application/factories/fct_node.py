@@ -11,7 +11,7 @@ class NodeFactory:
     """Factory for creating Node instances, with optional concept detection.
     If a ConceptDetectionGateway is provided and detect_concepts is True, the factory
     will use the gateway to detect concepts from the node's raw text and
-    populate the detected_concepts field.
+    populate the concepts.detected field.
     """
     # Class constructor
     def __init__(self, concept_gateway: ConceptDetectionGateway | None = None) -> None:
@@ -35,9 +35,9 @@ class NodeFactory:
         if self.concept_gateway is None:
             raise ValueError("No concept gateway configured")
 
-        # Perform concept detection using the gateway and populate the detected_concepts field
+        # Perform concept detection using the gateway and populate the concepts.detected field
         concepts = self.concept_gateway.detect_concepts(node.raw_text or "")
-        node.detected_concepts = concepts
+        node.concepts.detected = concepts
 
         # Return the node with detected concepts
         return node
