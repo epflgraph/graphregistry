@@ -87,8 +87,11 @@ class MySQLNodeMapper:
     ) -> Node:
         """Build a Node from the separate SQL result parts.
         """
-        # Get basic fields
-        title, text_source, raw_text = basic_row if basic_row is not None else 3*("",)
+        # Get basic fields and coerce null DB values to empty strings for strict Node model fields
+        raw_title, raw_text_source, raw_raw_text = basic_row if basic_row is not None else 3 * ("",)
+        title       = raw_title       or ""
+        text_source = raw_text_source or ""
+        raw_text    = raw_raw_text    or ""
 
         # Return node object
         return Node(
