@@ -91,5 +91,33 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         # Save enriched node object
         self.save(node=node, actions=actions)
 
+        #========================#
+        # Process Lecture slides #
+        #========================#
+
+        # Loop over keyframe/slide ids
+        for keyframe in result.keyframes:
+
+            # Create node key for the slide using the lecture id and the keyframe id
+            slide_node_key = NodeKey(institution_id='EPFL', object_type='Slide', object_id=keyframe.keyframe_id)
+
+            # Check if slide node exists first (return None if not found)
+            if not self.exists(slide_node_key):
+                self.msg.not_found(slide_node_key)
+                print(f"⚠️ Slide with key {slide_node_key} not found, skipping enrichment result for this slide.")
+                continue
+
+            # Get the corresponding Node object for the slide using its key
+            slide_node = self.get(slide_node_key)
+
+            # Run all necessary assertions to ensure the enrichment result can be applied to the slide Node object without issues
+            assert slide_node is not None, f"Node with key {slide_node_key} should exist but was not found"
+
+            # Assign enhanced concepts from enrichment result to the slide Node object
+            slide_node.concepts.ai_validated = keyframe.refined_concepts.post_validated_list or slide_node.concepts.ai_validated
+
+            # Save enriched slide node object
+            self.save(node=slide_node, actions=actions)
+
         # Return the node key
         return node_key

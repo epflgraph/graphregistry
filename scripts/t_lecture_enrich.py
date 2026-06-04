@@ -21,27 +21,31 @@ lecture_ops = LectureOperations(
     })
 )
 
-# # Run the enrichment operation for a specific lecture ID
-start_time = datetime.datetime.now()
-result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
+# Run from scratch?
+if False:
 
-if result is None:
-    print("Enrichment failed or no enrichment result returned.")
-    exit()
+    # Run the enrichment operation for a specific lecture ID
+    start_time = datetime.datetime.now()
+    result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
+    if result is None:
+        print("Enrichment failed or no enrichment result returned.")
+        exit()
 
-# rich.print(result)
-end_time = datetime.datetime.now()
-elapsed_time = end_time - start_time
-rich.print(f"Enrichment completed in {elapsed_time.total_seconds()} seconds")
+    # rich.print(result)
+    end_time = datetime.datetime.now()
+    elapsed_time = end_time - start_time
+    rich.print(f"Enrichment completed in {elapsed_time.total_seconds()} seconds")
 
-# # Write to pickle file
-# with open("enrichment_result.pkl", "wb") as f:
-#     pickle.dump(result, f)
-# exit()
+    # Write to pickle file
+    with open("enrichment_result.pkl", "wb") as f:
+        pickle.dump(result, f)
 
-# # Load from pickle file (for testing)
-# with open("enrichment_result.pkl", "rb") as f:
-#     result = pickle.load(f)
-# rich.print(loaded_result)
+# Run from cache
+else:
+    # Load from pickle file (for testing)
+    with open("enrichment_result.pkl", "rb") as f:
+        result = pickle.load(f)
+    rich.print(result)
+
+# Save enriched node
 lecture_ops.save_enrichment(result)
-print(result)

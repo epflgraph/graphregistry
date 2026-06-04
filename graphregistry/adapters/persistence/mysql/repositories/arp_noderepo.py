@@ -155,7 +155,12 @@ class MySQLNodeRepository(NodeRepository):
         #------------------------------#
 
         # Init concept map structure
-        concepts = {}
+        # TODO: replace this with the ConceptMapType enum once it's implemented in the domain models
+        concepts: dict[ConceptMapType, list[tuple[str, float]]] = {
+            'detected'       : [],
+            'ai_validated'   : [],
+            'manually_mapped': []
+        }
 
         # Loop over concept mapping types
         for map_type in get_args(ConceptMapType):
