@@ -184,7 +184,6 @@ class MySQLNodeRepository(NodeRepository):
         )
 
         # Return the constructed Node object
-        rich.print(node)
         return node
 
     # Method: Fetch multiple nodes data and construct NodeList object from a list of node keys

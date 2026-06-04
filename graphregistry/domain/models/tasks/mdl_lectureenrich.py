@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
+from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
 
 # Model definition
 class LectureConceptTitleList(BaseModel):
@@ -12,7 +13,7 @@ class LectureConceptTitleList(BaseModel):
     #--------------------#
     raw_unrefined_list  : list[str] = Field(default_factory=list)
     ai_refined_list     : list[str] = Field(default_factory=list)
-    post_validated_list : list[str] = Field(default_factory=list)
+    post_validated_list : ScoredConceptList = Field(default_factory=ScoredConceptList)
 
     #-----------------------#
     # Serialization methods #

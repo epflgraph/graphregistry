@@ -6,14 +6,15 @@ from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGatewa
 from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.common.auxfcn import normalized_levenshtein
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
+from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.types import ActionSet
-from graphregistry.common.auxfcn import normalized_levenshtein
 import rich, pickle
 
 # Class definition
@@ -192,11 +193,15 @@ class LectureOperations(NodeOperations):
         ))
 
         # Verify that the enrichment task was found
-        assert isinstance(task, LectureEnrichmentTask), \
-            f"Expected enrichment task for lecture_id {lecture_id}, but got {task}"
+        if task is None:
+            return None
 
         # Run the enrichment task through the gateway to get the enrichment result
-        result = gtw.enrich(task)
+        result = gtw.enrich(task, verbose=True)
+
+        # # Load enrichment result from pickle for testing
+        # with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
+        #     result = pickle.load(f)
 
         # Print status
         self.msg.enriched(NodeKey(
@@ -208,10 +213,6 @@ class LectureOperations(NodeOperations):
         # Check that the result is of the expected type
         assert isinstance(result, LectureEnrichmentResult), \
             f"Expected enrichment result for lecture_id {lecture_id}, but got {result}"
-
-        # # Load enrichment result from pickle for testing
-        # with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
-        #     result = pickle.load(f)
 
         # # Save to pickle
         # with open(f"enrichment_result_{lecture_id}.pkl", "wb") as f:
@@ -238,24 +239,40 @@ class LectureOperations(NodeOperations):
                 raise ValueError("Missing gateway: concept_detection")
 
             # Initialise post-validation list
-            post_validated_list = []
+            post_validated_list = ScoredConceptList()
+
+            # Initialise cache for wiki search results to avoid redundant calls for the same concept
+            # (this shortens the processing time by half)
+            wiki_search_cache: dict[str, list[dict[str, Any]]] = {}
 
             # Loop over AI-refined concepts and check if they are valid Wikipedia concepts using the concept detection gateway
             for ai_refined_concept in ai_refined_list:
 
                 # Execute wiki search for the AI-refined concept
-                wiki_suggestions = gtw_conceptdet.wiki_search(search_term=ai_refined_concept)
+                if ai_refined_concept in wiki_search_cache:
+                    wiki_suggestions = wiki_search_cache[ai_refined_concept]
+                else:
+                    wiki_suggestions = gtw_conceptdet.wiki_search(search_term=ai_refined_concept or "")
+                    wiki_search_cache[ai_refined_concept] = wiki_suggestions
 
                 # Loop over wiki search suggestions and calculate similarity with the AI-refined concept,
                 # keeping those above a certain similarity threshold (e.g., 0.75)
                 for suggestion in wiki_suggestions:
 
                     # Calculate similarity between the AI-refined concept and the wiki search suggestions
-                    similarity = normalized_levenshtein(ai_refined_concept, suggestion['concept_name'])
+                    similarity = normalized_levenshtein(ai_refined_concept or "", suggestion['concept_name'])
 
                     # If the similarity is above the threshold, add the suggestion to the post-validation list
                     if similarity >= 0.75:
-                        post_validated_list.append(suggestion['concept_name'])
+                        post_validated_list.item_list.append(
+                            ScoredConcept(
+                                concept = Concept(
+                                    id   = str(suggestion['concept_id']),
+                                    name = str(suggestion['concept_name'])
+                                ),
+                                score = 1
+                            )
+                        )
 
             # Assign the post-validated list to the result (for now, we overwrite the AI-refined list, but in the future we could keep both)
             if k == -1:

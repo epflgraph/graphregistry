@@ -4,6 +4,15 @@ from typing import TYPE_CHECKING, Iterator, Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.types import LanguageCode, LanguageCodeList, DEFAULT_LANGUAGE_CODES
 
+
+from rich.console import Console, ConsoleOptions, RenderResult
+
+from rich.table import Table
+
+from rich.panel import Panel
+
+from rich.text import Text
+
 # Check type if running in a type-checking context to avoid circular imports
 if TYPE_CHECKING:
     from graphregistry.application.gateways.gtw_translation import TextTranslationGateway

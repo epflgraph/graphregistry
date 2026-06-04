@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any
 from graphregistry.domain.models.entities.mdl_base import NodeKey
-from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConcept, ScoredConceptList
+from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 
 # Class definition
 class MySQLConceptMapper:
@@ -10,21 +10,21 @@ class MySQLConceptMapper:
     """
     @staticmethod
     def from_row(row: tuple[Any, ...]) -> ScoredConcept:
-        return ScoredConcept(concept_id=str(row[0]), concept_name=None, score=float(row[1]))
+        return ScoredConcept(concept=Concept(id=str(row[0]), name=None), score=float(row[1]))
 
     @staticmethod
     def from_rows(rows: list[tuple[Any, ...]] | None) -> ScoredConceptList:
         return ScoredConceptList(item_list=[MySQLConceptMapper.from_row(row) for row in (rows or [])])
 
     @staticmethod
-    def to_upsert_row(node_key: NodeKey, text_source: str | None, concept: ScoredConcept) -> dict[str, Any]:
+    def to_upsert_row(node_key: NodeKey, text_source: str | None, scored_concept: ScoredConcept) -> dict[str, Any]:
         return {
             "institution_id" : node_key.institution_id,
             "object_type"    : node_key.object_type,
             "object_id"      : node_key.object_id,
-            "concept_id"     : concept.concept_id,
+            "concept_id"     : scored_concept.concept.id,
             "text_source"    : text_source,
-            "score"          : concept.score,
+            "score"          : scored_concept.score,
         }
 
     @staticmethod

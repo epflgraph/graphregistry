@@ -10,8 +10,8 @@ class Concept(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    concept_id   : str | None = None
-    concept_name : str | None = None
+    id   : str | None = None
+    name : str | None = None
 
     #-----------------------#
     # Serialization methods #
@@ -49,9 +49,8 @@ class ScoredConcept(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    concept_id   : str   | None = None
-    concept_name : str   | None = None
-    score        : float | None = None
+    concept : Concept
+    score   : float
 
     #-----------------------#
     # Serialization methods #

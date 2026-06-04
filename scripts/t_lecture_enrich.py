@@ -7,7 +7,7 @@ from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.adapters.gateways.genai.agt_lectureenrich import GenAILectureEnrichmentGateway
 from typing import cast
-import rich
+import rich, pickle, datetime
 
 # Initialize the lecture operations with the MySQL repository and the GenAI enrichment gateway
 lecture_ops = LectureOperations(
@@ -22,16 +22,26 @@ lecture_ops = LectureOperations(
 )
 
 # # Run the enrichment operation for a specific lecture ID
-# result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
+start_time = datetime.datetime.now()
+result = lecture_ops.enrich(lecture_id="0_2hrj7yhs")
+
+if result is None:
+    print("Enrichment failed or no enrichment result returned.")
+    exit()
+
 # rich.print(result)
+end_time = datetime.datetime.now()
+elapsed_time = end_time - start_time
+rich.print(f"Enrichment completed in {elapsed_time.total_seconds()} seconds")
 
 # # Write to pickle file
-import pickle
 # with open("enrichment_result.pkl", "wb") as f:
 #     pickle.dump(result, f)
+# exit()
 
-# Load from pickle file (for testing)
-with open("enrichment_result.pkl", "rb") as f:
-    loaded_result = pickle.load(f)
+# # Load from pickle file (for testing)
+# with open("enrichment_result.pkl", "rb") as f:
+#     result = pickle.load(f)
 # rich.print(loaded_result)
-lecture_ops.save_enrichment(loaded_result)
+lecture_ops.save_enrichment(result)
+print(result)
