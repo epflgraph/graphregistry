@@ -25,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="domain", required=True)
 
     # Register commands for each domain
-    for cmd_name in ["config", "es", "ai", "data", "airflow", "cache", "index", "setup"]:
+    for cmd_name in ["config", "es", "ai", "data", "airflow", "cache", "run", "index", "setup"]:
         register(subparsers, cmd_name)
 
     # Return the fully built parser
@@ -50,7 +50,7 @@ def main(argv=None) -> int:
 
     # Create shared config and service objects
     global_config = GlobalConfig()
-    index_config = IndexConfig()
+    index_config  = IndexConfig()
     scores_config = ScoresConfig()
     es = GraphES()
 

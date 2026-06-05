@@ -47,6 +47,9 @@ from graphregistry.entrypoints.cli.cmd_cache import (
     cmd_cache_to_process,
     cmd_cache_debug,
 )
+from graphregistry.entrypoints.cli.cmd_run import (
+    cmd_run_formula,
+)
 from graphregistry.entrypoints.cli.cmd_index import (
     cmd_index_build,
     cmd_index_patch,
@@ -428,6 +431,26 @@ cli_definitions: Dict[str, Any] = {
                 help = "General purpose debugging command to inspect class methods.",
                 func = cmd_cache_debug,
                 args = [],
+                common_args = []
+            )
+        }
+    ),
+
+    #---------------------#
+    # Command: run        #
+    #---------------------#
+    'run' : dict(
+        help = "Run ad-hoc scripts for testing and debugging purposes.",
+        common_args = dict(),
+        commands = {
+            'formula' : dict(
+                help = "Execute SQL formula with placeholders.",
+                func = cmd_run_formula,
+                args = [
+                    dict(flags=('--input'       , '-i'), kwargs=dict(required=False, type=str, default=None, help="Path to SQL file containing the formula to execute.")),
+                    dict(flags=('--resolve_only', '-r'), kwargs=dict(action='store_true', default=False, help="Only resolve placeholders and print final SQL without executing.")),
+                    dict(flags=('--verbose'     , '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
+                ],
                 common_args = []
             )
         }
