@@ -29,14 +29,37 @@ lecture_ops = LectureOperations(
 if True:
 
     # Get list on unprocessed lecture IDs
-    list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name, query="""
-        SELECT object_id FROM _1_DEV_graph_lectures.Nodes_N_Object
-         WHERE object_type = 'Lecture'
-           AND object_id NOT IN (SELECT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated WHERE object_type = 'Lecture');
-    """) if r is not None]
+    list_of_lectures = set([r[0] for r in db.execute_query(engine_name=engine_name, query="""
+   SELECT DISTINCT v.object_id AS lecture_id
+              FROM graph_lectures.Nodes_N_Object v
+        INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent c
+                ON (c.from_object_type, c.from_object_id) = (v.object_type, v.object_id)
+        INNER JOIN (SELECT course_id, AVG(score) AS score
+					  FROM (
+					   SELECT to_object_id AS course_id, score
+						 FROM graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS
+						WHERE (from_object_type, to_object_type) = ('Course', 'Course')
+						  AND from_object_id = 'CS-119(d)'
+						  AND score >= 0.5
+						UNION
+					   SELECT from_object_id AS course_id, score
+						 FROM graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS
+						WHERE (from_object_type, to_object_type) = ('Course', 'Course')
+						  AND to_object_id = 'CS-119(d)'
+						  AND score >= 0.5
+                     ) t
+                    GROUP BY course_id) tt
+				ON c.to_object_id = tt.course_id
+             WHERE v.object_type = 'Lecture'
+               AND v.object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
+          ORDER BY tt.score DESC;
+    """) if r is not None])
 
     # Loop over lecture IDs
     for lecture_id in list_of_lectures:
+
+        # Print the lecture ID being processed
+        rich.print(f"🎥 Processing lecture ID: {lecture_id}")
 
         # Run the enrichment operation for a specific lecture ID
         start_time = datetime.datetime.now()
