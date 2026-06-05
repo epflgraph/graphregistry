@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
+from loguru import logger as sysmsg
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.adapters.clients.rcp_models import send_llm_request
 from graphregistry.adapters.gateways.mappers.agm_lectureenrich import GenAILectureEnrichmentMapper
@@ -39,24 +40,32 @@ class GenAILectureEnrichmentGateway:
             print(llm_prompt)
 
         # Send the prompt to the LLM and get the response, which should conform to the LectureEnrichmentResult schema
-        result = send_llm_request(
-            timeout=self.timeout,
-            response_llm_model=LectureEnrichmentResult,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You produce structured lecture-enrichment metadata. "
-                        "Follow the provided response schema exactly. "
-                        "Return no prose outside the structured response."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": llm_prompt,
-                },
-            ],
-        )
+        try:
+            result = send_llm_request(
+                timeout=self.timeout,
+                response_llm_model=LectureEnrichmentResult,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You produce structured lecture-enrichment metadata. "
+                            "Follow the provided response schema exactly. "
+                            "Return no prose outside the structured response."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": llm_prompt,
+                    },
+                ],
+            )
+        except ValueError as exc:
+            sysmsg.warning(
+                "Skipping lecture enrichment for lecture_id={} due to invalid LLM response: {}",
+                task.lecture_id,
+                exc,
+            )
+            return None
 
         # Return the normalized result, which will convert dicts to dataclass instances and perform any necessary transformations
         return GenAILectureEnrichmentMapper.normalize(result)

@@ -16,6 +16,7 @@ from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmen
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.types import ActionSet
 import rich, pickle
+from loguru import logger as sysmsg
 
 # Class definition
 class LectureOperations(NodeOperations):
@@ -203,16 +204,16 @@ class LectureOperations(NodeOperations):
         # with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
         #     result = pickle.load(f)
 
+        if result is None:
+            sysmsg.warning("Skipping lecture_id={} because enrichment produced no result.", lecture_id)
+            return None
+
         # Print status
         self.msg.enriched(NodeKey(
             institution_id = 'EPFL',
             object_type    = 'Lecture',
             object_id      = lecture_id,
         ))
-
-        # Check that the result is of the expected type
-        assert isinstance(result, LectureEnrichmentResult), \
-            f"Expected enrichment result for lecture_id {lecture_id}, but got {result}"
 
         # # Save to pickle
         # with open(f"enrichment_result_{lecture_id}.pkl", "wb") as f:
