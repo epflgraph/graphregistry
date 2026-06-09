@@ -3,10 +3,10 @@ from __future__ import annotations
 from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig
 from graphregistry.application.operations.ops_node import NodeOperations
-from graphregistry.domain.interfaces.gateways.types import GatewayDict
+from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 from graphregistry.domain.models.entities.mdl_base import NodeKey
-from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 import rich
