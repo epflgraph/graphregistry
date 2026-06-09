@@ -188,6 +188,102 @@ class GraphAIBaseGateway:
     # Async GraphAI task helper
     # ----------------------------------------------------------------------------------
 
+    def get_async_task_result(
+        self,
+        endpoint: str,
+        task_id: str,
+        login_info: dict[str, Any] | None = None,
+        *,
+        wait_for_result: bool = True,
+        max_processing_time_s: int = 6000,
+        max_tries: int = 5,
+    ) -> dict[str, Any] | None:
+        """
+        Get the result of an already-submitted async GraphAI task.
+
+        If wait_for_result is False, this performs one status check and returns:
+        - task_result when task_status is SUCCESS
+        - None when task_status is PENDING/STARTED/FAILURE or result is malformed
+        """
+        resolved_login_info = login_info or self._ensure_login_info()
+
+        def _status_check_once() -> tuple[str, dict[str, Any] | None]:
+            status_response = self._request(
+                url=f"{endpoint}/status/{task_id}",
+                login_info=resolved_login_info,
+                request_func=get,
+                headers={"Content-Type": "application/json"},
+                max_tries=max_tries,
+                timeout=60,
+            )
+
+            status_payload = status_response.json()
+            task_status = status_payload["task_status"]
+            self._log(f"Task {task_id}: {task_status}")
+
+            if task_status in ("PENDING", "STARTED"):
+                return task_status, None
+
+            if task_status == "SUCCESS":
+                task_result = status_payload.get("task_result")
+
+                if not isinstance(task_result, dict):
+                    return "SUCCESS", None
+
+                if not task_result.get("successful", True):
+                    if task_result.get("text_too_large", False):
+                        return "SUCCESS", task_result
+
+                    # failure_reason is currently provided by /video/retrieve_url only.
+                    if endpoint == "/video/retrieve_url":
+                        failure_reason = task_result.get("failure_reason")
+                        if isinstance(failure_reason, str) and failure_reason.strip():
+                            raise RuntimeError(failure_reason)
+
+                    result_message = task_result.get("result")
+                    if isinstance(result_message, str) and result_message.strip():
+                        raise RuntimeError(result_message)
+
+                    raise RuntimeError("Unknown GraphAI task error")
+
+                return "SUCCESS", task_result
+
+            if task_status == "FAILURE":
+                return "FAILURE", None
+
+            raise ValueError(f"Unexpected task status: {task_status}")
+
+        if not wait_for_result:
+            _status, result = _status_check_once()
+            return result
+
+        for attempt in range(1, max_tries + 1):
+            deadline = datetime.now() + timedelta(seconds=max_processing_time_s)
+
+            while datetime.now() < deadline:
+                status, result = _status_check_once()
+
+                if status in ("PENDING", "STARTED"):
+                    sleep(1)
+                    continue
+
+                if status == "SUCCESS":
+                    if result is not None:
+                        return result
+                    break
+
+                if status == "FAILURE":
+                    break
+
+            if attempt < max_tries:
+                delay = self._backoff_seconds(attempt)
+                self._log(
+                    f"Async task failed (attempt {attempt}/{max_tries}), retrying in {delay}s..."
+                )
+                sleep(delay)
+
+        return None
+
     def _call_async_endpoint(
         self,
         endpoint: str,
@@ -217,54 +313,15 @@ class GraphAIBaseGateway:
             if not wait_for_result:
                 return str(task_id)
 
-            deadline = datetime.now() + timedelta(seconds=max_processing_time_s)
-
-            while datetime.now() < deadline:
-                status_response = self._request(
-                    url=f"{endpoint}/status/{task_id}",
-                    login_info=login_info,
-                    request_func=get,
-                    headers={"Content-Type": "application/json"},
-                    max_tries=max_tries,
-                    timeout=60,
-                )
-
-                status_payload = status_response.json()
-                task_status = status_payload["task_status"]
-                self._log(f"Task {task_id}: {task_status}")
-
-                if task_status in ("PENDING", "STARTED"):
-                    sleep(1)
-                    continue
-
-                if task_status == "SUCCESS":
-                    task_result = status_payload.get("task_result")
-
-                    if not isinstance(task_result, dict):
-                        break
-
-                    if not task_result.get("successful", True):
-                        if task_result.get("text_too_large", False):
-                            return task_result
-
-                        # failure_reason is currently provided by /video/retrieve_url only.
-                        if endpoint == "/video/retrieve_url":
-                            failure_reason = task_result.get("failure_reason")
-                            if isinstance(failure_reason, str) and failure_reason.strip():
-                                raise RuntimeError(failure_reason)
-
-                        result_message = task_result.get("result")
-                        if isinstance(result_message, str) and result_message.strip():
-                            raise RuntimeError(result_message)
-
-                        raise RuntimeError("Unknown GraphAI task error")
-
-                    return task_result
-
-                if task_status == "FAILURE":
-                    break
-
-                raise ValueError(f"Unexpected task status: {task_status}")
+            task_result = self.get_async_task_result(
+                endpoint=endpoint,
+                task_id=str(task_id),
+                login_info=login_info,
+                max_processing_time_s=max_processing_time_s,
+                max_tries=max_tries,
+            )
+            if task_result is not None:
+                return task_result
 
             if attempt < max_tries:
                 delay = self._backoff_seconds(attempt)

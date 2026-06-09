@@ -22,6 +22,7 @@ def _node_or_edge_action(key: NodeKey | EdgeKey, action) -> str:
         'concepts validated' : '🧬👍',
         'translated'         : '🌐',
         'ai enriched'        : '🤖✨',
+        'airflow modified'   : '♻️ ',
     }[action]
     return f"{icon} [green]{action.capitalize()}:[/green] [yellow]{'Node' if isinstance(key, NodeKey) else 'Edge'}[/yellow] [cyan]~[/cyan] {_node_tuple(key) if isinstance(key, NodeKey) else _edge_tuple(key)}"
 
@@ -64,3 +65,7 @@ class GraphLogger:
     # Print method: Node enriched through GenAI
     def enriched(self, key: NodeKey) -> None:
         rich.print(_node_or_edge_action(key, 'ai enriched'))
+
+    # Print method: Airflow modification applied
+    def airflow_saved(self, key: NodeKey) -> None:
+        rich.print(_node_or_edge_action(key, 'airflow modified'))

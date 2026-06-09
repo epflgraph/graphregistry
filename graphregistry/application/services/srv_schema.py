@@ -16,6 +16,9 @@ class SchemaResolver(Protocol):
         (engine_name, schema_name)
     """
 
+    def for_airflow(self) -> EngineSchema:
+        ...
+
     def for_node(self, key: NodeKey) -> EngineSchema:
         ...
 

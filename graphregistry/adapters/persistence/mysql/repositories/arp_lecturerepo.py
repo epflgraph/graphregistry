@@ -1,19 +1,184 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_lecturerepo.py
 from __future__ import annotations
 from typing import Any, cast
-import rich
 from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureEnrichmentTaskMapper
-from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
-from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
 
 # Class definition
 class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
+
+    #-------------------------------#
+    # Content processing operations #
+    #-------------------------------#
+
+    # Method: Get list of undownloaded lectures, returning a list of NodeKey objects for the undownloaded lectures
+    def get_undownloaded(self) -> NodeKeyList:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_undownloaded'],
+            airflow   = airflow_schema_name
+        )
+
+        # Execute query and fetch result
+        undownloaded_lectures = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract lecture ids from query result and convert them into NodeKey objects
+        undownloaded_lecture_keys = NodeKeyList(
+            item_list=[
+                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                for (lecture_id,) in undownloaded_lectures
+            ]
+        )
+
+        # Return the list of undownloaded lecture keys
+        return undownloaded_lecture_keys
+
+    # Method: Get file URL for a lecture based on the lecture key, returning the file URL as a string
+    def get_file_url(self, lecture_key: NodeKey) -> str:
+
+        # Check if lecture exists first (return None if not found)
+        if not self.exists(lecture_key):
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Lecture with key {lecture_key} not found, cannot get file URL")
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, lecture_schema_name = self.schema_resolver.for_node(lecture_key)
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_file_url'],
+            lectures    = lecture_schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Execute query and fetch result
+        file_url_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract file URL from query result
+        if not file_url_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"File URL for lecture with key {lecture_key} not found in query result")
+
+        # Unpack the single row and single column result to get the file URL string
+        (file_url,) = file_url_result[0]
+
+        # Return the file URL
+        return file_url
+
+    # Method: Save the video download task ID for a lecture in persistence
+    def save_video_download_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholders in template query
+        self.db.execute_upsert_row(
+            engine_name       = engine_name,
+            schema_name       = schema_name,
+            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
+            key_column_names  = ["institution_id", "object_type", "object_id"],
+            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            upd_column_names  = ['video_download_task_id'],
+            upd_column_values = [task_id],
+            actions           = ('commit',)
+        )
+
+        # Print status message
+        self.msg.airflow_saved(lecture_key)
+
+        # Return node for chaining
+        return lecture_key
+
+    # Method: Get the video download task ID for a lecture (this can be used to check the status of the download or retrieve the downloaded video)
+    def get_video_download_task_id(self, lecture_key: NodeKey) -> str:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_video_download_task_id'],
+            airflow     = schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Execute query and fetch result
+        task_id_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract task ID from query result
+        if not task_id_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Video download task ID for lecture with key {lecture_key} not found in query result")
+
+        # Unpack the single row and single column result to get the task ID string
+        (task_id,) = task_id_result[0]
+
+        # Return the video download task ID
+        return task_id
+
+    # Method: Save the video token for a lecture in persistence
+    def save_video_token(self, lecture_key: NodeKey, video_token: str) -> NodeKey:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholders in template query
+        self.db.execute_upsert_row(
+            engine_name       = engine_name,
+            schema_name       = schema_name,
+            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
+            key_column_names  = ["institution_id", "object_type", "object_id"],
+            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            upd_column_names  = ['video_token'],
+            upd_column_values = [video_token],
+            actions           = ('commit',)
+        )
+
+        # Print status message
+        self.msg.airflow_saved(lecture_key)
+
+        # Return node for chaining
+        return lecture_key
+
+    # Method: Get the video token for a lecture (this can be used to retrieve the downloaded video or check if the video has been processed)
+    def get_video_token(self, lecture_key: NodeKey) -> str:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_video_token'],
+            airflow     = schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Execute query and fetch result
+        video_token_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract video token from query result
+        if not video_token_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Video token for lecture with key {lecture_key} not found in query result")
+
+        # Unpack the single row and single column result to get the video token string
+        (video_token,) = video_token_result[0]
+
+        # Return the video token
+        return video_token
+
+    #-------------------------------------#
+    # Lecture field enrichment operations #
+    #-------------------------------------#
 
     # Method: Get enrichment task for a lecture based on the lecture key, returning a LectureEnrichmentTask object
     def get_enrichment_task(self, key: NodeKey) -> LectureEnrichmentTask | None:

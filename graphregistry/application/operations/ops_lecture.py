@@ -31,31 +31,80 @@ class LectureOperations(NodeOperations):
     # Content processing operations #
     #-------------------------------#
 
-    def get_undownloaded(self) -> list[NodeKey]:
-        raise NotImplementedError("Method get_undownloaded not implemented")
+    # Method: Get list of undownloaded lectures, returning a list of NodeKey objects for the undownloaded lectures
+    def get_undownloaded(self) -> NodeKeyList:
+        return self.repo.get_undownloaded()
 
+    # Method: Get file URL for a lecture based on the lecture key, returning the file URL as a string
     def get_file_url(self, lecture_key: NodeKey) -> str:
-        raise NotImplementedError("Method get_file_url not implemented")
+        return self.repo.get_file_url(lecture_key)
 
-    def save_video_token(self, lecture_key: NodeKey, video_token: str) -> None:
-        raise NotImplementedError("Method save_video_token not implemented")
+    # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
+    def launch_video_download(self, video_url: str) -> str:
 
-    def get_video_tokens_no_slides(self) -> list[str]:
+        # Get the enrichment gateway
+        gtw = self.ai_gateways.get("video_processing")
+        if gtw is None:
+            raise ValueError("Missing gateway: video_processing")
+
+        # Run the video processing gateway to generate the video token
+        task_id = gtw.launch_video_download(video_url)
+
+        # Return the task ID immediately without waiting for the processing to complete
+        return task_id
+
+    # Method: Save the video download task ID for a lecture (this can be used later to check the status of the download or retrieve the downloaded video)
+    def save_video_download_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
+        return self.repo.save_video_download_task_id(lecture_key, task_id)
+
+    # Method: Get the video download task ID for a lecture (this can be used to check the status of the download or retrieve the downloaded video)
+    def get_video_download_task_id(self, lecture_key: NodeKey) -> str:
+        return self.repo.get_video_download_task_id(lecture_key)
+
+    # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
+    def get_video_download_result(self, lecture_key: NodeKey) -> dict | None:
+
+        # Get the enrichment gateway
+        gtw = self.ai_gateways.get("video_processing")
+        if gtw is None:
+            raise ValueError("Missing gateway: video_processing")
+
+        # Get the video download result from the gateway using the task ID
+        result = gtw.get_video_download_result(task_id=self.get_video_download_task_id(lecture_key))
+
+        # Return the task ID immediately without waiting for the processing to complete
+        return result
+
+    # Method: Save the video token for a lecture (this can be used later to check the status of the download or retrieve the downloaded video)
+    def save_video_token(self, lecture_key: NodeKey, video_token: str) -> NodeKey:
+        return self.repo.save_video_token(lecture_key, video_token)
+
+    # Method: Get the video token for a lecture (this can be used to check the status of the download or retrieve the downloaded video)
+    def get_video_token(self, lecture_key: NodeKey) -> str:
+        return self.repo.get_video_token(lecture_key)
+
+
+
+
+
+
+
+    def get_video_tokens_no_slides(self) -> NodeKeyList:
         raise NotImplementedError("Method get_video_tokens_no_slides not implemented")
 
     def save_slide_tokens(self, lecture_key: NodeKey, slide_tokens: list[str]) -> None:
         raise NotImplementedError("Method save_slide_tokens not implemented")
 
-    def get_slide_tokens_no_ocr(self) -> list[str]:
+    def get_slide_tokens_no_ocr(self) -> NodeKeyList:
         raise NotImplementedError("Method get_slide_tokens_no_ocr not implemented")
 
     def set_slide_ocr_done(self, lecture_key: NodeKey, slide_token: str) -> None:
         raise NotImplementedError("Method set_slide_ocr_done not implemented")
 
-    def get_video_tokens_no_audio(self) -> list[str]:
+    def get_video_tokens_no_audio(self) -> NodeKeyList:
         raise NotImplementedError("Method get_video_tokens_no_audio not implemented")
 
-    def get_audio_tokens_no_transcript(self) -> list[str]:
+    def get_audio_tokens_no_transcript(self) -> NodeKeyList:
         raise NotImplementedError("Method get_audio_tokens_no_transcript not implemented")
 
     def save_transcript_token(self, lecture_key: NodeKey, transcript_token: str) -> None:
@@ -132,51 +181,6 @@ class LectureOperations(NodeOperations):
     #-------------------------------------#
     # Lecture field enrichment operations #
     #-------------------------------------#
-
-    # # Method: Enrich lectures with missing descriptions and refined concepts
-    # def enrich(self, lectures: Lecture | LectureList) -> Lecture | LectureList:
-
-    #     # Handle both single Lecture input and list of Lectures input
-    #     single_input = isinstance(lectures, Lecture)
-    #     lecture_list = [lectures] if single_input else list(lectures)
-
-    #     # Get the enrichment gateway
-    #     gtw = self.ai_gateways.get("lecture_enrichment")
-    #     if gtw is None:
-    #         raise ValueError("Missing gateway: lecture_enrichment")
-
-    #     # Initialize list to hold enriched lectures
-    #     enriched: list[Lecture] = []
-
-    #     # Loop over lectures and enrich each one
-    #     for lecture in lecture_list:
-
-    #         # Normalize possible (key, lecture) tuple entries
-    #         lecture_obj = lecture[1] if isinstance(lecture, tuple) else lecture
-
-    #         # Get the enrichment task for the lecture
-    #         task = self.repo.get_enrichment_task(lecture_obj.node.key)
-
-    #         # Verify that the enrichment task was found
-    #         if task is None:
-    #             print(f"Enrichment task not found for lecture key: {lecture_obj.node.key}")
-    #             continue
-
-    #         # Run the enrichment task through the gateway to get the enrichment result
-    #         result = gtw.enrich(task)
-
-    #         # Save the enrichment result back to the repository and get the saved lecture key
-    #         saved_lecture_key = self.repo.save_enrichment_result(result)
-
-    #         # Load the saved lecture and add it to the enriched list
-    #         saved_lecture = self.repo.get(saved_lecture_key)
-    #         if saved_lecture is None:
-    #             raise ValueError(f"Saved lecture not found for key: {saved_lecture_key}")
-    #         enriched.append(saved_lecture)
-
-    #     # Return the enriched lecture(s) in the same format as the input (single Lecture or LectureList)
-    #     return enriched[0] if single_input else LectureList(item_list=enriched)
-
 
     # Method: Enrich one lecture by lecture_id
     def enrich(self, lecture_id: str) -> LectureEnrichmentResult | None:

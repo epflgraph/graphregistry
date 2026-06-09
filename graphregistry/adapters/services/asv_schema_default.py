@@ -13,6 +13,11 @@ class DefaultSchemaResolver(SchemaResolver):
         self.engine_name = engine_name
         self.glbcfg = glbcfg
 
+    # Class method: Get engine identifier and schema name for airflow
+    def for_airflow(self) -> EngineSchema:
+        schema = self.glbcfg.schema_airflow
+        return (self.engine_name, schema)
+
     # Class method: Get engine identifier and schema name for a node
     def for_node(self, key: NodeKey) -> EngineSchema:
         schema = self.glbcfg.object_type_to_schema[key.object_type]

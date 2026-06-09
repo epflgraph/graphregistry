@@ -12,6 +12,34 @@ import rich
 #==================================#
 class GraphAIVideoGateway(GraphAIBaseGateway):
 
+    #===================#
+    # Top level methods #
+    #===================#
+
+    # Gateway method: Launch asynchronous video download and processing task on GraphAI,
+    # returning the task ID immediately without waiting for the result
+    def launch_video_download(self, video_url: str) -> str:
+        task_id = self.get_video(file_url=video_url, launch_only=True)
+        assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
+        return task_id
+
+    # Gateway method: Get the result of an asynchronous video download and processing task from GraphAI using the task ID
+    def get_video_download_result(self, task_id: str) -> dict | None:
+
+        # Make the request to the GraphAI endpoint to get the result of the video download and processing task
+        task_result = self.get_async_task_result(
+            endpoint = "/video/retrieve_url",
+            task_id  = task_id,
+            wait_for_result = False
+        )
+
+        # If the task result is None, it means the request failed or the video could not be processed
+        if task_result is None:
+            return None
+
+        # Return the task result, which should contain the video token and metadata if the processing was successful
+        return task_result
+
     #----------------------------------------------------------------#
     # Gateway method: Download video from URL and create video token #
     #----------------------------------------------------------------#
@@ -47,6 +75,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Non-blocking mode: return GraphAI task id immediately
         if launch_only:
             return str(task_result)
+
         # Extract token and stream metadata defensively: GraphAI can return a
         # successful task with missing/partial token_status payload.
         token = task_result.get("token")
