@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
+from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.common.auxfcn import normalized_levenshtein
@@ -142,7 +142,7 @@ class LectureOperations(NodeOperations):
 
         # Initialize the gateway (TODO: is there an abstraction of these?)
         gtw_video = GraphAIVideoGateway(debug=False)
-        gtw_audio = GraphAIAudioGateway(debug=False)
+        gtw_voice = GraphAIVoiceGateway(debug=False)
 
         #----------------#
         # Video download #

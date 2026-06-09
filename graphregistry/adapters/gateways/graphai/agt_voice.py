@@ -6,9 +6,9 @@ from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 import rich
 
 #==================================#
-# GraphAI Gateway: Audio endpoints #
+# GraphAI Gateway: Voice endpoints #
 #==================================#
-class GraphAIAudioGateway(GraphAIBaseGateway):
+class GraphAIVoiceGateway(GraphAIBaseGateway):
 
     #===================#
     # Top level methods #

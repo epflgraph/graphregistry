@@ -92,3 +92,4 @@ if True:
     task_id = lecture_ops.launch_audio_extraction(video_token)
     rich.print(f"Launched audio extraction with task ID: {task_id}")
 
+    task_id = 'c8033848-47da-47dc-ad9a-8a351898796a'

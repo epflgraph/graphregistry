@@ -1,5 +1,5 @@
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
+from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIAudioGateway
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 import rich
 

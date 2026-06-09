@@ -4,7 +4,7 @@ from pathlib import Path
 from requests import post
 from graphregistry.domain.models.entities.mdl_lecture import Video, Voice, Slide, SlideList
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
+from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
 import rich
 
 #==================================#
@@ -229,8 +229,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
-        # Initialize the GraphAIAudioGateway to use its fingerprint method for getting the audio fingerprint
-        gtw_audio = GraphAIAudioGateway()
+        # Initialize the GraphAIVoiceGateway to use its fingerprint method for getting the audio fingerprint
+        gtw_audio = GraphAIVoiceGateway()
 
         # Get audio parameters
         token       = task_result['token']

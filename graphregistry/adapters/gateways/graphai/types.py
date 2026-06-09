@@ -8,7 +8,7 @@ from graphregistry.adapters.gateways.graphai.agt_embedding import GraphAIEmbeddi
 from graphregistry.adapters.gateways.graphai.agt_image import GraphAIImageGateway
 from graphregistry.adapters.gateways.graphai.agt_translation import GraphAITextTranslationGateway
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
+from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
 
 GraphAIGateway: TypeAlias = (
     type[GraphAIConceptDetectionGateway]
@@ -16,6 +16,6 @@ GraphAIGateway: TypeAlias = (
     | type[GraphAIEmbeddingGateway]
     | type[GraphAIImageGateway]
     | type[GraphAIVideoGateway]
-    | type[GraphAIAudioGateway]
+    | type[GraphAIVoiceGateway]
 )
 GraphAIGatewayDict: TypeAlias = dict[str, GraphAIGateway]
