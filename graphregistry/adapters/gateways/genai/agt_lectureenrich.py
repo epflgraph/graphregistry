@@ -1,13 +1,20 @@
 # graphregistry/adapters/gateways/genai/agt_lectureenrich.py
 from __future__ import annotations
+
 import json
 from pathlib import Path
+
 from loguru import logger as sysmsg
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
+from openai import OpenAIError
+
 from graphregistry.adapters.clients.rcp_models import send_llm_request
 from graphregistry.adapters.gateways.mappers.agm_lectureenrich import GenAILectureEnrichmentMapper
+from graphregistry.domain.models.tasks.mdl_lectureenrich import (
+    LectureEnrichmentResult,
+    LectureEnrichmentTask,
+)
 
-# Gateway class
+
 class GenAILectureEnrichmentGateway:
     """Concrete gateway that prepares lecture enrichment prompts for GenAI models."""
 
@@ -19,27 +26,24 @@ class GenAILectureEnrichmentGateway:
         self.prompt_path = prompt_path
         self.timeout = timeout
 
-    # The enrich method takes a LectureEnrichmentTask, constructs a prompt, sends it to the LLM, and returns a LectureEnrichmentResult
-    def enrich(self, task: LectureEnrichmentTask, verbose: bool = False) -> LectureEnrichmentResult | None:
+    def enrich(
+        self,
+        task: LectureEnrichmentTask,
+        verbose: bool = False,
+    ) -> LectureEnrichmentResult | None:
 
-        # Read the prompt template from the file system
         prompt_template = self.prompt_path.read_text(encoding="utf-8")
-
-        # Convert the LectureEnrichmentTask into a dict format suitable for JSON serialization and LLM prompting
         task_payload = GenAILectureEnrichmentMapper.to_prompt_dict(task)
 
-        # Construct the full prompt by combining the template with the JSON-serialized task payload
         llm_prompt = (
             prompt_template
             + "\n\nHere is the lecture data:\n"
             + json.dumps(task_payload, ensure_ascii=False, indent=2)
         )
 
-        # Optionally print the prompt for debugging
         if verbose:
             print(llm_prompt)
 
-        # Send the prompt to the LLM and get the response, which should conform to the LectureEnrichmentResult schema
         try:
             result = send_llm_request(
                 timeout=self.timeout,
@@ -66,6 +70,13 @@ class GenAILectureEnrichmentGateway:
                 exc,
             )
             return None
+        except OpenAIError as exc:
+            # Keep batch processing alive when one lecture request fails (e.g., context overflow).
+            sysmsg.warning(
+                "Skipping lecture enrichment for lecture_id={} due to LLM API error: {}",
+                task.lecture_id,
+                exc,
+            )
+            return None
 
-        # Return the normalized result, which will convert dicts to dataclass instances and perform any necessary transformations
         return GenAILectureEnrichmentMapper.normalize(result)
