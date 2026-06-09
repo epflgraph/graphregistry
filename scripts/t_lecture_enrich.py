@@ -37,12 +37,8 @@ lecture_ops = LectureOperations(
 if True:
 
     # Get list on unprocessed lecture IDs
-    list_of_lectures = set(
-        [
-            r[0]
-            for r in db.execute_query(
-                engine_name=engine_name,
-                query="""
+    list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name,
+        query="""
    SELECT DISTINCT v.object_id AS lecture_id
               FROM graph_lectures.Nodes_N_Object v
         INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent c
@@ -66,13 +62,7 @@ if True:
              WHERE v.object_type = 'Lecture'
                AND v.object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
           ORDER BY tt.score DESC;
-    """,
-            )
-            if r is not None
-        ]
-    )
-
-    # list_of_lectures = ['0_qoz5n4ud']
+    """)]
 
     # Get total number of lectures to process
     N = len(list_of_lectures)
