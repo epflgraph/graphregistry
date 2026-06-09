@@ -4,9 +4,8 @@ from typing import Any
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.entrypoints.mappers import SpecMapper
-from graphregistry.entrypoints.schemas import LectureSpec
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 import rich
 
@@ -29,7 +28,7 @@ class LectureFactory:
 
         # Initialize the gateway
         gtw_video = GraphAIVideoGateway(debug=False)
-        gtw_voice = GraphAIVoiceGateway(debug=False)
+        gtw_voice = GraphAIAudioGateway(debug=False)
 
         #-------------------------------------------------------#
 

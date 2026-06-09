@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.common.auxfcn import normalized_levenshtein
@@ -27,13 +27,17 @@ class LectureOperations(NodeOperations):
         self.ai_gateways = ai_gateways or {}
         self.msg = GraphLogger()
 
-    #-------------------------------#
+    #===============================#
     # Content processing operations #
-    #-------------------------------#
+    #===============================#
+
+    #-----------------------------------------#
+    # METHOD GROUP: Video download operations #
+    #-----------------------------------------#
 
     # Method: Get list of undownloaded lectures, returning a list of NodeKey objects for the undownloaded lectures
-    def get_undownloaded(self) -> NodeKeyList:
-        return self.repo.get_undownloaded()
+    def get_undownloaded(self, limit: int | None = 16) -> NodeKeyList:
+        return self.repo.get_undownloaded(limit)
 
     # Method: Get file URL for a lecture based on the lecture key, returning the file URL as a string
     def get_file_url(self, lecture_key: NodeKey) -> str:
@@ -61,6 +65,10 @@ class LectureOperations(NodeOperations):
     def get_video_download_task_id(self, lecture_key: NodeKey) -> str:
         return self.repo.get_video_download_task_id(lecture_key)
 
+    # Method: Get list of lectures for which video download tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished video download tasks
+    def get_unfinished_video_tasks(self, limit: int | None = 16) -> NodeKeyList:
+        return self.repo.get_unfinished_video_tasks(limit)
+
     # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
     def get_video_download_result(self, lecture_key: NodeKey) -> dict | None:
 
@@ -83,11 +91,31 @@ class LectureOperations(NodeOperations):
     def get_video_token(self, lecture_key: NodeKey) -> str:
         return self.repo.get_video_token(lecture_key)
 
+    #-------------------------------------------#
+    # METHOD GROUP: Audio extraction operations #
+    #-------------------------------------------#
+
+    # Method: Get list of lectures for which video has been downloaded but audio has not yet been extracted
+    def get_with_unextracted_audio(self, limit: int | None = 16) -> NodeKeyList:
+        return self.repo.get_with_unextracted_audio(limit)
+
+    # Method: Launch asynchronous audio extraction task for a lecture based on the video token
+    def launch_audio_extraction(self, video_token: str) -> str:
+
+        # Get the enrichment gateway
+        gtw = self.ai_gateways.get("video_processing")
+        if gtw is None:
+            raise ValueError("Missing gateway: video_processing")
+
+        # Run the audio extraction gateway to generate the audio token
+        task_id = gtw.launch_audio_extraction(video_token=video_token)
+
+        # Return the audio token immediately without waiting for the processing to complete
+        return task_id
 
 
-
-
-
+    #-------------------------------------------#
+    #-------------------------------------------#
 
     def get_video_tokens_no_slides(self) -> NodeKeyList:
         raise NotImplementedError("Method get_video_tokens_no_slides not implemented")
@@ -114,7 +142,7 @@ class LectureOperations(NodeOperations):
 
         # Initialize the gateway (TODO: is there an abstraction of these?)
         gtw_video = GraphAIVideoGateway(debug=False)
-        gtw_voice = GraphAIVoiceGateway(debug=False)
+        gtw_audio = GraphAIAudioGateway(debug=False)
 
         #----------------#
         # Video download #
@@ -173,14 +201,14 @@ class LectureOperations(NodeOperations):
 
         # Loop over audio tokens and launch audio transcription tasks
         for video_token in video_tokens_no_audio:
-            transcript_token = gtw_voice.transcribe_audio(video_token=video_token, launch_only=True)
+            transcript_token = gtw_audio.transcribe_audio(video_token=video_token, launch_only=True)
             self.save_transcript_token(lecture_key, transcript_token)
 
         return None
 
-    #-------------------------------------#
+    #=====================================#
     # Lecture field enrichment operations #
-    #-------------------------------------#
+    #=====================================#
 
     # Method: Enrich one lecture by lecture_id
     def enrich(self, lecture_id: str) -> LectureEnrichmentResult | None:

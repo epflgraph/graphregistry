@@ -4,7 +4,7 @@ from pathlib import Path
 from requests import post
 from graphregistry.domain.models.entities.mdl_lecture import Video, Voice, Slide, SlideList
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
 import rich
 
 #==================================#
@@ -16,8 +16,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     # Top level methods #
     #===================#
 
-    # Gateway method: Launch asynchronous video download and processing task on GraphAI,
-    # returning the task ID immediately without waiting for the result
+    # Gateway method: Launch asynchronous video download and processing task on GraphAI
     def launch_video_download(self, video_url: str) -> str:
         task_id = self.get_video(file_url=video_url, launch_only=True)
         assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
@@ -38,6 +37,29 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             return None
 
         # Return the task result, which should contain the video token and metadata if the processing was successful
+        return task_result
+
+    # Gateway method: Launch audio extraction from a video token and get the corresponding task ID
+    def launch_audio_extraction(self, video_token: str) -> str:
+        task_id = self.extract_audio(video_token=video_token, launch_only=True)
+        assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
+        return task_id
+
+    # Gateway method: Get the result of an audio extraction task by its task ID
+    def get_audio_extraction_result(self, task_id: str) -> dict | None:
+
+        # Make the request to the GraphAI endpoint to get the result of the audio extraction task
+        task_result = self.get_async_task_result(
+            endpoint = "/video/extract_audio",
+            task_id  = task_id,
+            wait_for_result = False
+        )
+
+        # If the task result is None, it means the request failed or the audio could not be extracted
+        if task_result is None:
+            return None
+
+        # Return the task result, which should contain the audio token and metadata if the extraction was successful
         return task_result
 
     #----------------------------------------------------------------#
@@ -207,12 +229,12 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
-        # Initialize the GraphAIVoiceGateway to use its fingerprint method for getting the audio fingerprint
-        gtw_voice = GraphAIVoiceGateway()
+        # Initialize the GraphAIAudioGateway to use its fingerprint method for getting the audio fingerprint
+        gtw_audio = GraphAIAudioGateway()
 
         # Get audio parameters
         token       = task_result['token']
-        fingerprint = gtw_voice.fingerprint(input=token)
+        fingerprint = gtw_audio.fingerprint(input=token)
         duration    = task_result['duration']
 
         # Create voice object with available information

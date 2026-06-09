@@ -12,12 +12,12 @@ from graphregistry.domain.types import ActionSet
 # Class definition
 class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
 
-    #-------------------------------#
+    #===============================#
     # Content processing operations #
-    #-------------------------------#
+    #===============================#
 
     # Method: Get list of undownloaded lectures, returning a list of NodeKey objects for the undownloaded lectures
-    def get_undownloaded(self) -> NodeKeyList:
+    def get_undownloaded(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
         engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
@@ -25,7 +25,8 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
             file_path = sql_queries_paths['registry']['commit']['lecture_get_undownloaded'],
-            airflow   = airflow_schema_name
+            airflow   = airflow_schema_name,
+            limit     = limit if limit is not None else 16
         )
 
         # Execute query and fetch result
@@ -125,6 +126,33 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         # Return the video download task ID
         return task_id
 
+    # Method: Get list of lectures for which video download tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished video download tasks
+    def get_unfinished_video_tasks(self, limit: int | None = 16) -> NodeKeyList:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_unfinished_video_tasks'],
+            airflow   = airflow_schema_name,
+            limit     = limit if limit is not None else 16
+        )
+
+        # Execute query and fetch result
+        unfinished_video_tasks = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract lecture ids from query result and convert them into NodeKey objects
+        unfinished_video_task_keys = NodeKeyList(
+            item_list=[
+                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                for (lecture_id,) in unfinished_video_tasks
+            ]
+        )
+
+        # Return the list of lecture keys with unfinished video tasks
+        return unfinished_video_task_keys
+
     # Method: Save the video token for a lecture in persistence
     def save_video_token(self, lecture_key: NodeKey, video_token: str) -> NodeKey:
 
@@ -176,9 +204,40 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         # Return the video token
         return video_token
 
-    #-------------------------------------#
+    #-------------------------------------------#
+    # METHOD GROUP: Audio extraction operations #
+    #-------------------------------------------#
+
+    # Method: Get list of lectures for which video has been downloaded but audio has not yet been extracted, returning a list of NodeKey objects for the lectures with unextracted audio
+    def get_with_unextracted_audio(self, limit: int | None = 16) -> NodeKeyList:
+
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_with_unextracted_audio'],
+            airflow   = airflow_schema_name,
+            limit     = limit if limit is not None else 16
+        )
+
+        # Execute query and fetch result
+        lectures_with_unextracted_audio = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract lecture ids from query result and convert them into NodeKey objects
+        lecture_keys_with_unextracted_audio = NodeKeyList(
+            item_list=[
+                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                for (lecture_id,) in lectures_with_unextracted_audio
+            ]
+        )
+
+        # Return the list of lecture keys with unextracted audio
+        return lecture_keys_with_unextracted_audio
+
+    #=====================================#
     # Lecture field enrichment operations #
-    #-------------------------------------#
+    #=====================================#
 
     # Method: Get enrichment task for a lecture based on the lecture key, returning a LectureEnrichmentTask object
     def get_enrichment_task(self, key: NodeKey) -> LectureEnrichmentTask | None:

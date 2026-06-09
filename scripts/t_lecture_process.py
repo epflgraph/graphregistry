@@ -41,66 +41,54 @@ test_key = NodeKey(
     object_id      = '0_042zj2ns'
 )
 
-# Get file URL for the lecture
-lecture_file_url = lecture_ops.get_file_url(test_key)
-rich.print(f"File URL: {lecture_file_url}")
-
-# Launch video download and get task ID
-task_id = lecture_ops.launch_video_download(lecture_file_url)
-rich.print(f"Launched video download with task ID: {task_id}")
-
-# Save the video download task ID in the database
-lecture_ops.save_video_download_task_id(test_key, task_id)
-
-# Retrieve the video download task ID from the database and print it
-rich.print(f"Video download task ID: {lecture_ops.get_video_download_task_id(test_key)}")
-
-# Press any key to continue
-input("Press Enter to continue...")
-
-# Get the video download result using the task ID and print it
-result = lecture_ops.get_video_download_result(test_key)
-rich.print(f"Video download result:")
-rich.print_json(data=result)
-
-# Check if the result is not None before proceeding
-assert result is not None, "Video download result is None"
-
-# Save video token in the database
-lecture_ops.save_video_token(lecture_key=test_key, video_token=result["token"])
-
-out_token = lecture_ops.get_video_token(test_key)
-rich.print(f"Video token: {out_token}")
-rich.print(f"Video token matches: {out_token == result['token']}")
-
-exit()
-
-
-
-undownloaded_lectures = lecture_ops.get_undownloaded()
-
-for lecture_key in undownloaded_lectures.item_list:
-
-    rich.print(lecture_key)
+if False:
 
     # Get file URL for the lecture
-    lecture_file_url = lecture_ops.get_file_url(lecture_key)
+    lecture_file_url = lecture_ops.get_file_url(test_key)
     rich.print(f"File URL: {lecture_file_url}")
 
+    # Launch video download and get task ID
     task_id = lecture_ops.launch_video_download(lecture_file_url)
     rich.print(f"Launched video download with task ID: {task_id}")
 
-    # exit()
+    # Save the video download task ID in the database
+    lecture_ops.save_video_download_task_id(test_key, task_id)
 
-    # 0_004bw2go
-    # 6868980e-0f06-4603-a943-678cc158f6b9
+    # Retrieve the video download task ID from the database and print it
+    rich.print(f"Video download task ID: {lecture_ops.get_video_download_task_id(test_key)}")
 
-    lecture_ops.save_video_download_task_id(
-        NodeKey(
-            institution_id = 'EPFL',
-            object_type    = 'Lecture',
-            object_id      = '0_004bw2go'
-        ),
-        task_id = '6868980e-0f06-4603-a943-678cc158f6b9'
-    )
+if False:
+
+    # Get the video download result using the task ID and print it
+    result = lecture_ops.get_video_download_result(test_key)
+    rich.print(f"Video download result:")
+    rich.print_json(data=result)
+
+    # Check if the result is not None before proceeding
+    assert result is not None, "Video download result is None"
+
+    # Save video token in the database
+    lecture_ops.save_video_token(lecture_key=test_key, video_token=result["token"])
+
+    out_token = lecture_ops.get_video_token(test_key)
+    rich.print(f"Video token: {out_token}")
+    rich.print(f"Video token matches: {out_token == result['token']}")
+
+if False:
+    list_of_lectures = lecture_ops.get_unfinished_video_tasks(limit=16)
+    for f in list_of_lectures.item_list:
+        rich.print(f)
+
+if True:
+    list_of_lectures = lecture_ops.get_with_unextracted_audio(limit=16)
+    lecture_key = list_of_lectures.item_list[0]
+    rich.print(f"Lecture key with unextracted audio: {lecture_key}")
+
+    # Get video token
+    video_token = lecture_ops.get_video_token(lecture_key)
+    rich.print(f"Video token: {video_token}")
+
+    # Launch audio extraction
+    task_id = lecture_ops.launch_audio_extraction(video_token)
+    rich.print(f"Launched audio extraction with task ID: {task_id}")
 

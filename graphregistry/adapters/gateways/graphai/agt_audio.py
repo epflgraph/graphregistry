@@ -6,9 +6,13 @@ from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 import rich
 
 #==================================#
-# GraphAI Gateway: Voice endpoints #
+# GraphAI Gateway: Audio endpoints #
 #==================================#
-class GraphAIVoiceGateway(GraphAIBaseGateway):
+class GraphAIAudioGateway(GraphAIBaseGateway):
+
+    #===================#
+    # Top level methods #
+    #===================#
 
     #---------------------------------------------------------------------------#
     # Gateway method: Transcribe audio from a given Voice object or audio token #
@@ -87,7 +91,6 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
 
         # Return the Transcript object containing the transcription results
         return transcript
-
 
     def detect_language(
         self,

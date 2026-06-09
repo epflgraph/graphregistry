@@ -1,5 +1,5 @@
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.adapters.gateways.graphai.agt_audio import GraphAIAudioGateway
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 import rich
 
@@ -8,7 +8,7 @@ file_url = 'https://raw.githubusercontent.com/epflgraph/graphregistry/master/scr
 
 # Initialize the gateway
 gtw_video = GraphAIVideoGateway(debug=False)
-gtw_voice = GraphAIVoiceGateway(debug=False)
+gtw_audio = GraphAIAudioGateway(debug=False)
 
 #-------------------------------------------------------#
 
@@ -37,7 +37,7 @@ assert slides is not None, "Failed to extract slides from video"
 #-------------------------------------------------------#
 
 # Transcribe audio from video and get transcription results
-transcript = gtw_voice.transcribe_audio(input=voice)
+transcript = gtw_audio.transcribe_audio(input=voice)
 
 # Ensure we got valid transcription results before proceeding
 assert transcript is not None, "Failed to transcribe audio from video"
