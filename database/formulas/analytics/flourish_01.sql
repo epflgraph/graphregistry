@@ -1,9 +1,12 @@
 
-         CREATE TABLE graph_analytics.temp (
-					  KEY course_code (course_code),
-					  KEY concept_id (concept_id),
-					  UNIQUE KEY unique_key (course_code, concept_id)
-                      ) AS
+        --  CREATE TABLE graph_analytics.temp (
+		-- 			  KEY course_code (course_code),
+		-- 			  KEY concept_id (concept_id),
+		-- 			  UNIQUE KEY unique_key (course_code, concept_id)
+        --               ) AS
+         REPLACE INTO graph_analytics.temp
+                      (course_code, concept_id, score)
+
                SELECT p.to_object_id AS course_code, c.concept_id, AVG(c.score) AS score
 				 FROM _1_DEV_graph_cache.Edges_N_Object_N_Concept_T_CalculatedScores c
 		   INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent p
@@ -12,7 +15,12 @@
                   AND c.calculation_type IN ('slide count ai validated', 'top concepts ai validated')
 			 GROUP BY p.to_object_id, c.concept_id;
 
- CREATE TABLE graph_analytics.Flourish_v3 AS
+--  CREATE TABLE graph_analytics.Flourish_v3 AS
+ REPLACE INTO graph_analytics.Flourish_v3
+              (root, category_name_1, category_name_2, category_name_3, category_name_4, cluster_id,
+              course_code, course_name, concept_id, concept_name, is_cs_119_concept,
+              study_plan_id, study_plan_name, study_plan_level, score)
+
        SELECT n5.name AS root, n4.name AS category_name_1, n3.name AS category_name_2, n2.name AS category_name_3, n1.name AS category_name_4, a.to_id AS cluster_id,
               q1.course_code, o2.object_title AS course_name, concept_id, o3.name AS concept_name, 0 AS is_cs_119_concept,
               o1.object_id AS study_plan_id,
