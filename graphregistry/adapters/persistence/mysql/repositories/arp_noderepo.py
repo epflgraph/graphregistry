@@ -164,6 +164,10 @@ class MySQLNodeRepository(NodeRepository):
 
         # Loop over concept mapping types
         for map_type in get_args(ConceptMapType):
+            
+            # TODO: Skip detected concepts update [TEMPORARY]
+            if map_type == 'detected':
+                continue
 
             # Resolve placeholdes in template query
             sql_query = resolve_sql_query(
@@ -281,6 +285,12 @@ class MySQLNodeRepository(NodeRepository):
         ):
             # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
             for row in MySQLNodeMapper.to_scored_concepts_rows(node, map_to=map_type):
+                
+                # TODO: Skip detected concepts update [TEMPORARY]
+                if map_type == 'detected':
+                    continue
+                
+                # Resolve placeholders in template query
                 self.db.execute_upsert_row(
                     engine_name       = engine_name,
                     schema_name       = schema_name,
