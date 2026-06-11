@@ -11,7 +11,7 @@ Input:
 Tasks:
 
 1. Infer a lecture title and descriptions from the whole lecture.
-- title: concise, less than 60 characters.
+- title: concise, less than 60 characters (but don't crop it if it is naturally longer).
 - long_description: one paragraph, no line breaks.
 - medium_description: about 3 lines worth of text, but still no line breaks.
 - short_description: exactly in the style "Lecture on subject 1, subject 2, subject 3".
