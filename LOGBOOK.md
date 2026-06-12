@@ -45,3 +45,5 @@
 - 👉 execute all operations with the operations object, not with the repo class directly
 - 👉 centralize initalization of operations object in a single function
 - 👉 Fix line 1045 in graphdb
+- 👉 implement handling of "file not found" in graphai endpoints
+
