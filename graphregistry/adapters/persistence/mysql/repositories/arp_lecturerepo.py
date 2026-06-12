@@ -474,26 +474,54 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         return unfinished_slide_task_keys
     
     # Method: Save the slide tokens for a lecture in persistence (this can be used to retrieve the detected slides or check if the slides have been processed)
-    def save_slide_tokens(self, lecture_key: NodeKey, slide_tokens: list[str]) -> NodeKey:
+    def save_slide_tokens(self, lecture_key: NodeKey, slide_num_and_tokens: list[tuple[int, str]]) -> NodeKey:
         
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
+        
+        # Get video token
+        video_token = self.get_video_token(lecture_key)
 
-        # Convert list of slide tokens into a comma-separated string for storage
-        slide_tokens_str = ",".join(slide_tokens)
+        # Loop over slide tokens
+        for slide_num, slide_token in slide_num_and_tokens:
+            
+            # Generate slide id from lecture id and slide number
+            slide_id = f"{lecture_key.object_id}-{slide_num:04d}"
+            
+            # Create slide key
+            slide_key = NodeKey(
+                institution_id = lecture_key.institution_id,
+                object_type    = "Slide",
+                object_id      = slide_id
+            )
 
-        # Resolve placeholders in template query
+            # Resolve placeholders in template query
+            self.db.execute_upsert_row(
+                engine_name       = engine_name,
+                schema_name       = schema_name,
+                table_name        = "Operations_N_Slide_T_ProcessingTokens",
+                key_column_names  = ["institution_id", "object_type", "object_id"],
+                key_column_values = [slide_key.institution_id, slide_key.object_type, slide_key.object_id],
+                upd_column_names  = ['video_token', 'image_token'],
+                upd_column_values = [video_token, slide_token],
+                actions           = ('commit',)
+            )
+
+            # Print status message
+            self.msg.airflow_saved(slide_key)
+            
+        # Set 'slides_detected' flag to True for the lecture
         self.db.execute_upsert_row(
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
             key_column_names  = ["institution_id", "object_type", "object_id"],
             key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['slide_tokens'],
-            upd_column_values = [slide_tokens_str],
+            upd_column_names  = ['slides_detected'],
+            upd_column_values = [True],
             actions           = ('commit',)
         )
-
+        
         # Print status message
         self.msg.airflow_saved(lecture_key)
 

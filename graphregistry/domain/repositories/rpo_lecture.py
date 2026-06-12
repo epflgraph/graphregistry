@@ -76,7 +76,7 @@ class LectureRepository(Protocol):
     def get_unfinished_slide_detection_tasks(self, limit: int | None = 16) -> NodeKeyList:
         ...
 
-    def save_slide_tokens(self, lecture_key: NodeKey, slide_tokens: list[str]) -> NodeKey:
+    def save_slide_tokens(self, lecture_key: NodeKey, slide_num_and_tokens: list[tuple[int, str]]) -> NodeKey:
         ...
 
     def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:

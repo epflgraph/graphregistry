@@ -17,8 +17,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     #===================#
 
     # Gateway method: Launch asynchronous video download and processing task on GraphAI
-    def launch_video_download(self, video_url: str) -> str:
-        task_id = self.get_video(file_url=video_url, launch_only=True)
+    def launch_video_download(self, video_url: str, no_cache: bool = False) -> str:
+        task_id = self.get_video(file_url=video_url, force=no_cache, launch_only=True)
         assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
         return task_id
 
@@ -40,8 +40,13 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         return task_result
 
     # Gateway method: Launch audio extraction from a video token and get the corresponding task ID
-    def launch_audio_extraction(self, video_token: str) -> str:
-        task_id = self.extract_audio(video_token=video_token, launch_only=True)
+    def launch_audio_extraction(self, video_token: str, no_cache: bool = False) -> str:
+        task_id = self.extract_audio(
+            video_token=video_token,
+            recalculate_cached=False,
+            force=no_cache,
+            launch_only=True,
+        )
         assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
         return task_id
 
@@ -63,8 +68,13 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         return task_result
 
     # Gateway method: Launch slide detection from a video token and get the corresponding task ID
-    def launch_slide_detection(self, video_token: str) -> str:
-        task_id = self.extract_slides(video_token=video_token, launch_only=True)
+    def launch_slide_detection(self, video_token: str, no_cache: bool = False) -> str:
+        task_id = self.extract_slides(
+            video_token=video_token,
+            recalculate_cached=False,
+            force=no_cache,
+            launch_only=True,
+        )
         assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
         return task_id
 

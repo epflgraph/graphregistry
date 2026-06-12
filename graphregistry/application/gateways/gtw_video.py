@@ -16,3 +16,9 @@ class VideoProcessingGateway(Protocol):
 
     def get_audio_extraction_result(self, task_id: str) -> dict | None:
         ...
+
+    def launch_slide_detection(self, video_token: str, no_cache: bool = False) -> str:
+        ...
+        
+    def get_slide_detection_result(self, task_id: str) -> dict | None:
+        ...
