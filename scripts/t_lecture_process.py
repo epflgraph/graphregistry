@@ -79,17 +79,78 @@ if False:
     for f in list_of_lectures.item_list:
         rich.print(f)
 
-if True:
-    list_of_lectures = lecture_ops.get_with_unextracted_audio(limit=16)
-    lecture_key = list_of_lectures.item_list[0]
-    rich.print(f"Lecture key with unextracted audio: {lecture_key}")
+if False:
+    
+    # Get a list of lectures with unextracted audio and print the first lecture key
+    # list_of_lectures = lecture_ops.get_with_unextracted_audio(limit=16)
+    # lecture_key = list_of_lectures.item_list[0]
+    # rich.print(f"Lecture key with unextracted audio: {lecture_key}")
+    
+    # Switch to the test key for demonstration purposes
+    lecture_key = test_key
+    rich.print(f"Using lecture key: {lecture_key}")
 
     # Get video token
     video_token = lecture_ops.get_video_token(lecture_key)
     rich.print(f"Video token: {video_token}")
 
     # Launch audio extraction
-    task_id = lecture_ops.launch_audio_extraction(video_token)
+    # task_id = lecture_ops.launch_audio_extraction(video_token)
+    task_id = '70d0138c-438b-4cea-ac6d-731daaf72499'
     rich.print(f"Launched audio extraction with task ID: {task_id}")
+    
+    # Save the audio extraction task ID in the database
+    lecture_ops.save_audio_extraction_task_id(lecture_key, task_id)
+    
+    # Retrieve the audio extraction task ID from the database and print it
+    rich.print(f"Audio extraction task ID: {lecture_ops.get_audio_extraction_task_id(lecture_key)}")
+    
+    # Get the audio extraction result using the task ID and print it
+    result = lecture_ops.get_audio_extraction_result(lecture_key)
+    rich.print(f"Audio extraction result:")
+    rich.print_json(data=result)
 
-    task_id = 'c8033848-47da-47dc-ad9a-8a351898796a'
+    # Check if the result is not None before proceeding
+    assert result is not None, "Audio extraction result is None"
+
+    # Save audio token in the database
+    lecture_ops.save_audio_token(lecture_key=test_key, audio_token=result["token"])
+
+    out_token = lecture_ops.get_audio_token(test_key)
+    rich.print(f"Audio token: {out_token}")
+    rich.print(f"Audio token matches: {out_token == result['token']}")
+    
+if True:
+    
+    # Get a list of lectures with undetected slides and print the first lecture key
+    # list_of_lectures = lecture_ops.get_with_undetected_slides(limit=16)
+    # for f in list_of_lectures.item_list:
+    #     rich.print(f)
+       
+    # For demonstration purposes, we will use the test key instead of the retrieved lecture keys 
+    lecture_key = NodeKey(
+        institution_id = 'EPFL',
+        object_type    = 'Lecture',
+        object_id      = '0_005blefe'
+    )
+    
+    # Get video token
+    video_token = lecture_ops.get_video_token(lecture_key)
+    rich.print(f"Video token: {video_token}")
+    
+    # Launch slide detection
+    # task_id = lecture_ops.launch_slide_detection(video_token)
+    task_id = 'fe5a497d-8ff9-4884-af51-09e79a4e51dc'
+    rich.print(f"Launched slide detection with task ID: {task_id}")
+    
+    # Save the slide detection task ID in the database
+    lecture_ops.save_slide_detection_task_id(lecture_key, task_id)
+    
+    # Retrieve the slide detection task ID from the database and print it
+    rich.print(f"Slide detection task ID: {lecture_ops.get_slide_detection_task_id(lecture_key)}")
+    
+    # Get the slide detection result using the task ID and print it
+    result = lecture_ops.get_slide_detection_result(lecture_key)
+    rich.print(f"Slide detection result:")
+    rich.print_json(data=result)
+    

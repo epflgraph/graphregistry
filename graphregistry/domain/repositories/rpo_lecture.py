@@ -29,7 +29,7 @@ class LectureRepository(Protocol):
     def get_video_download_task_id(self, lecture_key: NodeKey) -> str:
         ...
 
-    def get_unfinished_video_tasks(self, limit: int | None = 16) -> NodeKeyList:
+    def get_unfinished_video_download_tasks(self, limit: int | None = 16) -> NodeKeyList:
         ...
 
     def save_video_token(self, lecture_key: NodeKey, video_token: str) -> NodeKey:
@@ -43,6 +43,43 @@ class LectureRepository(Protocol):
     #-------------------------------------------#
 
     def get_with_unextracted_audio(self, limit: int | None = 16) -> NodeKeyList:
+        ...
+        
+    def save_audio_extraction_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
+        ...
+        
+    def get_audio_extraction_task_id(self, lecture_key: NodeKey) -> str:
+        ...
+        
+    def get_unfinished_audio_extraction_tasks(self, limit: int | None = 16) -> NodeKeyList:
+        ...
+        
+    def save_audio_token(self, lecture_key: NodeKey, audio_token: str) -> NodeKey:
+        ...
+        
+    def get_audio_token(self, lecture_key: NodeKey) -> str:
+        ...
+        
+    #------------------------------------------#
+    # METHOD GROUP: Slide detection operations #
+    #------------------------------------------#
+    
+    def get_with_undetected_slides(self, limit: int | None = 16) -> NodeKeyList:
+        ...
+        
+    def save_slide_detection_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
+        ...
+        
+    def get_slide_detection_task_id(self, lecture_key: NodeKey) -> str:
+        ...
+        
+    def get_unfinished_slide_detection_tasks(self, limit: int | None = 16) -> NodeKeyList:
+        ...
+
+    def save_slide_tokens(self, lecture_key: NodeKey, slide_tokens: list[str]) -> NodeKey:
+        ...
+
+    def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:
         ...
 
     #=====================================#

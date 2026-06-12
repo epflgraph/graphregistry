@@ -24,7 +24,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
-            file_path = sql_queries_paths['registry']['commit']['lecture_get_undownloaded'],
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_with_video_undownloaded'],
             airflow   = airflow_schema_name,
             limit     = limit if limit is not None else 16
         )
@@ -107,7 +107,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
-            file_path   = sql_queries_paths['registry']['commit']['lecture_get_video_download_task_id'],
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_task_id_video_download'],
             airflow     = schema_name,
             lecture_id  = lecture_key.object_id
         )
@@ -127,14 +127,14 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         return task_id
 
     # Method: Get list of lectures for which video download tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished video download tasks
-    def get_unfinished_video_tasks(self, limit: int | None = 16) -> NodeKeyList:
+    def get_unfinished_video_download_tasks(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
         engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
-            file_path = sql_queries_paths['registry']['commit']['lecture_get_unfinished_video_tasks'],
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_unfinished_tasks_video_download'],
             airflow   = airflow_schema_name,
             limit     = limit if limit is not None else 16
         )
@@ -185,7 +185,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
-            file_path   = sql_queries_paths['registry']['commit']['lecture_get_video_token'],
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_token_id_video'],
             airflow     = schema_name,
             lecture_id  = lecture_key.object_id
         )
@@ -216,7 +216,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
 
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
-            file_path = sql_queries_paths['registry']['commit']['lecture_get_with_unextracted_audio'],
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_with_audio_unextracted'],
             airflow   = airflow_schema_name,
             limit     = limit if limit is not None else 16
         )
@@ -235,6 +235,298 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
         # Return the list of lecture keys with unextracted audio
         return lecture_keys_with_unextracted_audio
 
+    # Method: Save the audio extraction task ID for a lecture in persistence (this can be used later to check the status of the extraction or retrieve the extracted audio)
+    def save_audio_extraction_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholders in template query
+        self.db.execute_upsert_row(
+            engine_name       = engine_name,
+            schema_name       = schema_name,
+            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
+            key_column_names  = ["institution_id", "object_type", "object_id"],
+            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            upd_column_names  = ['audio_extraction_task_id'],
+            upd_column_values = [task_id],
+            actions           = ('commit',)
+        )
+
+        # Print status message
+        self.msg.airflow_saved(lecture_key)
+
+        # Return node for chaining
+        return lecture_key
+
+    # Method: Get the audio extraction task ID for a lecture (this can be used to check the status of the extraction or retrieve the extracted audio)
+    def get_audio_extraction_task_id(self, lecture_key: NodeKey) -> str:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_task_id_audio_extraction'],
+            airflow     = schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Execute query and fetch result
+        task_id_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract task ID from query result
+        if not task_id_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Audio extraction task ID for lecture with key {lecture_key} not found in query result")
+
+        # Unpack the single row and single column result to get the task ID string
+        (task_id,) = task_id_result[0]
+
+        # Return the audio extraction task ID
+        return task_id
+
+    # Method: Get list of lectures for which audio extraction tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished audio extraction tasks
+    def get_unfinished_audio_extraction_tasks(self, limit: int | None = 16) -> NodeKeyList:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_unfinished_tasks_audio_extraction'],
+            airflow   = airflow_schema_name,
+            limit     = limit if limit is not None else 16
+        )
+
+        # Execute query and fetch result
+        unfinished_audio_tasks = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract lecture ids from query result and convert them into NodeKey objects
+        unfinished_audio_task_keys = NodeKeyList(
+            item_list=[
+                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                for (lecture_id,) in unfinished_audio_tasks
+            ]
+        )
+
+        # Return the list of lecture keys with unfinished audio extraction tasks
+        return unfinished_audio_task_keys
+
+    # Method: Save the audio token for a lecture in persistence (this can be used to retrieve the extracted audio or check if the audio has been processed)
+    def save_audio_token(self, lecture_key: NodeKey, audio_token: str) -> NodeKey:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholders in template query
+        self.db.execute_upsert_row(
+            engine_name       = engine_name,
+            schema_name       = schema_name,
+            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
+            key_column_names  = ["institution_id", "object_type", "object_id"],
+            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            upd_column_names  = ['audio_token'],
+            upd_column_values = [audio_token],
+            actions           = ('commit',)
+        )
+
+        # Print status message
+        self.msg.airflow_saved(lecture_key)
+
+        # Return node for chaining
+        return lecture_key
+
+    # Method: Get the audio token for a lecture (this can be used to retrieve the extracted audio or check if the audio has been processed)
+    def get_audio_token(self, lecture_key: NodeKey) -> str:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_token_id_audio'],
+            airflow     = schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Execute query and fetch result
+        audio_token_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract audio token from query result
+        if not audio_token_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Audio token for lecture with key {lecture_key} not found in query result")
+
+        # Unpack the single row and single column result to get the audio token string
+        (audio_token,) = audio_token_result[0]
+
+        # Return the audio token
+        return audio_token
+
+    #------------------------------------------#
+    # METHOD GROUP: Slide detection operations #
+    #------------------------------------------#
+    
+    # Method: Get list of lectures for which slides have not yet been detected, returning a list of NodeKey objects for the lectures with undetected slides
+    def get_with_undetected_slides(self, limit: int | None = 16) -> NodeKeyList:
+    
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_with_slides_undetected'],
+            airflow   = airflow_schema_name,
+            limit     = limit if limit is not None else 16
+        )
+        
+        # Execute query and fetch result
+        lectures_with_undetected_slides = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        
+        # Extract lecture ids from query result and convert them into NodeKey objects
+        lecture_keys_with_undetected_slides = NodeKeyList(
+            item_list=[
+                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                for (lecture_id,) in lectures_with_undetected_slides
+            ]
+        )
+        
+        # Return the list of lecture keys with undetected slides
+        return lecture_keys_with_undetected_slides
+
+    # Method: Save the slide detection task ID for a lecture in persistence (this can be used later to check the status of the detection or retrieve the detected slides)
+    def save_slide_detection_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholders in template query
+        self.db.execute_upsert_row(
+            engine_name       = engine_name,
+            schema_name       = schema_name,
+            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
+            key_column_names  = ["institution_id", "object_type", "object_id"],
+            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            upd_column_names  = ['slide_detection_task_id'],
+            upd_column_values = [task_id],
+            actions           = ('commit',)
+        )
+
+        # Print status message
+        self.msg.airflow_saved(lecture_key)
+
+        # Return node for chaining
+        return lecture_key
+
+    # Method: Get the slide detection task ID for a lecture (this can be used to check the status of the detection or retrieve the detected slides)
+    def get_slide_detection_task_id(self, lecture_key: NodeKey) -> str:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_task_id_slide_detection'],
+            airflow     = schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Execute query and fetch result
+        task_id_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract task ID from query result
+        if not task_id_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Slide detection task ID for lecture with key {lecture_key} not found in query result")
+
+        # Unpack the single row and single column result to get the task ID string
+        (task_id,) = task_id_result[0]
+
+        # Return the slide detection task ID
+        return task_id
+
+    # Method: Get list of lectures for which slide detection tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished slide detection tasks
+    def get_unfinished_slide_detection_tasks(self, limit: int | None = 16) -> NodeKeyList:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, airflow_schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path = sql_queries_paths['registry']['commit']['lecture_get_unfinished_tasks_slide_detection'],
+            airflow   = airflow_schema_name,
+            limit     = limit if limit is not None else 16
+        )
+
+        # Execute query and fetch result
+        unfinished_slide_tasks = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+
+        # Extract lecture ids from query result and convert them into NodeKey objects
+        unfinished_slide_task_keys = NodeKeyList(
+            item_list=[
+                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                for (lecture_id,) in unfinished_slide_tasks
+            ]
+        )
+
+        # Return the list of lecture keys with unfinished slide detection tasks
+        return unfinished_slide_task_keys
+    
+    # Method: Save the slide tokens for a lecture in persistence (this can be used to retrieve the detected slides or check if the slides have been processed)
+    def save_slide_tokens(self, lecture_key: NodeKey, slide_tokens: list[str]) -> NodeKey:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Convert list of slide tokens into a comma-separated string for storage
+        slide_tokens_str = ",".join(slide_tokens)
+
+        # Resolve placeholders in template query
+        self.db.execute_upsert_row(
+            engine_name       = engine_name,
+            schema_name       = schema_name,
+            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
+            key_column_names  = ["institution_id", "object_type", "object_id"],
+            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            upd_column_names  = ['slide_tokens'],
+            upd_column_values = [slide_tokens_str],
+            actions           = ('commit',)
+        )
+
+        # Print status message
+        self.msg.airflow_saved(lecture_key)
+
+        # Return node for chaining
+        return lecture_key
+    
+    # Method: Get the slide tokens for a lecture (this can be used to retrieve the detected slides or check if the slides have been processed)
+    def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:
+        
+        # Get schema name for Lecture object type using the schema resolver
+        engine_name, schema_name = self.schema_resolver.for_airflow()
+
+        # Resolve placeholdes in template query
+        sql_query = resolve_sql_query(
+            file_path   = sql_queries_paths['registry']['commit']['lecture_get_token_id_list_slides'],
+            airflow     = schema_name,
+            lecture_id  = lecture_key.object_id
+        )
+
+        # Note: the result is a list of slide keys
+        slide_tokens_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        
+        # Extract slide tokens from query result
+        if not slide_tokens_result:
+            self.msg.not_found(lecture_key)
+            raise ValueError(f"Slide tokens for lecture with key {lecture_key} not found in query result")
+        
+        # Unpack the single row and single column result to get the slide tokens string, then split it back into a list
+        (slide_tokens_str,) = slide_tokens_result[0]
+        slide_tokens = slide_tokens_str.split(",") if slide_tokens_str else []
+        return slide_tokens
+        
+    
     #=====================================#
     # Lecture field enrichment operations #
     #=====================================#

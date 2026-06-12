@@ -62,6 +62,29 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Return the task result, which should contain the audio token and metadata if the extraction was successful
         return task_result
 
+    # Gateway method: Launch slide detection from a video token and get the corresponding task ID
+    def launch_slide_detection(self, video_token: str) -> str:
+        task_id = self.extract_slides(video_token=video_token, launch_only=True)
+        assert isinstance(task_id, str), "Expected task_id to be a string when launch_only is True"
+        return task_id
+
+    # Gateway method: Get the result of a slide detection task by its task ID
+    def get_slide_detection_result(self, task_id: str) -> dict | None:
+        
+        # Make the request to the GraphAI endpoint to get the result of the slide detection task
+        task_result = self.get_async_task_result(
+            endpoint = "/video/detect_slides",
+            task_id  = task_id,
+            wait_for_result = False
+        )
+
+        # If the task result is None, it means the request failed or the slides could not be extracted
+        if task_result is None:
+            return None
+
+        # Return the task result, which should contain the slide tokens and metadata if the detection was successful
+        return task_result
+    
     #----------------------------------------------------------------#
     # Gateway method: Download video from URL and create video token #
     #----------------------------------------------------------------#
