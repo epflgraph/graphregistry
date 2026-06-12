@@ -239,6 +239,14 @@ class GraphAIBaseGateway:
                     if task_result.get("text_too_large", False):
                         return "SUCCESS", task_result
 
+                    # Explicit missing-file signal added by GraphAI status responses.
+                    # `None` means unknown/not-applicable and must not be treated as missing.
+                    file_found = task_result.get("file_found")
+                    if file_found is False:
+                        raise RuntimeError(
+                            f'GraphAI source file not found for task "{task_id}" at "{endpoint}"'
+                        )
+
                     # failure_reason is currently provided by /video/retrieve_url only.
                     if endpoint == "/video/retrieve_url":
                         failure_reason = task_result.get("failure_reason")
