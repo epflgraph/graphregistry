@@ -75,7 +75,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         task_result = self.get_async_task_result(
             endpoint = "/video/detect_slides",
             task_id  = task_id,
-            wait_for_result = False
+            wait_for_result = False,
+            return_status_payload = True
         )
 
         # If the task result is None, it means the request failed or the slides could not be extracted

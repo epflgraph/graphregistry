@@ -195,6 +195,7 @@ class GraphAIBaseGateway:
         login_info: dict[str, Any] | None = None,
         *,
         wait_for_result: bool = True,
+        return_status_payload: bool = False,
         max_processing_time_s: int = 6000,
         max_tries: int = 5,
     ) -> dict[str, Any] | None:
@@ -202,6 +203,7 @@ class GraphAIBaseGateway:
         Get the result of an already-submitted async GraphAI task.
 
         If wait_for_result is False, this performs one status check and returns:
+        - status_payload when return_status_payload is True
         - task_result when task_status is SUCCESS
         - None when task_status is PENDING/STARTED/FAILURE or result is malformed
         """
@@ -222,9 +224,12 @@ class GraphAIBaseGateway:
             self._log(f"Task {task_id}: {task_status}")
 
             if task_status in ("PENDING", "STARTED"):
-                return task_status, None
+                return task_status, status_payload if return_status_payload else None
 
             if task_status == "SUCCESS":
+                if return_status_payload:
+                    return "SUCCESS", status_payload
+
                 task_result = status_payload.get("task_result")
 
                 if not isinstance(task_result, dict):
@@ -249,7 +254,7 @@ class GraphAIBaseGateway:
                 return "SUCCESS", task_result
 
             if task_status == "FAILURE":
-                return "FAILURE", None
+                return "FAILURE", status_payload if return_status_payload else None
 
             raise ValueError(f"Unexpected task status: {task_status}")
 
@@ -273,6 +278,8 @@ class GraphAIBaseGateway:
                     break
 
                 if status == "FAILURE":
+                    if result is not None:
+                        return result
                     break
 
             if attempt < max_tries:
