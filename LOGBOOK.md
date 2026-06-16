@@ -46,4 +46,5 @@
 - 👉 centralize initalization of operations object in a single function
 - 👉 Fix line 1045 in graphdb
 - 👉 implement handling of "file not found" in graphai endpoints
+- 👉 make db exports always overwrite the export folder, or at least ask for confirmation
 
