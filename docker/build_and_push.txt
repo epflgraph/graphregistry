@@ -1,3 +1,19 @@
+
+
+# USE THIS:
+docker buildx build \
+  --progress=plain \
+  --cache-to=type=registry,ref=epflgraph/graphregistry:buildcache,mode=max \
+  -t epflgraph/graphregistry:1.0.0 \
+  -t epflgraph/graphregistry:latest \
+  --push .
+
+
+
+
+
+
+
 # To build the Docker image locally, use the following command. This will build the image and load it into your local Docker environment.
 docker buildx build --progress=plain -t epflgraph/graphregistry:latest --load .
 
@@ -5,7 +21,7 @@ docker buildx build --progress=plain -t epflgraph/graphregistry:latest --load .
 docker buildx build \
   --progress=plain \
   --cache-to=type=registry,ref=epflgraph/graphregistry:buildcache,mode=max \
-  -t epflgraph/graphregistry:latest \
+  -t epflgraph/graphregistry:1.0.0 \
   --push .
 
 # To push to Docker Hub, use the following command instead. Make sure you are logged in to Docker Hub using `docker login` before running this command.
@@ -13,8 +29,8 @@ docker buildx build \
   --progress=plain \
   --cache-from=type=registry,ref=epflgraph/graphregistry:buildcache \
   --cache-to=type=registry,ref=epflgraph/graphregistry:buildcache,mode=max \
-  -t epflgraph/graphregistry:latest \
+  -t epflgraph/graphregistry:1.0.0 \
   --push .
 
-# If you have built the image locally and want to push it to Docker Hub, you can use the following command. This assumes that the image is already tagged as `epflgraph/graphregistry:latest` in your local Docker environment.
-docker push epflgraph/graphregistry:latest
+# If you have built the image locally and want to push it to Docker Hub, you can use the following command. This assumes that the image is already tagged as `epflgraph/graphregistry:1.0.0` in your local Docker environment.
+docker push epflgraph/graphregistry:1.0.0
