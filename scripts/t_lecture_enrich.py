@@ -29,6 +29,13 @@ lecture_ops = LectureOperations(
     ),
 )
 
+# Get n_batch from command line arguments
+import sys
+if len(sys.argv) > 1:
+    n_batch = int(sys.argv[1])
+else:
+    raise ValueError("Please provide n_batch as a command line argument.")
+
 # Run from scratch?
 if True:
 
@@ -61,9 +68,25 @@ if True:
     #                ORDER BY tt.score DESC;
     #     """)]
     # else:
+    # if True:
+    #     list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name,
+    #         query="""
+    #         SELECT DISTINCT l.from_object_id AS lecture_id
+    #                    FROM graph_registry.Edges_N_Object_N_Object_T_ChildToParent c
+    #              INNER JOIN graph_registry.Data_N_Object_T_CustomFields f
+    #                      ON (c.to_object_type, c.to_object_id, c.context, 'en', 'level') = (f.object_type, f.object_id, 'coursebook', f.field_language, f.field_name)
+    #              INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent l 
+    #                      ON (c.from_object_type, c.from_object_id, 'part of') = (l.to_object_type, l.to_object_id, l.context)
+    #                   WHERE (c.from_object_type, c.to_object_type, c.context) = ('Course', 'StudyPlan', 'coursebook')
+    #                     AND f.field_value = 'Bachelor Cycle' 
+    #                     AND c.to_object_id LIKE '%2025-2026'
+    #                     AND c.to_object_id NOT IN ('bachelor-architecture-2025-2026', 'bachelor-projeter-ensemble-enac-2025-2026')
+    #                     AND l.from_object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
+    #                ORDER BY c.to_object_id, l.to_object_id, l.from_object_id;
+    #     """)]
     if True:
-        list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name,
-            query="""
+        
+        sql_query=f"""
             SELECT DISTINCT l.from_object_id AS lecture_id
                        FROM graph_registry.Edges_N_Object_N_Object_T_ChildToParent c
                  INNER JOIN graph_registry.Data_N_Object_T_CustomFields f
@@ -71,12 +94,14 @@ if True:
                  INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent l 
                          ON (c.from_object_type, c.from_object_id, 'part of') = (l.to_object_type, l.to_object_id, l.context)
                       WHERE (c.from_object_type, c.to_object_type, c.context) = ('Course', 'StudyPlan', 'coursebook')
-                        AND f.field_value = 'Bachelor Cycle' 
+                        AND f.field_value IN ('Bachelor Cycle', 'Propedeutics')
                         AND c.to_object_id LIKE '%2025-2026'
                         AND c.to_object_id NOT IN ('bachelor-architecture-2025-2026', 'bachelor-projeter-ensemble-enac-2025-2026')
                         AND l.from_object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
+                        AND (MOD(CRC32(l.from_object_id), 9) + 1) = {n_batch}
                    ORDER BY c.to_object_id, l.to_object_id, l.from_object_id;
-        """)]
+        """
+        list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name, query=sql_query)]
     else:
         list_of_lectures = ['0_rja1k2lk']
 
