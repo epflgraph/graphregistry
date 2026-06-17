@@ -1,4 +1,4 @@
 {
     "type": "Course",
-    "id_pattern": "BIO-*"
+    "id_pattern": "MICRO-*"
 }
