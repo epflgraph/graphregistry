@@ -9,13 +9,15 @@ from graphregistry.entrypoints.api.router import router
 
 # import global config
 from graphregistry.common.config import GlobalConfig
-glbcfg = GlobalConfig()
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
 
 # Create the FastAPI application
 def create_app() -> FastAPI:
+
+    # Load configuration when the app is created, not at import time.
+    glbcfg = GlobalConfig()
 
     # Initialize the FastAPI app with metadata and documentation settings
     app = FastAPI(

@@ -33,9 +33,6 @@ from tqdm import tqdm
 import numpy as np
 import os, shutil, sys, time, rich, gzip, json, subprocess, warnings, logging, random, tempfile
 
-# Initialize global config
-glbcfg = GlobalConfig()
-
 # Auxiliary function: Count lines in JSONL file
 def count_jsonl_lines(path: str) -> int:
     opener = gzip.open if path.endswith(".gz") else open
@@ -452,7 +449,10 @@ class GraphES():
         return cls._instance
 
     # Class constructor
-    def __init__(self, name="GraphIndex", use_ssl=False):
+    def __init__(self, name="GraphIndex", use_ssl=False, config: GlobalConfig | None = None):
+
+        # Configuration is loaded on first use, not at module import time.
+        self._config = config or GlobalConfig()
 
         # Check if the instance is already initialized
         if not self._initialized:
@@ -486,13 +486,13 @@ class GraphES():
         """
 
         # Check if the server name is in the global configuration
-        if f'{engine_name}_env' not in glbcfg.settings['elasticsearch']:
+        if f'{engine_name}_env' not in self._config.settings['elasticsearch']:
             raise ValueError(
                 f"Could not find configuration for Elasticsearch server '{engine_name}' in global config."
             )
 
         # Load parameters
-        params = glbcfg.settings['elasticsearch'][f'{engine_name}_env']
+        params = self._config.settings['elasticsearch'][f'{engine_name}_env']
 
         # Build connection URL (HTTP only, no SSL)
         if "password" in params and params["password"]:
@@ -507,7 +507,7 @@ class GraphES():
             hosts           = [es_hosts],
             http_compress   = True,
             verify_certs    = False, # use_ssl,
-            ca_certs        = '', # glbcfg.settings['elasticsearch']['graph_engine_test']['cert_file'] if use_ssl else '',
+            ca_certs        = '', # self._config.settings['elasticsearch']['graph_engine_test']['cert_file'] if use_ssl else '',
             request_timeout = 3600
         )
 
