@@ -18,6 +18,7 @@ from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGatewa
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_lecturerepo import MySQLLectureRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.application.operations.ops_edge import EdgeOperations
@@ -105,6 +106,19 @@ def build_lecture_enrichment_operations(
     )
 
 
+def build_registry_operations(
+    *,
+    db: GraphDB,
+    engine_name: str,
+    global_config: GlobalConfig,
+) -> tuple[NodeOperations, EdgeOperations]:
+    """Build node and edge operations sharing one schema resolver."""
+    schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
+    node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
+    edge_repo = MySQLEdgeRepository(db=db, schema_resolver=schema_resolver)
+    return NodeOperations(repo=node_repo), EdgeOperations(repo=edge_repo)
+
+
 # ---------------------------------------------------------------------------
 # CLI-specific helpers that read from the standard argparse context.
 # ---------------------------------------------------------------------------
@@ -126,6 +140,25 @@ def build_node_operations_from_args(
 def build_edge_operations_from_args(args) -> EdgeOperations:
     """Build edge operations from a CLI args namespace."""
     return build_edge_operations(
+        db=args.ctx.db,
+        engine_name=args.env,
+        global_config=args.ctx.global_config,
+    )
+
+
+def build_node_operations_with_concept_detection_from_args(args) -> NodeOperations:
+    """Build node operations with a GraphAI concept-detection gateway."""
+    return build_node_operations(
+        db=args.ctx.db,
+        engine_name=args.env,
+        global_config=args.ctx.global_config,
+        concept_detection_gateway=GraphAIConceptDetectionGateway(),
+    )
+
+
+def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOperations]:
+    """Build node and edge operations from a CLI args namespace, sharing one schema resolver."""
+    return build_registry_operations(
         db=args.ctx.db,
         engine_name=args.env,
         global_config=args.ctx.global_config,

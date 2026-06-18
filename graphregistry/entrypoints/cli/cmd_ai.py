@@ -3,16 +3,11 @@ from __future__ import annotations
 from typing import cast
 import rich
 from graphregistry.domain.models.entities.mdl_node import NodeList
-from graphregistry.application.operations.ops_node import NodeOperations
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
-from graphregistry.entrypoints.cli.dependencies import build_node_operations_from_args
+from graphregistry.entrypoints.cli.dependencies import build_node_operations_with_concept_detection_from_args
 
-# Support function: Initialize node operations with the repository and gateways
-def _get_node_ops(args) -> NodeOperations:
-    return build_node_operations_from_args(
-        args,
-        concept_detection_gateway=GraphAIConceptDetectionGateway(),
-    )
+# Support function: Initialize node operations with the repository and concept-detection gateway
+def _get_node_ops(args):
+    return build_node_operations_with_concept_detection_from_args(args)
 
 #-----------------------------------#
 # Handler: Detect concepts in nodes #

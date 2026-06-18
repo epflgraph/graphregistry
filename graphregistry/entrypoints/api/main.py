@@ -153,19 +153,19 @@ def create_app() -> FastAPI:
     # Return the configured FastAPI application instance
     return app
 
-# Create the FastAPI application instance by calling the create_app function
-app = create_app()
-
 # If this script is run directly (e.g., via `python main.py`),
-# start the Uvicorn server to serve the FastAPI application
+# start the Uvicorn server to serve the FastAPI application.
+# The app is created lazily via the factory so importing this module does not
+# trigger configuration loading or database connections.
 if __name__ == "__main__":
 
     # Import Uvicorn, the ASGI server used to run FastAPI applications
     import uvicorn
 
-    # Run the Uvicorn server, specifying the application to run, host, and port
+    # Run the Uvicorn server using the application factory.
     uvicorn.run(
-        "graphregistry.entrypoints.api.main:app",
+        "graphregistry.entrypoints.api.main:create_app",
         host="0.0.0.0",
         port=8000,
+        factory=True,
     )

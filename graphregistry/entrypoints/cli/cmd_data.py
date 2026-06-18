@@ -9,6 +9,7 @@ from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.entrypoints.cli.dependencies import (
     build_edge_operations_from_args,
     build_node_operations_from_args,
+    build_registry_operations_from_args,
 )
 from graphregistry.entrypoints.mappers import SpecMapper
 import rich, json
@@ -158,9 +159,8 @@ def cmd_data_exists(args):
     node_key_list_input = args.node_key_list
     edge_key_list_input = args.edge_key_list
 
-    # Build operations
-    node_ops = _make_node_ops(args)
-    edge_ops = _make_edge_ops(args)
+    # Build operations (share one schema resolver)
+    node_ops, edge_ops = build_registry_operations_from_args(args)
 
     # Process node input
     if node_key_input:
@@ -249,9 +249,8 @@ def cmd_data_get(args):
     node_key_list_input = args.node_key_list
     edge_key_list_input = args.edge_key_list
 
-    # Build operations
-    node_ops = _make_node_ops(args)
-    edge_ops = _make_edge_ops(args)
+    # Build operations (share one schema resolver)
+    node_ops, edge_ops = build_registry_operations_from_args(args)
 
     # Process node input
     if node_key_input:
@@ -338,9 +337,8 @@ def cmd_data_save(args):
     node_list_input = args.node_list
     edge_list_input = args.edge_list
 
-    # Build operations
-    node_ops = _make_node_ops(args)
-    edge_ops = _make_edge_ops(args)
+    # Build operations (share one schema resolver)
+    node_ops, edge_ops = build_registry_operations_from_args(args)
 
     # Process node input
     if node_input:
@@ -414,9 +412,8 @@ def cmd_data_delete(args):
     node_key_list_input = args.node_key_list
     edge_key_list_input = args.edge_key_list
 
-    # Build operations
-    node_ops = _make_node_ops(args)
-    edge_ops = _make_edge_ops(args)
+    # Build operations (share one schema resolver)
+    node_ops, edge_ops = build_registry_operations_from_args(args)
 
     # Process node input
     if node_key_input:
@@ -521,9 +518,8 @@ def cmd_data_import(args):
     with open(input_file, 'r', encoding='utf-8') as fp:
         sample_set = json.load(fp)
 
-    # Build operations
-    node_ops = _make_node_ops(args)
-    edge_ops = _make_edge_ops(args)
+    # Build operations (share one schema resolver)
+    node_ops, edge_ops = build_registry_operations_from_args(args)
 
     # Method 1: Process and commit object by object
     if import_method == 'object':
