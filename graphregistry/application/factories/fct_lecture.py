@@ -1,105 +1,74 @@
 # graphregistry/application/factories/fct_lecture.py
 from __future__ import annotations
 from typing import Any
-from graphregistry.domain.models.entities.mdl_lecture import Lecture
+
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
-from graphregistry.entrypoints.mappers import SpecMapper
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
-from graphregistry.domain.models.entities.mdl_lecture import Lecture
-import rich
+from graphregistry.application.gateways.gtw_video import VideoProcessingGateway
+from graphregistry.application.gateways.gtw_voice import VoiceProcessingGateway
+from graphregistry.domain.models.entities.mdl_lecture import (
+    Lecture,
+    SlideList,
+    Transcript,
+    Video,
+    Voice,
+)
+
 
 # Factory definition
 class LectureFactory:
-    """Factory for creating Lecture instances, with optional concept detection.
-    If a ConceptDetectionGateway is provided and detect_concepts is True, the factory
-    will use the gateway to detect concepts from the lecture's raw text and
-    populate the concepts.detected field.
+    """Factory for creating Lecture instances from video/voice processing gateways.
+
+    The factory depends on the ``VideoProcessingGateway`` and ``VoiceProcessingGateway"
+    ports (defined in the application layer) and uses concrete adapters only through
+    dependency injection. This keeps the application layer independent of adapter
+    implementations.
     """
+
     # Class constructor
-    def __init__(self, concept_gateway: ConceptDetectionGateway | None = None) -> None:
+    def __init__(
+        self,
+        video_gateway: VideoProcessingGateway,
+        voice_gateway: VoiceProcessingGateway,
+        concept_gateway: ConceptDetectionGateway | None = None,
+    ) -> None:
+        self.video_gateway = video_gateway
+        self.voice_gateway = voice_gateway
         self.concept_gateway = concept_gateway
 
-    # Method: Create a Lecture instance with optional concept detection
-    def create(self, *, detect_concepts: bool = False, **lecture_data) -> Lecture:
+    # Method: Create a Lecture instance from a video file URL
+    def create(self, *, file_url: str, **lecture_data: Any) -> Lecture:
 
         # Create the Lecture instance from the provided data
         lecture = Lecture(**lecture_data)
 
-        # Initialize the gateway
-        gtw_video = GraphAIVideoGateway(debug=False)
-        gtw_voice = GraphAIVoiceGateway(debug=False)
+        # Download/process video to obtain a video object
+        video_result = self.video_gateway.get_video(file_url=file_url)
+        if video_result is None or isinstance(video_result, str):
+            raise ValueError(f"Failed to get video object for URL: {file_url}")
+        video = video_result
 
-        #-------------------------------------------------------#
+        # Extract audio from video to obtain a voice object
+        voice_result = self.video_gateway.extract_audio(input=video)
+        if voice_result is None or isinstance(voice_result, str):
+            raise ValueError(f"Failed to extract audio from video token: {video.token}")
+        voice = voice_result
 
-        # Get video object
-        video = gtw_video.get_video(file_url=lecture_data.file_url)
+        # Extract slides from video
+        slides_result = self.video_gateway.extract_slides(input=video)
+        if slides_result is None or isinstance(slides_result, str):
+            raise ValueError(f"Failed to extract slides from video token: {video.token}")
+        slides = slides_result
 
-        # Ensure we got a valid video object before proceeding
-        assert video is not None, "Failed to get video object"
+        # Transcribe audio from voice
+        transcript_result = self.voice_gateway.transcribe_audio(input=voice)
+        if transcript_result is None or isinstance(transcript_result, str):
+            raise ValueError(f"Failed to transcribe audio from voice token: {voice.token}")
+        transcript = transcript_result
 
-        #-------------------------------------------------------#
-
-        # Extract audio from video and get audio token
-        voice = gtw_video.extract_audio(input=video)
-
-        # Ensure we got a valid voice object before proceeding
-        assert voice is not None, "Failed to extract audio from video"
-
-        #-------------------------------------------------------#
-
-        # Extract slides from video and get slide list
-        slides = gtw_video.extract_slides(input=video)
-
-        # Ensure we got a valid slide list before proceeding
-        assert slides is not None, "Failed to extract slides from video"
-
-        #-------------------------------------------------------#
-
-        # Transcribe audio from video and get transcription results
-        transcript = gtw_voice.transcribe_audio(input=voice)
-
-        # Ensure we got valid transcription results before proceeding
-        assert transcript is not None, "Failed to transcribe audio from video"
-
-        #-------------------------------------------------------#
-
-        # Create lecture object to hold all the information about the lecture,
-        # including the video, audio, slides, and transcript
-        lecture.video      = video,
-        lecture.voice      = voice,
-        lecture.slides     = slides,
+        # Attach processed media to the lecture
+        lecture.video = video
+        lecture.voice = voice
+        lecture.slides = slides
         lecture.transcript = transcript
-        rich.print(lecture)
 
-        # # If concept detection is not requested, return the lecture as is
-        # if not detect_concepts:
-        #     return lecture
-
-        # # If the lecture has no raw text, skip concept detection and return the lecture as is
-        # if not (lecture.raw_text or "").strip():
-        #     return lecture
-
-        # # If concept detection is requested, ensure that a ConceptDetectionGateway is configured
-        # if self.concept_gateway is None:
-        #     raise ValueError("No concept gateway configured")
-
-        # # Perform concept detection using the gateway and populate the detected_concepts field
-        # concepts = self.concept_gateway.detect_concepts(lecture.raw_text or "")
-        # lecture.detected_concepts = concepts
-
-        # # Return the lecture with detected concepts
-        # return lecture
-
-    # Method: Create a Lecture with the equivalent of SpecMapper.from_lecture_spec(lecture_spec)
-    def from_lecture_spec(self, lecture_spec: LectureSpec | dict[str, Any], detect_concepts: bool = False) -> Lecture:
-        lecture = SpecMapper.from_lecture_spec(lecture_spec)
-        return self.create(
-                key             = lecture.key,
-                title           = lecture.title,
-                text_source     = lecture.text_source,
-                raw_text        = lecture.raw_text,
-                field_list      = lecture.field_list,
-                page_profile    = lecture.page_profile,
-                detect_concepts = detect_concepts
-            )
+        return lecture

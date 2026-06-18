@@ -1,10 +1,7 @@
 # graphregistry/application/factories/fct_node.py
 from __future__ import annotations
-from typing import Any
 from graphregistry.domain.models.entities.mdl_node import Node
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
-from graphregistry.entrypoints.mappers import SpecMapper
-from graphregistry.entrypoints.schemas import NodeSpec
 
 # Factory definition
 class NodeFactory:
@@ -41,16 +38,3 @@ class NodeFactory:
 
         # Return the node with detected concepts
         return node
-
-    # Method: Create a Node with the equivalent of SpecMapper.from_node_spec(node_spec)
-    def from_node_spec(self, node_spec: NodeSpec | dict[str, Any], detect_concepts: bool = False) -> Node:
-        node = SpecMapper.from_node_spec(node_spec)
-        return self.create(
-                key             = node.key,
-                title           = node.title,
-                text_source     = node.text_source,
-                raw_text        = node.raw_text,
-                field_list      = node.field_list,
-                page_profile    = node.page_profile,
-                detect_concepts = detect_concepts
-            )
