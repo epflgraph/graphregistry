@@ -48,7 +48,8 @@ REPLACE INTO graph_analytics._course_n_lectures
                 (institution_id, object_type, object_id, concept_id, calculation_type, score)
          SELECT 'EPFL' AS institution_id, 'Lecture' AS object_type, lecture_id AS object_id, concept_id,
                 'slide count ai validated' AS calculation_type,
-                COUNT(DISTINCT slide_id) / MAX(n_slides) AS score
+                -- COUNT(DISTINCT slide_id) / MAX(n_slides) AS score
+                COUNT(DISTINCT slide_id) / MAX(n_slides) * (1 - EXP(-MAX(n_slides) / 15.0)) AS score
            FROM graph_cache.Traversal_N_Course_N_Lecture_N_Slide_N_Concept_T_LLMValidated t
      INNER JOIN graph_analytics._course_lecture_n_slides
           USING (lecture_id)
