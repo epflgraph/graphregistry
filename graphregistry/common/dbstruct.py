@@ -137,30 +137,14 @@ core_datatypes_config_flat = flatten_schema_remove_duplicates(core_datatypes_con
 #============================================#
 # Class definition: Graph Database Structure #
 #============================================#
-class DynamicSQL():
-
-    # Prevent from initialising twice
-    _instance = None
-    def __new__(cls, db: "GraphDB | None" = None):
-        if cls._instance is None:
-            cls._instance = super(DynamicSQL, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
+class DynamicSQL:
 
     # Constructor
-    def __init__(self, db: "GraphDB | None" = None):
+    def __init__(self, db: "GraphDB") -> None:
 
-        # Prevent from initialising twice (e.g. when calling DynamicSQL() multiple times to access static methods)
-        if getattr(self, "_initialized", False):
-            return
-
-        # A GraphDB client must be provided on first instantiation.
-        if db is None:
-            raise ValueError("DynamicSQL requires a GraphDB client on first instantiation")
+        # Store the GraphDB client explicitly. Each caller owns its instance,
+        # which makes the class testable and avoids hidden global state.
         self.db = db
-
-        # Set initialization flag and print message
-        self._initialized = True
 
         #-------------------------------#
         # Basic configuation parameters #
@@ -227,22 +211,22 @@ class DynamicSQL():
     #------------------------------#
 
     @staticmethod
-    def get_fields(doc_type, link_type=None, link_subtype=None, index_group=None, db=None):
+    def get_fields(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None):
         if link_type is None:
             return DynamicSQL(db=db).get_all_doc_fields(doc_type=doc_type, index_group=index_group)
         else:
             return DynamicSQL(db=db).get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
     @staticmethod
-    def get_create_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False, db=None):
+    def get_create_table(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, include_schema=False):
         return DynamicSQL(db=db).get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     @staticmethod
-    def get_alter_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False, db=None):
+    def get_alter_table(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, include_schema=False):
         return DynamicSQL(db=db).get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     @staticmethod
-    def compare_fields(doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None, db=None):
+    def compare_fields(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
         return DynamicSQL(db=db).compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
 
     #---------------------------------#
@@ -670,7 +654,7 @@ class DynamicSQL():
 class GraphTable():
 
     # Constructor
-    def __init__(self, db: "GraphDB | None" = None, doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
+    def __init__(self, db: "GraphDB", doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
 
         # Initialise input parameters
         self.doc_type     = doc_type
@@ -864,7 +848,7 @@ if __name__ == "__main__":
         # print(tb.get_drop_primary_key(), '\n' )
         # print(tb.get_alter_table(), '\n\n' )
 
-        missing_fields, fields_to_drop = DynamicSQL().compare_fields(
+        missing_fields, fields_to_drop = DynamicSQL(db=db).compare_fields_with_table(
             doc_type     = tb.doc_type,
             link_type    = tb.link_type,
             link_subtype = tb.link_subtype,
