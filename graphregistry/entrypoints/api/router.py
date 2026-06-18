@@ -99,6 +99,9 @@ def _make_edge_repo(db: GraphDB | None = None) -> EdgeRepository:
 def get_node_ops() -> NodeOperations:
     """
     Build NodeOperations for one request.
+
+    This function is registered as a FastAPI dependency so tests can override
+    it with a fake repository via `app.dependency_overrides`.
     """
     node_repo: NodeRepository = _make_node_repo()
     return NodeOperations(repo=node_repo)
@@ -106,6 +109,9 @@ def get_node_ops() -> NodeOperations:
 def get_edge_ops() -> EdgeOperations:
     """
     Build EdgeOperations for one request.
+
+    This function is registered as a FastAPI dependency so tests can override
+    it with a fake repository via `app.dependency_overrides`.
     """
     edge_repo: EdgeRepository = _make_edge_repo()
     return EdgeOperations(repo=edge_repo)
