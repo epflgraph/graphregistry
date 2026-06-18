@@ -75,6 +75,10 @@ class MultilingualText(BaseModel):
     def get(self, language: LanguageCode, default: str = "") -> str:
         return self.item_map.get(language, default)
 
+    # Method: Get the text for a specific language, returning an empty string if not found
+    def get_value(self, language: LanguageCode) -> str:
+        return self.item_map.get(language, "")
+
     # Method: Set the text for a specific language
     def set(self, language: LanguageCode, value: str) -> None:
         self.item_map[language] = str(value)
@@ -110,10 +114,11 @@ class MultilingualGeneratedText(BaseModel):
     #-----------------------------------#
     def __init__(self, item_map: dict[LanguageCode, GeneratedText | dict[str, Any] | str] | None = None, /, **data: Any) -> None:
 
-        # Extract dynamic language items from data (those that are not 'item_map')
+        # Extract dynamic language items from data (those that are not 'item_map' or class fields)
         dynamic_items: dict[LanguageCode, GeneratedText | dict[str, Any] | str] = {}
+        model_fields = getattr(self.__class__, "model_fields", {})
         for key in list(data.keys()):
-            if key != 'item_map':
+            if key != 'item_map' and key not in model_fields:
                 dynamic_items[key] = data.pop(key)
 
         # Merge all items into a single dictionary
