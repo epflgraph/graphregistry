@@ -1,9 +1,13 @@
 # graphregistry/common/config.py
+import copy
+import json
+import os
 from collections import defaultdict
 from pathlib import Path
 from typing import ClassVar
+
+import rich
 from yaml import safe_load
-import json, rich, copy
 
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -157,7 +161,8 @@ class GlobalConfig:
     @classmethod
     def _load_settings(cls, path: str | Path | None = None) -> dict:
         if path is None:
-            path = cls.DEFAULT_PATH
+            path = os.environ.get("GRAPH_REGISTRY_CONFIG_GLOBAL", cls.DEFAULT_PATH)
+        path = Path(path)
         with open(path, "r", encoding="utf-8") as f:
             raw_config = safe_load(f)
         return json.loads(json.dumps(raw_config, default=str))
