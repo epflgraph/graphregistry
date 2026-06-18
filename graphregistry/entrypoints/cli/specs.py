@@ -214,13 +214,15 @@ cli_definitions: Dict[str, Any] = {
     #---------------------#
     'ai' : dict(
         help = "Interact with GraphAI API.",
-        common_args = dict(),
+        common_args = {
+            'env': global_common_args['env']
+        },
         commands = {
             'detect_concepts' : dict(
                 help = "Detect concepts for nodes using GraphAI.",
                 func = cmd_ai_detect_concepts,
                 args = [],
-                common_args = []
+                common_args = ['env']
             )
         }
     ),
