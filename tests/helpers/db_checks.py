@@ -130,10 +130,22 @@ def fetch_edge_custom_fields(
 
 
 def field_map(fields: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
-    return {
-        (field["field_language"], field["field_name"]): field["field_value"]
-        for field in fields
-    }
+    result: dict[tuple[str, str], str] = {}
+    for field in fields:
+        if "field_language" in field:
+            # Flat fixture format
+            language = field["field_language"]
+            name = field["field_name"]
+            value = field["field_value"]
+        elif "key" in field:
+            # NodeField.to_json() nested format
+            language = field["key"]["field_language"]
+            name = field["key"]["field_name"]
+            value = field["field_value"]
+        else:
+            raise ValueError(f"Unrecognized field shape: {field}")
+        result[(language, name)] = value
+    return result
 
 
 def db_field_map(rows: list[tuple[str, str, str]]) -> dict[tuple[str, str], str]:

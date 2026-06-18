@@ -6,6 +6,7 @@ are marked with `e2e` and excluded from the default pytest run.
 """
 from __future__ import annotations
 
+import os
 import socket
 import threading
 import time
@@ -21,6 +22,7 @@ from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
 
 from graphregistry.entrypoints.api.main import create_app
+from graphregistry.entrypoints.mappers import SpecMapper
 from tests.helpers.db_checks import (
     count_edge_rows,
     count_node_rows,
@@ -32,7 +34,7 @@ from tests.helpers.db_checks import (
     field_map,
     node_label,
 )
-from tests.helpers.fixtures import get_test_schema_name, load_subgraph_fixture
+from tests.helpers.fixtures import load_subgraph_fixture, temp_test_global_config
 
 ENGINE_NAME = "xaas_coresrv"
 SUBGRAPH_FIXTURE_PATH = (
@@ -50,8 +52,14 @@ SUBGRAPH_KEYS_FIXTURE_PATH = (
 
 
 @pytest.fixture(scope="module")
-def schema_name() -> str:
-    return get_test_schema_name()
+def test_config() -> Iterator[tuple[Path, str]]:
+    with temp_test_global_config() as (config_path, glbcfg):
+        yield config_path, glbcfg.schema_registry
+
+
+@pytest.fixture(scope="module")
+def schema_name(test_config: tuple[Path, str]) -> str:
+    return test_config[1]
 
 
 @pytest.fixture(scope="module")
@@ -67,8 +75,15 @@ def get_free_port() -> int:
 
 
 @contextmanager
-def api_base_url() -> Iterator[str]:
+def api_base_url(config_path: Path) -> Iterator[str]:
     port = get_free_port()
+
+    # The API app creates a fresh GlobalConfig inside create_app, so we must tell
+    # it to load the test config instead of the default dev/prod one.
+    env_var_name = "GRAPH_REGISTRY_CONFIG_GLOBAL"
+    previous_value = os.environ.get(env_var_name)
+    os.environ[env_var_name] = str(config_path)
+
     server = uvicorn.Server(
         uvicorn.Config(
             create_app(),
@@ -98,6 +113,10 @@ def api_base_url() -> Iterator[str]:
     finally:
         server.should_exit = True
         thread.join(timeout=10)
+        if previous_value is None:
+            os.environ.pop(env_var_name, None)
+        else:
+            os.environ[env_var_name] = previous_value
 
 
 def assert_response_ok(
@@ -134,7 +153,8 @@ def delete_nodes(base_url: str, node_list: list[dict[str, Any]]) -> None:
 
 
 @pytest.mark.e2e
-def test_api_data_insert_subgraph_e2e(db: GraphDB, schema_name: str) -> None:
+def test_api_data_insert_subgraph_e2e(db: GraphDB, test_config: tuple[Path, str]) -> None:
+    config_path, schema_name = test_config
     sample_subgraph = load_subgraph_fixture(SUBGRAPH_FIXTURE_PATH)
     key_subgraph = load_subgraph_fixture(SUBGRAPH_KEYS_FIXTURE_PATH)
     sample_nodes = sample_subgraph["node_list"]
@@ -142,7 +162,7 @@ def test_api_data_insert_subgraph_e2e(db: GraphDB, schema_name: str) -> None:
     key_nodes = key_subgraph["node_list"]
     key_edges = key_subgraph["edge_list"]
 
-    with api_base_url() as base_url:
+    with api_base_url(config_path) as base_url:
         delete_edges(base_url, key_edges)
         delete_nodes(base_url, key_nodes)
 
@@ -178,11 +198,12 @@ def test_api_data_insert_subgraph_e2e(db: GraphDB, schema_name: str) -> None:
                     f"Missing or duplicate node shell row for {label}"
                 )
 
+                expected_node = SpecMapper.from_node_spec(node_json)
                 basic_row = fetch_node_basic_row(db, schema_name, ENGINE_NAME, node_json)
                 assert basic_row is not None, f"Missing basic node row for {label}"
-                assert basic_row[0] == node_json.get("title", "")
-                assert (basic_row[1] or "") == (node_json.get("text_source") or "")
-                assert (basic_row[2] or "") == (node_json.get("raw_text") or "")
+                assert basic_row[0] == expected_node.title
+                assert (basic_row[1] or "") == (expected_node.text_source or "")
+                assert (basic_row[2] or "") == (expected_node.raw_text or "")
 
                 expected_custom_fields = field_map(node_json.get("custom_fields") or [])
                 actual_custom_fields = db_field_map(

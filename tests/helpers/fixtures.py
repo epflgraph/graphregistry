@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
+
+import yaml
 
 from graphregistry.common.config import GlobalConfig
 
@@ -60,3 +65,44 @@ def get_test_schema_name(glbcfg: GlobalConfig | None = None) -> str:
             "Please set execution mode to 'dev' in your config to ensure tests run against a safe schema."
         )
     return "_0_PYTESTS_" + registry_schema.replace("_1_DEV_", "")
+
+
+@contextmanager
+def temp_test_global_config() -> Iterator[tuple[Path, GlobalConfig]]:
+    """Create a temporary global config that points MySQL schemas to test variants.
+
+    Yields the path to the temporary config file and a GlobalConfig instance loaded
+    from it. The config is removed when the context exits. Setting the
+    ``GRAPH_REGISTRY_CONFIG_GLOBAL`` environment variable to the returned path makes
+    the API and CLI use the test schemas.
+    """
+    base_config = GlobalConfig.from_file(GlobalConfig.DEFAULT_PATH)
+    settings = base_config.settings
+
+    # Use a non-dev mode so GlobalConfig does not prepend _1_DEV_ to schema names.
+    settings["mysql"]["mode"] = "test"
+
+    # Replace the dev prefix with the pytests prefix for every test schema.
+    test_schema_names = settings["mysql"]["db_schema_names"]
+    for key in test_schema_names:
+        value = test_schema_names[key]
+        if isinstance(value, str) and value.startswith("_1_DEV_"):
+            test_schema_names[key] = "_0_PYTESTS_" + value[len("_1_DEV_"):]
+        elif isinstance(value, str) and not value.startswith("_0_PYTESTS_"):
+            test_schema_names[key] = "_0_PYTESTS_" + value
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+    ) as tmp_file:
+        yaml.safe_dump(settings, tmp_file, default_flow_style=False, sort_keys=False)
+        tmp_path = Path(tmp_file.name)
+
+    try:
+        yield tmp_path, GlobalConfig.from_file(tmp_path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
+def get_test_schema_prefix() -> str:
+    """Return the prefix used for test schemas."""
+    return "_0_PYTESTS_"

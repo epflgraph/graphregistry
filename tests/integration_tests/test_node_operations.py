@@ -33,7 +33,7 @@ def schema_resolver(schema_name: str) -> FixedTestSchemaResolver:
 
 
 @pytest.fixture
-def real_repo(schema_resolver: TestSchemaResolver) -> MySQLNodeRepository:
+def real_repo(schema_resolver: FixedTestSchemaResolver) -> MySQLNodeRepository:
     db = GraphDB()
     return MySQLNodeRepository(
         db=db,
@@ -120,8 +120,8 @@ def test_mysql_node_repository_real_crud_cycle(
         assert rehydrated.page_profile is not None
         assert loaded.page_profile is not None
         assert rehydrated.page_profile.short_code == loaded.page_profile.short_code
-        assert rehydrated.page_profile.name.en.value == loaded.page_profile.name.en.value
-        assert rehydrated.page_profile.external_url.en.value == loaded.page_profile.external_url.en.value
+        assert rehydrated.page_profile.name.get_value("en") == loaded.page_profile.name.get_value("en")
+        assert rehydrated.page_profile.external_url.get_value("en") == loaded.page_profile.external_url.get_value("en")
 
         # 8) Delete
         assert real_repo.delete(node_key, actions=("eval", "commit")) is True

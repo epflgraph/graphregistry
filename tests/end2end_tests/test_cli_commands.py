@@ -7,7 +7,9 @@ They are marked with `e2e` and excluded from the default pytest run.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +29,7 @@ from tests.helpers.db_checks import (
     field_map,
     node_label,
 )
-from tests.helpers.fixtures import get_test_schema_name, load_subgraph_fixture
+from tests.helpers.fixtures import load_subgraph_fixture, temp_test_global_config
 
 ENGINE_NAME = "xaas_coresrv"
 SUBGRAPH_FIXTURE_PATH = (
@@ -45,8 +47,14 @@ SUBGRAPH_KEYS_FIXTURE_PATH = (
 
 
 @pytest.fixture(scope="module")
-def schema_name() -> str:
-    return get_test_schema_name()
+def test_config() -> Iterator[tuple[Path, str]]:
+    with temp_test_global_config() as (config_path, glbcfg):
+        yield config_path, glbcfg.schema_registry
+
+
+@pytest.fixture(scope="module")
+def schema_name(test_config: tuple[Path, str]) -> str:
+    return test_config[1]
 
 
 @pytest.fixture(scope="module")
@@ -65,12 +73,13 @@ def cli_base_cmd() -> list[str]:
     return [cli_name, "data"]
 
 
-def run_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
+def run_cli(args: list[str], *, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         args,
         text=True,
         capture_output=False,
         check=False,
+        env=env,
     )
     assert result.returncode == 0, (
         f"CLI command failed: {' '.join(args)}\n"
@@ -80,14 +89,15 @@ def run_cli(args: list[str]) -> subprocess.CompletedProcess[str]:
     return result
 
 
-def delete_many(node_keys_path: Path, edge_keys_path: Path) -> None:
+def delete_many(node_keys_path: Path, edge_keys_path: Path, env: dict[str, str]) -> None:
     run_cli(
         cli_base_cmd()
         + [
             "delete",
             f"--edge_key_list=@{edge_keys_path}",
             "--actions=commit",
-        ]
+        ],
+        env=env,
     )
     run_cli(
         cli_base_cmd()
@@ -95,12 +105,16 @@ def delete_many(node_keys_path: Path, edge_keys_path: Path) -> None:
             "delete",
             f"--node_key_list=@{node_keys_path}",
             "--actions=commit",
-        ]
+        ],
+        env=env,
     )
 
 
 @pytest.mark.e2e
-def test_cli_data_commands_subgraph_e2e(tmp_path: Path, db: GraphDB, schema_name: str) -> None:
+def test_cli_data_commands_subgraph_e2e(
+    tmp_path: Path, db: GraphDB, test_config: tuple[Path, str]
+) -> None:
+    config_path, schema_name = test_config
     sample_subgraph = load_subgraph_fixture(SUBGRAPH_FIXTURE_PATH)
     key_subgraph = load_subgraph_fixture(SUBGRAPH_KEYS_FIXTURE_PATH)
     sample_nodes = sample_subgraph["node_list"]
@@ -118,7 +132,10 @@ def test_cli_data_commands_subgraph_e2e(tmp_path: Path, db: GraphDB, schema_name
     write_json(node_key_list_path, {"key_list": key_nodes})
     write_json(edge_key_list_path, {"key_list": key_edges})
 
-    delete_many(node_key_list_path, edge_key_list_path)
+    cli_env = os.environ.copy()
+    cli_env["GRAPH_REGISTRY_CONFIG_GLOBAL"] = str(config_path)
+
+    delete_many(node_key_list_path, edge_key_list_path, cli_env)
 
     try:
         run_cli(
@@ -127,7 +144,8 @@ def test_cli_data_commands_subgraph_e2e(tmp_path: Path, db: GraphDB, schema_name
                 "save",
                 f"--node_list=@{node_list_path}",
                 "--actions=commit",
-            ]
+            ],
+            env=cli_env,
         )
 
         run_cli(
@@ -136,7 +154,8 @@ def test_cli_data_commands_subgraph_e2e(tmp_path: Path, db: GraphDB, schema_name
                 "save",
                 f"--edge_list=@{edge_list_path}",
                 "--actions=commit",
-            ]
+            ],
+            env=cli_env,
         )
 
         for node_json in sample_nodes:
@@ -180,7 +199,7 @@ def test_cli_data_commands_subgraph_e2e(tmp_path: Path, db: GraphDB, schema_name
             )
 
     finally:
-        delete_many(node_key_list_path, edge_key_list_path)
+        delete_many(node_key_list_path, edge_key_list_path, cli_env)
 
     for edge_json in key_edges:
         assert count_edge_rows(db, schema_name, ENGINE_NAME, edge_json) == 0

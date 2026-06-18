@@ -33,7 +33,7 @@ def schema_resolver(schema_name: str) -> FixedTestSchemaResolver:
 
 
 @pytest.fixture
-def real_repo(schema_resolver: TestSchemaResolver) -> MySQLEdgeRepository:
+def real_repo(schema_resolver: FixedTestSchemaResolver) -> MySQLEdgeRepository:
     db = GraphDB()
     return MySQLEdgeRepository(
         db=db,
