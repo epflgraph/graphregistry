@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlencode
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
-from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConcept, ScoredConceptList
+from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionTask
 from requests import post
 
@@ -91,7 +91,9 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
     @staticmethod
     def _to_detected_concept(item: dict[str, Any]) -> ScoredConcept:
         return ScoredConcept(
-            concept_id=str(item["concept_id"]),
-            concept_name=str(item["concept_name"]),
+            concept=Concept(
+                id=str(item["concept_id"]),
+                name=str(item["concept_name"]),
+            ),
             score=float(item.get("mixed_score") or item.get("score") or 0.0),
         )
