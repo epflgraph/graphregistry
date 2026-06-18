@@ -12,6 +12,7 @@ from graphregistry.domain.models.entities.mdl_lecture import Lecture
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
+from graphregistry.domain.repositories.rpo_lecture_processing import LectureProcessingStatePort
 from graphregistry.domain.types import ActionSet
 import rich, pickle
 from loguru import logger as sysmsg
@@ -20,8 +21,21 @@ from loguru import logger as sysmsg
 class LectureOperations(NodeOperations):
 
     # Class constructor
-    def __init__(self, repo: LectureRepository, ai_gateways: GatewayDict | None = None) -> None:
+    def __init__(
+        self,
+        repo: LectureRepository,
+        processing_state: LectureProcessingStatePort | None = None,
+        ai_gateways: GatewayDict | None = None,
+    ) -> None:
         self.repo = repo
+        if processing_state is not None:
+            self.processing_state = processing_state
+        elif isinstance(repo, LectureProcessingStatePort):
+            self.processing_state = repo
+        else:
+            raise TypeError(
+                "repo must implement LectureProcessingStatePort when processing_state is omitted"
+            )
         self.ai_gateways = ai_gateways or {}
         self.msg = GraphLogger()
 
@@ -35,11 +49,11 @@ class LectureOperations(NodeOperations):
 
     # Method: Get list of undownloaded lectures, returning a list of NodeKey objects for the undownloaded lectures
     def get_undownloaded(self, limit: int | None = 16) -> NodeKeyList:
-        return self.repo.get_undownloaded(limit)
+        return self.processing_state.get_undownloaded(limit)
 
     # Method: Get file URL for a lecture based on the lecture key, returning the file URL as a string
     def get_file_url(self, lecture_key: NodeKey) -> str:
-        return self.repo.get_file_url(lecture_key)
+        return self.processing_state.get_file_url(lecture_key)
 
     # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
     def launch_video_download(self, video_url: str, no_cache: bool = False) -> str:
@@ -57,15 +71,15 @@ class LectureOperations(NodeOperations):
 
     # Method: Save the video download task ID for a lecture (this can be used later to check the status of the download or retrieve the downloaded video)
     def save_video_download_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
-        return self.repo.save_video_download_task_id(lecture_key, task_id)
+        return self.processing_state.save_video_download_task_id(lecture_key, task_id)
 
     # Method: Get the video download task ID for a lecture (this can be used to check the status of the download or retrieve the downloaded video)
     def get_video_download_task_id(self, lecture_key: NodeKey) -> str:
-        return self.repo.get_video_download_task_id(lecture_key)
+        return self.processing_state.get_video_download_task_id(lecture_key)
 
     # Method: Get list of lectures for which video download tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished video download tasks
     def get_unfinished_video_download_tasks(self, limit: int | None = 16) -> NodeKeyList:
-        return self.repo.get_unfinished_video_download_tasks(limit)
+        return self.processing_state.get_unfinished_video_download_tasks(limit)
 
     # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
     def get_video_download_result(self, lecture_key: NodeKey) -> dict | None:
@@ -83,11 +97,11 @@ class LectureOperations(NodeOperations):
 
     # Method: Save the video token for a lecture (this can be used later to check the status of the download or retrieve the downloaded video)
     def save_video_token(self, lecture_key: NodeKey, video_token: str) -> NodeKey:
-        return self.repo.save_video_token(lecture_key, video_token)
+        return self.processing_state.save_video_token(lecture_key, video_token)
 
     # Method: Get the video token for a lecture (this can be used to check the status of the download or retrieve the downloaded video)
     def get_video_token(self, lecture_key: NodeKey) -> str:
-        return self.repo.get_video_token(lecture_key)
+        return self.processing_state.get_video_token(lecture_key)
 
     #-------------------------------------------#
     # METHOD GROUP: Audio extraction operations #
@@ -95,7 +109,7 @@ class LectureOperations(NodeOperations):
 
     # Method: Get list of lectures for which video has been downloaded but audio has not yet been extracted
     def get_with_unextracted_audio(self, limit: int | None = 16) -> NodeKeyList:
-        return self.repo.get_with_unextracted_audio(limit)
+        return self.processing_state.get_with_unextracted_audio(limit)
 
     # Method: Launch asynchronous audio extraction task for a lecture based on the video token
     def launch_audio_extraction(self, video_token: str, no_cache: bool = False) -> str:
@@ -113,15 +127,15 @@ class LectureOperations(NodeOperations):
 
     # Method: Save the audio extraction task ID for a lecture (this can be used later to check the status of the extraction or retrieve the extracted audio)
     def save_audio_extraction_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
-        return self.repo.save_audio_extraction_task_id(lecture_key, task_id)
+        return self.processing_state.save_audio_extraction_task_id(lecture_key, task_id)
 
     # Method: Get the audio extraction task ID for a lecture (this can be used to check the status of the extraction or retrieve the extracted audio)
     def get_audio_extraction_task_id(self, lecture_key: NodeKey) -> str:
-        return self.repo.get_audio_extraction_task_id(lecture_key)
+        return self.processing_state.get_audio_extraction_task_id(lecture_key)
     
     # Method: Get list of lectures for which audio extraction tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished audio extraction tasks
     def get_unfinished_audio_extraction_tasks(self, limit: int | None = 16) -> NodeKeyList:
-        return self.repo.get_unfinished_audio_extraction_tasks(limit)
+        return self.processing_state.get_unfinished_audio_extraction_tasks(limit)
     
     # Method: Get the audio extraction result for a lecture using the audio extraction task ID (this can be used to retrieve the extracted audio once the extraction is complete)
     def get_audio_extraction_result(self, lecture_key: NodeKey) -> dict | None:
@@ -139,11 +153,11 @@ class LectureOperations(NodeOperations):
     
     # Method: Save the audio token for a lecture (this can be used later to check the status of the extraction or retrieve the extracted audio)
     def save_audio_token(self, lecture_key: NodeKey, audio_token: str) -> NodeKey:
-        return self.repo.save_audio_token(lecture_key, audio_token)
+        return self.processing_state.save_audio_token(lecture_key, audio_token)
     
     # Method: Get the audio token for a lecture (this can be used to check the status of the extraction or retrieve the extracted audio)
     def get_audio_token(self, lecture_key: NodeKey) -> str:
-        return self.repo.get_audio_token(lecture_key)
+        return self.processing_state.get_audio_token(lecture_key)
 
     #------------------------------------------#
     # METHOD GROUP: Slide detection operations #
@@ -151,7 +165,7 @@ class LectureOperations(NodeOperations):
 
     # Method: Get list of lectures for which video has been downloaded but slides have not yet been detected
     def get_with_undetected_slides(self, limit: int | None = 16) -> NodeKeyList:
-        return self.repo.get_with_undetected_slides(limit)
+        return self.processing_state.get_with_undetected_slides(limit)
 
     # Method: Launch asynchronous slide detection task for a lecture based on the video token, returning the list of slide tokens immediately
     def launch_slide_detection(self, video_token: str, no_cache: bool = False) -> str:
@@ -169,15 +183,15 @@ class LectureOperations(NodeOperations):
 
     # Method: Save the slide detection task ID for a lecture (this can be used later to check the status of the detection or retrieve the detected slides)
     def save_slide_detection_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
-        return self.repo.save_slide_detection_task_id(lecture_key, task_id)
+        return self.processing_state.save_slide_detection_task_id(lecture_key, task_id)
     
     # Method: Get the slide detection task ID for a lecture (this can be used to check the status of the detection or retrieve the detected slides)
     def get_slide_detection_task_id(self, lecture_key: NodeKey) -> str:
-        return self.repo.get_slide_detection_task_id(lecture_key)
+        return self.processing_state.get_slide_detection_task_id(lecture_key)
     
     # Method: Get list of lectures for which slide detection tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished slide detection tasks
     def get_unfinished_slide_detection_tasks(self, limit: int | None = 16) -> NodeKeyList:
-        return self.repo.get_unfinished_slide_detection_tasks(limit)
+        return self.processing_state.get_unfinished_slide_detection_tasks(limit)
     
     # Method: Get the slide detection result for a lecture using the slide detection task ID (this can be used to retrieve the detected slides once the detection is complete)
     def get_slide_detection_result(self, lecture_key: NodeKey) -> dict | None:
@@ -195,11 +209,11 @@ class LectureOperations(NodeOperations):
 
     # Method: Save the slide tokens for a lecture (this can be used later to check the status of the detection or retrieve the detected slides)
     def save_slide_tokens(self, lecture_key: NodeKey, slide_num_and_tokens: list[tuple[int, str]]) -> NodeKey:
-        return self.repo.save_slide_tokens(lecture_key, slide_num_and_tokens)
+        return self.processing_state.save_slide_tokens(lecture_key, slide_num_and_tokens)
     
     # Method: Get the slide tokens for a lecture (this can be used to check the status of the detection or retrieve the detected slides)
     def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:
-        return self.repo.get_slide_tokens(lecture_key)
+        return self.processing_state.get_slide_tokens(lecture_key)
     
     #=====================================#
     # Lecture field enrichment operations #

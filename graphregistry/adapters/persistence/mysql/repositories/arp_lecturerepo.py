@@ -7,10 +7,11 @@ from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
+from graphregistry.domain.repositories.rpo_lecture_processing import LectureProcessingStatePort
 from graphregistry.domain.types import ActionSet
 
 # Class definition
-class MySQLLectureRepository(MySQLNodeRepository, LectureRepository):
+class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProcessingStatePort):
 
     #===============================#
     # Content processing operations #
