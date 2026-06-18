@@ -27,14 +27,6 @@ def _find_repo_root(start: Path | None = None) -> Path:
 REPO_ROOT = _find_repo_root()
 CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
 
-db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
-
-
-
-# Initialise MySQL client
-# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
-db = GraphDB(config=db_cfg)
-
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
     'char'     : 'VARCHAR(255)',
@@ -149,18 +141,23 @@ class DynamicSQL():
 
     # Prevent from initialising twice
     _instance = None
-    def __new__(cls):
+    def __new__(cls, db: "GraphDB | None" = None):
         if cls._instance is None:
             cls._instance = super(DynamicSQL, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
     # Constructor
-    def __init__(self):
+    def __init__(self, db: "GraphDB | None" = None):
 
         # Prevent from initialising twice (e.g. when calling DynamicSQL() multiple times to access static methods)
         if getattr(self, "_initialized", False):
             return
+
+        # A GraphDB client must be provided on first instantiation.
+        if db is None:
+            raise ValueError("DynamicSQL requires a GraphDB client on first instantiation")
+        self.db = db
 
         # Set initialization flag and print message
         self._initialized = True
@@ -230,23 +227,23 @@ class DynamicSQL():
     #------------------------------#
 
     @staticmethod
-    def get_fields(doc_type, link_type=None, link_subtype=None, index_group=None):
+    def get_fields(doc_type, link_type=None, link_subtype=None, index_group=None, db=None):
         if link_type is None:
-            return DynamicSQL().get_all_doc_fields(doc_type=doc_type, index_group=index_group)
+            return DynamicSQL(db=db).get_all_doc_fields(doc_type=doc_type, index_group=index_group)
         else:
-            return DynamicSQL().get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+            return DynamicSQL(db=db).get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
     @staticmethod
-    def get_create_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
-        return DynamicSQL().get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+    def get_create_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False, db=None):
+        return DynamicSQL(db=db).get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     @staticmethod
-    def get_alter_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
-        return DynamicSQL().get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+    def get_alter_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False, db=None):
+        return DynamicSQL(db=db).get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     @staticmethod
-    def compare_fields(doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
-        return DynamicSQL().compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
+    def compare_fields(doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None, db=None):
+        return DynamicSQL(db=db).compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
 
     #---------------------------------#
     # Method group: Table diagnostics #
@@ -267,7 +264,7 @@ class DynamicSQL():
         table_name = self.get_sql_table_name(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=False)
 
         # Get existing fields in the table
-        fields_in_table = db.get_column_names(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
+        fields_in_table = self.db.get_column_names(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
 
         # Get missing fields in existing table that are in the config (fields to add)
         missing_fields = [f for f in fields_in_config if f not in fields_in_table]
@@ -673,7 +670,7 @@ class DynamicSQL():
 class GraphTable():
 
     # Constructor
-    def __init__(self, doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
+    def __init__(self, db: "GraphDB | None" = None, doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
 
         # Initialise input parameters
         self.doc_type     = doc_type
@@ -734,14 +731,19 @@ class GraphTable():
         # Pre-generate dynamic SQL queries #
         #----------------------------------#
 
+        # Build a DynamicSQL instance bound to the provided GraphDB client.
+        # The first instantiation of DynamicSQL registers the singleton, so
+        # subsequent static-method calls can reuse it without passing db again.
+        dynamic_sql = DynamicSQL(db=db)
+
         # Get list of table fields
-        self.table_fields = DynamicSQL().get_fields(doc_type=self.doc_type, index_group=self.index_group)
+        self.table_fields = dynamic_sql.get_fields(doc_type=self.doc_type, index_group=self.index_group)
 
         # Get create table SQL statement
-        self.create_table_sql = DynamicSQL().get_create_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
+        self.create_table_sql = dynamic_sql.get_create_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
 
         # Get drop primary keys and alter table SQL statements
-        self.drop_primary_key_sql, self.alter_table_sql = DynamicSQL().get_alter_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
+        self.drop_primary_key_sql, self.alter_table_sql = dynamic_sql.get_alter_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
 
     #----------------------#
     # Basic export methods #
@@ -773,6 +775,8 @@ class GraphTable():
 #-------------------------------#
 if __name__ == "__main__":
 
+    # Initialise a local GraphDB client for this standalone script block.
+    db = GraphDB(config=GraphDBConfig.from_file(CONFIG_DB_PATH))
 
     # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
     # for t in list_of_tables:
@@ -797,7 +801,7 @@ if __name__ == "__main__":
 
     # Initialise table
     for t in sorted(['IndexBuildup_Fields_Links_ParentChild_Course_Lecture', 'IndexBuildup_Fields_Links_ParentChild_Course_Person', 'IndexBuildup_Fields_Links_ParentChild_Lecture_MOOC', 'IndexBuildup_Fields_Links_ParentChild_Lecture_Widget', 'IndexBuildup_Fields_Links_ParentChild_MOOC_Person', 'IndexBuildup_Fields_Links_ParentChild_Notebook_Person', 'IndexBuildup_Fields_Links_ParentChild_Person_Publication', 'IndexBuildup_Fields_Links_ParentChild_Person_Unit', 'IndexBuildup_Fields_Links_ParentChild_Unit_Unit']):
-        tb = GraphTable(schema_name='graph_cache', table_name=t)
+        tb = GraphTable(db=db, schema_name='graph_cache', table_name=t)
         print('\n\n')
         print(f"""
             {tb.create_table_sql.replace(';','')} AS
@@ -855,7 +859,7 @@ if __name__ == "__main__":
             continue
 
         # Initialise table
-        tb = GraphTable(schema_name=schema_name, table_name=table_name)
+        tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
 
         # print(tb.get_drop_primary_key(), '\n' )
         # print(tb.get_alter_table(), '\n\n' )

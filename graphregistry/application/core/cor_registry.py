@@ -25,9 +25,6 @@ glbcfg = GlobalConfig()
 idxcfg =  IndexConfig()
 scrcfg = ScoresConfig()
 
-# Initialise dynamic sql object
-dynsql = DynamicSQL()
-
 # Initialise MySQL client
 # db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
 from graphregistry.common.paths import (
@@ -37,6 +34,9 @@ from graphregistry.common.paths import (
 )
 db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
 db = GraphDB(config=db_cfg)
+
+# Initialise dynamic sql object
+dynsql = DynamicSQL(db=db)
 
 # Initialise clients
 es = GraphES()
@@ -198,7 +198,7 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
         sysmsg.warning(f"Target table '{schema_name}.{table_name}' does not exist. Creating table ...")
 
         # Create table
-        tb = GraphTable(schema_name=schema_name, table_name=table_name)
+        tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
         db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=False, query_id='v29zYeaA')
 
         # Check if table was created successfully
