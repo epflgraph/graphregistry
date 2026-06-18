@@ -292,3 +292,4 @@ input_urls.txt
 output_tokens.json
 data
 .opencode
+opencode.sh
