@@ -436,28 +436,14 @@ logger.setLevel(logging.DEBUG)
 #-------------------------------------------------#
 # Class definition for Graph ElasticSearch engine #
 #-------------------------------------------------#
-class GraphES():
-
-    # Class variable to hold the single instance
-    _instance = None
-
-    # Create new instance of class before __init__ is called
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = object.__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
+class GraphES:
 
     # Class constructor
     def __init__(self, name="GraphIndex", use_ssl=False, config: GlobalConfig | None = None):
 
         # Configuration is loaded on first use, not at module import time.
         self._config = config or GlobalConfig()
-
-        # Check if the instance is already initialized
-        if not self._initialized:
-            self.name = name
-            self._initialized = True
+        self.name = name
 
         # Initiate the ElasticSearch engines
         self.params_test        , self.engine_test         = self.initiate_engine('test')
