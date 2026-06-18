@@ -132,3 +132,96 @@ class MySQLNodeMapper:
             text_source = map_to,
             concepts    = getattr(node.concepts, map_to),
         )
+
+    @staticmethod
+    def from_simplified_dict(data: dict[str, Any]) -> Node:
+        """Build a domain Node from the simplified test fixture shape.
+
+        The simplified shape mirrors the integration test fixture and contains:
+        - institution_id, object_type, object_id
+        - object_title, text_source, raw_text
+        - custom_fields (list of dicts with field_language, field_name, field_value)
+        - page_profile (flattened name/description/external_* fields)
+        """
+        key = NodeKey(
+            institution_id=data["institution_id"],
+            object_type=data["object_type"],
+            object_id=data["object_id"],
+        )
+
+        # Build a minimal PageProfile row compatible with MySQLPageProfileMapper
+        page_profile_row: dict[str, Any] = {
+            "short_code": data["page_profile"]["short_code"],
+            "is_visible": data["page_profile"].get("is_visible", True),
+        }
+
+        for lang in ("en", "fr", "de", "it"):
+            name_value = data["page_profile"].get(f"name_{lang}_value")
+            if name_value:
+                page_profile_row[f"name_{lang}_value"] = name_value
+
+            for size in ("short", "medium", "long"):
+                desc_value = data["page_profile"].get(f"description_{size}_{lang}_value")
+                if desc_value:
+                    page_profile_row[f"description_{size}_{lang}_value"] = desc_value
+
+            external_key = data["page_profile"].get(f"external_key_{lang}")
+            if external_key:
+                page_profile_row[f"external_key_{lang}"] = external_key
+
+            external_url = data["page_profile"].get(f"external_url_{lang}")
+            if external_url:
+                page_profile_row[f"external_url_{lang}"] = external_url
+
+        return Node(
+            key=key,
+            title=data["object_title"],
+            text_source=data["text_source"],
+            raw_text=data["raw_text"],
+            field_list=MySQLNodeFieldMapper.from_dict_list(
+                data.get("custom_fields") or [], node_key=key
+            ),
+            page_profile=MySQLPageProfileMapper.from_row(page_profile_row, node_key=key),
+        )
+
+    @staticmethod
+    def to_simplified_dict(node: Node) -> dict[str, Any]:
+        """Serialize a domain Node back to the simplified test fixture shape.
+
+        This is a lossy serialization intended for integration-test round-trips.
+        """
+        assert node.page_profile is not None
+
+        data: dict[str, Any] = {
+            "institution_id": node.key.institution_id,
+            "object_type": node.key.object_type,
+            "object_id": node.key.object_id,
+            "object_title": node.title,
+            "text_source": node.text_source,
+            "raw_text": node.raw_text,
+            "custom_fields": MySQLNodeFieldMapper.to_dict_list(node.field_list),
+            "page_profile": {
+                "short_code": node.page_profile.short_code,
+                "is_visible": node.page_profile.is_visible,
+            },
+        }
+
+        for lang in ("en", "fr", "de", "it"):
+            name_obj = node.page_profile.name.get(lang)
+            if name_obj.value:
+                data["page_profile"][f"name_{lang}_value"] = name_obj.value
+
+            for size in ("short", "medium", "long"):
+                desc_obj = getattr(node.page_profile.description, size).get(lang)
+                if desc_obj.value:
+                    data["page_profile"][f"description_{size}_{lang}_value"] = desc_obj.value
+
+            external_key = node.page_profile.external_key.get(lang)
+            if external_key:
+                data["page_profile"][f"external_key_{lang}"] = external_key
+
+            external_url = node.page_profile.external_url.get(lang)
+            if external_url:
+                data["page_profile"][f"external_url_{lang}"] = external_url
+
+        return data

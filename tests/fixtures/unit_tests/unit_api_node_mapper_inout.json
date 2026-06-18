@@ -124,8 +124,16 @@
                     },
                     "is_visible": true
                 },
-                "detected_concepts": {
-                    "item_list": []
+                "concepts": {
+                    "detected": {
+                        "item_list": []
+                    },
+                    "ai_validated": {
+                        "item_list": []
+                    },
+                    "manually_mapped": {
+                        "item_list": []
+                    }
                 }
             }
         },
@@ -290,8 +298,16 @@
                     },
                     "is_visible": true
                 },
-                "detected_concepts": {
-                    "item_list": []
+                "concepts": {
+                    "detected": {
+                        "item_list": []
+                    },
+                    "ai_validated": {
+                        "item_list": []
+                    },
+                    "manually_mapped": {
+                        "item_list": []
+                    }
                 }
             }
         },
@@ -482,8 +498,16 @@
                     },
                     "is_visible": true
                 },
-                "detected_concepts": {
-                    "item_list": []
+                "concepts": {
+                    "detected": {
+                        "item_list": []
+                    },
+                    "ai_validated": {
+                        "item_list": []
+                    },
+                    "manually_mapped": {
+                        "item_list": []
+                    }
                 }
             }
         },
@@ -642,8 +666,16 @@
                     },
                     "is_visible": true
                 },
-                "detected_concepts": {
-                    "item_list": []
+                "concepts": {
+                    "detected": {
+                        "item_list": []
+                    },
+                    "ai_validated": {
+                        "item_list": []
+                    },
+                    "manually_mapped": {
+                        "item_list": []
+                    }
                 }
             }
         },
@@ -783,8 +815,16 @@
                     },
                     "is_visible": true
                 },
-                "detected_concepts": {
-                    "item_list": []
+                "concepts": {
+                    "detected": {
+                        "item_list": []
+                    },
+                    "ai_validated": {
+                        "item_list": []
+                    },
+                    "manually_mapped": {
+                        "item_list": []
+                    }
                 }
             }
         },
@@ -955,8 +995,16 @@
                     },
                     "is_visible": true
                 },
-                "detected_concepts": {
-                    "item_list": []
+                "concepts": {
+                    "detected": {
+                        "item_list": []
+                    },
+                    "ai_validated": {
+                        "item_list": []
+                    },
+                    "manually_mapped": {
+                        "item_list": []
+                    }
                 }
             }
         }
