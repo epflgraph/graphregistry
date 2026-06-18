@@ -15,19 +15,19 @@ from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 @lru_cache(maxsize=1)
 def get_global_config() -> GlobalConfig:
     """Lazy loader for the global configuration."""
-    return GlobalConfig()
+    return GlobalConfig.from_file()
 
 
 @lru_cache(maxsize=1)
 def get_index_config() -> IndexConfig:
     """Lazy loader for the index configuration."""
-    return IndexConfig()
+    return IndexConfig.from_file()
 
 
 @lru_cache(maxsize=1)
 def get_scores_config() -> ScoresConfig:
     """Lazy loader for the scores configuration."""
-    return ScoresConfig()
+    return ScoresConfig.from_file()
 
 
 def _find_repo_root(start: Path | None = None) -> Path:

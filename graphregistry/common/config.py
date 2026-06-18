@@ -1,6 +1,7 @@
 # graphregistry/common/config.py
 from collections import defaultdict
 from pathlib import Path
+from typing import ClassVar
 from yaml import safe_load
 import json, rich, copy
 
@@ -13,24 +14,26 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class GlobalConfig:
     """Class to handle global configuration."""
 
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_global.yaml"
+
     # Initialization method
-    def __init__(self):
+    def __init__(self, settings: dict | None = None):
 
         # Load index configuration in to JSON
-        with open(f"{REPO_ROOT}/config/config_global.yaml", "r", encoding="utf-8") as f:
-            global_config = safe_load(f)
+        if settings is None:
+            settings = self._load_settings()
 
         # Initialise settings
-        self.settings = json.loads(json.dumps(global_config, default=str))
+        self.settings = json.loads(json.dumps(settings, default=str))
 
         # Get llm parameters from config file
         self.llm_api_key  = self.settings['genai']['llm_api_key']
         self.llm_base_url = self.settings['genai']['llm_base_url']
         self.llm_model    = self.settings['genai']['llm_model']
 
-        #-----------------------------------------#
-        # Set MySQL schema names from config file #
-        #-----------------------------------------#
+        #-----------------------------------------
+        # Set MySQL schema names from config file
+        #-----------------------------------------
 
         # Get execution mode [dev, prod] from config file
         self.mysql_execution_mode = self.settings['mysql']['mode']
@@ -114,7 +117,6 @@ class GlobalConfig:
         }
 
         # Also build the inverted mapping
-        from collections import defaultdict
         self.schema_to_object_types = defaultdict(list)
         for k, v in self.object_type_to_schema.items():
             self.schema_to_object_types[v].append(k)
@@ -141,13 +143,27 @@ class GlobalConfig:
         }
 
         # Page profile columns
-        self.page_profile_columns = ["numeric_id_en", "numeric_id_fr", "numeric_id_de", "numeric_id_it", "short_code", "subtype_en", "subtype_fr", "subtype_de", "subtype_it", "name_en_is_auto_generated", "name_en_is_auto_corrected", "name_en_is_auto_translated", "name_en_translated_from", "name_en_value", "name_fr_is_auto_generated", "name_fr_is_auto_corrected", "name_fr_is_auto_translated", "name_fr_translated_from", "name_fr_value", "name_de_is_auto_generated", "name_de_is_auto_corrected", "name_de_is_auto_translated", "name_de_translated_from", "name_de_value", "name_it_is_auto_generated", "name_it_is_auto_corrected", "name_it_is_auto_translated", "name_it_translated_from", "name_it_value", "description_short_en_is_auto_generated", "description_short_en_is_auto_corrected", "description_short_en_is_auto_translated", "description_short_en_translated_from", "description_short_en_value", "description_short_fr_is_auto_generated", "description_short_fr_is_auto_corrected", "description_short_fr_is_auto_translated", "description_short_fr_translated_from", "description_short_fr_value", "description_short_de_is_auto_generated", "description_short_de_is_auto_corrected", "description_short_de_is_auto_translated", "description_short_de_translated_from", "description_short_de_value", "description_short_it_is_auto_generated", "description_short_it_is_auto_corrected", "description_short_it_is_auto_translated", "description_short_it_translated_from", "description_short_it_value", "description_medium_en_is_auto_generated", "description_medium_en_is_auto_corrected", "description_medium_en_is_auto_translated", "description_medium_en_translated_from", "description_medium_en_value", "description_medium_fr_is_auto_generated", "description_medium_fr_is_auto_corrected", "description_medium_fr_is_auto_translated", "description_medium_fr_translated_from", "description_medium_fr_value", "description_medium_de_is_auto_generated", "description_medium_de_is_auto_corrected", "description_medium_de_is_auto_translated", "description_medium_de_translated_from", "description_medium_de_value", "description_medium_it_is_auto_generated", "description_medium_it_is_auto_corrected", "description_medium_it_is_auto_translated", "description_medium_it_translated_from", "description_medium_it_value", "description_long_en_is_auto_generated", "description_long_en_is_auto_corrected", "description_long_en_is_auto_translated", "description_long_en_translated_from", "description_long_en_value", "description_long_fr_is_auto_generated", "description_long_fr_is_auto_corrected", "description_long_fr_is_auto_translated", "description_long_fr_translated_from", "description_long_fr_value", "description_long_de_is_auto_generated", "description_long_de_is_auto_corrected", "description_long_de_is_auto_translated", "description_long_de_translated_from", "description_long_de_value", "description_long_it_is_auto_generated", "description_long_it_is_auto_corrected", "description_long_it_is_auto_translated", "description_long_it_translated_from", "description_long_it_value", "external_key_en", "external_key_fr", "external_key_de", "external_key_it", "external_url_en", "external_url_fr", "external_url_de", "external_url_it", "is_visible"]
+        self.page_profile_columns = ["numeric_id_en", "numeric_id_fr", "numeric_id_de", "numeric_id_it", "short_code", "subtype_en", "subtype_fr", "subtype_de", "subtype_it", "name_en_is_auto_generated", "name_en_is_auto_corrected", "name_en_is_auto_translated", "name_en_translated_from", "name_en_value", "name_fr_is_auto_generated", "name_fr_is_auto_corrected", "name_fr_is_auto_translated", "name_fr_translated_from", "name_fr_value", "name_de_is_auto_generated", "name_de_is_auto_corrected", "name_de_is_auto_translated", "name_de_translated_from", "name_de_value", "name_it_is_auto_generated", "name_it_is_auto_corrected", "name_it_is_auto_translated", "name_it_translated_from", "name_it_value", "description_short_en_is_auto_generated", "description_short_en_is_auto_corrected", "description_short_en_is_auto_translated", "description_short_en_translated_from", "description_short_en_value", "description_short_fr_is_auto_generated", "description_short_fr_is_auto_corrected", "description_short_fr_is_auto_translated", "description_short_fr_translated_from", "description_short_fr_value", "description_short_de_is_auto_generated", "description_short_de_is_auto_corrected", "description_short_de_is_auto_translated", "description_short_de_translated_from", "description_short_de_value", "description_short_it_is_auto_generated", "description_short_it_is_auto_corrected", "description_short_it_is_auto_translated", "description_short_it_translated_from", "description_short_it_value", "description_medium_en_is_auto_generated", "description_medium_en_is_auto_corrected", "description_medium_en_is_auto_translated", "description_medium_en_translated_from", "description_medium_en_value", "description_medium_fr_is_auto_generated", "description_medium_fr_is_auto_corrected", "description_medium_fr_is_auto_translated", "description_medium_fr_translated_from", "description_medium_fr_value", "description_medium_de_is_auto_generated", "description_medium_de_is_auto_corrected", "description_medium_de_is_auto_translated", "description_medium_de_translated_from", "description_medium_de_value", "description_medium_it_is_auto_generated", "description_medium_it_is_auto_corrected", "description_medium_it_is_auto_translated", "description_medium_it_translated_from", "description_medium_it_value"]
 
         # API title and summary
         self.api_title = self.settings['api']['title']
         self.api_summary = self.settings['api']['summary']
 
+    @classmethod
+    def from_file(cls, path: str | Path | None = None) -> "GlobalConfig":
+        """Create a configuration instance from a YAML file."""
+        return cls(cls._load_settings(path))
+
+    @classmethod
+    def _load_settings(cls, path: str | Path | None = None) -> dict:
+        if path is None:
+            path = cls.DEFAULT_PATH
+        with open(path, "r", encoding="utf-8") as f:
+            raw_config = safe_load(f)
+        return json.loads(json.dumps(raw_config, default=str))
+
     # Print method
+
     def print(self):
         print('Raw config:')
         rich.print_json(data=self.settings)
@@ -160,12 +176,14 @@ class GlobalConfig:
 class IndexConfig:
     """Class to handle index configuration."""
 
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_index.json"
+
     # Initialization method
-    def __init__(self):
+    def __init__(self, index_config: dict | None = None):
 
         # Load index configuration in to JSON
-        with open(f"{REPO_ROOT}/config/config_index.json", "r", encoding="utf-8") as f:
-            index_config = json.load(f)
+        if index_config is None:
+            index_config = self._load_raw()
 
         # Initialise parsed options dictionary
         tree = lambda: defaultdict(tree); self.settings = tree()
@@ -377,6 +395,18 @@ class IndexConfig:
         # Convert defaultdict to normal dict for easier handling
         self.settings = json.loads(json.dumps(self.settings))
 
+    @classmethod
+    def from_file(cls, path: str | Path | None = None) -> "IndexConfig":
+        """Create a configuration instance from a JSON file."""
+        return cls(cls._load_raw(path))
+
+    @classmethod
+    def _load_raw(cls, path: str | Path | None = None) -> dict:
+        if path is None:
+            path = cls.DEFAULT_PATH
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     # Print method
     def print(self, compact=False):
 
@@ -504,12 +534,14 @@ class IndexConfig:
 class ScoresConfig:
     """Class to handle index configuration."""
 
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_scores.json"
+
     # Initialization method
-    def __init__(self):
+    def __init__(self, scores_config: dict | None = None):
 
         # Load index configuration in to JSON
-        with open(f"{REPO_ROOT}/config/config_scores.json", "r", encoding="utf-8") as f:
-            scores_config = json.load(f)
+        if scores_config is None:
+            scores_config = self._load_raw()
 
         # Initialise settings
         self.settings = {}
@@ -522,6 +554,18 @@ class ScoresConfig:
         for edge_class in self.settings['scored_edge_tuples']:
             for edge_tuple in self.settings['scored_edge_tuples'][edge_class]:
                 self.settings['scored_edge_tuple_to_class_mapping'][tuple(edge_tuple)] = edge_class
+
+    @classmethod
+    def from_file(cls, path: str | Path | None = None) -> "ScoresConfig":
+        """Create a configuration instance from a JSON file."""
+        return cls(cls._load_raw(path))
+
+    @classmethod
+    def _load_raw(cls, path: str | Path | None = None) -> dict:
+        if path is None:
+            path = cls.DEFAULT_PATH
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     # Print method
     def print(self):
