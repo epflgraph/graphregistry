@@ -1,24 +1,20 @@
 # graphregistry/application/operations/ops_lecture.py
 from __future__ import annotations
 from typing import Any
-from dataclasses import dataclass
 from graphregistry.application.gateways.types import GatewayDict
-from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.common.auxfcn import normalized_levenshtein
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
-from graphregistry.domain.models.entities.mdl_lecture import Lecture
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.repositories.rpo_lecture_processing import LectureProcessingStatePort
 from graphregistry.domain.types import ActionSet
-import rich, pickle
 from loguru import logger as sysmsg
 
 # Class definition
-class LectureOperations(NodeOperations):
+class LectureOperations:
 
     # Class constructor
     def __init__(
