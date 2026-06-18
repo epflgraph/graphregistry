@@ -1,17 +1,33 @@
 # graphregistry/common/dbstruct.py
-from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from functools import lru_cache
+from pathlib import Path
+
+import json, re
+
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
-import rich, json, re
-from pathlib import Path
+from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 
 # TODO: Check presence of column name "context" in all edge definitions
 # TODO: Some keys are not being created in elasticsearch cache schemas
 
-# Initialize configuration objects
-glbcfg = GlobalConfig()
-idxcfg = IndexConfig()
-scrcfg = ScoresConfig()
+
+@lru_cache(maxsize=1)
+def get_global_config() -> GlobalConfig:
+    """Lazy loader for the global configuration."""
+    return GlobalConfig()
+
+
+@lru_cache(maxsize=1)
+def get_index_config() -> IndexConfig:
+    """Lazy loader for the index configuration."""
+    return IndexConfig()
+
+
+@lru_cache(maxsize=1)
+def get_scores_config() -> ScoresConfig:
+    """Lazy loader for the scores configuration."""
+    return ScoresConfig()
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -151,10 +167,10 @@ class DynamicSQL:
         #-------------------------------#
 
         # Get available doc types
-        self.doc_types = idxcfg.settings['doc_types']
+        self.doc_types = get_index_config().settings['doc_types']
 
         # Get edge types to score
-        self.edge_types_to_score = scrcfg.settings['scored_edge_tuples']['research'] + scrcfg.settings['scored_edge_tuples']['education']
+        self.edge_types_to_score = get_scores_config().settings['scored_edge_tuples']['research'] + get_scores_config().settings['scored_edge_tuples']['education']
 
         # Append ontology-related edges
         self.edge_types_to_score += [[d,'Concept' ] for d in self.doc_types]
@@ -172,8 +188,8 @@ class DynamicSQL:
 
         # Get available parent-to-child tuples
         p2c_tuples = []
-        for     k1 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'].keys():
-            for k2 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][k1].keys():
+        for     k1 in get_index_config().settings['graphsearch']['fields']['links']['parent_child'].keys():
+            for k2 in get_index_config().settings['graphsearch']['fields']['links']['parent_child'][k1].keys():
                 p2c_tuples += [tuple(sorted([k1,k2]))]
 
         # Append ontology tuples
@@ -271,7 +287,7 @@ class DynamicSQL:
         # Get field list helpers
         id_fields_wi  = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=True)
         id_fields_woi = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=False)
-        option_fields = list(idxcfg.settings['options'].keys())
+        option_fields = list(get_index_config().settings['options'].keys())
         custom_fields = self.get_custom_fields(doc_type=doc_type, index_group=index_group)
 
         # Combine and return according to index group
@@ -441,8 +457,8 @@ class DynamicSQL:
         for field_name in fields_list:
             if core_datatypes_config_flat['data-types'].get(field_name) is not None:
                 datatypes_list += [core_datatypes_config_flat['data-types'][field_name]]
-            elif idxcfg.settings['data_types'].get(field_name) is not None:
-                datatypes_list += [sql_data_type_mapping[idxcfg.settings['data_types'][field_name]]]
+            elif get_index_config().settings['data_types'].get(field_name) is not None:
+                datatypes_list += [sql_data_type_mapping[get_index_config().settings['data_types'][field_name]]]
             else:
                 raise Exception(f"❌ No datatype found in config: {field_name}")
         return datatypes_list
@@ -451,11 +467,11 @@ class DynamicSQL:
     def get_sql_table_name(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
         if link_type is None:
             if index_group in ('graphsearch', 'elasticsearch'):
-                return f"{glbcfg.mysql_schema_names['test']['graphsearch' if index_group=='graphsearch' else 'es_cache']+'.' if include_schema else ''}Index_D_{doc_type}"
+                return f"{get_global_config().mysql_schema_names['test']['graphsearch' if index_group=='graphsearch' else 'es_cache']+'.' if include_schema else ''}Index_D_{doc_type}"
             elif index_group=='indexbuildup':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Docs_{doc_type}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Docs_{doc_type}"
             elif index_group=='indexrollback':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Docs_{doc_type}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Docs_{doc_type}"
             else:
                 print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
                 exit()
@@ -464,13 +480,13 @@ class DynamicSQL:
                 if link_subtype is None:
                     print(f"❌ Error: link_subtype must be specified for index_group='graphsearch'")
                     exit()
-                return f"{glbcfg.mysql_schema_names['test']['graphsearch']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}"
+                return f"{get_global_config().mysql_schema_names['test']['graphsearch']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}"
             elif index_group=='elasticsearch':
-                return f"{glbcfg.mysql_schema_names['test']['es_cache']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}"
+                return f"{get_global_config().mysql_schema_names['test']['es_cache']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}"
             elif index_group=='indexbuildup':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
             elif index_group=='indexrollback':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
             else:
                 print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
                 exit()
@@ -629,10 +645,10 @@ class DynamicSQL:
         def __init__(self, doc_type):
             self.doc_type = doc_type
             self.options = {}
-            for k in idxcfg.settings['options'].keys():
-                self.options[k] = idxcfg.settings['options'][k][self.doc_type]
-            self.graphsearch_obj_fields   = list(idxcfg.settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, []))
-            self.elasticsearch_obj_fields = list(idxcfg.settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, []))
+            for k in get_index_config().settings['options'].keys():
+                self.options[k] = get_index_config().settings['options'][k][self.doc_type]
+            self.graphsearch_obj_fields   = list(get_index_config().settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, []))
+            self.elasticsearch_obj_fields = list(get_index_config().settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, []))
 
     #--------------------------------------#
     # Sub-class definition: DocLink object #
@@ -644,9 +660,9 @@ class DynamicSQL:
             self.doc_type     = doc_type
             self.link_type    = link_type
             self.link_subtype = link_subtype
-            self.graphsearch_obj_fields     =  list(idxcfg.settings['graphsearch'  ]['fields']['links']['default'].get(self.link_type, []))
-            self.graphsearch_obj2obj_fields = (list(idxcfg.settings['graphsearch'  ]['fields']['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, [])) if link_subtype.upper() == 'ORG' else [])
-            self.elasticsearch_obj_fields   =  list(idxcfg.settings['elasticsearch']['fields']['links'].get(self.link_type, []))
+            self.graphsearch_obj_fields     =  list(get_index_config().settings['graphsearch'  ]['fields']['links']['default'].get(self.link_type, []))
+            self.graphsearch_obj2obj_fields = (list(get_index_config().settings['graphsearch'  ]['fields']['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, [])) if link_subtype.upper() == 'ORG' else [])
+            self.elasticsearch_obj_fields   =  list(get_index_config().settings['elasticsearch']['fields']['links'].get(self.link_type, []))
 
 #===============================#
 # Class definition: Graph Table #
@@ -673,17 +689,17 @@ class GraphTable():
             if table_name.startswith('IndexBuildup_Fields_Docs_'):
                 self.doc_type = table_name.replace('IndexBuildup_Fields_Docs_', '')
                 self.index_group = 'indexbuildup'
-                self.schema_name = glbcfg.mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
+                self.schema_name = get_global_config().mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
 
             # Index buildup table (doclinks)
             elif table_name.startswith('IndexBuildup_Fields_Links_ParentChild_'):
                 self.doc_type, self.link_type = table_name.replace('IndexBuildup_Fields_Links_ParentChild_', '').split('_')
                 self.link_subtype = 'ORG'
                 self.index_group = 'indexbuildup'
-                self.schema_name = glbcfg.mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
+                self.schema_name = get_global_config().mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
 
             # GraphSearch schema
-            if self.schema_name == glbcfg.mysql_schema_names['test']['graphsearch']:
+            if self.schema_name == get_global_config().mysql_schema_names['test']['graphsearch']:
 
                 # Index doc tables
                 if self.table_name and re.match(r"Index_D_([^\_]*)$", self.table_name):
@@ -696,7 +712,7 @@ class GraphTable():
                     self.index_group = 'graphsearch'
 
             # ElasticSearch schema
-            elif self.schema_name == glbcfg.mysql_schema_names['test']['es_cache']:
+            elif self.schema_name == get_global_config().mysql_schema_names['test']['es_cache']:
 
                 # Index doc tables
                 if self.table_name and re.match(r"Index_D_([^\_]*)$", self.table_name):
@@ -781,7 +797,7 @@ if __name__ == "__main__":
     }
 
     # Set schema name for testing
-    schema_name = glbcfg.mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
+    schema_name = get_global_config().mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
 
     # Initialise table
     for t in sorted(['IndexBuildup_Fields_Links_ParentChild_Course_Lecture', 'IndexBuildup_Fields_Links_ParentChild_Course_Person', 'IndexBuildup_Fields_Links_ParentChild_Lecture_MOOC', 'IndexBuildup_Fields_Links_ParentChild_Lecture_Widget', 'IndexBuildup_Fields_Links_ParentChild_MOOC_Person', 'IndexBuildup_Fields_Links_ParentChild_Notebook_Person', 'IndexBuildup_Fields_Links_ParentChild_Person_Publication', 'IndexBuildup_Fields_Links_ParentChild_Person_Unit', 'IndexBuildup_Fields_Links_ParentChild_Unit_Unit']):
