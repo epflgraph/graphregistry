@@ -1,17 +1,35 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_lecturerepo.py
 from __future__ import annotations
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureEnrichmentTaskMapper
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
+from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.repositories.rpo_lecture import LectureRepository
 from graphregistry.domain.repositories.rpo_lecture_processing import LectureProcessingStatePort
+from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.types import ActionSet
 
+if TYPE_CHECKING:
+    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.services.srv_schema import SchemaResolver
+
 # Class definition
-class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProcessingStatePort):
+class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
+
+    # Method: Initialize the lecture repository with database connection,
+    # schema resolver, and a node repository for node-level persistence.
+    def __init__(
+        self,
+        db: "GraphDB",
+        schema_resolver: "SchemaResolver",
+        node_repo: NodeRepository,
+    ) -> None:
+        self.db = db
+        self.schema_resolver = schema_resolver
+        self.node_repo = node_repo
+        self.msg = GraphLogger()
 
     #===============================#
     # Content processing operations #
@@ -48,7 +66,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProc
     def get_file_url(self, lecture_key: NodeKey) -> str:
 
         # Check if lecture exists first (return None if not found)
-        if not self.exists(lecture_key):
+        if not self.node_repo.exists(lecture_key):
             self.msg.not_found(lecture_key)
             raise ValueError(f"Lecture with key {lecture_key} not found, cannot get file URL")
 
@@ -564,7 +582,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProc
     def get_enrichment_task(self, key: NodeKey) -> LectureEnrichmentTask | None:
 
         # Check if lecture exists first (return None if not found)
-        if not self.exists(key):
+        if not self.node_repo.exists(key):
             self.msg.not_found(key)
             return None
 
@@ -609,12 +627,12 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProc
         node_key = NodeKey(institution_id='EPFL', object_type='Lecture', object_id=result.lecture_id)
 
         # Check if lecture exists first (return None if not found)
-        if not self.exists(node_key):
+        if not self.node_repo.exists(node_key):
             self.msg.not_found(node_key)
             raise ValueError(f"Lecture with key {node_key} not found, cannot save enrichment result")
 
         # Get the corresponding Node object for the lecture using its key
-        node = self.get(node_key)
+        node = self.node_repo.get(node_key)
 
         # Run all necessary assertions to ensure the enrichment result can be applied to the Node object without issues
         assert node                          is not None, f"Node with key {node_key} should exist but was not found"
@@ -634,7 +652,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProc
         node.concepts.ai_validated              = result.top_concepts.post_validated_list or node.concepts.ai_validated
 
         # Save enriched node object
-        self.save(node=node, actions=actions)
+        self.node_repo.save(node=node, actions=actions)
 
         #========================#
         # Process Lecture slides #
@@ -647,13 +665,13 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProc
             slide_node_key = NodeKey(institution_id='EPFL', object_type='Slide', object_id=keyframe.keyframe_id)
 
             # Check if slide node exists first (return None if not found)
-            if not self.exists(slide_node_key):
+            if not self.node_repo.exists(slide_node_key):
                 self.msg.not_found(slide_node_key)
                 print(f"⚠️ Slide with key {slide_node_key} not found, skipping enrichment result for this slide.")
                 continue
 
             # Get the corresponding Node object for the slide using its key
-            slide_node = self.get(slide_node_key)
+            slide_node = self.node_repo.get(slide_node_key)
 
             # Run all necessary assertions to ensure the enrichment result can be applied to the slide Node object without issues
             assert slide_node is not None, f"Node with key {slide_node_key} should exist but was not found"
@@ -662,7 +680,7 @@ class MySQLLectureRepository(MySQLNodeRepository, LectureRepository, LectureProc
             slide_node.concepts.ai_validated = keyframe.refined_concepts.post_validated_list or slide_node.concepts.ai_validated
 
             # Save enriched slide node object
-            self.save(node=slide_node, actions=actions)
+            self.node_repo.save(node=slide_node, actions=actions)
 
         # Return the node key
         return node_key

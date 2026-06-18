@@ -8,6 +8,7 @@ from graphregistry.adapters.gateways.genai.agt_lectureenrich import GenAILecture
 from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
 from graphregistry.adapters.persistence.mysql.repositories.arp_lecturerepo import MySQLLectureRepository
+from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
 from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.application.operations.ops_lecture import LectureOperations
@@ -21,9 +22,12 @@ db = GraphDB()
 engine_name = "xaas_coresrv"
 schema_name = DefaultSchemaResolver(engine_name=engine_name, glbcfg=GlobalConfig())
 
+# Initialize node repository used by the lecture repository for node-level persistence
+node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_name)
+
 # Initialize the lecture operations with the MySQL repository and the GenAI enrichment gateway
 lecture_ops = LectureOperations(
-    repo=MySQLLectureRepository(db, schema_name),
+    repo=MySQLLectureRepository(db, schema_name, node_repo),
     ai_gateways=cast(
         GatewayDict,
         {
