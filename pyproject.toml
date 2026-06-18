@@ -26,6 +26,8 @@ dependencies = [
     "flatten_dict",
     "dictdiffer",
     "pytest",
+    "pytest-cov",
+    "pytest-xdist",
     "openai",
     # Git dependency (PEP 508 syntax)
     "graphdb-client @ git+https://github.com/epflgraph/graphdb-client.git",
@@ -51,7 +53,31 @@ exclude = [
 
 # Pytest configuration for the project
 [tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not integration and not e2e'"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
 markers = [
     "integration: tests that hit real external systems (DB, APIs, etc.)",
     "e2e: end-to-end tests hitting real systems (DB, CLI, etc.)"
 ]
+
+[tool.coverage.run]
+source = ["graphregistry"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "graphregistry/adapters/gateways/graphai/_graphai_client/tests/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+skip_covered = false
+show_missing = true
