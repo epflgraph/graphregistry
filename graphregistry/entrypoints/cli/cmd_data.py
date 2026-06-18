@@ -4,38 +4,23 @@ from pathlib import Path
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeList
 from graphregistry.domain.models.entities.mdl_edge import EdgeList
-from graphregistry.domain.repositories.rpo_node import NodeRepository
-from graphregistry.domain.repositories.rpo_edge import EdgeRepository
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.application.operations.ops_edge import EdgeOperations
-from graphregistry.application.factories.fct_node import NodeFactory
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
+from graphregistry.entrypoints.cli.dependencies import (
+    build_edge_operations_from_args,
+    build_node_operations_from_args,
+)
 from graphregistry.entrypoints.mappers import SpecMapper
-from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 import rich, json
 from graphregistry.domain.types import ActionSet, ActionName
 
-# Helper: Build default schema resolver
-def _make_schema_resolver(args) -> DefaultSchemaResolver:
-    return DefaultSchemaResolver(
-        engine_name=args.env,
-        glbcfg=args.ctx.global_config,
-    )
+# Helper aliases for local readability
+def _make_node_ops(args) -> NodeOperations:
+    return build_node_operations_from_args(args)
 
-# Helper: Build node repository
-def _make_node_repo(args) -> NodeRepository:
-    return MySQLNodeRepository(
-        db=args.ctx.db,
-        schema_resolver=_make_schema_resolver(args),
-    )
 
-# Helper: Build edge repository
-def _make_edge_repo(args) -> EdgeRepository:
-    return MySQLEdgeRepository(
-        db=args.ctx.db,
-        schema_resolver=_make_schema_resolver(args),
-    )
+def _make_edge_ops(args) -> EdgeOperations:
+    return build_edge_operations_from_args(args)
 
 # Helper: Find repository root
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -124,11 +109,11 @@ def cmd_data_list(args):
         # Load JSON data from input file
         json_input = _load_json_input(node_request_input, "--node_request")
 
-        # Initialize node repository
-        node_repo: NodeRepository = _make_node_repo(args)
+        # Initialize node operations
+        node_ops = _make_node_ops(args)
 
         # Get list of nodes matching request parameters
-        node_key_list = node_repo.list(object_type=json_input['type'], id_pattern=json_input.get('id_pattern'))
+        node_key_list = node_ops.list(object_type=json_input['type'], id_pattern=json_input.get('id_pattern'))
 
         # Print results
         if len(node_key_list)>0:
@@ -144,11 +129,11 @@ def cmd_data_list(args):
         # Load JSON data from input file
         json_input = _load_json_input(edge_request_input, "--edge_request")
 
-        # Initialize edge repository
-        edge_repo: EdgeRepository = _make_edge_repo(args)
+        # Initialize edge operations
+        edge_ops = _make_edge_ops(args)
 
         # Get list of edges matching request parameters
-        edge_key_list = edge_repo.list(object_type=(json_input.get('from_type'), json_input.get('to_type')), id_pattern=json_input.get('id_pattern'))
+        edge_key_list = edge_ops.list(object_type=(json_input.get('from_type'), json_input.get('to_type')), id_pattern=json_input.get('id_pattern'))
 
         # Print results
         if len(edge_key_list)>0:
@@ -173,9 +158,9 @@ def cmd_data_exists(args):
     node_key_list_input = args.node_key_list
     edge_key_list_input = args.edge_key_list
 
-    # Build repositories
-    node_repo: NodeRepository = _make_node_repo(args)
-    edge_repo: EdgeRepository = _make_edge_repo(args)
+    # Build operations
+    node_ops = _make_node_ops(args)
+    edge_ops = _make_edge_ops(args)
 
     # Process node input
     if node_key_input:
@@ -190,7 +175,7 @@ def cmd_data_exists(args):
         node_key = SpecMapper.from_node_key_spec(node_key_spec)
 
         # Check if node exists
-        exists = node_repo.exists(node_key)
+        exists = node_ops.exists(node_key)
 
         # Print result as JSON
         rich.print_json(data={"exists": exists})
@@ -208,7 +193,7 @@ def cmd_data_exists(args):
         edge_key = SpecMapper.from_edge_key_spec(edge_key_spec)
 
         # Check if edge exists
-        exists = edge_repo.exists(edge_key)
+        exists = edge_ops.exists(edge_key)
 
         # Print result as JSON
         rich.print_json(data={"exists": exists})
@@ -226,7 +211,7 @@ def cmd_data_exists(args):
         node_key_list = SpecMapper.from_node_key_list_spec(node_key_list_spec)
 
         # Check if nodes exist
-        exists_list = node_repo.exists_many(node_key_list)
+        exists_list = node_ops.exists_many(node_key_list)
 
         # Print result as JSON
         rich.print_json(data={
@@ -247,7 +232,7 @@ def cmd_data_exists(args):
         edge_key_list = SpecMapper.from_edge_key_list_spec(edge_key_list_spec)
 
         # Check if edges exist
-        exists_list = edge_repo.exists_many(edge_key_list)
+        exists_list = edge_ops.exists_many(edge_key_list)
 
         # Print result as JSON
         rich.print_json(data={
@@ -264,9 +249,9 @@ def cmd_data_get(args):
     node_key_list_input = args.node_key_list
     edge_key_list_input = args.edge_key_list
 
-    # Build repositories
-    node_repo: NodeRepository = _make_node_repo(args)
-    edge_repo: EdgeRepository = _make_edge_repo(args)
+    # Build operations
+    node_ops = _make_node_ops(args)
+    edge_ops = _make_edge_ops(args)
 
     # Process node input
     if node_key_input:
@@ -281,7 +266,7 @@ def cmd_data_get(args):
         node_key = SpecMapper.from_node_key_spec(node_key_spec)
 
         # Fetch node from registry
-        node = node_repo.get(node_key)
+        node = node_ops.get(node_key)
 
         # Print node as JSON
         if node:
@@ -300,7 +285,7 @@ def cmd_data_get(args):
         edge_key = SpecMapper.from_edge_key_spec(edge_key_spec)
 
         # Fetch edge from registry
-        edge = edge_repo.get(edge_key)
+        edge = edge_ops.get(edge_key)
 
         # Print edge as JSON
         if edge:
@@ -319,7 +304,7 @@ def cmd_data_get(args):
         node_key_list = SpecMapper.from_node_key_list_spec(node_key_list_spec)
 
         # Fetch node from registry
-        node_list = node_repo.get_many(node_key_list)
+        node_list = node_ops.get_many(node_key_list)
 
         # Print node as JSON
         if node_list:
@@ -338,7 +323,7 @@ def cmd_data_get(args):
         edge_key_list = SpecMapper.from_edge_key_list_spec(edge_key_list_spec)
 
         # Fetch edge from registry
-        edge_list = edge_repo.get_many(edge_key_list)
+        edge_list = edge_ops.get_many(edge_key_list)
 
         # Print edge as JSON
         if edge_list:
@@ -353,11 +338,9 @@ def cmd_data_save(args):
     node_list_input = args.node_list
     edge_list_input = args.edge_list
 
-    # Build repositories
-    node_repo: NodeRepository = _make_node_repo(args)
-    edge_repo: EdgeRepository = _make_edge_repo(args)
-    node_ops = NodeOperations(repo=node_repo)
-    edge_ops = EdgeOperations(repo=edge_repo)
+    # Build operations
+    node_ops = _make_node_ops(args)
+    edge_ops = _make_edge_ops(args)
 
     # Process node input
     if node_input:
@@ -431,9 +414,9 @@ def cmd_data_delete(args):
     node_key_list_input = args.node_key_list
     edge_key_list_input = args.edge_key_list
 
-    # Build repositories
-    node_repo: NodeRepository = _make_node_repo(args)
-    edge_repo: EdgeRepository = _make_edge_repo(args)
+    # Build operations
+    node_ops = _make_node_ops(args)
+    edge_ops = _make_edge_ops(args)
 
     # Process node input
     if node_key_input:
@@ -448,7 +431,7 @@ def cmd_data_delete(args):
         node_key = SpecMapper.from_node_key_spec(node_key_spec)
 
         # Delete node from registry
-        result = node_repo.delete(node_key, actions=('commit',))
+        result = node_ops.delete(node_key, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -467,7 +450,7 @@ def cmd_data_delete(args):
         edge_key = SpecMapper.from_edge_key_spec(edge_key_spec)
 
         # Delete edge from registry
-        result = edge_repo.delete(edge_key, actions=('commit',))
+        result = edge_ops.delete(edge_key, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -486,7 +469,7 @@ def cmd_data_delete(args):
         node_key_list = SpecMapper.from_node_key_list_spec(node_key_list_spec)
 
         # Delete nodes from registry
-        result = node_repo.delete_many(node_key_list, actions=('commit',))
+        result = node_ops.delete_many(node_key_list, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -505,7 +488,7 @@ def cmd_data_delete(args):
         edge_key_list = SpecMapper.from_edge_key_list_spec(edge_key_list_spec)
 
         # Delete edges from registry
-        result = edge_repo.delete_many(edge_key_list, actions=('commit',))
+        result = edge_ops.delete_many(edge_key_list, actions=('commit',))
 
         # Print result as JSON
         if result==False and 'commit' not in actions:
@@ -538,11 +521,9 @@ def cmd_data_import(args):
     with open(input_file, 'r', encoding='utf-8') as fp:
         sample_set = json.load(fp)
 
-    # Build repositories
-    node_repo: NodeRepository = _make_node_repo(args)
-    edge_repo: EdgeRepository = _make_edge_repo(args)
-    node_ops = NodeOperations(repo=node_repo)
-    edge_ops = EdgeOperations(repo=edge_repo)
+    # Build operations
+    node_ops = _make_node_ops(args)
+    edge_ops = _make_edge_ops(args)
 
     # Method 1: Process and commit object by object
     if import_method == 'object':

@@ -2,7 +2,7 @@
 """Unit tests for CLI data command dispatch without a real database.
 
 These tests verify that the CLI command functions parse input, delegate to the
-right repository/operation methods, and handle wrapper-key normalization.
+right application operation methods, and handle wrapper-key normalization.
 """
 from __future__ import annotations
 
@@ -44,12 +44,12 @@ def _args(**overrides: Any) -> SimpleNamespace:
 
 
 class TestCmdDataSave:
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_repo")
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_repo")
-    def test_save_node(self, mock_edge_repo: MagicMock, mock_node_repo: MagicMock) -> None:
-        mock_repo = MagicMock()
-        mock_node_repo.return_value = mock_repo
-        mock_edge_repo.return_value = MagicMock()
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_ops")
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_ops")
+    def test_save_node(self, mock_edge_ops: MagicMock, mock_node_ops: MagicMock) -> None:
+        mock_ops = MagicMock()
+        mock_node_ops.return_value = mock_ops
+        mock_edge_ops.return_value = MagicMock()
 
         payload: dict[str, Any] = {"type": "Course", "id": "CS-433", "title": "ML"}
         args = _args(node="/tmp/node.json")
@@ -57,16 +57,16 @@ class TestCmdDataSave:
         with patch("graphregistry.entrypoints.cli.cmd_data._load_json_input", return_value=payload):
             cmd_data_save(args)
 
-        mock_repo.save.assert_called_once()
-        saved_node: Node = mock_repo.save.call_args[0][0]
+        mock_ops.save.assert_called_once()
+        saved_node: Node = mock_ops.save.call_args[0][0]
         assert saved_node.key.object_id == "CS-433"
 
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_repo")
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_repo")
-    def test_save_node_list(self, mock_edge_repo: MagicMock, mock_node_repo: MagicMock) -> None:
-        mock_repo = MagicMock()
-        mock_node_repo.return_value = mock_repo
-        mock_edge_repo.return_value = MagicMock()
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_ops")
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_ops")
+    def test_save_node_list(self, mock_edge_ops: MagicMock, mock_node_ops: MagicMock) -> None:
+        mock_ops = MagicMock()
+        mock_node_ops.return_value = mock_ops
+        mock_edge_ops.return_value = MagicMock()
 
         payload: dict[str, Any] = {
             "node_list": [
@@ -79,19 +79,19 @@ class TestCmdDataSave:
         with patch("graphregistry.entrypoints.cli.cmd_data._load_json_input", return_value=payload):
             cmd_data_save(args)
 
-        mock_repo.save_many.assert_called_once()
-        saved_list = mock_repo.save_many.call_args[0][0]
+        mock_ops.save_many.assert_called_once()
+        saved_list = mock_ops.save_many.call_args[0][0]
         assert len(saved_list.item_list) == 2
 
 
 class TestCmdDataExists:
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_repo")
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_repo")
-    def test_exists_node(self, mock_edge_repo: MagicMock, mock_node_repo: MagicMock) -> None:
-        mock_repo = MagicMock()
-        mock_repo.exists.return_value = True
-        mock_node_repo.return_value = mock_repo
-        mock_edge_repo.return_value = MagicMock()
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_ops")
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_ops")
+    def test_exists_node(self, mock_edge_ops: MagicMock, mock_node_ops: MagicMock) -> None:
+        mock_ops = MagicMock()
+        mock_ops.exists.return_value = True
+        mock_node_ops.return_value = mock_ops
+        mock_edge_ops.return_value = MagicMock()
 
         payload: dict[str, Any] = {"type": "Course", "id": "CS-433"}
         args = _args(node_key="/tmp/key.json")
@@ -100,19 +100,19 @@ class TestCmdDataExists:
             with patch("graphregistry.entrypoints.cli.cmd_data.rich.print_json") as mock_print:
                 cmd_data_exists(args)
 
-        mock_repo.exists.assert_called_once()
-        key: NodeKey = mock_repo.exists.call_args[0][0]
+        mock_ops.exists.assert_called_once()
+        key: NodeKey = mock_ops.exists.call_args[0][0]
         assert key.object_id == "CS-433"
         mock_print.assert_called_once()
         assert mock_print.call_args[1]["data"]["exists"] is True
 
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_repo")
-    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_repo")
-    def test_exists_node_list(self, mock_edge_repo: MagicMock, mock_node_repo: MagicMock) -> None:
-        mock_repo = MagicMock()
-        mock_repo.exists_many.return_value = [True, False]
-        mock_node_repo.return_value = mock_repo
-        mock_edge_repo.return_value = MagicMock()
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_node_ops")
+    @patch("graphregistry.entrypoints.cli.cmd_data._make_edge_ops")
+    def test_exists_node_list(self, mock_edge_ops: MagicMock, mock_node_ops: MagicMock) -> None:
+        mock_ops = MagicMock()
+        mock_ops.exists_many.return_value = [True, False]
+        mock_node_ops.return_value = mock_ops
+        mock_edge_ops.return_value = MagicMock()
 
         payload: dict[str, Any] = {
             "key_list": [
@@ -126,7 +126,7 @@ class TestCmdDataExists:
             with patch("graphregistry.entrypoints.cli.cmd_data.rich.print_json") as mock_print:
                 cmd_data_exists(args)
 
-        mock_repo.exists_many.assert_called_once()
+        mock_ops.exists_many.assert_called_once()
         result = mock_print.call_args[1]["data"]
         assert result["exist_keys"] == [True, False]
         assert result["count"] == 2
