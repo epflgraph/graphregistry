@@ -5,7 +5,7 @@ from json import load as load_json
 from pathlib import Path
 from time import sleep
 from typing import Any, Callable, cast
-from requests import Response, get, post
+from requests import Response
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.application.gateways.gtw_translation import TextTranslationGateway
@@ -78,9 +78,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             debug:
                 If True, prints more request-level information.
         """
-        self.graph_api_json = self._resolve_graph_api_json(graph_api_json)
-        self._login_info = login_info
-        self.debug = debug
+        super().__init__(graph_api_json=graph_api_json, login_info=login_info, debug=debug)
 
     # ----------------------------------------------------------------------------------
     # Public gateway API

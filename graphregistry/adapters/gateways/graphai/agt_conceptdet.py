@@ -4,8 +4,6 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlencode
 
-from requests import post
-
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
@@ -24,7 +22,7 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
         response = self._request(
             url=url,
             login_info=login_info,
-            request_func=post,
+            method="POST",
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
@@ -58,7 +56,7 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
         response = self._request(
             url=url,
             login_info=login_info,
-            request_func=post,
+            method="POST",
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
@@ -96,7 +94,7 @@ class GraphAIConceptDetectionGateway(GraphAIBaseGateway, ConceptDetectionGateway
         response = self._request(
             url=url,
             login_info=login_info,
-            request_func=post,
+            method="POST",
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",

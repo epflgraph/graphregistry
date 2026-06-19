@@ -4,8 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from requests import post
-
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.domain.models.entities.mdl_lecture import Slide, SlideList, Video, Voice
 
@@ -604,7 +602,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         response = self._request(
             url          = "/video/get_file",
             login_info   = login_info,
-            request_func = post,
+            method       = "POST",
             headers      = {"Content-Type": "application/json"},
             json         = {"token": token},
             max_tries    = max_tries,

@@ -7,9 +7,9 @@ from os import chmod
 from pathlib import Path
 from random import uniform
 from time import sleep
-from typing import Any, Callable, ClassVar, Literal, cast, overload
+from typing import Any, ClassVar, Literal, cast, overload
 
-from requests import Response, get, post
+from requests import Response, Session
 
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
 
@@ -29,6 +29,30 @@ class GraphAIBaseGateway:
         self.graph_api_json = self._resolve_graph_api_json(graph_api_json)
         self._login_info = login_info
         self.debug = debug
+        # Reuse a single session so that HTTP keep-alive/TLS handshakes are
+        # amortized across requests. This is critical for GraphAI because the
+        # submit -> status polling pattern used to create two fresh connections,
+        # adding several seconds of TLS overhead per call.
+        self._session: Session | None = None
+
+    @property
+    def _http_session(self) -> Session:
+        """Return the persistent requests session, creating it on first use."""
+        if self._session is None:
+            self._session = Session()
+        return self._session
+
+    def close(self) -> None:
+        """Close the underlying requests session."""
+        if self._session is not None:
+            self._session.close()
+            self._session = None
+
+    def __enter__(self) -> "GraphAIBaseGateway":
+        return self
+
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
+        self.close()
 
     # ----------------------------------------------------------------------------------
     # Authentication / config helpers
@@ -140,7 +164,7 @@ class GraphAIBaseGateway:
         response = self._request(
             url="/token",
             login_info=login_info,
-            request_func=post,
+            method="POST",
             data={"username": cfg["user"], "password": cfg["password"]},
             max_tries=max_tries,
             timeout=30,
@@ -181,7 +205,7 @@ class GraphAIBaseGateway:
         self,
         url: str,
         login_info: dict[str, Any],
-        request_func: Callable[..., Response] = get,
+        method: str = "GET",
         headers: dict[str, str] | None = None,
         json: dict[str, Any] | None = None,
         data: dict[str, Any] | None = None,
@@ -191,6 +215,9 @@ class GraphAIBaseGateway:
     ) -> Response:
         """
         Execute one HTTP request with retry logic and automatic token refresh on 401.
+
+        Uses the gateway's persistent ``requests.Session`` so that connection
+        reuse (HTTP keep-alive) amortizes TLS handshake costs across calls.
         """
         if not url.startswith("http"):
             url = login_info["host"] + url
@@ -199,9 +226,12 @@ class GraphAIBaseGateway:
         if "token" in login_info:
             request_headers["Authorization"] = f'Bearer {login_info["token"]}'
 
+        method = method.upper()
+
         for attempt in range(1, max_tries + 1):
             try:
-                response = request_func(
+                response = self._http_session.request(
+                    method,
                     url,
                     headers=request_headers,
                     json=json,
@@ -213,7 +243,7 @@ class GraphAIBaseGateway:
                     raise
                 delay = self._backoff_seconds(attempt)
                 self._log(
-                    f"{request_func.__name__.upper()} failed "
+                    f"{method} failed "
                     f"(attempt {attempt}/{max_tries}), retrying in {delay}s..."
                 )
                 sleep(delay)
@@ -253,7 +283,7 @@ class GraphAIBaseGateway:
                 delay = self._backoff_seconds(attempt)
                 jittered_delay = self._jittered_delay(delay)
                 self._log(
-                    f"{request_func.__name__.upper()} {url} returned "
+                    f"{method} {url} returned "
                     f"{response.status_code}, retrying in {jittered_delay:.2f}s..."
                 )
                 sleep(jittered_delay)
@@ -279,7 +309,7 @@ class GraphAIBaseGateway:
         return_status_payload: bool = False,
         max_processing_time_s: int = 6000,
         max_tries: int = 2,
-        status_timeout: int = 5,
+        status_timeout: int = 15,
     ) -> dict[str, Any] | list[Any] | None:
         """
         Get the result of an already-submitted async GraphAI task.
@@ -289,10 +319,11 @@ class GraphAIBaseGateway:
         - task_result when task_status is SUCCESS
         - None when task_status is PENDING/STARTED/FAILURE or result is malformed
 
-        status_timeout controls how long a single lightweight /status/{task_id}
-        request may take. It defaults to 5s so callers fail fast when GraphAI is
-        unreachable; the long wait for actual processing is governed by
-        max_processing_time_s.
+        status_timeout controls how long a single /status/{task_id} request may
+        take. It defaults to 15s, which is short enough to fail fast when
+        GraphAI is unreachable but long enough for the status endpoint's own
+        result-backend lookup. The long wait for actual processing is governed
+        by max_processing_time_s.
         """
         resolved_login_info = login_info or self._ensure_login_info()
 
@@ -304,7 +335,7 @@ class GraphAIBaseGateway:
             status_response = self._request(
                 url=f"{endpoint}/status/{task_id}",
                 login_info=resolved_login_info,
-                request_func=get,
+                method="GET",
                 headers={"Content-Type": "application/json"},
                 max_tries=status_http_retries,
                 timeout=status_timeout,
@@ -472,7 +503,7 @@ class GraphAIBaseGateway:
         *,
         max_processing_time_s: int = 6000,
         max_tries: int = 2,
-        submit_timeout: int = 10,
+        submit_timeout: int = 30,
         wait_for_result: Literal[True] = True,
     ) -> dict[str, Any] | list[Any] | None: ...
 
@@ -485,7 +516,7 @@ class GraphAIBaseGateway:
         *,
         max_processing_time_s: int = 6000,
         max_tries: int = 2,
-        submit_timeout: int = 10,
+        submit_timeout: int = 30,
         wait_for_result: Literal[False],
     ) -> str | None: ...
 
@@ -497,16 +528,17 @@ class GraphAIBaseGateway:
         *,
         max_processing_time_s: int = 6000,
         max_tries: int = 2,
-        submit_timeout: int = 10,
+        submit_timeout: int = 30,
         wait_for_result: bool = True,
     ) -> dict[str, Any] | list[Any] | str | None:
         """
         Submit an async GraphAI job and optionally poll until completion.
 
         The submit_timeout controls how long we wait for GraphAI to accept the
-        task submission. It should be short (default 10s) so callers fail fast
-        when the service is unreachable. The long processing wait happens during
-        polling, governed by max_processing_time_s.
+        task submission. It defaults to 30s: fast enough to surface an
+        unreachable service, but long enough for the FastAPI → Celery enqueue
+        step, which can take several seconds in production. The long processing
+        wait happens during polling, governed by max_processing_time_s.
         """
         # Use a small, fixed number of HTTP retries for the lightweight submit
         # call. The outer loop handles task-level retries; combining both would
@@ -516,7 +548,7 @@ class GraphAIBaseGateway:
             submit_response = self._request(
                 url=endpoint,
                 login_info=login_info,
-                request_func=post,
+                method="POST",
                 headers={"Content-Type": "application/json"},
                 json=payload,
                 max_tries=submit_http_retries,
