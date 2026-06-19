@@ -1,7 +1,8 @@
 # graphregistry/application/operations/ops_lecture.py
 from __future__ import annotations
-from typing import Any
-from graphregistry.application.gateways.types import GatewayDict
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.application.gateways.gtw_lectureenrich import LectureEnrichmentGateway
+from graphregistry.application.gateways.gtw_video import VideoProcessingGateway
 from graphregistry.common.auxfcn import normalized_levenshtein
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
@@ -21,7 +22,10 @@ class LectureOperations:
         self,
         repo: LectureRepository,
         processing_state: LectureProcessingStatePort | None = None,
-        ai_gateways: GatewayDict | None = None,
+        *,
+        video_processing_gateway: VideoProcessingGateway | None = None,
+        concept_detection_gateway: ConceptDetectionGateway | None = None,
+        lecture_enrichment_gateway: LectureEnrichmentGateway | None = None,
     ) -> None:
         self.repo = repo
         if processing_state is not None:
@@ -32,7 +36,9 @@ class LectureOperations:
             raise TypeError(
                 "repo must implement LectureProcessingStatePort when processing_state is omitted"
             )
-        self.ai_gateways = ai_gateways or {}
+        self.video_processing_gateway = video_processing_gateway
+        self.concept_detection_gateway = concept_detection_gateway
+        self.lecture_enrichment_gateway = lecture_enrichment_gateway
         self.msg = GraphLogger()
 
     #===============================#
@@ -54,8 +60,8 @@ class LectureOperations:
     # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
     def launch_video_download(self, video_url: str, no_cache: bool = False) -> str:
 
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("video_processing")
+        # Get the video processing gateway
+        gtw = self.video_processing_gateway
         if gtw is None:
             raise ValueError("Missing gateway: video_processing")
 
@@ -80,8 +86,8 @@ class LectureOperations:
     # Method: Launch asynchronous video download and processing task for a lecture, returning the task ID immediately
     def get_video_download_result(self, lecture_key: NodeKey) -> dict | None:
 
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("video_processing")
+        # Get the video processing gateway
+        gtw = self.video_processing_gateway
         if gtw is None:
             raise ValueError("Missing gateway: video_processing")
 
@@ -110,12 +116,12 @@ class LectureOperations:
     # Method: Launch asynchronous audio extraction task for a lecture based on the video token
     def launch_audio_extraction(self, video_token: str, no_cache: bool = False) -> str:
 
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("video_processing")
+        # Get the video processing gateway
+        gtw = self.video_processing_gateway
         if gtw is None:
             raise ValueError("Missing gateway: video_processing")
 
-        # Run the audio extraction gateway to generate the audio token
+        # Run the video processing gateway to generate the audio token
         task_id = gtw.launch_audio_extraction(video_token=video_token, no_cache=no_cache)
 
         # Return the audio token immediately without waiting for the processing to complete
@@ -136,8 +142,8 @@ class LectureOperations:
     # Method: Get the audio extraction result for a lecture using the audio extraction task ID (this can be used to retrieve the extracted audio once the extraction is complete)
     def get_audio_extraction_result(self, lecture_key: NodeKey) -> dict | None:
 
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("video_processing")
+        # Get the video processing gateway
+        gtw = self.video_processing_gateway
         if gtw is None:
             raise ValueError("Missing gateway: video_processing")
 
@@ -166,12 +172,12 @@ class LectureOperations:
     # Method: Launch asynchronous slide detection task for a lecture based on the video token, returning the list of slide tokens immediately
     def launch_slide_detection(self, video_token: str, no_cache: bool = False) -> str:
         
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("video_processing")
+        # Get the video processing gateway
+        gtw = self.video_processing_gateway
         if gtw is None:
             raise ValueError("Missing gateway: video_processing")
 
-        # Run the slide detection gateway to generate the slide tokens
+        # Run the video processing gateway to generate the slide tokens
         task_id = gtw.launch_slide_detection(video_token=video_token, no_cache=no_cache)
 
         # Return the slide tokens immediately without waiting for the processing to complete
@@ -192,8 +198,8 @@ class LectureOperations:
     # Method: Get the slide detection result for a lecture using the slide detection task ID (this can be used to retrieve the detected slides once the detection is complete)
     def get_slide_detection_result(self, lecture_key: NodeKey) -> dict | None:
 
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("video_processing")
+        # Get the video processing gateway
+        gtw = self.video_processing_gateway
         if gtw is None:
             raise ValueError("Missing gateway: video_processing")
 
@@ -218,8 +224,8 @@ class LectureOperations:
     # Method: Enrich one lecture by lecture_id
     def enrich(self, lecture_id: str) -> LectureEnrichmentResult | None:
 
-        # Get the enrichment gateway
-        gtw = self.ai_gateways.get("lecture_enrichment")
+        # Get the lecture enrichment gateway
+        gtw = self.lecture_enrichment_gateway
         if gtw is None:
             raise ValueError("Missing gateway: lecture_enrichment")
 
@@ -272,7 +278,7 @@ class LectureOperations:
                 ai_refined_list = result.keyframes[k].refined_concepts.ai_refined_list
 
             # Get concept detection gateway
-            gtw_conceptdet = self.ai_gateways.get("concept_detection")
+            gtw_conceptdet = self.concept_detection_gateway
             if gtw_conceptdet is None:
                 raise ValueError("Missing gateway: concept_detection")
 

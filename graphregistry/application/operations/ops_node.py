@@ -1,13 +1,12 @@
 # graphregistry/application/operations/ops_node.py
 from __future__ import annotations
-from typing import Any
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
 from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
-from graphregistry.application.gateways.types import GatewayDict
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.types import ConceptMapType
 
@@ -15,9 +14,14 @@ from graphregistry.domain.models.entities.types import ConceptMapType
 class NodeOperations:
 
     # Class constructor
-    def __init__(self, repo: NodeRepository, ai_gateways: GatewayDict | None = None) -> None:
+    def __init__(
+        self,
+        repo: NodeRepository,
+        *,
+        concept_detection_gateway: ConceptDetectionGateway | None = None,
+    ) -> None:
         self.repo = repo
-        self.ai_gateways = ai_gateways or {}
+        self.concept_detection_gateway = concept_detection_gateway
         self.msg = GraphLogger()
 
     #----------------------------------------#
@@ -93,8 +97,8 @@ class NodeOperations:
     def enrich_with_concepts(self, nodes: Node | NodeList) -> Node | NodeList:
 
         # Get gateway for concept detection
-        gateway = self.ai_gateways.get("concept_detection")
-        if not gateway:
+        gateway = self.concept_detection_gateway
+        if gateway is None:
             raise ValueError("Concept detection gateway not configured")
 
         # Perform concept detection using the gateway and populate the concepts.detected field
