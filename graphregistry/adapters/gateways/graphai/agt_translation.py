@@ -96,6 +96,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         no_cache: bool = False,
         skip_segmentation: bool = False,
         clean: bool = False,
+        max_text_length: int | None = None,
         launch_only: bool = False,
         ) -> str:
         """
@@ -126,12 +127,59 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             no_cache=no_cache,
             skip_segmentation=skip_segmentation,
             clean=clean,
+            max_text_length=max_text_length,
             launch_only=launch_only,
             debug=self.debug,
         )
 
         if not isinstance(result, str):
             raise RuntimeError("Translation failed: no string result returned.")
+        return result
+
+    def translate_text_list(
+        self,
+        texts: list[str | None],
+        source_language: LanguageCode,
+        target_language: LanguageCode,
+        *,
+        force: bool = False,
+        no_cache: bool = False,
+        skip_segmentation: bool = False,
+        clean: bool = False,
+        max_text_length: int | None = None,
+        max_text_list_length: int = 20000,
+        max_tries: int = 5,
+        max_processing_time_s: int = 3600,
+        launch_only: bool = False,
+    ) -> list[str | None]:
+        """
+        Translate a list of strings, preserving None/empty placeholders.
+
+        This is a concrete-class convenience method; it is not part of the
+        TextTranslationGateway port.
+        """
+        if source_language == target_language:
+            return cast(list[str | None], texts)
+
+        login_info = self._ensure_login_info()
+        result = self._translate_any(
+            text=texts,
+            source_language=source_language,
+            target_language=target_language,
+            login_info=login_info,
+            force=force,
+            no_cache=no_cache,
+            skip_segmentation=skip_segmentation,
+            clean=clean,
+            max_text_length=max_text_length,
+            max_text_list_length=max_text_list_length,
+            max_tries=max_tries,
+            max_processing_time_s=max_processing_time_s,
+            launch_only=launch_only,
+            debug=self.debug,
+        )
+        if not isinstance(result, list):
+            raise RuntimeError("Translation failed: no list result returned.")
         return result
 
     def translate_multilingual(
@@ -375,6 +423,8 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         Important behavior:
         - removes None / empty items before sending to GraphAI
         - optionally splits overly long individual elements
+        - splits the list into batches when total length exceeds max_text_list_length
+        - handles GraphAI text_too_large responses by re-splitting and retrying
         - after translation, reconstructs the original output layout
         """
         if mapping_from_input_to_original is None and num_output is None:
@@ -386,16 +436,39 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         )
 
         if not cleaned_texts:
-            return cast(list[str | None], cleaned_texts)
+            return cast(list[str | None], [texts[idx] for idx in range(len(texts))])
 
         if all(not line or not line.strip() for line in cleaned_texts):
-            return cast(list[str | None], cleaned_texts)
+            return cast(list[str | None], [texts[idx] for idx in range(len(texts))])
 
         split_texts, split_to_original_mapping = self._limit_length_list_of_texts(
             cast(list[str | None], cleaned_texts),
             max_text_length=max_text_length,
             mapping_from_split_to_original=cleaned_to_original_mapping,
         )
+
+        # If the total list is too long, break it into smaller batches and translate
+        # each batch independently. This preserves the legacy client's behavior.
+        total_length = sum(len(t) for t in split_texts)
+        if max_text_list_length is not None and total_length > max_text_list_length:
+            return self._translate_list_in_batches(
+                split_texts,
+                split_to_original_mapping,
+                source_language=source_language,
+                target_language=target_language,
+                login_info=login_info,
+                force=force,
+                no_cache=no_cache,
+                skip_segmentation=skip_segmentation,
+                clean=clean,
+                debug=debug,
+                max_text_length=max_text_length,
+                max_text_list_length=max_text_list_length,
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+                num_output=num_output,
+                launch_only=launch_only,
+            )
 
         task = TranslationTask(
             text=split_texts,
@@ -424,6 +497,26 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         if launch_only:
             return str(task_result)
 
+        if task_result.get("text_too_large", False):
+            return self._handle_list_text_too_large(
+                split_texts,
+                split_to_original_mapping,
+                task_result=task_result,
+                source_language=source_language,
+                target_language=target_language,
+                login_info=login_info,
+                force=force,
+                no_cache=no_cache,
+                skip_segmentation=skip_segmentation,
+                clean=clean,
+                debug=debug,
+                max_text_length=max_text_length,
+                max_text_list_length=max_text_list_length,
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+                num_output=num_output,
+            )
+
         result = task_result.get("result")
         if not isinstance(result, list):
             return None
@@ -433,6 +526,173 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             list_of_texts_split=result,
             mapping_from_split_to_original=split_to_original_mapping,
             output_length=num_output,
+        )
+
+    def _translate_list_in_batches(
+        self,
+        split_texts: list[str],
+        split_to_original_mapping: dict[int, int],
+        *,
+        source_language: LanguageCode,
+        target_language: LanguageCode,
+        login_info: dict[str, Any],
+        force: bool = False,
+        no_cache: bool = False,
+        skip_segmentation: bool = False,
+        clean: bool = False,
+        debug: bool = False,
+        max_text_length: int | None = None,
+        max_text_list_length: int = 20000,
+        max_tries: int = 5,
+        max_processing_time_s: int = 3600,
+        num_output: int | None,
+        launch_only: bool = False,
+    ) -> list[str | None] | str | None:
+        """
+        Translate a long list in batches that each fit within max_text_list_length.
+        """
+        if launch_only:
+            return None
+
+        n_texts = len(split_texts)
+        # Determine batch boundaries. Elements larger than the limit are translated
+        # individually via the string path; the rest are grouped greedily.
+        batch_slices: list[tuple[int, int]] = []
+        idx_start = 0
+        sum_length = 0
+
+        for idx in range(n_texts):
+            text_length = len(split_texts[idx])
+
+            if text_length > max_text_list_length:
+                if idx_start < idx:
+                    batch_slices.append((idx_start, idx))
+                batch_slices.append((idx, idx + 1))  # marker for oversized element
+                idx_start = idx + 1
+                sum_length = 0
+                continue
+
+            if sum_length + text_length > max_text_list_length and idx_start < idx:
+                batch_slices.append((idx_start, idx))
+                idx_start = idx
+                sum_length = 0
+
+            sum_length += text_length
+
+        if idx_start < n_texts:
+            batch_slices.append((idx_start, n_texts))
+
+        # Translate each batch.
+        translated_full: list[str | None] = []
+        combined_mapping: dict[int, int] = {}
+
+        for start, end in batch_slices:
+            offset = len(translated_full)
+            is_oversized = end - start == 1 and len(split_texts[start]) > max_text_list_length
+
+            if is_oversized:
+                translated = self._translate_string(
+                    split_texts[start],
+                    source_language=source_language,
+                    target_language=target_language,
+                    login_info=login_info,
+                    force=force,
+                    no_cache=no_cache,
+                    skip_segmentation=skip_segmentation,
+                    clean=clean,
+                    debug=debug,
+                    max_text_length=max_text_length,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    launch_only=False,
+                )
+                batch_result: list[str | None] = [translated]
+                batch_mapping: dict[int, int] = {0: split_to_original_mapping[start]}
+            else:
+                result = self._translate_list(
+                    split_texts[start:end],
+                    source_language,
+                    target_language,
+                    login_info,
+                    force=force,
+                    no_cache=no_cache,
+                    skip_segmentation=skip_segmentation,
+                    clean=clean,
+                    debug=debug,
+                    max_text_length=max_text_length,
+                    max_text_list_length=max_text_list_length,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    mapping_from_input_to_original={i: i for i in range(end - start)},
+                    num_output=end - start,
+                    launch_only=False,
+                )
+                if result is None:
+                    return None
+                assert isinstance(result, list)
+                batch_result = result
+
+            translated_full.extend(batch_result)
+            for batch_idx in range(len(batch_result)):
+                combined_mapping[offset + batch_idx] = split_to_original_mapping[start + batch_idx]
+
+        return self._recombine_split_list_of_texts(
+            translated_full,
+            combined_mapping,
+            output_length=num_output,
+        )
+
+    def _handle_list_text_too_large(
+        self,
+        split_texts: list[str],
+        split_to_original_mapping: dict[int, int],
+        *,
+        task_result: dict[str, Any],
+        source_language: LanguageCode,
+        target_language: LanguageCode,
+        login_info: dict[str, Any],
+        force: bool = False,
+        no_cache: bool = False,
+        skip_segmentation: bool = False,
+        clean: bool = False,
+        debug: bool = False,
+        max_text_length: int | None = None,
+        max_text_list_length: int = 20000,
+        max_tries: int = 5,
+        max_processing_time_s: int = 3600,
+        num_output: int | None,
+    ) -> list[str | None] | None:
+        """
+        Retry a list translation after GraphAI reported text_too_large.
+
+        We re-translate the whole batch with a reduced max_text_length. This is
+        simpler and more reliable than trying to recover partial results from the
+        error response, because GraphAI does not guarantee translated values for
+        the non-too-large items in an errored batch.
+        """
+        length_too_long = len(max(split_texts, key=len)) if split_texts else 0
+        next_max_text_length = self._get_next_text_length_for_split(
+            text_length=length_too_long,
+            previous_text_length=max_text_length,
+        )
+
+        return self._translate_list(
+            split_texts,
+            source_language,
+            target_language,
+            login_info,
+            force=True,
+            no_cache=no_cache,
+            skip_segmentation=skip_segmentation,
+            clean=clean,
+            debug=debug,
+            max_text_length=next_max_text_length,
+            max_text_list_length=max_text_list_length,
+            max_tries=max_tries,
+            max_processing_time_s=max_processing_time_s,
+            mapping_from_input_to_original=split_to_original_mapping,
+            num_output=num_output,
+            launch_only=False,
         )
 
     # ----------------------------------------------------------------------------------

@@ -299,6 +299,60 @@ class GraphAIBaseGateway:
 
         return None
 
+    @staticmethod
+    def _requires_media_retry(
+        task_result: dict[str, Any] | None,
+        *,
+        media_label: str,
+        force: bool = False,
+        recalculate_cached: bool = False,
+        retry_mode: str = "force",
+    ) -> tuple[bool, dict[str, Any]]:
+        """
+        Inspect a media task result and decide whether the caller must retry.
+
+        Returns a tuple (must_retry, retry_kwargs):
+        - must_retry: True if the underlying file/token is missing or inactive.
+        - retry_kwargs: payload overrides for the retry call.
+
+        retry_mode controls the retry strategy:
+        - "force": retry with force=True (used for video downloads).
+        - "recalculate": retry with recalculate_cached=True (used for audio/slides).
+
+        Raises RuntimeError when a fresh or forced result still lacks the file,
+        because that indicates a real GraphAI failure rather than a stale cache.
+        """
+        if not isinstance(task_result, dict):
+            return False, {}
+
+        token_status = task_result.get("token_status")
+        if not isinstance(token_status, dict):
+            # No token_status at all: treat as missing if not fresh/forced.
+            if task_result.get("fresh") or force:
+                raise RuntimeError(
+                    f"Missing downloaded file for {media_label} while fresh or forced"
+                )
+            retry_kwargs: dict[str, Any] = (
+                {"force": True} if retry_mode == "force" else {"recalculate_cached": True}
+            )
+            return True, retry_kwargs
+
+        active = token_status.get("active")
+        fingerprinted = token_status.get("fingerprinted")
+
+        if active or fingerprinted:
+            return False, {}
+
+        if task_result.get("fresh") or force:
+            raise RuntimeError(
+                f"Missing downloaded file for {media_label} while fresh or forced"
+            )
+
+        retry_kwargs = (
+            {"force": True} if retry_mode == "force" else {"recalculate_cached": True}
+        )
+        return True, retry_kwargs
+
     def _call_async_endpoint(
         self,
         endpoint: str,

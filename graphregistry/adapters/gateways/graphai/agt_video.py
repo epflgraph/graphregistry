@@ -1,20 +1,53 @@
 # graphregistry/adapters/gateways/graphai/agt_video.py
 from __future__ import annotations
+
 from pathlib import Path
+from typing import Any
+
 from requests import post
-from graphregistry.domain.models.entities.mdl_lecture import Video, Voice, Slide, SlideList
+
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
-import rich
+from graphregistry.domain.models.entities.mdl_lecture import Slide, SlideList, Video, Voice
 
-#==================================#
-# GraphAI Gateway: Video endpoints #
-#==================================#
+
 class GraphAIVideoGateway(GraphAIBaseGateway):
+    """GraphAI adapter for video download, fingerprinting, audio extraction, and slide detection."""
 
-    #===================#
-    # Top level methods #
-    #===================#
+    def __init__(
+        self,
+        graph_api_json: str | Path | None = None,
+        login_info: dict[str, Any] | None = None,
+        debug: bool = False,
+        *,
+        voice_gateway: Any | None = None,
+        image_gateway: Any | None = None,
+    ) -> None:
+        super().__init__(graph_api_json, login_info, debug)
+        self._voice_gateway = voice_gateway
+        self._image_gateway = image_gateway
+
+    def _get_voice_gateway(self) -> Any:
+        """Lazy getter for the voice gateway used to fingerprint audio tokens."""
+        if self._voice_gateway is None:
+            from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+            self._voice_gateway = GraphAIVoiceGateway(
+                graph_api_json=self.graph_api_json,
+                login_info=self._login_info,
+                debug=self.debug,
+            )
+        return self._voice_gateway
+
+    def _get_image_gateway(self) -> Any:
+        """Lazy getter for the image gateway used to process slides."""
+        if self._image_gateway is None:
+            from graphregistry.adapters.gateways.graphai.agt_image import GraphAIImageGateway
+            self._image_gateway = GraphAIImageGateway(
+                graph_api_json=self.graph_api_json,
+                login_info=self._login_info,
+                debug=self.debug,
+            )
+        return self._image_gateway
+
 
     # Gateway method: Launch asynchronous video download and processing task on GraphAI
     def launch_video_download(self, video_url: str, no_cache: bool = False) -> str:
@@ -109,31 +142,40 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         max_processing_time_s: int = 900,
         launch_only: bool = False,
     ) -> Video | str | None:
-    #----------------------------------------------------------------#
-
-        # Ensure we have valid login information before making the request
+        """Download a video from URL and return a Video domain object."""
         login_info = self._ensure_login_info()
 
-        # Make the request to the GraphAI endpoint to retrieve or create the video token
         task_result = self._call_async_endpoint(
-            endpoint   = "/video/retrieve_url",
-            payload    = {"url": file_url, "playlist": playlist, "force": force},
-            login_info = login_info,
-            max_processing_time_s = max_processing_time_s,
-            max_tries  = max_tries,
-            wait_for_result = not launch_only,
+            endpoint="/video/retrieve_url",
+            payload={"url": file_url, "playlist": playlist, "force": force},
+            login_info=login_info,
+            max_processing_time_s=max_processing_time_s,
+            max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
 
-        # If the task result is None, it means the request failed or the video could not be processed
         if task_result is None:
             return None
 
-        # Non-blocking mode: return GraphAI task id immediately
         if launch_only:
             return str(task_result)
 
-        # Extract token and stream metadata defensively: GraphAI can return a
-        # successful task with missing/partial token_status payload.
+        must_retry, retry_kwargs = self._requires_media_retry(
+            task_result,
+            media_label=f"video from {file_url}",
+            force=force,
+            retry_mode="force",
+        )
+        if must_retry:
+            return self.get_video(
+                file_url=file_url,
+                playlist=playlist,
+                force=retry_kwargs.get("force", force),
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+                launch_only=launch_only,
+            )
+
         token = task_result.get("token")
         if token is None:
             return None
@@ -149,26 +191,22 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         except Exception:
             fingerprint = None
 
-        codec       = first_stream.get("codec_name")
-        duration    = first_stream.get("duration")
-        bit_rate    = first_stream.get("bit_rate")
+        codec = first_stream.get("codec_name")
+        duration = first_stream.get("duration")
+        bit_rate = first_stream.get("bit_rate")
         sample_rate = first_stream.get("sample_rate")
-        resolution  = first_stream.get("resolution")
+        resolution = first_stream.get("resolution")
 
-        # Create video object with available information
-        video = Video(
-            token       = token,
-            file_url    = file_url,
-            fingerprint = fingerprint,
-            codec       = codec,
-            duration    = duration,
-            bit_rate    = bit_rate,
-            sample_rate = sample_rate,
-            resolution  = resolution,
+        return Video(
+            token=token,
+            file_url=file_url,
+            fingerprint=fingerprint,
+            codec=codec,
+            duration=duration,
+            bit_rate=bit_rate,
+            sample_rate=sample_rate,
+            resolution=resolution,
         )
-
-        # Return video object
-        return video
 
     #---------------------------------------------------------------------------------#
     # Gateway method: Fingerprint video (generate unique identifier based on content) #
@@ -231,55 +269,62 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         max_processing_time_s: int = 300,
         launch_only: bool = False,
     ) -> Voice | str | None:
-    #-----------------------------------------------------------------#
-
-        # Ensure we have valid login information before making the request
+        """Extract audio from a video token and return a Voice domain object."""
         login_info = self._ensure_login_info()
 
-        # Resolve video token from explicit token param or from input object/string
         if video_token is None:
             if input is None:
                 raise ValueError("Either input or video_token must be provided")
             video_token = input.token if isinstance(input, Video) else input
 
-        # Make the request to the GraphAI endpoint to extract audio from the given video token and create an audio token
         task_result = self._call_async_endpoint(
-            endpoint = "/video/extract_audio",
-            payload  = {
+            endpoint="/video/extract_audio",
+            payload={
                 "token": video_token,
                 "recalculate_cached": recalculate_cached,
                 "force": force,
             },
-            login_info = login_info,
-            max_processing_time_s = max_processing_time_s,
-            max_tries  = max_tries,
-            wait_for_result = not launch_only,
+            login_info=login_info,
+            max_processing_time_s=max_processing_time_s,
+            max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
 
-        # If the task result is None, it means the request failed or the audio could not be extracted
         if task_result is None:
             return None
 
         if launch_only:
             return str(task_result)
 
-        # Initialize the GraphAIVoiceGateway to use its fingerprint method for getting the audio fingerprint
-        gtw_audio = GraphAIVoiceGateway()
-
-        # Get audio parameters
-        token       = task_result['token']
-        fingerprint = gtw_audio.fingerprint(input=token)
-        duration    = task_result['duration']
-
-        # Create voice object with available information
-        voice = Voice(
-            token       = token,
-            fingerprint = fingerprint,
-            duration    = duration,
+        must_retry, retry_kwargs = self._requires_media_retry(
+            task_result,
+            media_label=f"audio from video {video_token}",
+            force=force,
+            recalculate_cached=recalculate_cached,
+            retry_mode="recalculate",
         )
+        if must_retry:
+            return self.extract_audio(
+                video_token=video_token,
+                recalculate_cached=retry_kwargs.get("recalculate_cached", recalculate_cached),
+                force=force,
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+                launch_only=launch_only,
+            )
 
-        # Return voice object
-        return voice
+        token = task_result.get("token")
+        duration = task_result.get("duration")
+        if token is None:
+            return None
+
+        fingerprint = self._get_voice_gateway().fingerprint(input=str(token))
+
+        return Voice(
+            token=str(token),
+            fingerprint=fingerprint,
+            duration=duration,
+        )
 
     #-------------------------------------------------------------------#
     # Gateway method: Extract slides from video and create slide tokens #
@@ -300,21 +345,17 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         include_last: bool = True,
         launch_only: bool = False,
     ) -> SlideList | str | None:
-    #-------------------------------------------------------------------#
-
-        # Ensure we have valid login information before making the request
+        """Extract slide keyframes from a video token and return a SlideList."""
         login_info = self._ensure_login_info()
 
-        # Resolve video token from explicit token param or from input object/string
         if video_token is None:
             if input is None:
                 raise ValueError("Either input or video_token must be provided")
             video_token = input.token if isinstance(input, Video) else input
 
-        # Make the request to the GraphAI endpoint to extract slides from the given video token and create slide tokens
         task_result = self._call_async_endpoint(
-            endpoint = "/video/detect_slides",
-            payload = {
+            endpoint="/video/detect_slides",
+            payload={
                 "token": video_token,
                 "recalculate_cached": recalculate_cached,
                 "force": force,
@@ -326,39 +367,215 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
                     "include_last": include_last,
                 },
             },
-            login_info = login_info,
-            max_processing_time_s = max_processing_time_s,
-            max_tries = max_tries,
-            wait_for_result = not launch_only,
+            login_info=login_info,
+            max_processing_time_s=max_processing_time_s,
+            max_tries=max_tries,
+            wait_for_result=not launch_only,
         )
 
-        # If the task result is None, it means the request failed or the slides could not be extracted
         if task_result is None:
             return None
 
         if launch_only:
             return str(task_result)
 
-        # Create empty slide list
+        must_retry, retry_kwargs = self._requires_media_retry(
+            task_result,
+            media_label=f"slides from video {video_token}",
+            force=force,
+            recalculate_cached=recalculate_cached,
+            retry_mode="recalculate",
+        )
+        if must_retry:
+            return self.extract_slides(
+                video_token=video_token,
+                recalculate_cached=retry_kwargs.get("recalculate_cached", recalculate_cached),
+                force=force,
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+                hash_thresh=hash_thresh,
+                multiplier=multiplier,
+                default_threshold=default_threshold,
+                include_first=include_first,
+                include_last=include_last,
+                launch_only=launch_only,
+            )
+
+        slide_tokens = task_result.get("slide_tokens")
+        if not isinstance(slide_tokens, dict):
+            return SlideList()
+
         slide_list = SlideList()
+        for slide_number in sorted(slide_tokens.keys(), key=lambda k: int(k)):
+            slide_data = slide_tokens[slide_number]
+            if not isinstance(slide_data, dict):
+                continue
+            token = slide_data.get("token")
+            timestamp = slide_data.get("timestamp")
+            if token is None or timestamp is None:
+                continue
+            slide_list.item_list.append(
+                Slide(
+                    token=str(token),
+                    timestamp=int(timestamp),
+                    fingerprint=None,
+                )
+            )
 
-        # Loop over all slide detections and count how many are missing (i.e. have an inactive token status)
-        for slide_number in task_result['slide_tokens']:
-
-            # Extact slide parameters
-            token       = task_result['slide_tokens'][slide_number]['token']
-            timestamp   = task_result['slide_tokens'][slide_number]['timestamp']
-            fingerprint = None
-
-            # Create slide object with available information
-            slide_list.item_list += [Slide(
-                token       = token,
-                timestamp   = timestamp,
-                fingerprint = fingerprint,
-            )]
-
-        # Return slide list object
         return slide_list
+
+    #----------------------------------------------------------------#
+    # Gateway method: Process slides (fingerprint, OCR, translate)   #
+    #----------------------------------------------------------------#
+    def process_slides(
+        self,
+        input: Any | None = None,
+        *,
+        video_token: str | None = None,
+        slides_language: str | None = None,
+        destination_languages: tuple[str, ...] | None = None,
+        translation_gateway: Any | None = None,
+        force: bool = False,
+        max_tries: int = 5,
+        max_processing_time_s: int = 6000,
+        ocr_model: str = "google",
+        google_api_token: str | None = None,
+        **extract_kwargs: Any,
+    ) -> tuple[str | None, SlideList]:
+        """
+        Extract slides, fingerprint them, run OCR, detect language, and translate.
+
+        Mirrors the legacy ``process_slides`` orchestration.
+        """
+        if video_token is None:
+            if input is None:
+                raise ValueError("Either input or video_token must be provided")
+            video_token = input.token if hasattr(input, "token") else input
+        if video_token is None:
+            raise ValueError("video_token is required")
+
+        slide_list = self.extract_slides(
+            video_token=video_token,
+            force=force,
+            max_tries=max_tries,
+            max_processing_time_s=max_processing_time_s,
+            **extract_kwargs,
+        )
+        if slide_list is None or not slide_list.item_list:
+            return None, SlideList()
+
+        image_gateway = self._get_image_gateway()
+        supported_languages = {"en", "fr", "de", "it"}
+
+        # 1. Fingerprint and OCR each slide.
+        ocr_results: list[dict[str, str] | None] = []
+        for slide in slide_list.item_list:
+            slide.fingerprint = image_gateway.calculate_fingerprint(
+                slide.token,
+                force=force,
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+            )
+            ocr = image_gateway.extract_text_from_slide(
+                slide.token,
+                force=force,
+                max_tries=max_tries,
+                max_processing_time_s=max_processing_time_s,
+                ocr_model=ocr_model,
+                google_api_token=google_api_token,
+            )
+            ocr_results.append(ocr)
+
+        # 2. Determine dominant language unless caller forced one.
+        final_language = slides_language
+        if final_language is None:
+            language_counts: dict[str, int] = {}
+            for ocr in ocr_results:
+                if ocr is None:
+                    continue
+                lang = ocr.get("language", "")
+                if lang:
+                    language_counts[lang] = language_counts.get(lang, 0) + 1
+            filtered_counts = {
+                lang: count
+                for lang, count in language_counts.items()
+                if lang in supported_languages
+            }
+            if filtered_counts:
+                final_language = max(filtered_counts, key=filtered_counts.get)
+            elif language_counts:
+                final_language = max(language_counts, key=language_counts.get)
+
+        # 3. Discard unsupported languages and force English fallback.
+        if final_language not in supported_languages:
+            final_language = None
+        if final_language is None:
+            final_language = "en"
+            # Re-run OCR with English if the detected language was unsupported or missing.
+            if slides_language is None:
+                for idx, slide in enumerate(slide_list.item_list):
+                    ocr = image_gateway.extract_text_from_slide(
+                        slide.token,
+                        force=force,
+                        max_tries=max_tries,
+                        max_processing_time_s=max_processing_time_s,
+                        ocr_model=ocr_model,
+                        google_api_token=google_api_token,
+                    )
+                    ocr_results[idx] = ocr
+
+        # 4. Attach text/language to slides.
+        for slide, ocr in zip(slide_list.item_list, ocr_results):
+            slide.language = final_language
+            if ocr is not None:
+                slide.text = ocr.get("text", "")
+            else:
+                slide.text = None
+
+        # 5. Optionally translate slide text to destination languages.
+        if destination_languages and translation_gateway is not None:
+            self._translate_slide_texts(
+                slide_list,
+                source_language=final_language,
+                destination_languages=destination_languages,
+                translation_gateway=translation_gateway,
+            )
+
+        return final_language, slide_list
+
+    @staticmethod
+    def _translate_slide_texts(
+        slide_list: SlideList,
+        *,
+        source_language: str,
+        destination_languages: tuple[str, ...],
+        translation_gateway: Any,
+    ) -> None:
+        """Translate each slide's text into the requested destination languages."""
+        source_texts = [slide.text or "" for slide in slide_list.item_list]
+
+        for target_language in destination_languages:
+            if target_language == source_language:
+                continue
+            translated = translation_gateway.translate_text_list(
+                source_texts,
+                source_language=source_language,
+                target_language=target_language,
+            )
+            if translated is None or len(translated) != len(source_texts):
+                continue
+            for slide, translated_text in zip(slide_list.item_list, translated):
+                if translated_text is None:
+                    continue
+                if slide.translations is None:
+                    slide.translations = {}
+                slide.translations[target_language] = translated_text.strip()
+
+        for slide in slide_list.item_list:
+            if slide.translations is None:
+                slide.translations = {}
+            if slide.text:
+                slide.translations.setdefault(source_language, slide.text)
 
     #---------------------------------------------------------#
     # Gateway method: Download video file given a video token #
