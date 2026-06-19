@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""Example: detect the spoken language of an audio token."""
+from __future__ import annotations
+
+from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+
+
+def main() -> None:
+    # Replace with a real audio token returned by GraphAIVideoGateway.extract_audio().
+    audio_token = "AUDIO-TOKEN-PLACEHOLDER"
+
+    gateway = GraphAIVoiceGateway()
+    language = gateway.detect_language(audio_token=audio_token)
+
+    if language is None:
+        print("Language detection failed.")
+        return
+
+    print(f"Detected audio language: {language}")
+
+
+if __name__ == "__main__":
+    main()

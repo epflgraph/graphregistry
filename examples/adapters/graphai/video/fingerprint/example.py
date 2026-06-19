@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""Example: calculate a fingerprint for a video token."""
+from __future__ import annotations
+
+from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
+
+
+def main() -> None:
+    # Replace with a real video token returned by get_video().
+    video_token = "VIDEO-TOKEN-PLACEHOLDER"
+
+    gateway = GraphAIVideoGateway()
+    fingerprint = gateway.fingerprint(video_token=video_token)
+
+    if fingerprint is None:
+        print("Fingerprint calculation failed.")
+        return
+
+    print(f"Video fingerprint: {fingerprint}")
+
+
+if __name__ == "__main__":
+    main()
