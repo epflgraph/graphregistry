@@ -12,10 +12,8 @@ graphregistry airflow config --typeflags=@airflow_config.json
 # Step 3: Sync new data
 graphregistry airflow sync
 graphregistry airflow update_checksums
-# One of these is resetting the airflow typeflags [GRW24tg]
 
 # Step 4: Decide what to process
-graphregistry airflow config --typeflags=@airflow_config.json
 graphregistry airflow expire --older_than=1 --limit_per_type=1000
 graphregistry airflow refresh --limit_per_type=1000
 graphregistry airflow status
