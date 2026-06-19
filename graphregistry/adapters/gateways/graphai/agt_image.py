@@ -37,6 +37,7 @@ class GraphAIImageGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         language = str(task_result.get("language", ""))
         result_items = task_result.get("result")
         if not isinstance(result_items, list) or not result_items:
@@ -86,5 +87,6 @@ class GraphAIImageGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         result = task_result.get("result")
         return str(result) if result is not None else None

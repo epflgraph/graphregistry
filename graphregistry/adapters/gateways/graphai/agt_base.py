@@ -6,7 +6,7 @@ from json import load as load_json
 from pathlib import Path
 from random import uniform
 from time import sleep
-from typing import Any, Callable, cast
+from typing import Any, Callable, Literal, cast, overload
 
 from requests import Response, get, post
 
@@ -352,6 +352,30 @@ class GraphAIBaseGateway:
             {"force": True} if retry_mode == "force" else {"recalculate_cached": True}
         )
         return True, retry_kwargs
+
+    @overload
+    def _call_async_endpoint(
+        self,
+        endpoint: str,
+        payload: dict[str, Any],
+        login_info: dict[str, Any],
+        *,
+        max_processing_time_s: int = 6000,
+        max_tries: int = 5,
+        wait_for_result: Literal[True] = True,
+    ) -> dict[str, Any] | None: ...
+
+    @overload
+    def _call_async_endpoint(
+        self,
+        endpoint: str,
+        payload: dict[str, Any],
+        login_info: dict[str, Any],
+        *,
+        max_processing_time_s: int = 6000,
+        max_tries: int = 5,
+        wait_for_result: Literal[False],
+    ) -> str | None: ...
 
     def _call_async_endpoint(
         self,

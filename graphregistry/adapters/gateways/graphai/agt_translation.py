@@ -367,8 +367,9 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         # GraphAI tells us this text is too large -> retry with chunking.
-        if not launch_only and task_result.get("text_too_large", False):
+        if task_result.get("text_too_large", False):
             next_max_text_length = self._get_next_text_length_for_split(
                 text_length=len(text),
                 previous_text_length=max_text_length,
@@ -497,6 +498,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         if task_result.get("text_too_large", False):
             return self._handle_list_text_too_large(
                 split_texts,
@@ -610,7 +612,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
                 batch_mapping: dict[int, int] = {0: split_to_original_mapping[start]}
             else:
                 result = self._translate_list(
-                    split_texts[start:end],
+                    cast(list[str | None], split_texts[start:end]),
                     source_language,
                     target_language,
                     login_info,
@@ -676,8 +678,8 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             previous_text_length=max_text_length,
         )
 
-        return self._translate_list(
-            split_texts,
+        result = self._translate_list(
+            cast(list[str | None], split_texts),
             source_language,
             target_language,
             login_info,
@@ -694,6 +696,7 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
             num_output=num_output,
             launch_only=False,
         )
+        return cast(list[str | None] | None, result)
 
     # ----------------------------------------------------------------------------------
     # Text list cleanup helpers

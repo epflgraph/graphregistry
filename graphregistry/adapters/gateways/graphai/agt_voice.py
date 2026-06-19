@@ -199,6 +199,7 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         language = task_result.get("language")
         return str(language) if language is not None else None
 
@@ -234,5 +235,6 @@ class GraphAIVoiceGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         result = task_result.get("result")
         return str(result) if result is not None else None

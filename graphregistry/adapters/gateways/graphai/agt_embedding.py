@@ -68,7 +68,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         if not launch_only and max_text_length and len(text) > max_text_length:
             chunks = self._split_text(text, max_text_length=max_text_length, split_characters=split_characters)
             chunk_embeddings = self.embed_text_list(
-                list_of_texts=chunks,
+                list_of_texts=cast(list[str | None], chunks),
                 model=model,
                 force=force,
                 max_text_length=max_text_length,
@@ -103,6 +103,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         if task_result.get("text_too_large", False):
             next_len = self._next_text_length_for_split(len(text), previous_text_length=max_text_length)
             if next_len is None:
@@ -154,7 +155,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
                 cleaned_texts.append(value)
 
         if not cleaned_texts:
-            return [None] * len(list_of_texts)
+            return cast(list[list[float] | None], [None] * len(list_of_texts))
 
         # 2. Split any items that exceed max_text_length.
         split_texts: list[str] = []
@@ -275,6 +276,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         if task_result is None:
             return
 
+        assert isinstance(task_result, dict)
         if task_result.get("text_too_large", False):
             length_too_long = len(max(batch, key=len))
             next_max_text_length = self._next_text_length_for_split(
@@ -286,7 +288,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
 
             # Re-process this batch with a smaller chunk size.
             sub_result = self.embed_text_list(
-                batch,
+                cast(list[str | None], batch),
                 model=model,
                 force=force,
                 max_text_length=next_max_text_length,
@@ -298,7 +300,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
             )
             if isinstance(sub_result, list):
                 for i, value in enumerate(sub_result):
-                    result_slot[start + i] = value
+                    result_slot[start + i] = cast(list[float] | None, value)
             return
 
         raw_results = task_result.get("result")

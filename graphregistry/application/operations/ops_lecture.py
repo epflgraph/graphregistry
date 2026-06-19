@@ -1,5 +1,6 @@
 # graphregistry/application/operations/ops_lecture.py
 from __future__ import annotations
+from typing import Any
 from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 from graphregistry.application.gateways.gtw_lectureenrich import LectureEnrichmentGateway
 from graphregistry.application.gateways.gtw_video import VideoProcessingGateway

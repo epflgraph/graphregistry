@@ -160,6 +160,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         must_retry, retry_kwargs = self._requires_media_retry(
             task_result,
             media_label=f"video from {file_url}",
@@ -249,6 +250,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         # Get the fingerprint result from the task result
         result = task_result.get("result")
 
@@ -296,6 +298,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         must_retry, retry_kwargs = self._requires_media_retry(
             task_result,
             media_label=f"audio from video {video_token}",
@@ -379,6 +382,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         if launch_only:
             return str(task_result)
 
+        assert isinstance(task_result, dict)
         must_retry, retry_kwargs = self._requires_media_retry(
             task_result,
             media_label=f"slides from video {video_token}",
@@ -461,7 +465,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             max_processing_time_s=max_processing_time_s,
             **extract_kwargs,
         )
-        if slide_list is None or not slide_list.item_list:
+        if not isinstance(slide_list, SlideList) or not slide_list.item_list:
             return None, SlideList()
 
         image_gateway = self._get_image_gateway()
@@ -502,9 +506,9 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
                 if lang in supported_languages
             }
             if filtered_counts:
-                final_language = max(filtered_counts, key=filtered_counts.get)
+                final_language = max(filtered_counts, key=lambda k: filtered_counts[k])
             elif language_counts:
-                final_language = max(language_counts, key=language_counts.get)
+                final_language = max(language_counts, key=lambda k: language_counts[k])
 
         # 3. Discard unsupported languages and force English fallback.
         if final_language not in supported_languages:
