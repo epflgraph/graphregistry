@@ -1402,7 +1402,7 @@ class GraphRegistry():
                                            (institution_id, object_type, flag_type, to_process)
                             SELECT DISTINCT institution_id, object_type, 'fields' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='x5BdjGfN')
 
@@ -1457,7 +1457,7 @@ class GraphRegistry():
                                            (from_institution_id, from_object_type, to_institution_id, to_object_type, to_process)
                             SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='dEE3eDPD')
 
@@ -2321,7 +2321,7 @@ class GraphRegistry():
                                            (institution_id, object_type, flag_type, to_process)
                             SELECT DISTINCT institution_id, object_type, 'scores' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='n2TKRWNV')
 
