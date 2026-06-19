@@ -71,3 +71,7 @@ configuration is read from `config/config_graphai_client.json` via
   3. `voice/transcribe_audio` or `image/extract_text` → text
 - `process_slides` demonstrates the high-level orchestration that combines
   slide detection, fingerprinting, OCR, language fallback, and translation.
+- The GraphAI bearer token is cached both in-memory and on disk
+  (`~/.cache/graphregistry/graphai_tokens.json`) so the first example run pays
+  the authentication cost (~10-20s in some environments) and subsequent runs
+  reuse the token.

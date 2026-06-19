@@ -21,7 +21,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         model: str | None = None,
         force: bool = False,
         max_text_length: int | None = None,
-        max_tries: int = 5,
+        max_tries: int = 2,
         max_processing_time_s: int = 600,
         split_characters: tuple[str, ...] = ("\n", ".", ";", ",", " ", "$"),
         no_cache: bool = False,
@@ -59,7 +59,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         model: str | None = None,
         force: bool = False,
         max_text_length: int | None = None,
-        max_tries: int = 5,
+        max_tries: int = 2,
         max_processing_time_s: int = 600,
         split_characters: tuple[str, ...] = ("\n", ".", ";", ",", " ", "$"),
         no_cache: bool = False,
@@ -129,7 +129,7 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
         force: bool = False,
         max_text_length: int | None = None,
         max_text_list_length: int = DEFAULT_MAX_TEXT_LIST_LENGTH,
-        max_tries: int = 5,
+        max_tries: int = 2,
         max_processing_time_s: int = 600,
         split_characters: tuple[str, ...] = ("\n", ".", ";", ",", " "),
         no_cache: bool = False,
@@ -274,42 +274,100 @@ class GraphAIEmbeddingGateway(GraphAIBaseGateway):
             wait_for_result=True,
         )
         if task_result is None:
-            return
+            raise RuntimeError(f"Failed to embed text batch: {batch}")
 
-        assert isinstance(task_result, dict)
-        if task_result.get("text_too_large", False):
-            length_too_long = len(max(batch, key=len))
-            next_max_text_length = self._next_text_length_for_split(
-                text_length=length_too_long,
-                previous_text_length=max_text_length,
-            )
-            if next_max_text_length is None:
-                return
+        if isinstance(task_result, dict):
+            raw_results, is_too_large = self._parse_batch_result_dict(task_result)
+            if is_too_large:
+                length_too_long = len(max(batch, key=len))
+                next_max_text_length = self._next_text_length_for_split(
+                    text_length=length_too_long,
+                    previous_text_length=max_text_length,
+                )
+                if next_max_text_length is None:
+                    raise RuntimeError(f"Text too large and cannot split further: {batch}")
 
-            # Re-process this batch with a smaller chunk size.
-            sub_result = self.embed_text_list(
-                cast(list[str | None], batch),
-                model=model,
-                force=force,
-                max_text_length=next_max_text_length,
-                max_text_list_length=max_text_list_length,
-                max_tries=max_tries,
-                max_processing_time_s=max_processing_time_s,
-                split_characters=split_characters,
-                no_cache=no_cache,
-            )
-            if isinstance(sub_result, list):
+                # Re-process this batch with a smaller chunk size.
+                sub_result = self.embed_text_list(
+                    cast(list[str | None], batch),
+                    model=model,
+                    force=force,
+                    max_text_length=next_max_text_length,
+                    max_text_list_length=max_text_list_length,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    split_characters=split_characters,
+                    no_cache=no_cache,
+                )
+                if not isinstance(sub_result, list):
+                    raise RuntimeError(f"Failed to embed split batch: {batch}")
                 for i, value in enumerate(sub_result):
                     result_slot[start + i] = cast(list[float] | None, value)
+                return
+
+            if not isinstance(raw_results, list) or len(raw_results) != len(batch):
+                raise RuntimeError(
+                    f"Invalid embedding result for batch (expected {len(batch)} embeddings): {raw_results}"
+                )
+
+            for i, raw in enumerate(raw_results):
+                parsed = self._parse_embedding_payload(raw)
+                result_slot[start + i] = parsed
             return
 
-        raw_results = task_result.get("result")
-        if not isinstance(raw_results, list) or len(raw_results) != len(batch):
+        if isinstance(task_result, list):
+            if len(task_result) != len(batch):
+                raise RuntimeError(
+                    f"Invalid embedding result for batch (expected {len(batch)} embeddings): {task_result}"
+                )
+
+            # Check for per-item errors / text_too_large signals.
+            any_too_large = any(
+                isinstance(item, dict) and item.get("text_too_large", False)
+                for item in task_result
+            )
+            if any_too_large:
+                length_too_long = len(max(batch, key=len))
+                next_max_text_length = self._next_text_length_for_split(
+                    text_length=length_too_long,
+                    previous_text_length=max_text_length,
+                )
+                if next_max_text_length is None:
+                    raise RuntimeError(f"Text too large and cannot split further: {batch}")
+
+                sub_result = self.embed_text_list(
+                    cast(list[str | None], batch),
+                    model=model,
+                    force=force,
+                    max_text_length=next_max_text_length,
+                    max_text_list_length=max_text_list_length,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    split_characters=split_characters,
+                    no_cache=no_cache,
+                )
+                if not isinstance(sub_result, list):
+                    raise RuntimeError(f"Failed to embed split batch: {batch}")
+                for i, value in enumerate(sub_result):
+                    result_slot[start + i] = cast(list[float] | None, value)
+                return
+
+            for i, item in enumerate(task_result):
+                if isinstance(item, dict) and not item.get("successful", True):
+                    raise RuntimeError(f"GraphAI embedding failed for item {i}: {item}")
+                raw = item.get("result") if isinstance(item, dict) else item
+                parsed = self._parse_embedding_payload(raw)
+                result_slot[start + i] = parsed
             return
 
-        for i, raw in enumerate(raw_results):
-            parsed = self._parse_embedding_payload(raw)
-            result_slot[start + i] = parsed
+        raise RuntimeError(f"Unexpected embedding result type: {type(task_result)}")
+
+    @staticmethod
+    def _parse_batch_result_dict(task_result: dict[str, Any]) -> tuple[Any, bool]:
+        """Extract raw results and text_too_large flag from a dict-style batch result."""
+        if task_result.get("text_too_large", False):
+            return None, True
+        return task_result.get("result"), False
 
     @staticmethod
     def _parse_embedding_payload(value: Any) -> list[float] | None:

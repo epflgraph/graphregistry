@@ -140,3 +140,21 @@ class TestEmbedTextListTextTooLarge:
 
         assert isinstance(result[0], list)
         assert mock_call.call_count >= 2
+
+    def test_raises_when_graphai_call_fails(self, gateway: GraphAIEmbeddingGateway) -> None:
+        """A failed batch embedding must raise instead of returning a list of Nones."""
+        texts = ["hello world"]
+
+        with patch.object(gateway, "_call_async_endpoint", return_value=None):
+            with pytest.raises(RuntimeError, match="Failed to embed text batch"):
+                gateway.embed_text_list(texts)
+
+    def test_raises_on_invalid_result_shape(self, gateway: GraphAIEmbeddingGateway) -> None:
+        texts = ["hello world", "goodbye world"]
+
+        def side_effect(*, payload, **kwargs):
+            return {"successful": True, "result": [[1.0, 0.0]]}  # only 1 embedding for 2 texts
+
+        with patch.object(gateway, "_call_async_endpoint", side_effect=side_effect):
+            with pytest.raises(RuntimeError, match="Invalid embedding result"):
+                gateway.embed_text_list(texts)

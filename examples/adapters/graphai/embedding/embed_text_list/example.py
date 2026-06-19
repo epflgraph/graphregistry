@@ -13,7 +13,9 @@ def main() -> None:
     ]
 
     gateway = GraphAIEmbeddingGateway()
-    embeddings = gateway.embed_text_list(list_of_texts=texts)
+    # Use max_tries=1 in the example so an unreachable GraphAI service fails
+    # fast rather than retrying for minutes. Remove it in production code.
+    embeddings = gateway.embed_text_list(list_of_texts=texts, max_tries=1)
 
     if embeddings is None:
         print("Embedding failed.")

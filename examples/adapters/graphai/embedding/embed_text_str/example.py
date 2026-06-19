@@ -9,7 +9,9 @@ def main() -> None:
     text = "Machine learning is a branch of artificial intelligence."
 
     gateway = GraphAIEmbeddingGateway()
-    embedding = gateway.embed_text_str(text=text)
+    # Use max_tries=1 in the example so an unreachable GraphAI service fails
+    # fast rather than retrying for minutes. Remove it in production code.
+    embedding = gateway.embed_text_str(text=text, max_tries=1)
 
     if embedding is None:
         print("Embedding failed.")

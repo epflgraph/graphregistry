@@ -367,7 +367,14 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         if launch_only:
             return str(task_result)
 
-        assert isinstance(task_result, dict)
+        # GraphAI may return either a single result dict or a one-element list
+        # of result dicts.
+        if isinstance(task_result, list) and len(task_result) == 1:
+            task_result = task_result[0]
+
+        if not isinstance(task_result, dict):
+            return None
+
         # GraphAI tells us this text is too large -> retry with chunking.
         if task_result.get("text_too_large", False):
             next_max_text_length = self._get_next_text_length_for_split(
@@ -498,37 +505,81 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         if launch_only:
             return str(task_result)
 
-        assert isinstance(task_result, dict)
-        if task_result.get("text_too_large", False):
-            return self._handle_list_text_too_large(
-                split_texts,
-                split_to_original_mapping,
-                task_result=task_result,
-                source_language=source_language,
-                target_language=target_language,
-                login_info=login_info,
-                force=force,
-                no_cache=no_cache,
-                skip_segmentation=skip_segmentation,
-                clean=clean,
-                debug=debug,
-                max_text_length=max_text_length,
-                max_text_list_length=max_text_list_length,
-                max_tries=max_tries,
-                max_processing_time_s=max_processing_time_s,
-                num_output=num_output,
+        if isinstance(task_result, dict):
+            if task_result.get("text_too_large", False):
+                return self._handle_list_text_too_large(
+                    split_texts,
+                    split_to_original_mapping,
+                    task_result=task_result,
+                    source_language=source_language,
+                    target_language=target_language,
+                    login_info=login_info,
+                    force=force,
+                    no_cache=no_cache,
+                    skip_segmentation=skip_segmentation,
+                    clean=clean,
+                    debug=debug,
+                    max_text_length=max_text_length,
+                    max_text_list_length=max_text_list_length,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    num_output=num_output,
+                )
+
+            result = task_result.get("result")
+            if not isinstance(result, list):
+                return None
+
+            # Stitch split chunks back together so the output shape matches the original.
+            return self._recombine_split_list_of_texts(
+                list_of_texts_split=result,
+                mapping_from_split_to_original=split_to_original_mapping,
+                output_length=num_output,
             )
 
-        result = task_result.get("result")
-        if not isinstance(result, list):
-            return None
+        if isinstance(task_result, list):
+            if len(task_result) != len(split_texts):
+                return None
 
-        # Stitch split chunks back together so the output shape matches the original.
-        return self._recombine_split_list_of_texts(
-            list_of_texts_split=result,
-            mapping_from_split_to_original=split_to_original_mapping,
-            output_length=num_output,
-        )
+            any_too_large = any(
+                isinstance(item, dict) and item.get("text_too_large", False)
+                for item in task_result
+            )
+            if any_too_large:
+                return self._handle_list_text_too_large(
+                    split_texts,
+                    split_to_original_mapping,
+                    task_result=cast(dict[str, Any], {"text_too_large": True}),
+                    source_language=source_language,
+                    target_language=target_language,
+                    login_info=login_info,
+                    force=force,
+                    no_cache=no_cache,
+                    skip_segmentation=skip_segmentation,
+                    clean=clean,
+                    debug=debug,
+                    max_text_length=max_text_length,
+                    max_text_list_length=max_text_list_length,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    num_output=num_output,
+                )
+
+            translated_texts: list[str | None] = []
+            for item in task_result:
+                if isinstance(item, dict) and not item.get("successful", True):
+                    translated_texts.append(None)
+                    continue
+                raw = item.get("result") if isinstance(item, dict) else item
+                translated_texts.append(str(raw).strip() if raw is not None else None)
+
+            return self._recombine_split_list_of_texts(
+                list_of_texts_split=translated_texts,
+                mapping_from_split_to_original=split_to_original_mapping,
+                output_length=num_output,
+            )
+
+        return None
 
     def _translate_list_in_batches(
         self,
