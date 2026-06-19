@@ -1,6 +1,6 @@
 # graphregistry/application/gateways/gtw_video.py
 from __future__ import annotations
-from typing import Protocol
+from typing import Any, Protocol
 
 from graphregistry.domain.models.entities.mdl_lecture import SlideList, Video, Voice
 
@@ -43,4 +43,21 @@ class VideoProcessingGateway(Protocol):
         *,
         video_token: str | None = None,
     ) -> SlideList | str | None:
+        ...
+
+    def process_slides(
+        self,
+        input: Any | None = None,
+        *,
+        video_token: str | None = None,
+        slides_language: str | None = None,
+        destination_languages: tuple[str, ...] | None = None,
+        translation_gateway: Any | None = None,
+        force: bool = False,
+        max_tries: int = 5,
+        max_processing_time_s: int = 6000,
+        ocr_model: str = "google",
+        google_api_token: str | None = None,
+        **extract_kwargs: Any,
+    ) -> tuple[str | None, SlideList]:
         ...
