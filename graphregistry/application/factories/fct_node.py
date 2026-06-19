@@ -1,17 +1,14 @@
 # graphregistry/application/factories/fct_node.py
 from __future__ import annotations
-from typing import Any
 from graphregistry.domain.models.entities.mdl_node import Node
-from graphregistry.domain.interfaces.gateways.gtw_conceptdet import ConceptDetectionGateway
-from graphregistry.entrypoints.mappers import SpecMapper
-from graphregistry.entrypoints.schemas import NodeSpec
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 
 # Factory definition
 class NodeFactory:
     """Factory for creating Node instances, with optional concept detection.
     If a ConceptDetectionGateway is provided and detect_concepts is True, the factory
     will use the gateway to detect concepts from the node's raw text and
-    populate the detected_concepts field.
+    populate the concepts.detected field.
     """
     # Class constructor
     def __init__(self, concept_gateway: ConceptDetectionGateway | None = None) -> None:
@@ -35,22 +32,9 @@ class NodeFactory:
         if self.concept_gateway is None:
             raise ValueError("No concept gateway configured")
 
-        # Perform concept detection using the gateway and populate the detected_concepts field
+        # Perform concept detection using the gateway and populate the concepts.detected field
         concepts = self.concept_gateway.detect_concepts(node.raw_text or "")
-        node.detected_concepts = concepts
+        node.concepts.detected = concepts
 
         # Return the node with detected concepts
         return node
-
-    # Method: Create a Node with the equivalent of SpecMapper.from_node_spec(node_spec)
-    def from_node_spec(self, node_spec: NodeSpec | dict[str, Any], detect_concepts: bool = False) -> Node:
-        node = SpecMapper.from_node_spec(node_spec)
-        return self.create(
-                key             = node.key,
-                title           = node.title,
-                text_source     = node.text_source,
-                raw_text        = node.raw_text,
-                field_list      = node.field_list,
-                page_profile    = node.page_profile,
-                detect_concepts = detect_concepts
-            )

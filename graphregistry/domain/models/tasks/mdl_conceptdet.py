@@ -10,20 +10,20 @@ class ConceptDetectionTask(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    text: str | None = None
-    keywords: list[str] | None = None
-    restrict_to_ontology: bool = False
-    graph_score_smoothing: bool = True
-    ontology_score_smoothing: bool = True
-    keywords_score_smoothing: bool = True
-    normalisation_coefficient: float = 0.5
-    aggregation_coef: float = 0.5
-    filtering_threshold: float = 0.15
-    filtering_min_votes: int = 5
-    refresh_scores: bool = True
-    result: list[dict] | None = None
-    successful: bool = False
-    error_message: str | None = None
+    text                      : str | None = None
+    keywords                  : list[str] | None = None
+    restrict_to_ontology      : bool = False
+    graph_score_smoothing     : bool = True
+    ontology_score_smoothing  : bool = True
+    keywords_score_smoothing  : bool = True
+    normalisation_coefficient : float = 0.5
+    aggregation_coef          : float = 0.5
+    filtering_threshold       : float = 0.15
+    filtering_min_votes       : int = 5
+    refresh_scores            : bool = True
+    result                    : list[dict] | None = None
+    successful                : bool = False
+    error_message             : str | None = None
 
     #-----------------------#
     # Serialization methods #
@@ -59,43 +59,3 @@ class ConceptDetectionTask(BaseModel):
             # "filtering_min_votes": self.filtering_min_votes,
             # "refresh_scores": self.refresh_scores,
         }
-
-# Model definition
-class ConceptDetectionResult(BaseModel):
-    """Model representing an object-to-concept detection result
-    """
-    #--------------------#
-    # Internal variables #
-    #--------------------#
-    concept_id: str
-    concept_name: str | None = None
-    score: float
-
-    #-----------------------#
-    # Serialization methods #
-    #-----------------------#
-    @classmethod
-    def from_json(cls, input_json: dict[str, Any]) -> "ConceptDetectionResult":
-        return cls.model_validate(input_json)
-
-    def to_json(self) -> dict[str, Any]:
-        return self.model_dump(mode='json')
-
-# Model definition
-class ConceptDetectionResultList(BaseModel):
-    """Model representing a list of object-to-concept detection results
-    """
-    #--------------------#
-    # Internal variables #
-    #--------------------#
-    item_list: list[ConceptDetectionResult] = Field(default_factory=list)
-
-    #-----------------------#
-    # Serialization methods #
-    #-----------------------#
-    @classmethod
-    def from_list(cls, input_list: list[dict[str, Any]]) -> "ConceptDetectionResultList":
-        return cls(item_list=[ConceptDetectionResult.model_validate(doc) for doc in (input_list or [])])
-
-    def to_list(self) -> list[dict[str, Any]]:
-        return self.model_dump(mode='json')['item_list']

@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import Any
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
-from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionResultList
-from graphregistry.domain.interfaces.gateways.types import GatewayDict
+from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
+from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.common.logger import GraphLogger
+from graphregistry.domain.models.entities.types import ConceptMapType
 
 # Class definition
 class NodeOperations:
@@ -64,18 +65,18 @@ class NodeOperations:
     #--------------------------------------------------#
 
     # Method: Check if a node has detected concepts by its key or Node instance
-    def has_concepts(self, node_or_key: Node | NodeKey) -> bool:
+    def has_concepts(self, node_or_key: Node | NodeKey, map_type: ConceptMapType) -> bool:
         if isinstance(node_or_key, NodeKey):
             node = self.repo.get(node_or_key)
             if not node:
                 raise ValueError(f"Node with key {node_or_key} not found")
         else:
             node = node_or_key
-        if not node.detected_concepts:
+        if   not getattr(node.concepts, map_type):
             return False
-        elif not node.detected_concepts.item_list:
+        elif not getattr(node.concepts, map_type).item_list:
             return False
-        elif len(node.detected_concepts.item_list) == 0:
+        elif len(getattr(node.concepts, map_type).item_list) == 0:
             return False
         else:
             return True
@@ -96,15 +97,15 @@ class NodeOperations:
         if not gateway:
             raise ValueError("Concept detection gateway not configured")
 
-        # Perform concept detection using the gateway and populate the detected_concepts field
+        # Perform concept detection using the gateway and populate the concepts.detected field
         if isinstance(nodes, NodeList):
             for node in nodes.item_list:
                 concepts = gateway.detect_concepts(node.raw_text or "")
-                node.detected_concepts = concepts
+                node.concepts.detected = concepts
                 self.msg.concepts_detected(node.key)
         else:
             concepts = gateway.detect_concepts(nodes.raw_text or "")
-            nodes.detected_concepts = concepts
+            nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)
 
         # Return the node(s) with detected concepts

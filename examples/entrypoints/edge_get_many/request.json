@@ -139,6 +139,41 @@
             "to_type": "Unit",
             "to_id": "IEM",
             "context": "affiliation"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_2tkijpio",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_2u12qncc",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_3smu9zlp",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_6kpqrb9x",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
+        },
+        {
+            "from_type": "Lecture",
+            "from_id": "0_9sp29pst",
+            "to_type": "Course",
+            "to_id": "CS-119(d)",
+            "context": "part of"
         }
     ]
 }

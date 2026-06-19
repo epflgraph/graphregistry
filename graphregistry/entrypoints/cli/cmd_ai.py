@@ -2,25 +2,12 @@
 from __future__ import annotations
 from typing import cast
 import rich
-from graphdb.core.graphdb import GraphDB
-from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.entities.mdl_node import NodeList
-from graphregistry.application.operations.ops_node import NodeOperations
-from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.entrypoints.cli.dependencies import build_node_operations_with_concept_detection_from_args
 
-# Support function: Initialize node operations with the repository and gateways
-def _get_node_ops() -> NodeOperations:
-    return NodeOperations(
-        repo = MySQLNodeRepository(
-            db = GraphDB(),
-            schema_resolver = DefaultSchemaResolver(engine_name='xaas_coresrv', glbcfg=GlobalConfig())
-        ),
-        ai_gateways = {
-            "concept_detection": GraphAIConceptDetectionGateway()
-        }
-    )
+# Support function: Initialize node operations with the repository and concept-detection gateway
+def _get_node_ops(args):
+    return build_node_operations_with_concept_detection_from_args(args)
 
 #-----------------------------------#
 # Handler: Detect concepts in nodes #
@@ -28,7 +15,7 @@ def _get_node_ops() -> NodeOperations:
 def cmd_ai_detect_concepts(args) -> None:
 
     # Initialize node operations with the repository and gateways
-    node_ops = _get_node_ops()
+    node_ops = _get_node_ops(args)
 
     # Get list of nodes without detected concepts
     node_list = node_ops.get_with_no_concepts()
@@ -38,3 +25,8 @@ def cmd_ai_detect_concepts(args) -> None:
 
     # Save the enriched nodes back to the repository
     node_ops.save_many(node_list=enriched_node_list)
+
+#--------------------------------------------------#
+# Handler: Launch interation of lecture processing #
+#--------------------------------------------------#
+# def cmd_ai_process_lectures(args) -> None:

@@ -9,7 +9,6 @@ from graphregistry.entrypoints.api.router import router
 
 # import global config
 from graphregistry.common.config import GlobalConfig
-glbcfg = GlobalConfig()
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
@@ -17,11 +16,14 @@ logger = logging.getLogger("uvicorn.error")
 # Create the FastAPI application
 def create_app() -> FastAPI:
 
+    # Load configuration when the app is created, not at import time.
+    glbcfg = GlobalConfig()
+
     # Initialize the FastAPI app with metadata and documentation settings
     app = FastAPI(
         title       = glbcfg.api_title,
         summary     = glbcfg.api_summary,
-        version     = "0.1.0",
+        version     = "0.1.3",
         docs_url    = "/docs",
         redoc_url   = "/redoc",
         openapi_url = "/openapi.json",
@@ -151,19 +153,19 @@ def create_app() -> FastAPI:
     # Return the configured FastAPI application instance
     return app
 
-# Create the FastAPI application instance by calling the create_app function
-app = create_app()
-
 # If this script is run directly (e.g., via `python main.py`),
-# start the Uvicorn server to serve the FastAPI application
+# start the Uvicorn server to serve the FastAPI application.
+# The app is created lazily via the factory so importing this module does not
+# trigger configuration loading or database connections.
 if __name__ == "__main__":
 
     # Import Uvicorn, the ASGI server used to run FastAPI applications
     import uvicorn
 
-    # Run the Uvicorn server, specifying the application to run, host, and port
+    # Run the Uvicorn server using the application factory.
     uvicorn.run(
-        "graphregistry.entrypoints.api.main:app",
+        "graphregistry.entrypoints.api.main:create_app",
         host="0.0.0.0",
         port=8000,
+        factory=True,
     )

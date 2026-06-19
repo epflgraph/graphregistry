@@ -31,12 +31,13 @@ case "${ROLE}" in
     echo "[graphregistry] Starting API..."
 
     exec uvicorn \
-      "${APP_MODULE:-graphregistry.entrypoints.api.main:app}" \
+      "${APP_MODULE:-graphregistry.entrypoints.api.main:create_app}" \
       --host "${API_HOST:-0.0.0.0}" \
       --port "${API_PORT:-28800}" \
       --workers "${API_WORKERS:-1}" \
       ${API_PROXY_HEADERS:+--proxy-headers} \
-      --forwarded-allow-ips "${API_FORWARDED_ALLOW_IPS:-127.0.0.1}"
+      --forwarded-allow-ips "${API_FORWARDED_ALLOW_IPS:-127.0.0.1}" \
+      --factory
     ;;
 
   shell)

@@ -5,7 +5,7 @@
         ["Curated area"   , true, true],
         ["Course"         , true, true],
         ["Exercise"       , true, true],
-        ["Lecture"        , true, true],
+        ["Lecture"        , false, false],
         ["MOOC"           , true, true],
         ["Notebook"       , true, true],
         ["Person"         , true, true],
@@ -23,13 +23,13 @@
         ["Course"      , "Specialisation" , true],
         ["Course"      , "StudyPlan"      , true],
         ["Exercise"    , "Person"         , true],
-        ["Lecture"     , "Course"         , true],
-        ["Lecture"     , "MOOC"           , true],
+        ["Lecture"     , "Course"         , false],
+        ["Lecture"     , "MOOC"           , false],
         ["MOOC"        , "Person"         , true],
         ["Notebook"    , "Person"         , true],
         ["Person"      , "Unit"           , true],
         ["Publication" , "Person"         , true],
         ["Unit"        , "Unit"           , true],
-        ["Widget"      , "Lecture"        , true]
+        ["Widget"      , "Lecture"        , false]
     ]
 }

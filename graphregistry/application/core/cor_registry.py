@@ -25,9 +25,6 @@ glbcfg = GlobalConfig()
 idxcfg =  IndexConfig()
 scrcfg = ScoresConfig()
 
-# Initialise dynamic sql object
-dynsql = DynamicSQL()
-
 # Initialise MySQL client
 # db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
 from graphregistry.common.paths import (
@@ -37,6 +34,9 @@ from graphregistry.common.paths import (
 )
 db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
 db = GraphDB(config=db_cfg)
+
+# Initialise dynamic sql object
+dynsql = DynamicSQL(db=db)
 
 # Initialise clients
 es = GraphES()
@@ -198,7 +198,7 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
         sysmsg.warning(f"Target table '{schema_name}.{table_name}' does not exist. Creating table ...")
 
         # Create table
-        tb = GraphTable(schema_name=schema_name, table_name=table_name)
+        tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
         db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=False, query_id='v29zYeaA')
 
         # Check if table was created successfully
@@ -604,12 +604,13 @@ class GraphRegistry():
                                     (object_type, object_id, checksum_val)
                               SELECT object_type, object_id,
                                      MD5(CONCAT(MD5(COALESCE(object_type, "__null__")), MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(object_title, "__null__")), MD5(COALESCE(text_source, "__null__")), MD5(COALESCE(raw_text, "__null__")))) AS checksum_val
-                                FROM {schema_name}.Nodes_N_Object o
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
-                               USING (object_type)
-                               WHERE object_type NOT IN ('Slide', 'Transcript')
-                                 AND to_process = 1
-                """
+                                 FROM {schema_name}.Nodes_N_Object o
+                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                                USING (object_type)
+                                WHERE object_type NOT IN ('Slide', 'Transcript')
+                                  AND t.flag_type = 'fields'
+                                  AND t.to_process = 1
+                 """
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='VBk3hp3Z')
@@ -632,8 +633,9 @@ class GraphRegistry():
                             FROM {glbcfg.schema_ontology}.Nodes_N_Concept o
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
                            USING (object_type)
-                           WHERE to_process = 1
-                """
+                           WHERE t.flag_type = 'fields'
+                             AND t.to_process = 1
+                 """
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='CmNTYc97')
@@ -647,8 +649,9 @@ class GraphRegistry():
                             FROM {glbcfg.schema_ontology}.Nodes_N_Category o
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
                            USING (object_type)
-                           WHERE to_process = 1;
-                """
+                           WHERE t.flag_type = 'fields'
+                             AND t.to_process = 1;
+                 """
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='XUiwHdd6')
@@ -678,8 +681,9 @@ class GraphRegistry():
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
                                USING (object_type)
                                WHERE object_type NOT IN ('Slide', 'Transcript')
-                                 AND to_process = 1
-                """
+                                 AND t.flag_type = 'fields'
+                                 AND t.to_process = 1
+                 """
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5nVWX6nk')
@@ -711,9 +715,10 @@ class GraphRegistry():
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
                            USING (object_type)
                            WHERE object_type NOT IN ('Slide', 'Transcript')
-                             AND to_process = 1
-                        GROUP BY object_type, object_id
-                """
+                             AND t.flag_type = 'fields'
+                             AND t.to_process = 1
+                         GROUP BY object_type, object_id
+                 """
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='oTWu6bBL')
@@ -736,10 +741,11 @@ class GraphRegistry():
                        USING (object_type, object_id)
                    LEFT JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsCustomFields c
                        USING (object_type, object_id)
-                  INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
-                       USING (object_type)
-                       WHERE to_process = 1
-            """
+                   INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                        USING (object_type)
+                        WHERE t.flag_type = 'fields'
+                          AND t.to_process = 1
+             """
 
             # Execute query in shell
             db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='y0yFAafh')
@@ -759,7 +765,8 @@ class GraphRegistry():
                   INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
                        USING (object_type)
                          SET f.checksum_current = c.checksum_val
-                       WHERE t.to_process = 1
+                       WHERE t.flag_type = 'fields'
+                         AND t.to_process = 1
             """
 
             # Execute query in shell
@@ -1355,9 +1362,13 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                USING (institution_id, object_type, object_id)
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                               USING (institution_id, object_type)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
-                            GROUP BY cp.object_type
+                                 AND tf.flag_type = 'fields'
+                                 AND tf.to_process = 1
+                             GROUP BY cp.object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='DY3x5PC8')
 
@@ -1369,8 +1380,12 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                USING (institution_id, object_type, object_id)
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                               USING (institution_id, object_type)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
+                                 AND tf.flag_type = 'fields'
+                                 AND tf.to_process = 1
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='2PbejfUm')
@@ -1387,7 +1402,7 @@ class GraphRegistry():
                                            (institution_id, object_type, flag_type, to_process)
                             SELECT DISTINCT institution_id, object_type, 'fields' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='x5BdjGfN')
 
@@ -1400,11 +1415,14 @@ class GraphRegistry():
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
                                USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+                               USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
                                WHERE fc.from_object_id IS NULL
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
-                             AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
-                            GROUP BY cp.from_object_type, cp.to_object_type
+                                 AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
+                                 AND tf.to_process = 1
+                             GROUP BY cp.from_object_type, cp.to_object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='Gk7dDRC0')
 
@@ -1416,10 +1434,13 @@ class GraphRegistry():
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
                                USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
+                               USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
                                WHERE fc.from_object_id IS NULL
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
-                             AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
+                                 AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
+                                 AND tf.to_process = 1
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='s1gXyPYb')
@@ -1436,7 +1457,7 @@ class GraphRegistry():
                                            (from_institution_id, from_object_type, to_institution_id, to_object_type, to_process)
                             SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='dEE3eDPD')
 
@@ -2259,10 +2280,14 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
                                USING (institution_id, object_type, object_id)
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                               USING (institution_id, object_type)
                                WHERE o.institution_id IS NULL
                                  AND n.object_type != 'Transcript'
                                  AND n.object_type != 'Slide'
-                            GROUP BY n.object_type
+                                 AND tf.flag_type = 'fields'
+                                 AND tf.to_process = 1
+                             GROUP BY n.object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='7RNfE1fF')
 
@@ -2274,8 +2299,12 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
                                USING (institution_id, object_type, object_id)
+                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                               USING (institution_id, object_type)
                                WHERE o.institution_id IS NULL
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
+                                 AND tf.flag_type = 'fields'
+                                 AND tf.to_process = 1
                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5mhz4Uwr')
@@ -2292,7 +2321,7 @@ class GraphRegistry():
                                            (institution_id, object_type, flag_type, to_process)
                             SELECT DISTINCT institution_id, object_type, 'scores' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
+                    ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='n2TKRWNV')
 

@@ -192,6 +192,28 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ConceptDetection (
   KEY type_src (object_type,text_source)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_LLMPostValidated (
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
+  object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
+  object_id varchar(255) NOT NULL,
+  concept_id varchar(255) NOT NULL,
+  text_source enum('user input', 'abstract', 'audio transcription', 'biography', 'course page description', 'exercise description', 'lecture description', 'llm generated', 'mooc description', 'notebook description', 'ocr content', 'quiz description', 'startup website', 'studyplan website', 'transcript text', 'unit website') DEFAULT NULL,
+  score float NOT NULL,
+  record_created_date datetime NOT NULL DEFAULT current_timestamp(),
+  record_updated_date datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  row_id int(11) NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY row_id (row_id),
+  UNIQUE KEY unique_key (institution_id,object_type,object_id,concept_id,text_source),
+  KEY object_id (object_id),
+  KEY concept_id (concept_id),
+  KEY institution_id (institution_id),
+  KEY object_type (object_type),
+  KEY text_source (text_source),
+  KEY obj_ccp (institution_id,object_id,concept_id),
+  KEY type_src (object_type,text_source)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ManualMapping (
   institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,

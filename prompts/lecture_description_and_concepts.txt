@@ -1,0 +1,57 @@
+The folloing OCR content has been extracted from a sequence of keyframes belonging to one course lecture. I"m going to give you the following JSON data:
+{
+    "lecture_id" : "lecture identifier",
+    "keyframes" : [
+        {
+            "keyframe_id" : "id_01",
+            "ocr_content" : "long string",
+            "concepts" : ["concept_01", "concept_02", ...]
+        },
+        {
+            "keyframe_id" : "id_02",
+            "ocr_content" : "long string",
+            "concepts" : ["concept_01", "concept_02", ...]
+        },
+        ...
+    ]
+}
+Wherein:
+- "ocr_content" contains the OCR extraction using Google Cloud Vision API;
+- "concepts" contains a list of concept names, extracted from the OCR with a concept detection algorithm, wherein a concept name corresponds exactly to the title of one Wikipedia page, in an ontology derived from Wikipedia pages.
+
+Your task is two-fold:
+
+1. Analyse the entire set of OCR extractions as a whole and generate a Title and Description of the lecture, inferred from the extracted content. Furthermore, you are to create 3 types of description: (a) a long paragraph-sized description; (b) a medium-sized description of 3 lines; (c) a short description in the format "Lecture on top_subject_1, top_subject_2, top_subject_3", wherein top_subject_X is not necessarily a Wikipedia page name, but a general category you think is suitable.
+
+2. Also using the entire set of OCR extractions, return a list of 10-20 top concepts addressed in the lecture, wherein, preferrably, the spelling of the concept names correspond exactly to the title of existing Wikipedia pages.
+
+3. Analyse each keyframe OCR individually, and, for each keyframe, compare the OCR content and the detected concepts, and remove the concepts that have been extracted due to too much fuzzyness, keeping only the ones you're sure are being mentioned in the keyframe OCR. You should also add missing concepts that have not been detected.
+
+The output format should be:
+{
+    "lecture_id" : "lecture identifier (the same as input)",
+    "title" : "your suggested lecture title",
+    "long_description" : "long paragraph-sized description",
+    "medium_description" : "medium-sized description of 3 lines",
+    "short_description" : "Lecture on top_subject_1, top_subject_2, top_subject_3",
+    "top_concepts" : ["top_concept_01", "top_concept_02", ...]
+    "keyframes" : [
+        {
+            "keyframe_id" : "id_01",
+            "refined_concepts" : ["refined_concept_01", "refined_concept_02", ...]
+        },
+        {
+            "keyframe_id" : "id_02",
+            "refined_concepts" : ["refined_concept_01", "refined_concept_02", ...]
+        },
+        ...
+    ]
+}
+
+Notes:
+- Some slides are heavily poluted because of OCR noise. If words are likely to be noise, like "powerpoint", "acrobat", "zoom", or "gmail", you should be able to detect and remove them.
+- try and keep the title less than 60 characters
+- no line breaks in any of the descriptions
+- put the refined concepts in the "ai_refined_list" field
+
+Here's your data.

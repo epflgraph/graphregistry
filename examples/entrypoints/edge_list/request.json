@@ -1,5 +1,5 @@
 {
     "from_type": "Course",
     "to_type": "Person",
-    "id_pattern": "BIO-*"
+    "id_pattern": "MICRO-*"
 }

@@ -57,7 +57,7 @@ RUN
 ======
 From the package root directory run:
 
-```uvicorn api.main.main:app --reload```
+```uvicorn graphregistry.entrypoints.api.main:create_app --reload --factory```
 
 TEST
 =======

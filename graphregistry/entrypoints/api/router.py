@@ -7,10 +7,10 @@ from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
 from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.services.schema.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
 from graphregistry.common.config import GlobalConfig
-from graphregistry.domain.interfaces.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.interfaces.repositories.rpo_node import NodeRepository
+from graphregistry.domain.repositories.rpo_edge import EdgeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
@@ -99,6 +99,9 @@ def _make_edge_repo(db: GraphDB | None = None) -> EdgeRepository:
 def get_node_ops() -> NodeOperations:
     """
     Build NodeOperations for one request.
+
+    This function is registered as a FastAPI dependency so tests can override
+    it with a fake repository via `app.dependency_overrides`.
     """
     node_repo: NodeRepository = _make_node_repo()
     return NodeOperations(repo=node_repo)
@@ -106,6 +109,9 @@ def get_node_ops() -> NodeOperations:
 def get_edge_ops() -> EdgeOperations:
     """
     Build EdgeOperations for one request.
+
+    This function is registered as a FastAPI dependency so tests can override
+    it with a fake repository via `app.dependency_overrides`.
     """
     edge_repo: EdgeRepository = _make_edge_repo()
     return EdgeOperations(repo=edge_repo)
@@ -175,11 +181,14 @@ def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations =
     # Fetch list of nodes from the database for the given object type and optional id pattern
     rows = node_ops.list(object_type=request.type, id_pattern=request.id_pattern)
 
-    # Convert list of tuples returned by the repository to list of NodeKey objects for the response
+    # Convert list of tuples returned by the repository to list of NodeKey objects
     node_keys = [NodeKey.from_tuple(tuple(row)) for row in rows]
 
-    # Return the list of node keys and the count in the response
-    return apispecs.APINodesListResponse(nodes=node_keys, count=len(node_keys))
+    # Convert NodeKey objects to the spec format (type/id) for the response
+    node_key_specs = [SpecMapper.to_node_key_spec(key) for key in node_keys]
+
+    # Return the list of node key specs and the count in the response
+    return apispecs.APINodesListResponse(nodes=node_key_specs, count=len(node_key_specs))
 
 #---------------------------------#
 # API Endpoint: /api/nodes/exists #
@@ -362,11 +371,14 @@ def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations =
     # Fetch list of edges from the database for the given pair of object types and optional id pattern
     rows = edge_ops.list(object_type=(request.from_type, request.to_type), id_pattern=request.id_pattern)
 
-    # Convert list of tuples returned by the repository to list of EdgeKey objects for the response
+    # Convert list of tuples returned by the repository to list of EdgeKey objects
     edge_keys = [EdgeKey.from_tuple(tuple(row)) for row in rows]
 
-    # Return the list of edge keys and the count in the response
-    return apispecs.APIEdgesListResponse(edges=edge_keys, count=len(edge_keys))
+    # Convert EdgeKey objects to the spec format (from_type/from_id/to_type/to_id/context)
+    edge_key_specs = [SpecMapper.to_edge_key_spec(key) for key in edge_keys]
+
+    # Return the list of edge key specs and the count in the response
+    return apispecs.APIEdgesListResponse(edges=edge_key_specs, count=len(edge_key_specs))
 
 #---------------------------------#
 # API Endpoint: /api/edges/exists #

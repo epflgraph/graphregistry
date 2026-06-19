@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 from pydantic import BaseModel, Field
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
+# Import spec versions for response consistency
+from graphregistry.entrypoints.schemas import NodeKeySpec, EdgeKeySpec
 from graphregistry.entrypoints.schemas import NodeSpec, EdgeSpec, NodeKeySpec, EdgeKeySpec
 
 # Generic response schema for API endpoints, indicating success and providing a message
@@ -23,7 +25,8 @@ class APINodesListRequest(BaseModel):
     )
 
 class APINodesListResponse(BaseModel):
-    nodes : list[NodeKey] = Field(default_factory=list)
+    # Use NodeKeySpec for consistency with request schema (type/id)
+    nodes : list[NodeKeySpec] = Field(default_factory=list)
     count : int = 0
 
 # api/nodes/exists
@@ -105,7 +108,8 @@ class APIEdgesListRequest(BaseModel):
     )
 
 class APIEdgesListResponse(BaseModel):
-    edges : list[EdgeKey] = Field(default_factory=list)
+    # Use EdgeKeySpec for consistency (from_type/from_id/to_type/to_id/context)
+    edges : list[EdgeKeySpec] = Field(default_factory=list)
     count : int = 0
 
 # api/edges/exists

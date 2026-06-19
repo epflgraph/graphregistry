@@ -1,17 +1,33 @@
 # graphregistry/common/dbstruct.py
-from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from functools import lru_cache
+from pathlib import Path
+
+import json, re
+
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
-import rich, json, re
-from pathlib import Path
+from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 
 # TODO: Check presence of column name "context" in all edge definitions
 # TODO: Some keys are not being created in elasticsearch cache schemas
 
-# Initialize configuration objects
-glbcfg = GlobalConfig()
-idxcfg = IndexConfig()
-scrcfg = ScoresConfig()
+
+@lru_cache(maxsize=1)
+def get_global_config() -> GlobalConfig:
+    """Lazy loader for the global configuration."""
+    return GlobalConfig.from_file()
+
+
+@lru_cache(maxsize=1)
+def get_index_config() -> IndexConfig:
+    """Lazy loader for the index configuration."""
+    return IndexConfig.from_file()
+
+
+@lru_cache(maxsize=1)
+def get_scores_config() -> ScoresConfig:
+    """Lazy loader for the scores configuration."""
+    return ScoresConfig.from_file()
 
 
 def _find_repo_root(start: Path | None = None) -> Path:
@@ -26,14 +42,6 @@ def _find_repo_root(start: Path | None = None) -> Path:
 
 REPO_ROOT = _find_repo_root()
 CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
-
-db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
-
-
-
-# Initialise MySQL client
-# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
-db = GraphDB(config=db_cfg)
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -145,35 +153,24 @@ core_datatypes_config_flat = flatten_schema_remove_duplicates(core_datatypes_con
 #============================================#
 # Class definition: Graph Database Structure #
 #============================================#
-class DynamicSQL():
-
-    # Prevent from initialising twice
-    _instance = None
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(DynamicSQL, cls).__new__(cls)
-            cls._instance._initialized = False
-        return cls._instance
+class DynamicSQL:
 
     # Constructor
-    def __init__(self):
+    def __init__(self, db: "GraphDB") -> None:
 
-        # Prevent from initialising twice (e.g. when calling DynamicSQL() multiple times to access static methods)
-        if getattr(self, "_initialized", False):
-            return
-
-        # Set initialization flag and print message
-        self._initialized = True
+        # Store the GraphDB client explicitly. Each caller owns its instance,
+        # which makes the class testable and avoids hidden global state.
+        self.db = db
 
         #-------------------------------#
         # Basic configuation parameters #
         #-------------------------------#
 
         # Get available doc types
-        self.doc_types = idxcfg.settings['doc_types']
+        self.doc_types = get_index_config().settings['doc_types']
 
         # Get edge types to score
-        self.edge_types_to_score = scrcfg.settings['scored_edge_tuples']['research'] + scrcfg.settings['scored_edge_tuples']['education']
+        self.edge_types_to_score = get_scores_config().settings['scored_edge_tuples']['research'] + get_scores_config().settings['scored_edge_tuples']['education']
 
         # Append ontology-related edges
         self.edge_types_to_score += [[d,'Concept' ] for d in self.doc_types]
@@ -191,8 +188,8 @@ class DynamicSQL():
 
         # Get available parent-to-child tuples
         p2c_tuples = []
-        for     k1 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'].keys():
-            for k2 in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][k1].keys():
+        for     k1 in get_index_config().settings['graphsearch']['fields']['links']['parent_child'].keys():
+            for k2 in get_index_config().settings['graphsearch']['fields']['links']['parent_child'][k1].keys():
                 p2c_tuples += [tuple(sorted([k1,k2]))]
 
         # Append ontology tuples
@@ -230,23 +227,23 @@ class DynamicSQL():
     #------------------------------#
 
     @staticmethod
-    def get_fields(doc_type, link_type=None, link_subtype=None, index_group=None):
+    def get_fields(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None):
         if link_type is None:
-            return DynamicSQL().get_all_doc_fields(doc_type=doc_type, index_group=index_group)
+            return DynamicSQL(db=db).get_all_doc_fields(doc_type=doc_type, index_group=index_group)
         else:
-            return DynamicSQL().get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+            return DynamicSQL(db=db).get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
     @staticmethod
-    def get_create_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
-        return DynamicSQL().get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+    def get_create_table(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, include_schema=False):
+        return DynamicSQL(db=db).get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     @staticmethod
-    def get_alter_table(doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
-        return DynamicSQL().get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+    def get_alter_table(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, include_schema=False):
+        return DynamicSQL(db=db).get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     @staticmethod
-    def compare_fields(doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
-        return DynamicSQL().compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
+    def compare_fields(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
+        return DynamicSQL(db=db).compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
 
     #---------------------------------#
     # Method group: Table diagnostics #
@@ -267,7 +264,7 @@ class DynamicSQL():
         table_name = self.get_sql_table_name(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=False)
 
         # Get existing fields in the table
-        fields_in_table = db.get_column_names(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
+        fields_in_table = self.db.get_column_names(engine_name=engine_name, schema_name=schema_name, table_name=table_name)
 
         # Get missing fields in existing table that are in the config (fields to add)
         missing_fields = [f for f in fields_in_config if f not in fields_in_table]
@@ -290,7 +287,7 @@ class DynamicSQL():
         # Get field list helpers
         id_fields_wi  = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=True)
         id_fields_woi = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=False)
-        option_fields = list(idxcfg.settings['options'].keys())
+        option_fields = list(get_index_config().settings['options'].keys())
         custom_fields = self.get_custom_fields(doc_type=doc_type, index_group=index_group)
 
         # Combine and return according to index group
@@ -460,8 +457,8 @@ class DynamicSQL():
         for field_name in fields_list:
             if core_datatypes_config_flat['data-types'].get(field_name) is not None:
                 datatypes_list += [core_datatypes_config_flat['data-types'][field_name]]
-            elif idxcfg.settings['data_types'].get(field_name) is not None:
-                datatypes_list += [sql_data_type_mapping[idxcfg.settings['data_types'][field_name]]]
+            elif get_index_config().settings['data_types'].get(field_name) is not None:
+                datatypes_list += [sql_data_type_mapping[get_index_config().settings['data_types'][field_name]]]
             else:
                 raise Exception(f"❌ No datatype found in config: {field_name}")
         return datatypes_list
@@ -470,11 +467,11 @@ class DynamicSQL():
     def get_sql_table_name(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
         if link_type is None:
             if index_group in ('graphsearch', 'elasticsearch'):
-                return f"{glbcfg.mysql_schema_names['test']['graphsearch' if index_group=='graphsearch' else 'es_cache']+'.' if include_schema else ''}Index_D_{doc_type}"
+                return f"{get_global_config().mysql_schema_names['test']['graphsearch' if index_group=='graphsearch' else 'es_cache']+'.' if include_schema else ''}Index_D_{doc_type}"
             elif index_group=='indexbuildup':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Docs_{doc_type}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Docs_{doc_type}"
             elif index_group=='indexrollback':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Docs_{doc_type}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Docs_{doc_type}"
             else:
                 print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
                 exit()
@@ -483,13 +480,13 @@ class DynamicSQL():
                 if link_subtype is None:
                     print(f"❌ Error: link_subtype must be specified for index_group='graphsearch'")
                     exit()
-                return f"{glbcfg.mysql_schema_names['test']['graphsearch']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}"
+                return f"{get_global_config().mysql_schema_names['test']['graphsearch']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}"
             elif index_group=='elasticsearch':
-                return f"{glbcfg.mysql_schema_names['test']['es_cache']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}"
+                return f"{get_global_config().mysql_schema_names['test']['es_cache']+'.' if include_schema else ''}Index_D_{doc_type}_L_{link_type}"
             elif index_group=='indexbuildup':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexBuildup_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
             elif index_group=='indexrollback':
-                return f"{glbcfg.mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
+                return f"{get_global_config().mysql_schema_names['test']['graph_cache']+'.' if include_schema else ''}IndexRollback_Fields_Links_ParentChild_{sorted([doc_type,link_type])[0]}_{sorted([doc_type,link_type])[1]}"
             else:
                 print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
                 exit()
@@ -648,10 +645,10 @@ class DynamicSQL():
         def __init__(self, doc_type):
             self.doc_type = doc_type
             self.options = {}
-            for k in idxcfg.settings['options'].keys():
-                self.options[k] = idxcfg.settings['options'][k][self.doc_type]
-            self.graphsearch_obj_fields   = list(idxcfg.settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, []))
-            self.elasticsearch_obj_fields = list(idxcfg.settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, []))
+            for k in get_index_config().settings['options'].keys():
+                self.options[k] = get_index_config().settings['options'][k][self.doc_type]
+            self.graphsearch_obj_fields   = list(get_index_config().settings['graphsearch'  ]['fields' ]['docs'].get(self.doc_type, []))
+            self.elasticsearch_obj_fields = list(get_index_config().settings['elasticsearch']['fields' ]['docs'].get(self.doc_type, []))
 
     #--------------------------------------#
     # Sub-class definition: DocLink object #
@@ -663,9 +660,9 @@ class DynamicSQL():
             self.doc_type     = doc_type
             self.link_type    = link_type
             self.link_subtype = link_subtype
-            self.graphsearch_obj_fields     =  list(idxcfg.settings['graphsearch'  ]['fields']['links']['default'].get(self.link_type, []))
-            self.graphsearch_obj2obj_fields = (list(idxcfg.settings['graphsearch'  ]['fields']['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, [])) if link_subtype.upper() == 'ORG' else [])
-            self.elasticsearch_obj_fields   =  list(idxcfg.settings['elasticsearch']['fields']['links'].get(self.link_type, []))
+            self.graphsearch_obj_fields     =  list(get_index_config().settings['graphsearch'  ]['fields']['links']['default'].get(self.link_type, []))
+            self.graphsearch_obj2obj_fields = (list(get_index_config().settings['graphsearch'  ]['fields']['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, [])) if link_subtype.upper() == 'ORG' else [])
+            self.elasticsearch_obj_fields   =  list(get_index_config().settings['elasticsearch']['fields']['links'].get(self.link_type, []))
 
 #===============================#
 # Class definition: Graph Table #
@@ -673,7 +670,7 @@ class DynamicSQL():
 class GraphTable():
 
     # Constructor
-    def __init__(self, doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
+    def __init__(self, db: "GraphDB", doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
 
         # Initialise input parameters
         self.doc_type     = doc_type
@@ -692,17 +689,17 @@ class GraphTable():
             if table_name.startswith('IndexBuildup_Fields_Docs_'):
                 self.doc_type = table_name.replace('IndexBuildup_Fields_Docs_', '')
                 self.index_group = 'indexbuildup'
-                self.schema_name = glbcfg.mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
+                self.schema_name = get_global_config().mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
 
             # Index buildup table (doclinks)
             elif table_name.startswith('IndexBuildup_Fields_Links_ParentChild_'):
                 self.doc_type, self.link_type = table_name.replace('IndexBuildup_Fields_Links_ParentChild_', '').split('_')
                 self.link_subtype = 'ORG'
                 self.index_group = 'indexbuildup'
-                self.schema_name = glbcfg.mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
+                self.schema_name = get_global_config().mysql_schema_names['test']['graph_cache'] if self.schema_name is None else self.schema_name
 
             # GraphSearch schema
-            if self.schema_name == glbcfg.mysql_schema_names['test']['graphsearch']:
+            if self.schema_name == get_global_config().mysql_schema_names['test']['graphsearch']:
 
                 # Index doc tables
                 if self.table_name and re.match(r"Index_D_([^\_]*)$", self.table_name):
@@ -715,7 +712,7 @@ class GraphTable():
                     self.index_group = 'graphsearch'
 
             # ElasticSearch schema
-            elif self.schema_name == glbcfg.mysql_schema_names['test']['es_cache']:
+            elif self.schema_name == get_global_config().mysql_schema_names['test']['es_cache']:
 
                 # Index doc tables
                 if self.table_name and re.match(r"Index_D_([^\_]*)$", self.table_name):
@@ -734,14 +731,19 @@ class GraphTable():
         # Pre-generate dynamic SQL queries #
         #----------------------------------#
 
+        # Build a DynamicSQL instance bound to the provided GraphDB client.
+        # The first instantiation of DynamicSQL registers the singleton, so
+        # subsequent static-method calls can reuse it without passing db again.
+        dynamic_sql = DynamicSQL(db=db)
+
         # Get list of table fields
-        self.table_fields = DynamicSQL().get_fields(doc_type=self.doc_type, index_group=self.index_group)
+        self.table_fields = dynamic_sql.get_fields(doc_type=self.doc_type, index_group=self.index_group)
 
         # Get create table SQL statement
-        self.create_table_sql = DynamicSQL().get_create_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
+        self.create_table_sql = dynamic_sql.get_create_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
 
         # Get drop primary keys and alter table SQL statements
-        self.drop_primary_key_sql, self.alter_table_sql = DynamicSQL().get_alter_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
+        self.drop_primary_key_sql, self.alter_table_sql = dynamic_sql.get_alter_table(doc_type=self.doc_type, link_type=self.link_type, link_subtype=self.link_subtype, index_group=self.index_group, include_schema=True)
 
     #----------------------#
     # Basic export methods #
@@ -773,6 +775,8 @@ class GraphTable():
 #-------------------------------#
 if __name__ == "__main__":
 
+    # Initialise a local GraphDB client for this standalone script block.
+    db = GraphDB(config=GraphDBConfig.from_file(CONFIG_DB_PATH))
 
     # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
     # for t in list_of_tables:
@@ -793,11 +797,11 @@ if __name__ == "__main__":
     }
 
     # Set schema name for testing
-    schema_name = glbcfg.mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
+    schema_name = get_global_config().mysql_schema_names['test'][mapping_for_which_cache[which_cache][0]]
 
     # Initialise table
     for t in sorted(['IndexBuildup_Fields_Links_ParentChild_Course_Lecture', 'IndexBuildup_Fields_Links_ParentChild_Course_Person', 'IndexBuildup_Fields_Links_ParentChild_Lecture_MOOC', 'IndexBuildup_Fields_Links_ParentChild_Lecture_Widget', 'IndexBuildup_Fields_Links_ParentChild_MOOC_Person', 'IndexBuildup_Fields_Links_ParentChild_Notebook_Person', 'IndexBuildup_Fields_Links_ParentChild_Person_Publication', 'IndexBuildup_Fields_Links_ParentChild_Person_Unit', 'IndexBuildup_Fields_Links_ParentChild_Unit_Unit']):
-        tb = GraphTable(schema_name='graph_cache', table_name=t)
+        tb = GraphTable(db=db, schema_name='graph_cache', table_name=t)
         print('\n\n')
         print(f"""
             {tb.create_table_sql.replace(';','')} AS
@@ -855,12 +859,12 @@ if __name__ == "__main__":
             continue
 
         # Initialise table
-        tb = GraphTable(schema_name=schema_name, table_name=table_name)
+        tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
 
         # print(tb.get_drop_primary_key(), '\n' )
         # print(tb.get_alter_table(), '\n\n' )
 
-        missing_fields, fields_to_drop = DynamicSQL().compare_fields(
+        missing_fields, fields_to_drop = DynamicSQL(db=db).compare_fields_with_table(
             doc_type     = tb.doc_type,
             link_type    = tb.link_type,
             link_subtype = tb.link_subtype,
