@@ -9,6 +9,7 @@ from graphregistry.entrypoints.api.router import router
 
 # import global config
 from graphregistry.common.config import GlobalConfig
+from graphregistry.common.version import REGISTRY_API_VERSION
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
@@ -23,7 +24,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title       = glbcfg.api_title,
         summary     = glbcfg.api_summary,
-        version     = "0.1.3",
+        version     = REGISTRY_API_VERSION,
         docs_url    = "/docs",
         redoc_url   = "/redoc",
         openapi_url = "/openapi.json",
