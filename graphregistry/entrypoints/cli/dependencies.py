@@ -72,7 +72,7 @@ def build_lecture_operations(
     node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
     lecture_repo = MySQLLectureRepository(
         db=db,
-        schema_name=global_config.schema_lectures,
+        schema_resolver=schema_resolver,
         node_repo=node_repo,
     )
 
