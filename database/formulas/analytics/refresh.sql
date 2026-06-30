@@ -138,7 +138,7 @@ SELECT DISTINCT course_code, course_name, study_plan_id, study_plan_name, study_
 -- ============
 -- ============
    REPLACE INTO graph_analytics.Flourish_CS_119_Course_n_lectures
-                (course_code, n_lectures)       
+                (course_code, n_lectures)
          SELECT course_id, COUNT(DISTINCT lecture_id) AS n_lectures
            FROM graph_cache.Traversal_N_Course_N_Lecture_N_Slide_N_Concept_T_LLMValidated
        GROUP BY course_id;
@@ -176,7 +176,7 @@ CREATE TEMPORARY TABLE graph_analytics.tmp_plan_concepts AS
                 SELECT study_plan_id, MAX(study_plan_name) AS study_plan_name, COUNT(*) AS n_concepts
                   FROM graph_analytics.tmp_plan_concepts
               GROUP BY study_plan_id),
-                
+
                 intersections AS (
                 SELECT a.study_plan_id AS from_study_plan_id, b.study_plan_id AS to_study_plan_id, COUNT(*) AS intersection_concepts
                   FROM graph_analytics.tmp_plan_concepts a
@@ -189,14 +189,14 @@ CREATE TEMPORARY TABLE graph_analytics.tmp_plan_concepts AS
           FROM intersections i
           JOIN plan_sizes pf ON pf.study_plan_id = i.from_study_plan_id
           JOIN plan_sizes pt ON pt.study_plan_id = i.to_study_plan_id;
-    
+
 
 -- ============
 -- ============
    REPLACE INTO graph_analytics.Flourish_StudyPlan_Jaccard_Matrix_pLevel
                (from_study_plan_id, from_study_plan_name, from_study_plan_name_w_level, from_study_plan_level, to_study_plan_id, to_study_plan_name, to_study_plan_name_w_level, to_study_plan_level, intersection_concepts, from_concepts, to_concepts, union_concepts, score)
          SELECT from_study_plan_id, from_study_plan_name, CONCAT(from_study_plan_name, ' [', c1.study_plan_level, ']') AS from_study_plan_name_w_level, c1.study_plan_level AS from_study_plan_level,
-                to_study_plan_id,   to_study_plan_name, CONCAT(  to_study_plan_name, ' [', c2.study_plan_level, ']') AS   to_study_plan_name_w_level, c2.study_plan_level AS   to_study_plan_level,
+                  to_study_plan_id,   to_study_plan_name, CONCAT(  to_study_plan_name, ' [', c2.study_plan_level, ']') AS   to_study_plan_name_w_level, c2.study_plan_level AS   to_study_plan_level,
                 intersection_concepts, from_concepts, to_concepts, union_concepts, score
            FROM graph_analytics.Flourish_StudyPlan_Jaccard_Matrix m
      INNER JOIN graph_analytics.StudyPlan_Levels c1
