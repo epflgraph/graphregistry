@@ -28,70 +28,22 @@ if __name__ == "__main__":
 
     # Run from scratch?
     if True:
-
-        # Get list on unprocessed lecture IDs
-        # if True:
-        #     list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name,
-        #         query="""
-        #         SELECT DISTINCT v.object_id AS lecture_id
-        #                    FROM graph_lectures.Nodes_N_Object v
-        #              INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent c
-        #                      ON (c.from_object_type, c.from_object_id) = (v.object_type, v.object_id)
-        #              INNER JOIN (SELECT course_id, AVG(score) AS score
-        #                            FROM (
-        #                               SELECT to_object_id AS course_id, score
-        #                                 FROM graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS
-        #                                WHERE (from_object_type, to_object_type) = ('Course', 'Course')
-        #                                  AND from_object_id LIKE 'CS-119%'
-        #                                  AND score >= 0.5
-        #                                UNION
-        #                               SELECT from_object_id AS course_id, score
-        #                                 FROM graph_cache.Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS
-        #                                WHERE (from_object_type, to_object_type) = ('Course', 'Course')
-        #                                  AND to_object_id LIKE 'CS-119%'
-        #                                  AND score >= 0.5
-        #                                 ) t
-        #                        GROUP BY course_id) tt
-        #                      ON c.to_object_id = tt.course_id
-        #                   WHERE v.object_type = 'Lecture'
-        #                     AND v.object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
-        #                ORDER BY tt.score DESC;
-        #     """)]
-        # else:
-        # if True:
-        #     list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name,
-        #         query="""
-        #         SELECT DISTINCT l.from_object_id AS lecture_id
-        #                    FROM graph_registry.Edges_N_Object_N_Object_T_ChildToParent c
-        #              INNER JOIN graph_registry.Data_N_Object_T_CustomFields f
-        #                      ON (c.to_object_type, c.to_object_id, c.context, 'en', 'level') = (f.object_type, f.object_id, 'coursebook', f.field_language, f.field_name)
-        #              INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent l 
-        #                      ON (c.from_object_type, c.from_object_id, 'part of') = (l.to_object_type, l.to_object_id, l.context)
-        #                   WHERE (c.from_object_type, c.to_object_type, c.context) = ('Course', 'StudyPlan', 'coursebook')
-        #                     AND f.field_value = 'Bachelor Cycle' 
-        #                     AND c.to_object_id LIKE '%2025-2026'
-        #                     AND c.to_object_id NOT IN ('bachelor-architecture-2025-2026', 'bachelor-projeter-ensemble-enac-2025-2026')
-        #                     AND l.from_object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
-        #                ORDER BY c.to_object_id, l.to_object_id, l.from_object_id;
-        #     """)]
         if True:
-            
             sql_query=f"""
                 SELECT DISTINCT l.from_object_id AS lecture_id
                            FROM graph_registry.Edges_N_Object_N_Object_T_ChildToParent c
                      INNER JOIN graph_registry.Data_N_Object_T_CustomFields f
                              ON (c.to_object_type, c.to_object_id, c.context, 'en', 'level') = (f.object_type, f.object_id, 'coursebook', f.field_language, f.field_name)
-                     INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent l 
+                     INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent l
                              ON (c.from_object_type, c.from_object_id, 'part of') = (l.to_object_type, l.to_object_id, l.context)
                           WHERE (c.from_object_type, c.to_object_type, c.context) = ('Course', 'StudyPlan', 'coursebook')
-                            AND f.field_value IN ('Bachelor Cycle', 'Propedeutics')
                             AND c.to_object_id LIKE '%2025-2026'
-                            AND c.to_object_id NOT IN ('bachelor-architecture-2025-2026', 'bachelor-projeter-ensemble-enac-2025-2026')
                             AND l.from_object_id NOT IN (SELECT DISTINCT object_id FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated)
                             AND (MOD(CRC32(l.from_object_id), 9) + 1) = {n_batch}
                        ORDER BY c.to_object_id, l.to_object_id, l.from_object_id;
             """
-            list_of_lectures = [r[0] for r in db.execute_query(engine_name=engine_name, query=sql_query)]
+            output = db.execute_query(engine_name=engine_name, query=sql_query)
+            list_of_lectures = [r[0] for r in output if r is not None]
         else:
             list_of_lectures = ['0_rja1k2lk']
 
@@ -100,13 +52,13 @@ if __name__ == "__main__":
 
         # Loop over lecture IDs
         for k, lecture_id in enumerate(list_of_lectures, start=1):
-            
+
             # Get current time
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # Print the lecture ID being processed
             rich.print(f"🎥 Processing lecture ID ({k}/{N}): {lecture_id} at {current_time}")
-            
+
             # Run the enrichment operation for a specific lecture ID
             start_time = datetime.datetime.now()
             try:
