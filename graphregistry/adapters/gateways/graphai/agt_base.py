@@ -211,13 +211,25 @@ class GraphAIBaseGateway:
         data: dict[str, Any] | None = None,
         *,
         max_tries: int = 5,
-        timeout: int = 600,
+        timeout: float | tuple[float, float] = 600,
+        stream: bool = False,
+        raise_for_status: bool = True,
+        session: Session | None = None,
     ) -> Response:
         """
         Execute one HTTP request with retry logic and automatic token refresh on 401.
 
         Uses the gateway's persistent ``requests.Session`` so that connection
         reuse (HTTP keep-alive) amortizes TLS handshake costs across calls.
+
+        When ``raise_for_status`` is False, non-2xx responses that are not
+        retryable are returned to the caller instead of raising. This lets
+        callers inspect expected error status codes such as 404.
+
+        A caller-provided ``session`` can be supplied for requests that must not
+        share connection state with the persistent session (e.g. large file
+        downloads behind misbehaving proxies). The caller is responsible for
+        closing a provided session.
         """
         if not url.startswith("http"):
             url = login_info["host"] + url
@@ -227,16 +239,18 @@ class GraphAIBaseGateway:
             request_headers["Authorization"] = f'Bearer {login_info["token"]}'
 
         method = method.upper()
+        http_session = session if session is not None else self._http_session
 
         for attempt in range(1, max_tries + 1):
             try:
-                response = self._http_session.request(
+                response = http_session.request(
                     method,
                     url,
                     headers=request_headers,
                     json=json,
                     data=data,
                     timeout=timeout,
+                    stream=stream,
                 )
             except Exception:
                 if attempt == max_tries:
@@ -250,6 +264,9 @@ class GraphAIBaseGateway:
                 continue
 
             if response.ok:
+                return response
+
+            if not raise_for_status and not self._is_retryable_status(response.status_code):
                 return response
 
             if response.status_code == 401:

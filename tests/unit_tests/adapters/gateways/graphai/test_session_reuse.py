@@ -65,6 +65,7 @@ def test_request_uses_session(gateway: GraphAIBaseGateway) -> None:
         json={"x": 1},
         data=None,
         timeout=600,
+        stream=False,
     )
 
 

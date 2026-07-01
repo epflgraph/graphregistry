@@ -171,10 +171,9 @@ class TestSlideDetectionRecovery:
         task_result = {
             "successful": True,
             "slide_tokens": {
-                "0": {"token": "slide-0", "timestamp": 0},
-                "1": {"token": "slide-1", "timestamp": 10},
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": True}},
+                "1": {"token": "slide-1", "timestamp": 10, "token_status": {"active": True}},
             },
-            "token_status": {"active": True, "fingerprinted": True},
         }
 
         with patch.object(gateway, "_call_async_endpoint", return_value=task_result):
@@ -184,22 +183,64 @@ class TestSlideDetectionRecovery:
         assert len(result.item_list) == 2
         assert result.item_list[0].token == "slide-0"
 
-    def test_retries_with_recalculate_cached_when_some_slides_inactive(self, gateway: GraphAIVideoGateway) -> None:
-        inactive_result = {
+    def test_returns_slides_when_fingerprinted(self, gateway: GraphAIVideoGateway) -> None:
+        task_result = {
             "successful": True,
             "slide_tokens": {
-                "0": {"token": "slide-0", "timestamp": 0},
+                "0": {
+                    "token": "slide-0",
+                    "timestamp": 0,
+                    "token_status": {"active": False, "fingerprinted": True},
+                },
             },
-            "token_status": {"active": False, "fingerprinted": False},
-            "fresh": False,
+        }
+
+        with patch.object(gateway, "_call_async_endpoint", return_value=task_result):
+            result = gateway.extract_slides(video_token="video-token-1")
+
+        assert result is not None
+        assert len(result.item_list) == 1
+
+    def test_retries_with_force_when_slides_missing_and_fresh(self, gateway: GraphAIVideoGateway) -> None:
+        fresh_missing_result = {
+            "successful": True,
+            "fresh": True,
+            "slide_tokens": {
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": False}},
+            },
         }
         active_result = {
             "successful": True,
-            "slide_tokens": {
-                "0": {"token": "slide-0", "timestamp": 0},
-            },
-            "token_status": {"active": True, "fingerprinted": True},
             "fresh": True,
+            "slide_tokens": {
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": True}},
+            },
+        }
+
+        with patch.object(
+            gateway, "_call_async_endpoint", side_effect=[fresh_missing_result, active_result]
+        ) as mock_call:
+            result = gateway.extract_slides(video_token="video-token-1")
+
+        assert result is not None
+        assert mock_call.call_count == 2
+        assert mock_call.call_args_list[1].kwargs["payload"]["force"] is True
+        assert mock_call.call_args_list[1].kwargs["payload"]["recalculate_cached"] is False
+
+    def test_retries_with_recalculate_cached_when_some_slides_inactive(self, gateway: GraphAIVideoGateway) -> None:
+        inactive_result = {
+            "successful": True,
+            "fresh": False,
+            "slide_tokens": {
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": False}},
+            },
+        }
+        active_result = {
+            "successful": True,
+            "fresh": True,
+            "slide_tokens": {
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": True}},
+            },
         }
 
         with patch.object(
@@ -210,3 +251,30 @@ class TestSlideDetectionRecovery:
         assert result is not None
         assert mock_call.call_count == 2
         assert mock_call.call_args_list[1].kwargs["payload"]["recalculate_cached"] is True
+        assert mock_call.call_args_list[1].kwargs["payload"]["force"] is False
+
+    def test_raises_when_slides_missing_while_forced(self, gateway: GraphAIVideoGateway) -> None:
+        bad_result = {
+            "successful": True,
+            "fresh": False,
+            "slide_tokens": {
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": False}},
+            },
+        }
+
+        with patch.object(gateway, "_call_async_endpoint", return_value=bad_result):
+            with pytest.raises(RuntimeError, match="slide files missing"):
+                gateway.extract_slides(video_token="video-token-1", force=True)
+
+    def test_raises_when_slides_missing_while_recalculate_cached(self, gateway: GraphAIVideoGateway) -> None:
+        bad_result = {
+            "successful": True,
+            "fresh": False,
+            "slide_tokens": {
+                "0": {"token": "slide-0", "timestamp": 0, "token_status": {"active": False}},
+            },
+        }
+
+        with patch.object(gateway, "_call_async_endpoint", return_value=bad_result):
+            with pytest.raises(RuntimeError, match="slide files missing"):
+                gateway.extract_slides(video_token="video-token-1", recalculate_cached=True)

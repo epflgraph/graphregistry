@@ -7,7 +7,7 @@ from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGatewa
 
 def main() -> None:
     # Replace with a real video URL GraphAI can reach.
-    video_url = "https://example.com/lecture.mp4"
+    video_url = "https://raw.githubusercontent.com/epflgraph/graphregistry/master/scripts/init/sample_sets/MATH-132_Lecture_01.mp4"
 
     gateway = GraphAIVideoGateway()
     video = gateway.get_video(file_url=video_url)

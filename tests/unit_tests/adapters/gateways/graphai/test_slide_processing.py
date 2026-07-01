@@ -26,10 +26,17 @@ def gateway() -> GraphAIVideoGateway:
 def _slide_result(video_token: str) -> dict[str, Any]:
     return {
         "successful": True,
-        "token_status": {"active": True},
         "slide_tokens": {
-            "0": {"token": "slide-0", "timestamp": 10},
-            "1": {"token": "slide-1", "timestamp": 30},
+            "0": {
+                "token": "slide-0",
+                "timestamp": 10,
+                "token_status": {"active": True},
+            },
+            "1": {
+                "token": "slide-1",
+                "timestamp": 30,
+                "token_status": {"active": True},
+            },
         },
     }
 

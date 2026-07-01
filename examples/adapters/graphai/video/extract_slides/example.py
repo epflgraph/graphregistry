@@ -7,7 +7,7 @@ from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGatewa
 
 def main() -> None:
     # Replace with a real video token returned by get_video().
-    video_token = "VIDEO-TOKEN-PLACEHOLDER"
+    video_token = "177581471705447505981400.mp4"
 
     gateway = GraphAIVideoGateway()
     slides = gateway.extract_slides(video_token=video_token)

@@ -8,7 +8,7 @@ from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGatewa
 
 def main() -> None:
     # Replace with a real audio token returned by GraphAIVideoGateway.extract_audio().
-    audio_token = "AUDIO-TOKEN-PLACEHOLDER"
+    audio_token = "175887418976912501285267.mp4_audio.ogg"
 
     voice_gateway = GraphAIVoiceGateway()
     translation_gateway = GraphAITextTranslationGateway()

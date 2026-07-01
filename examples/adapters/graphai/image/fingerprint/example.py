@@ -7,7 +7,7 @@ from graphregistry.adapters.gateways.graphai.agt_image import GraphAIImageGatewa
 
 def main() -> None:
     # Replace with a real image/slide token returned by GraphAIVideoGateway.extract_slides().
-    slide_token = "SLIDE-TOKEN-PLACEHOLDER"
+    slide_token = "175887418976912501285267.mp4_slides/frame-000062.png"
 
     gateway = GraphAIImageGateway()
     fingerprint = gateway.calculate_fingerprint(slide_token=slide_token)

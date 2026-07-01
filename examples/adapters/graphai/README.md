@@ -17,6 +17,7 @@ Endpoint groups mirror the GraphAI domains:
 examples/adapters/graphai/
 ├── video/
 │   ├── get_video/
+│   ├── get_token_from_url/
 │   ├── fingerprint/
 │   ├── extract_audio/
 │   ├── extract_slides/
@@ -66,9 +67,10 @@ configuration is read from `config/config_graphai_client.json` via
 - Examples that produce media tokens (`get_video`, `extract_audio`,
   `extract_slides`, etc.) print placeholder tokens by default. Wire them
   together to build a full pipeline:
-  1. `get_video` → video token
-  2. `extract_audio` / `extract_slides` → audio/slide tokens
-  3. `voice/transcribe_audio` or `image/extract_text` → text
+  1. `get_token_from_url` → video token (minimal URL-to-token step)
+  2. `get_video` → full `Video` object (use when you also need metadata)
+  3. `extract_audio` / `extract_slides` → audio/slide tokens
+  4. `voice/transcribe_audio` or `image/extract_text` → text
 - `process_slides` demonstrates the high-level orchestration that combines
   slide detection, fingerprinting, OCR, language fallback, and translation.
 - The GraphAI bearer token is cached both in-memory and on disk

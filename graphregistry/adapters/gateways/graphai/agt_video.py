@@ -4,6 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from requests import Session
+
 from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
 from graphregistry.domain.models.entities.mdl_lecture import Slide, SlideList, Video, Voice
 
@@ -381,17 +383,60 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
             return str(task_result)
 
         assert isinstance(task_result, dict)
-        must_retry, retry_kwargs = self._requires_media_retry(
-            task_result,
-            media_label=f"slides from video {video_token}",
-            force=force,
-            recalculate_cached=recalculate_cached,
-            retry_mode="recalculate",
-        )
-        if must_retry:
+
+        slide_tokens = task_result.get("slide_tokens")
+        if not isinstance(slide_tokens, dict):
+            return SlideList()
+
+        # GraphAI reports slide status per slide, not as a single top-level
+        # token_status. Count slides whose token_status is missing or inactive.
+        # A slide is considered present if it is active or already fingerprinted.
+        num_missing_slides = 0
+        for slide_data in slide_tokens.values():
+            if not isinstance(slide_data, dict):
+                continue
+            token_status = slide_data.get("token_status")
+            if not isinstance(token_status, dict):
+                num_missing_slides += 1
+            elif not token_status.get("active", False) and not token_status.get("fingerprinted", False):
+                num_missing_slides += 1
+
+        if num_missing_slides > 0:
+            if task_result.get("fresh", False):
+                self._log(
+                    f"{num_missing_slides}/{len(slide_tokens)} slide files missing "
+                    f"for {video_token} while fresh, forcing extraction..."
+                )
+                return self.extract_slides(
+                    video_token=video_token,
+                    recalculate_cached=False,
+                    force=True,
+                    max_tries=max_tries,
+                    max_processing_time_s=max_processing_time_s,
+                    hash_thresh=hash_thresh,
+                    multiplier=multiplier,
+                    default_threshold=default_threshold,
+                    include_first=include_first,
+                    include_last=include_last,
+                    launch_only=launch_only,
+                )
+            if force:
+                raise RuntimeError(
+                    f"{num_missing_slides}/{len(slide_tokens)} slide files missing "
+                    f"for {video_token} while forced"
+                )
+            if recalculate_cached:
+                raise RuntimeError(
+                    f"{num_missing_slides}/{len(slide_tokens)} slide files missing "
+                    f"for {video_token} while recalculated"
+                )
+            self._log(
+                f"{num_missing_slides}/{len(slide_tokens)} slide files missing "
+                f"for {video_token}, retrying from cache..."
+            )
             return self.extract_slides(
                 video_token=video_token,
-                recalculate_cached=retry_kwargs.get("recalculate_cached", recalculate_cached),
+                recalculate_cached=True,
                 force=force,
                 max_tries=max_tries,
                 max_processing_time_s=max_processing_time_s,
@@ -402,10 +447,6 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
                 include_last=include_last,
                 launch_only=launch_only,
             )
-
-        slide_tokens = task_result.get("slide_tokens")
-        if not isinstance(slide_tokens, dict):
-            return SlideList()
 
         slide_list = SlideList()
         for slide_number in sorted(slide_tokens.keys(), key=lambda k: int(k)):
@@ -588,7 +629,8 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         file_path: str | Path,
         *,
         max_tries: int = 5,
-        timeout: int = 60,
+        timeout: float | tuple[float, float] = (5.0, 30.0),
+        chunk_size: int = 64 * 1024,
     ) -> Path | None:
     #---------------------------------------------------------#
 
@@ -598,22 +640,51 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
         # Create output path object
         output_path = Path(file_path)
 
-        # Make the request to the GraphAI endpoint to download the video file corresponding to the given video token and save it to the specified file path
-        response = self._request(
-            url          = "/video/get_file",
-            login_info   = login_info,
-            method       = "POST",
-            headers      = {"Content-Type": "application/json"},
-            json         = {"token": token},
-            max_tries    = max_tries,
-            timeout      = timeout,
-        )
+        # Use a brand-new session for every file download. Some reverse proxies /
+        # load balancers keep HTTP/1.1 persistent connections in a bad state or
+        # buffer the upstream body indefinitely; sharing a pooled session can
+        # cause the client to hang inside socket.read(). A fresh session gives us
+        # a clean TCP connection that is closed as soon as the download finishes.
+        fresh_session = Session()
+        try:
+            # Make the request to the GraphAI endpoint to download the video file corresponding to the given video token and save it to the specified file path
+            response = self._request(
+                url          = "/video/get_file",
+                login_info   = login_info,
+                method       = "POST",
+                headers      = {
+                    "Content-Type": "application/json",
+                    "Connection": "close",
+                },
+                json         = {"token": token},
+                max_tries    = max_tries,
+                timeout      = timeout,
+                stream       = True,
+                raise_for_status = False,
+                session      = fresh_session,
+            )
 
-        # If the response is None, it means the request failed and the file could not be downloaded
-        if response is None:
-            return None
+            # If the response is None, it means the request failed and the file could not be downloaded
+            if response is None:
+                return None
 
-        output_path.write_bytes(response.content)
+            # GraphAI now returns HTTP 404 with a JSON payload when the source file
+            # is missing. Treat that as a clean "not found" rather than streaming
+            # JSON bytes into a video file.
+            if response.status_code == 404:
+                self._log(f"GraphAI reported file not found for token {token}")
+                return None
+
+            # Stream the response body to disk in chunks. This avoids buffering the
+            # whole file in memory and makes the download resilient to slow proxies
+            # or load balancers that forward the body gradually.
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with output_path.open("wb") as fp, response:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        fp.write(chunk)
+        finally:
+            fresh_session.close()
 
         # Return the output path where the video file was saved
         return output_path
