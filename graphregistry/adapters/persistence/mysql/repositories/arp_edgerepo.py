@@ -167,19 +167,19 @@ class MySQLEdgeRepository(EdgeRepository):
         # Remove any previously persisted custom fields so that the edge's field_list
         # becomes the authoritative set. Without this, fields deleted from the domain
         # object would remain in the database.
-        if 'commit' in actions:
-            sql_query = resolve_sql_query(
-                file_path           = sql_queries_paths['registry']['commit']['edge_delete_custom'],
-                registry            = schema_name,
-                from_institution_id = edge.key.from_institution_id,
-                from_object_type    = edge.key.from_object_type,
-                from_object_id      = edge.key.from_object_id,
-                to_institution_id   = edge.key.to_institution_id,
-                to_object_type      = edge.key.to_object_type,
-                to_object_id        = edge.key.to_object_id,
-                context             = edge.key.context
-            )
-            self.db.execute_query(engine_name=engine_name, query=sql_query, commit=True)
+        # if 'commit' in actions:
+        #     sql_query = resolve_sql_query(
+        #         file_path           = sql_queries_paths['registry']['commit']['edge_delete_custom'],
+        #         registry            = schema_name,
+        #         from_institution_id = edge.key.from_institution_id,
+        #         from_object_type    = edge.key.from_object_type,
+        #         from_object_id      = edge.key.from_object_id,
+        #         to_institution_id   = edge.key.to_institution_id,
+        #         to_object_type      = edge.key.to_object_type,
+        #         to_object_id        = edge.key.to_object_id,
+        #         context             = edge.key.context
+        #     )
+        #     self.db.execute_query(engine_name=engine_name, query=sql_query, commit=True)
 
         # Convert Edge object to a list of dicts representing the custom fields rows, then upsert each row
         for row in MySQLEdgeMapper.to_custom_field_rows(edge):
