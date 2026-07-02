@@ -231,18 +231,20 @@ class MySQLNodeRepository(NodeRepository):
         # Upsert custom fields #
         #----------------------#
 
-        # Remove any previously persisted custom fields so that the node's field_list
-        # becomes the authoritative set. Without this, fields deleted from the domain
-        # object would remain in the database.
-        if 'commit' in actions:
-            sql_query = resolve_sql_query(
-                file_path      = sql_queries_paths['registry']['commit']['node_delete_custom'],
-                registry       = schema_name,
-                institution_id = node.key.institution_id,
-                object_type    = node.key.object_type,
-                object_id      = node.key.object_id
-            )
-            self.db.execute_query(engine_name=engine_name, query=sql_query, commit=True)
+        # NOTE: Bulk DELETE disabled temporarily to avoid InnoDB lock wait timeouts
+        # during concurrent lecture-enrichment batch runs. Custom fields are still
+        # upserted below, so existing values are overwritten. Fields removed from
+        # the domain object will not be deleted from the DB until this is replaced
+        # with a targeted diff-based cleanup.
+        # if 'commit' in actions:
+        #     sql_query = resolve_sql_query(
+        #         file_path      = sql_queries_paths['registry']['commit']['node_delete_custom'],
+        #         registry       = schema_name,
+        #         institution_id = node.key.institution_id,
+        #         object_type    = node.key.object_type,
+        #         object_id      = node.key.object_id
+        #     )
+        #     self.db.execute_query(engine_name=engine_name, query=sql_query, commit=True)
 
         # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
         for row in MySQLNodeMapper.to_custom_field_rows(node):
