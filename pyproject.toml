@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "graphregistry"
-version = "0.1.4"
+version = "0.1.5"
 description = "EPFL Graph Registry"
 requires-python = ">=3.10"
 dependencies = [
