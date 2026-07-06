@@ -96,7 +96,7 @@ if __name__ == "__main__":
             if result is None:
                 continue
 
-            rich.print(result)
+            # rich.print(result)
 
             end_time = datetime.datetime.now()
             elapsed_time = end_time - start_time
