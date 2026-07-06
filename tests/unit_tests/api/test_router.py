@@ -115,6 +115,23 @@ class TestNodeEndpoints:
         assert response.status_code == 200
         assert response.json()["count"] == 2
 
+    def test_nodes_save_rejects_non_string_custom_field_value(self, api_client: TestClient) -> None:
+        payload: dict[str, Any] = {
+            "node": {
+                "type": "Course",
+                "id": "CS-433",
+                "custom_fields": [
+                    {"field_name": "credits", "field_value": 2},
+                ],
+            }
+        }
+        response = api_client.post("/api/nodes/save", json=payload)
+        assert response.status_code == 422
+        assert any(
+            error["loc"] == ["body", "node", "custom_fields", 0, "field_value"]
+            for error in response.json()["detail"]
+        )
+
 
 class TestEdgeEndpoints:
     def test_edges_save(self, api_client: TestClient) -> None:
@@ -168,3 +185,23 @@ class TestEdgeEndpoints:
         data = response.json()
         assert data["success"] is True
         assert data["n_deleted"] == 1
+
+    def test_edges_save_rejects_non_string_custom_field_value(self, api_client: TestClient) -> None:
+        payload: dict[str, Any] = {
+            "edge": {
+                "from_type": "Course",
+                "from_id": "CS-433",
+                "to_type": "Person",
+                "to_id": "p-1",
+                "context": "taught_by",
+                "custom_fields": [
+                    {"field_name": "credits", "field_value": 2},
+                ],
+            }
+        }
+        response = api_client.post("/api/edges/save", json=payload)
+        assert response.status_code == 422
+        assert any(
+            error["loc"] == ["body", "edge", "custom_fields", 0, "field_value"]
+            for error in response.json()["detail"]
+        )
