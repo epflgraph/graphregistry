@@ -4261,6 +4261,7 @@ class GraphRegistry():
                 print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
                 for t in list_of_tables:
                     print(f" - {schema_name}.{t}")
+                print('')
 
                 # Loop over each table in the list of tables
                 for table_name in list_of_tables:
@@ -4302,6 +4303,30 @@ class GraphRegistry():
                               {eval_group_by}
                     """
 
+                    # Define SQL query templates for commit (single-table DELETE with NOT EXISTS)
+                    sql_query_obj_commit_template = """
+                        DELETE FROM {schema_name}.{table_name}
+                         WHERE NOT EXISTS (
+                               SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n
+                                WHERE n.object_type = {col_prefix}_type
+                                  AND n.object_id   = {col_prefix}_id
+                         )
+                    """
+
+                    sql_query_obj2obj_commit_template = """
+                        DELETE FROM {schema_name}.{table_name}
+                         WHERE NOT EXISTS (
+                               SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_from
+                                WHERE n_from.object_type = {from_prefix}_type
+                                  AND n_from.object_id   = {from_prefix}_id
+                         )
+                           AND NOT EXISTS (
+                               SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_to
+                                WHERE n_to.object_type = {to_prefix}_type
+                                  AND n_to.object_id   = {to_prefix}_id
+                         )
+                    """
+
                     # Define SQL query templates for adding unique keys to object and object-to-object tables
                     sql_query_obj_addkey_template     = "ALTER TABLE {schema_name}.{table_name} ADD UNIQUE KEY IF NOT EXISTS object_type_and_id ({col_prefix}_type, {col_prefix}_id);"
                     sql_query_obj2obj_addkey_template = "ALTER TABLE {schema_name}.{table_name} ADD UNIQUE KEY IF NOT EXISTS object_type_and_id ({from_prefix}_type, {from_prefix}_id, {to_prefix}_type, {to_prefix}_id);"
@@ -4312,8 +4337,7 @@ class GraphRegistry():
                         from_prefix, to_prefix = 'from_object', 'to_object'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.from_object_type, t.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.from_object_type, t.to_object_type",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4323,8 +4347,7 @@ class GraphRegistry():
                         from_prefix, to_prefix = 'doc', 'link'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.doc_type, t.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type, t.link_type",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4334,8 +4357,7 @@ class GraphRegistry():
                         col_prefix = 'object'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.object_type",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
@@ -4345,17 +4367,13 @@ class GraphRegistry():
                         col_prefix = 'doc'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
                     # If none of the above conditions are met, continue to the next table without performing any actions
                     else:
                         continue
-
-                    # print(sql_query_addkey)
-                    # continue
 
                     # Execute evaluation query to count the number of loose ends in the current table and print the results if 'eval' action is specified
                     if 'eval' in actions:
@@ -4375,8 +4393,10 @@ class GraphRegistry():
                         else:
                             df = pd.DataFrame(out, columns=['n_to_delete'])
 
-                        # Print the DataFrame if it contains any rows
+                        # Print the DataFrame if it contains any rows and delete loose ends from the current table if 'commit' action is specified
                         if len(df) > 0:
+
+                            # Print the DataFrame with a title indicating the evaluation results for the current table
                             print_dataframe(df, title=f'🔍 Evaluation results for table: "{schema_name}.{table_name}"')
 
                             # Execute commit query to delete loose ends if 'commit' action is specified
