@@ -4214,7 +4214,7 @@ class GraphRegistry():
         def copy_patches_to_prod(self):
             return
 
-        # TODO: Delete loose ends in index tables [NEEDS WORK]
+        # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
         def delete_loose_ends(self, update_loose_ends=False, include_scores_matrix=False, actions=()):
 
             # Generate SQL query to update loose ends in the Operations_N_Object_T_NoLooseEnds table
@@ -4254,8 +4254,8 @@ class GraphRegistry():
                     use_regex   = regex_mapping[schema_key]
                 )
 
-                # Exclude tables containing the string "ProcessingTokens"
-                list_of_tables = [t for t in list_of_tables if "ProcessingTokens" not in t]
+                # Exclude tables containing the string "ProcessingTokens" and "Checksums"
+                list_of_tables = [t for t in list_of_tables if "ProcessingTokens" not in t and "Checksums" not in t]
 
                 # Print list of affected tables
                 print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
@@ -4263,14 +4263,11 @@ class GraphRegistry():
                     print(f" - {schema_name}.{t}")
 
                 # Loop over each table in the list of tables
-                for k, table_name in enumerate(list_of_tables):
+                for table_name in list_of_tables:
 
                     # Ignore tables that start with an underscore (private/internal tables)
                     if table_name.startswith('_'):
                         continue
-
-                    # Trace message
-                    sysmsg.trace(f"Processing table [{k+1}/{len(list_of_tables)}]: {schema_name}.{table_name}")
 
                     # Get the list of columns for the current table
                     list_of_columns = db.get_column_names(
@@ -4313,9 +4310,9 @@ class GraphRegistry():
                     if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
                         # print('edges    : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'from_object', 'to_object'
-                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT n_from.from_object_type, n_from.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n_from.from_object_type, n_from.to_object_type",
+                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.from_object_type, t.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.from_object_type, t.to_object_type",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
@@ -4324,9 +4321,9 @@ class GraphRegistry():
                     elif len(set(['doc_type', 'doc_id', 'link_type', 'link_id']) & set(list_of_columns))==4:
                         # print('doclinks : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'doc', 'link'
-                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT n_from.doc_type, n_from.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n_from.doc_type, n_from.link_type",
+                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.doc_type, t.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type, t.link_type",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
@@ -4335,9 +4332,9 @@ class GraphRegistry():
                     elif len(set(['object_type', 'object_id']) & set(list_of_columns))==2:
                         # print('nodes    : ', f"{schema_name}.{table_name}")
                         col_prefix = 'object'
-                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT n.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n.object_type",
+                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.object_type",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
@@ -4346,9 +4343,9 @@ class GraphRegistry():
                     elif len(set(['doc_type', 'doc_id']) & set(list_of_columns))==2:
                         # print('docs     : ', f"{schema_name}.{table_name}")
                         col_prefix = 'doc'
-                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT n.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n.doc_type",
+                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE t", eval_group_by="",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
@@ -4381,6 +4378,15 @@ class GraphRegistry():
                         # Print the DataFrame if it contains any rows
                         if len(df) > 0:
                             print_dataframe(df, title=f'🔍 Evaluation results for table: "{schema_name}.{table_name}"')
+
+                            # Execute commit query to delete loose ends if 'commit' action is specified
+                            if 'commit' in actions:
+
+                                # Trace message
+                                print(f"🔥 Deleting loose ends from table: '{schema_name}.{table_name}'.")
+
+                                # Execute the commit query
+                                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
