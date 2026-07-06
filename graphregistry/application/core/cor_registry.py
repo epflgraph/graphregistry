@@ -4215,33 +4215,21 @@ class GraphRegistry():
             return
 
         # TODO: Delete loose ends in index tables [NEEDS WORK]
-        def delete_loose_ends(self, include_scores_matrix=False, actions=()):
+        def delete_loose_ends(self, update_loose_ends=False, include_scores_matrix=False, actions=()):
 
+            # Generate SQL query to update loose ends in the Operations_N_Object_T_NoLooseEnds table
+            sql_query_upd_loose_ends = f"""
+            TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_registry.Data_N_Object_T_PageProfile;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_lectures.Data_N_Object_T_PageProfile;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_ontology.Data_N_Object_T_PageProfile;
+            """
 
-            # Execute:
-            # TRUNCATE TABLE graph_cache.Operations_N_Object_T_NoLooseEnds;
-            #    INSERT INTO graph_cache.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_registry.Data_N_Object_T_PageProfile;
-            #    INSERT INTO graph_cache.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_lectures.Data_N_Object_T_PageProfile;
-            #    INSERT INTO graph_cache.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_ontology.Data_N_Object_T_PageProfile;
+            # Execute SQL query to update loose ends
+            if update_loose_ends:
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_upd_loose_ends, verbose='print' in actions, query_id='K42g42')
 
-            # self.mysql_schema_names = {
-            #     'test' : {
-            #         'ontology'    : self.settings['mysql']['db_schema_names']['ontology'],
-            #         'registry'    : self.settings['mysql']['db_schema_names']['registry'],
-            #         'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
-            #         'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
-            #         'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
-            #         'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
-            #         'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
-            #     },
-            #     'prod' : {
-            #         'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
-            #         'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
-            #     }
-            # }
-
-            # Get list of schemas in core services database
-
+            # Define regex mapping for each schema to identify relevant tables
             regex_mapping = {
                 'airflow'     : [r'Operations_.*'],
                 'graph_cache' : [r'Data_.*', r'IndexBuildup_.*', r'Operations_N_Object_T_Checksums.*', r'Operations_N_Object_N_Object_T_Checksums.*'],
@@ -4249,189 +4237,150 @@ class GraphRegistry():
                 'es_cache'    : False,
             }
 
+            # Include scores matrix tables in the graph_cache schema if specified
             if include_scores_matrix:
                 regex_mapping['graph_cache'] += [r'Nodes_N_Object_.*', r'Edges_N_Object_.*']
 
+            # Loop over each schema key to process tables
             for schema_key in ['airflow', 'graph_cache', 'graphsearch', 'es_cache']:
 
+                # Get the schema name from the global configuration
                 schema_name = glbcfg.mysql_schema_names['test'][schema_key]
 
+                # Get the list of tables in the schema using the defined regex mapping
                 list_of_tables = db.get_tables_in_schema(
                     engine_name = 'xaas_coresrv',
                     schema_name = schema_name,
                     use_regex   = regex_mapping[schema_key]
                 )
-                # print(list_of_tables)
 
-                for table_name in list_of_tables:
+                # Exclude tables containing the string "ProcessingTokens"
+                list_of_tables = [t for t in list_of_tables if "ProcessingTokens" not in t]
 
+                # Print list of affected tables
+                print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
+                for t in list_of_tables:
+                    print(f" - {schema_name}.{t}")
+
+                # Loop over each table in the list of tables
+                for k, table_name in enumerate(list_of_tables):
+
+                    # Ignore tables that start with an underscore (private/internal tables)
                     if table_name.startswith('_'):
                         continue
 
+                    # Trace message
+                    sysmsg.trace(f"Processing table [{k+1}/{len(list_of_tables)}]: {schema_name}.{table_name}")
+
+                    # Get the list of columns for the current table
                     list_of_columns = db.get_column_names(
                         engine_name = 'xaas_coresrv',
                         schema_name = schema_name,
                         table_name  = table_name
                     )
-                    # print(list_of_columns)
 
-
+                    # Define SQL query templates for different table structures (object tables and object-to-object tables)
                     sql_query_obj_template = """
                               {eval_or_commit}
                          FROM {schema_name}.{table_name} t
-                    LEFT JOIN graph_cache.Operations_N_Object_T_NoLooseEnds n
+                    LEFT JOIN {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n
                            ON t.{col_prefix}_type = n.object_type
                           AND t.{col_prefix}_id   = n.object_id
                         WHERE n.object_id IS NULL
+                              {eval_group_by}
                     """
 
+                    # Define SQL query template for object-to-object tables (edges/doclinks)
                     sql_query_obj2obj_template = """
                               {eval_or_commit}
                          FROM {schema_name}.{table_name} t
-                    LEFT JOIN graph_cache.Operations_N_Object_T_NoLooseEnds n_from
+                    LEFT JOIN {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_from
                            ON n_from.object_type = t.{from_prefix}_type
                           AND n_from.object_id   = t.{from_prefix}_id
-                    LEFT JOIN graph_cache.Operations_N_Object_T_NoLooseEnds n_to
+                    LEFT JOIN {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_to
                            ON n_to.object_type = t.{to_prefix}_type
                           AND n_to.object_id   = t.{to_prefix}_id
                         WHERE n_from.object_id IS NULL
                           AND n_to.object_id   IS NULL
+                              {eval_group_by}
                     """
 
+                    # Define SQL query templates for adding unique keys to object and object-to-object tables
                     sql_query_obj_addkey_template     = "ALTER TABLE {schema_name}.{table_name} ADD UNIQUE KEY IF NOT EXISTS object_type_and_id ({col_prefix}_type, {col_prefix}_id);"
                     sql_query_obj2obj_addkey_template = "ALTER TABLE {schema_name}.{table_name} ADD UNIQUE KEY IF NOT EXISTS object_type_and_id ({from_prefix}_type, {from_prefix}_id, {to_prefix}_type, {to_prefix}_id);"
 
+                    # Determine the type of table based on its columns and generate appropriate SQL queries for evaluation, deletion, and adding unique keys
                     if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
                         # print('edges    : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'from_object', 'to_object'
-                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_addkey = sql_query_obj2obj_addkey_template.format(schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT n_from.from_object_type, n_from.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n_from.from_object_type, n_from.to_object_type",
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_addkey = sql_query_obj2obj_addkey_template.format(
+                                                                             schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
+                    # Determine if the table is a doclink table based on its columns and generate appropriate SQL queries for evaluation, deletion, and adding unique keys
                     elif len(set(['doc_type', 'doc_id', 'link_type', 'link_id']) & set(list_of_columns))==4:
                         # print('doclinks : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'doc', 'link'
-                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_addkey = sql_query_obj2obj_addkey_template.format(schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT n_from.doc_type, n_from.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n_from.doc_type, n_from.link_type",
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_addkey = sql_query_obj2obj_addkey_template.format(
+                                                                             schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
+                    # Determine if the table is an object table based on its columns and generate appropriate SQL queries for evaluation, deletion, and adding unique keys
                     elif len(set(['object_type', 'object_id']) & set(list_of_columns))==2:
                         # print('nodes    : ', f"{schema_name}.{table_name}")
                         col_prefix = 'object'
-                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
-                        sql_query_addkey = sql_query_obj_addkey_template.format(schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT n.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n.object_type",
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_addkey = sql_query_obj_addkey_template.format(
+                                                                         schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
+                    # Determine if the table is a doc table based on its columns and generate appropriate SQL queries for evaluation, deletion, and adding unique keys
                     elif len(set(['doc_type', 'doc_id']) & set(list_of_columns))==2:
                         # print('docs     : ', f"{schema_name}.{table_name}")
                         col_prefix = 'doc'
-                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT COUNT(*) AS n_to_delete", schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE",                         schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
-                        sql_query_addkey = sql_query_obj_addkey_template.format(schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
+                        sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT n.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY n.doc_type",
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_template.format(eval_or_commit="DELETE", eval_group_by="",
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_addkey = sql_query_obj_addkey_template.format(
+                                                                         schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
+                    # If none of the above conditions are met, continue to the next table without performing any actions
                     else:
                         continue
 
-                    print(sql_query_addkey)
-                    continue
+                    # print(sql_query_addkey)
+                    # continue
 
+                    # Execute evaluation query to count the number of loose ends in the current table and print the results if 'eval' action is specified
                     if 'eval' in actions:
+
+                        # Execute the evaluation query
                         out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='DFSHG4tf', verbose='print' in actions)
-                        df = pd.DataFrame(out, columns=['n_to_delete'])
+
+                        # Determine columns based on the type of table (object, object-to-object, doc, or doclink) and create a DataFrame to display the results
+                        if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
+                            df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_delete'])
+                        elif len(set(['doc_type', 'doc_id', 'link_type', 'link_id']) & set(list_of_columns))==4:
+                            df = pd.DataFrame(out, columns=['doc_type', 'link_type', 'n_to_delete'])
+                        elif len(set(['object_type', 'object_id']) & set(list_of_columns))==2:
+                            df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
+                        elif len(set(['doc_type', 'doc_id']) & set(list_of_columns))==2:
+                            df = pd.DataFrame(out, columns=['doc_type', 'n_to_delete'])
+                        else:
+                            df = pd.DataFrame(out, columns=['n_to_delete'])
+
+                        # Print the DataFrame if it contains any rows
                         if len(df) > 0:
-                            print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{schema_name}.{table_name}"')
-
-            return
-
-            # sql_template_docs = """
-            #   %s
-            #   FROM {glbcfg.schema_graphsearch_test}.Index_D_%s;
-            # """
-
-            # sql_template_doclinks = """
-            #   %s
-            #   FROM {glbcfg.schema_graphsearch_test}.Index_D_%s_L_%s_T_%s;
-            # """
-
-            # for dmy,doc_type in list_of_doc_types:
-
-            #     # Delete loose ends in doc fields
-            #     sql_query = sql_template_docs % (
-            #         f'SELECT "{doc_type}", COUNT(*) AS n_total',
-            #         doc_type
-            #     )
-            #     print(sql_query)
-
-
-            #     for dmy,link_type in list_of_doc_types:
-
-            #         for link_subtype in ['SEM','ORG']:
-
-            #             if not db.table_exists(
-            #                 engine_name   = 'xaas_coresrv',
-            #                 schema_name   = 'graphsearch_test',
-            #                 table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
-            #             ):
-            #                 continue
-
-            #             sql_query = sql_template_doclinks % (
-            #                 f'SELECT "{doc_type}-{link_type}", COUNT(*) AS n_total',
-            #                 doc_type,
-            #                 link_type,
-            #                 link_subtype
-            #             )
-            #             print(sql_query)
-
-
-            # return
-
-
-            # sql_template_docs = """
-            #   %s
-            #   FROM {glbcfg.schema_graphsearch_test}.Index_D_%s
-            #  WHERE doc_id NOT IN (SELECT object_id FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
-            # """
-
-            # sql_template_doclinks = """
-            #   %s
-            #   FROM {glbcfg.schema_graphsearch_test}.Index_D_%s_L_%s_T_%s
-            #  WHERE doc_id  NOT IN (SELECT object_id FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s')
-            #     OR link_id NOT IN (SELECT object_id FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile WHERE object_type='%s');
-            # """
-
-            # for dmy,doc_type in list_of_doc_types:
-
-            #     # Delete loose ends in doc fields
-            #     sql_query = sql_template_docs % (
-            #         f'SELECT "{doc_type}", COUNT(*) AS n_to_delete',
-            #         doc_type,
-            #         doc_type
-            #     )
-            #     print(sql_query)
-
-
-            #     for dmy,link_type in list_of_doc_types:
-
-            #         for link_subtype in ['SEM','ORG']:
-
-            #             if not db.table_exists(
-            #                 engine_name   = 'xaas_coresrv',
-            #                 schema_name   = 'graphsearch_test',
-            #                 table_name    = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype}'
-            #             ):
-            #                 continue
-
-            #             sql_query = sql_template_doclinks % (
-            #                 f'SELECT "{doc_type}-{link_type}", COUNT(*) AS n_to_delete',
-            #                 doc_type,
-            #                 link_type,
-            #                 link_subtype,
-            #                 doc_type,
-            #                 link_type
-            #             )
-            #             print(sql_query)
-
-            # pass
+                            print_dataframe(df, title=f'🔍 Evaluation results for table: "{schema_name}.{table_name}"')
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
