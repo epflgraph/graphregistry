@@ -58,7 +58,7 @@ def main(argv=None) -> int:
 
     # Registry is only required for selected domains.
     registry: Any | None = None
-    if args.domain in {"airflow", "cache", "index"}:
+    if args.domain in {"airflow", "cache", "index", "data"}:
         from graphregistry.application.core.cor_registry import GraphRegistry
 
         registry = GraphRegistry()

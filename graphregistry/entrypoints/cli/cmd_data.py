@@ -491,6 +491,28 @@ def cmd_data_delete(args):
         if result==False and 'commit' not in actions:
             print("⚠️  Edge list not deleted. To delete, add 'commit' to actions.")
 
+# Handler: Delete loose ends from cache/graphsearch tables
+def cmd_data_delete_loose_ends(args):
+    """
+    Handle:
+      graphregistry data delete_loose_ends [...]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+
+    # Get input options
+    update_loose_ends   = args.update_loose_ends
+    include_scores_matrix = args.include_scores_matrix
+    actions             = tuple(args.actions.split(',')) if args.actions else ()
+
+    # Execute loose ends cleanup
+    registry.indexdb.delete_loose_ends(
+        update_loose_ends=update_loose_ends,
+        include_scores_matrix=include_scores_matrix,
+        actions=actions,
+    )
+
 # Handler: Import data from JSON file into Registry
 def cmd_data_import(args):
     """

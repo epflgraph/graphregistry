@@ -29,6 +29,7 @@ from graphregistry.entrypoints.cli.cmd_data import (
     cmd_data_save,
     cmd_data_delete,
     cmd_data_import,
+    cmd_data_delete_loose_ends,
 )
 from graphregistry.entrypoints.cli.cmd_airflow import (
     cmd_airflow_sync,
@@ -301,6 +302,16 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--node_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to node key list JSON file.")),
                     dict(flags=('--edge_key_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to edge key list JSON file.")),
                     dict(flags=('--actions',       ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval)."))
+                ],
+                common_args = ['env']
+            ),
+            'delete_loose_ends' : dict(
+                help = "Delete loose ends from cache and graphsearch index tables.",
+                func = cmd_data_delete_loose_ends,
+                args = [
+                    dict(flags=('--update_loose_ends',   '-ul'), kwargs=dict(action='store_true', default=False, help="Refresh the NoLooseEnds reference table from source page profiles before cleaning.")),
+                    dict(flags=('--include_scores_matrix', '-is'), kwargs=dict(action='store_true', default=False, help="Also clean scores matrix tables in graph_cache.")),
+                    dict(flags=('--actions',               ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
                 ],
                 common_args = ['env']
             ),
