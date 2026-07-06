@@ -83,6 +83,7 @@ class GlobalConfig:
             'Category'       : self.schema_ontology,
             'Concept'        : self.schema_ontology,
             'Course'         : self.schema_registry,
+            'Exercise'       : self.schema_registry,
             'Lecture'        : self.schema_lectures,
             'MOOC'           : self.schema_registry,
             'Notebook'       : self.schema_registry,
@@ -91,8 +92,8 @@ class GlobalConfig:
             'Slide'          : self.schema_lectures,
             'Specialisation' : self.schema_registry,
             'Startup'        : self.schema_registry,
-            'Transcript'     : self.schema_lectures,
             'StudyPlan'      : self.schema_registry,
+            'Transcript'     : self.schema_lectures,
             'Unit'           : self.schema_registry,
             'Widget'         : self.schema_registry,
         }
