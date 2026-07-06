@@ -1,3 +1,6 @@
-for i in {1..9}; do nohup python scripts/t_lecture_enrich.py "$i" > "logs/enrich_lectures_E_${i}.log" 2>&1 & done
-tail -f logs/enrich_lectures_E_{1..9}.log
-tail -n 10000 logs/enrich_lectures_E_1.log
+for i in {1..9}; do nohup python scripts/t_lecture_enrich.py "$i" > "logs/enrich_lectures_G_${i}.log" 2>&1 & done
+tail -f logs/enrich_lectures_G_{1..9}.log
+tail -n 10000 logs/enrich_lectures_G_1.log
+
+pkill -f 'scripts/t_lecture_enrich.py'
+ps -ef | rg t_lecture_enrich.py
