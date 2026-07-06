@@ -104,11 +104,11 @@ class NodeOperations:
         # Perform concept detection using the gateway and populate the concepts.detected field
         if isinstance(nodes, NodeList):
             for node in nodes.item_list:
-                concepts = gateway.detect_concepts(node.raw_text or "")
+                concepts = gateway.detect_concepts(f"{node.title}. {node.raw_text}" or "")
                 node.concepts.detected = concepts
                 self.msg.concepts_detected(node.key)
         else:
-            concepts = gateway.detect_concepts(nodes.raw_text or "")
+            concepts = gateway.detect_concepts(f"{nodes.title}. {nodes.raw_text}" or "")
             nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)
 

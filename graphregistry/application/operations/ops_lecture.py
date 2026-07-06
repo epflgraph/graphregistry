@@ -135,11 +135,11 @@ class LectureOperations:
     # Method: Get the audio extraction task ID for a lecture (this can be used to check the status of the extraction or retrieve the extracted audio)
     def get_audio_extraction_task_id(self, lecture_key: NodeKey) -> str:
         return self.processing_state.get_audio_extraction_task_id(lecture_key)
-    
+
     # Method: Get list of lectures for which audio extraction tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished audio extraction tasks
     def get_unfinished_audio_extraction_tasks(self, limit: int | None = 16) -> NodeKeyList:
         return self.processing_state.get_unfinished_audio_extraction_tasks(limit)
-    
+
     # Method: Get the audio extraction result for a lecture using the audio extraction task ID (this can be used to retrieve the extracted audio once the extraction is complete)
     def get_audio_extraction_result(self, lecture_key: NodeKey) -> dict | None:
 
@@ -153,11 +153,11 @@ class LectureOperations:
 
         # Return the task ID immediately without waiting for the processing to complete
         return result
-    
+
     # Method: Save the audio token for a lecture (this can be used later to check the status of the extraction or retrieve the extracted audio)
     def save_audio_token(self, lecture_key: NodeKey, audio_token: str) -> NodeKey:
         return self.processing_state.save_audio_token(lecture_key, audio_token)
-    
+
     # Method: Get the audio token for a lecture (this can be used to check the status of the extraction or retrieve the extracted audio)
     def get_audio_token(self, lecture_key: NodeKey) -> str:
         return self.processing_state.get_audio_token(lecture_key)
@@ -172,7 +172,7 @@ class LectureOperations:
 
     # Method: Launch asynchronous slide detection task for a lecture based on the video token, returning the list of slide tokens immediately
     def launch_slide_detection(self, video_token: str, no_cache: bool = False) -> str:
-        
+
         # Get the video processing gateway
         gtw = self.video_processing_gateway
         if gtw is None:
@@ -187,15 +187,15 @@ class LectureOperations:
     # Method: Save the slide detection task ID for a lecture (this can be used later to check the status of the detection or retrieve the detected slides)
     def save_slide_detection_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
         return self.processing_state.save_slide_detection_task_id(lecture_key, task_id)
-    
+
     # Method: Get the slide detection task ID for a lecture (this can be used to check the status of the detection or retrieve the detected slides)
     def get_slide_detection_task_id(self, lecture_key: NodeKey) -> str:
         return self.processing_state.get_slide_detection_task_id(lecture_key)
-    
+
     # Method: Get list of lectures for which slide detection tasks have been launched but not yet completed, returning a list of NodeKey objects for the lectures with unfinished slide detection tasks
     def get_unfinished_slide_detection_tasks(self, limit: int | None = 16) -> NodeKeyList:
         return self.processing_state.get_unfinished_slide_detection_tasks(limit)
-    
+
     # Method: Get the slide detection result for a lecture using the slide detection task ID (this can be used to retrieve the detected slides once the detection is complete)
     def get_slide_detection_result(self, lecture_key: NodeKey) -> dict | None:
 
@@ -213,11 +213,11 @@ class LectureOperations:
     # Method: Save the slide tokens for a lecture (this can be used later to check the status of the detection or retrieve the detected slides)
     def save_slide_tokens(self, lecture_key: NodeKey, slide_num_and_tokens: list[tuple[int, str]]) -> NodeKey:
         return self.processing_state.save_slide_tokens(lecture_key, slide_num_and_tokens)
-    
+
     # Method: Get the slide tokens for a lecture (this can be used to check the status of the detection or retrieve the detected slides)
     def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:
         return self.processing_state.get_slide_tokens(lecture_key)
-    
+
     #=====================================#
     # Lecture field enrichment operations #
     #=====================================#
@@ -242,7 +242,7 @@ class LectureOperations:
             return None
 
         # Run the enrichment task through the gateway to get the enrichment result
-        result = gtw.enrich(task, verbose=True)
+        result = gtw.enrich(task, verbose=False)
 
         # # Load enrichment result from pickle for testing
         # with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:

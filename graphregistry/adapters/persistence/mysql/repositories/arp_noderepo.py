@@ -240,7 +240,8 @@ class MySQLNodeRepository(NodeRepository):
             object_type    = node.key.object_type,
             object_id      = node.key.object_id
         )
-        self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query)
+        # !TEMPORARY: Commenting out the deletion of custom fields to avoid accidental data loss during development. Uncomment in production.
+        # self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query)
 
         # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
         for row in MySQLNodeMapper.to_custom_field_rows(node):
@@ -296,11 +297,11 @@ class MySQLNodeRepository(NodeRepository):
         ):
             # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
             for row in MySQLNodeMapper.to_scored_concepts_rows(node, map_to=map_type):
-                
+
                 # TODO: Skip detected concepts update [TEMPORARY]
                 if map_type == 'detected':
                     continue
-                
+
                 # Resolve placeholders in template query
                 self.db.execute_upsert_row(
                     engine_name       = engine_name,
@@ -385,10 +386,14 @@ class MySQLNodeRepository(NodeRepository):
         # Get schema name from object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type if object_type is not None else "Course")
 
+        # Get airflow schema name from object type using the schema resolver
+        _, airflow_schema_name = self.schema_resolver.for_airflow()
+
         # Resolve placeholdes in template query
         sql_query = resolve_sql_query(
             file_path   = sql_queries_paths['registry']['commit']['node_get_with_no_concepts'],
             registry    = schema_name,
+            airflow     = airflow_schema_name,
             object_type = object_type if object_type is not None else "%",
             id_pattern  = id_pattern.replace('*', '%') if id_pattern is not None else "%"
         )
