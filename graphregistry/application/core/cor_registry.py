@@ -4304,12 +4304,13 @@ class GraphRegistry():
                     """
 
                     # Define SQL query templates for commit (single-table DELETE with NOT EXISTS)
+                    # Outer table columns are fully qualified to avoid name resolution to the subquery table.
                     sql_query_obj_commit_template = """
                         DELETE FROM {schema_name}.{table_name}
                          WHERE NOT EXISTS (
                                SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n
-                                WHERE n.object_type = {col_prefix}_type
-                                  AND n.object_id   = {col_prefix}_id
+                                WHERE n.object_type = {schema_name}.{table_name}.{col_prefix}_type
+                                  AND n.object_id   = {schema_name}.{table_name}.{col_prefix}_id
                          )
                     """
 
@@ -4317,13 +4318,13 @@ class GraphRegistry():
                         DELETE FROM {schema_name}.{table_name}
                          WHERE NOT EXISTS (
                                SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_from
-                                WHERE n_from.object_type = {from_prefix}_type
-                                  AND n_from.object_id   = {from_prefix}_id
+                                WHERE n_from.object_type = {schema_name}.{table_name}.{from_prefix}_type
+                                  AND n_from.object_id   = {schema_name}.{table_name}.{from_prefix}_id
                          )
                            AND NOT EXISTS (
                                SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_to
-                                WHERE n_to.object_type = {to_prefix}_type
-                                  AND n_to.object_id   = {to_prefix}_id
+                                WHERE n_to.object_type = {schema_name}.{table_name}.{to_prefix}_type
+                                  AND n_to.object_id   = {schema_name}.{table_name}.{to_prefix}_id
                          )
                     """
 
