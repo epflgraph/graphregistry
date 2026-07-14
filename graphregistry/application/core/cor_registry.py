@@ -4217,6 +4217,63 @@ class GraphRegistry():
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
         def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, refresh_graph=False, actions=()):
 
+            #---------------------------------------------------------#
+            # Step 0: Remove orphaned row_rank = 99 placeholder rows  #
+            #---------------------------------------------------------#
+
+            index_tables = db.get_tables_in_schema(
+                engine_name = engine_name,
+                schema_name = glbcfg.schema_graphsearch_test,
+                use_regex   = [r'^Index_D_[^_]*_L_[^_]*_T_SEM+$']
+            )
+
+            # Print list of affected tables
+            print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
+            for t in index_tables:
+                print(f" - {glbcfg.schema_graphsearch_test}.{t}")
+            print('')
+
+            # Loop over index tables and check for orphaned row_rank=99 rows
+            for table_name in index_tables:
+
+                # Generate evaluation query
+                sql_query_eval = f"""
+                   SELECT doc_type, link_type, COUNT(*) AS n_to_delete
+                     FROM {glbcfg.schema_graphsearch_test}.{table_name}
+                    WHERE row_rank = 99
+                 GROUP BY doc_type, link_type
+                """
+
+                # Execute evaluation query (if requested)
+                if 'eval' in actions or 'commit' in actions:
+                    out = db.execute_query(
+                        engine_name=engine_name,
+                        query=sql_query_eval,
+                        query_id='rr99cnt'
+                    )
+
+                    # Create a DataFrame to display the results
+                    df = pd.DataFrame(out, columns=['doc_type', 'link_type', 'n_to_delete'])
+
+
+                    # Print the DataFrame if it contains any rows and delete loose ends from the current table if 'commit' action is specified
+                    if len(df) > 0:
+
+                        # Print the DataFrame with a title indicating the evaluation results for the current table
+                        print_dataframe(df, title=f'🔍 Evaluation results for table: "{glbcfg.schema_graphsearch_test}.{table_name}"')
+
+                        # Execute commit query to delete loose ends if 'commit' action is specified
+                        if 'commit' in actions:
+
+                            # Trace message
+                            print(f"🔥 Deleting loose ends from table: '{glbcfg.schema_graphsearch_test}.{table_name}'.")
+
+                            # Generate delete query to remove rows with row_rank=99 from the current table
+                            sql_query_delete = f"DELETE FROM {glbcfg.schema_graphsearch_test}.{table_name} WHERE row_rank = 99"
+
+                            # Execute the delete query in the database shell with the specified engine name, verbosity, and query ID
+                            db.execute_query_in_shell(engine_name=engine_name, query=sql_query_delete, verbose='print' in actions, query_id='rr99del')
+
             #-----------------------------------#
             # Step 1: Calculate connected graph #
             #-----------------------------------#
@@ -4233,9 +4290,9 @@ class GraphRegistry():
             def _graph_cache_exists():
                 try:
                     tables = db.get_tables_in_schema(
-                        engine_name=engine_name,
-                        schema_name=glbcfg.schema_graph_cache_test,
-                        use_regex=[r'^Operations_N_Object_T_LargestConnectedGraph$']
+                        engine_name = engine_name,
+                        schema_name = glbcfg.schema_graph_cache_test,
+                        use_regex   = [r'^Operations_N_Object_T_LargestConnectedGraph$']
                     )
                     if not tables:
                         return False
