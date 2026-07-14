@@ -4429,11 +4429,11 @@ class GraphRegistry():
             sql_query_upd_loose_ends = f"""
             TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds;
                INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT p.object_type, p.object_id FROM {glbcfg.schema_registry}.Data_N_Object_T_PageProfile;
+                    SELECT object_type, object_id FROM {glbcfg.schema_registry}.Data_N_Object_T_PageProfile;
                INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT p.object_type, p.object_id FROM {glbcfg.schema_lectures}.Data_N_Object_T_PageProfile;
+                    SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Data_N_Object_T_PageProfile;
                INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT p.object_type, p.object_id FROM {glbcfg.schema_ontology}.Data_N_Object_T_PageProfile;
+                    SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Data_N_Object_T_PageProfile;
             """
 
             # Execute SQL query to update loose ends
@@ -4553,9 +4553,9 @@ class GraphRegistry():
                         # print('edges    : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'from_object', 'to_object'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.from_object_type, t.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.from_object_type, t.to_object_type",
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_commit = sql_query_obj2obj_commit_template.format(
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4564,9 +4564,9 @@ class GraphRegistry():
                         # print('doclinks : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'doc', 'link'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.doc_type, t.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type, t.link_type",
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_commit = sql_query_obj2obj_commit_template.format(
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4575,9 +4575,9 @@ class GraphRegistry():
                         # print('nodes    : ', f"{schema_name}.{table_name}")
                         col_prefix = 'object'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.object_type",
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
                         sql_query_commit = sql_query_obj_commit_template.format(
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
@@ -4586,9 +4586,9 @@ class GraphRegistry():
                         # print('docs     : ', f"{schema_name}.{table_name}")
                         col_prefix = 'doc'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type",
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
                         sql_query_commit = sql_query_obj_commit_template.format(
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
