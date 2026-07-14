@@ -4215,19 +4215,135 @@ class GraphRegistry():
             return
 
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
-        def delete_loose_ends(self, update_loose_ends=False, include_scores_matrix=False, actions=()):
+        def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, actions=()):
+
+            #-----------------------------------#
+            # Step 1: Calculate connected graph #
+            #-----------------------------------#
+
+            # Get NetworkX
+            import networkx as nx
+
+           # Initialize undirected graph
+            G = nx.Graph()
+
+            # Get the list of tables in the schema using the defined regex mapping
+            list_of_tables = db.get_tables_in_schema(
+                engine_name = engine_name,
+                schema_name = glbcfg.schema_graphsearch_test,
+                use_regex   = [r'^Index_D_[^_]+$']
+            )
+
+            # Print list of affected tables
+            print('\n[🐬 GraphSearch DB] [EXTRACT NODES] The following tables will be searched:')
+            for t in list_of_tables:
+                print(f" - {glbcfg.schema_graphsearch_test}.{t}")
+            print('')
+
+            # Loop over each table in the list of tables, in order to build nodes first
+            for table_name in list_of_tables:
+
+                # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table
+                sql_query_extract = f"""
+                    SELECT doc_type, doc_id
+                        FROM {glbcfg.schema_graphsearch_test}.{table_name}
+                """
+
+                # Execute SQL query to extract data from the current table
+                out = db.execute_query(engine_name=engine_name, query=sql_query_extract, query_id='jkwrt35')
+
+                # Add nodes to the graph for each row in the output
+                for row in out:
+                    doc_type, doc_id = row
+                    G.add_node((doc_type, doc_id))
+
+            # Get the list of tables in the schema using the defined regex mapping
+            list_of_tables = db.get_tables_in_schema(
+                engine_name = engine_name,
+                schema_name = glbcfg.schema_graphsearch_test,
+                use_regex   = [r'Index_D_\w*_L_.*']
+            )
+
+            # Print list of affected tables
+            print('\n[🐬 GraphSearch DB] [EXTRACT EDGES] The following tables will be searched:')
+            for t in list_of_tables:
+                print(f" - {glbcfg.schema_graphsearch_test}.{t}")
+            print('')
+
+            # Loop over each table in the list of tables, in order to build edges next
+            for table_name in list_of_tables:
+
+                # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table
+                sql_query_extract = f"""
+                    SELECT doc_type, doc_id, link_type, link_id
+                      FROM {glbcfg.schema_graphsearch_test}.{table_name}
+                """
+
+                # Execute SQL query to extract data from the current table
+                out = db.execute_query(engine_name=engine_name, query=sql_query_extract, query_id='GGg429')
+
+                # Add edges to the graph for each row in the output
+                for row in out:
+                    doc_type, doc_id, link_type, link_id = row
+                    G.add_edge((doc_type, doc_id), (link_type, link_id))
+
+            # Get the connected components of the graph
+            connected_components = list(nx.connected_components(G))
+
+            # Print the number of connected components found with the size of each
+            print(f"\n[🐬 GraphSearch DB] Found {len(connected_components)} connected components with sizes: {[len(c) for c in connected_components]}")
+
+            # Keep only the largest connected component
+            largest_component = max(connected_components, key=len)
+
+            # Print the size of the largest connected component
+            print(f"\n[🐬 GraphSearch DB] Largest connected component size: {len(largest_component)}")
+
+            # Extract node types and ids for largest connected component
+            largest_component_nodes = [(node[0], node[1]) for node in largest_component]
+
+            # Generate batch insert SQL query to update Operations_N_Object_T_LargestConnectedGraph table with largest connected component nodes
+            sql_query_upd_largest_component = f"""
+            TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph (object_type, object_id)
+                    VALUES {', '.join([f"('{node[0]}', '{node[1]}')" for node in largest_component_nodes])};
+            """
+
+            # Save to file for execution in shell
+            with open('/tmp/sql_query_upd_largest_component.sql', 'w') as f:
+                f.write(sql_query_upd_largest_component)
+
+            # Execute SQL query to update Operations_N_Object_T_LargestConnectedGraph table
+            db.execute_query_from_file(engine_name=engine_name, file_path='/tmp/sql_query_upd_largest_component.sql', verbose='print' in actions)
 
             # Generate SQL query to update loose ends in the Operations_N_Object_T_NoLooseEnds table
             sql_query_upd_loose_ends = f"""
             TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_registry.Data_N_Object_T_PageProfile;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_lectures.Data_N_Object_T_PageProfile;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id) SELECT object_type, object_id FROM graph_ontology.Data_N_Object_T_PageProfile;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
+                    SELECT p.object_type, p.object_id
+                      FROM {glbcfg.schema_registry}.Data_N_Object_T_PageProfile p
+                INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph g
+                        ON p.object_type = g.object_type
+                       AND p.object_id   = g.object_id;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
+                    SELECT p.object_type, p.object_id
+                      FROM {glbcfg.schema_lectures}.Data_N_Object_T_PageProfile p
+                INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph g
+                        ON p.object_type = g.object_type
+                       AND p.object_id   = g.object_id;
+               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
+                    SELECT p.object_type, p.object_id
+                      FROM {glbcfg.schema_ontology}.Data_N_Object_T_PageProfile p
+                INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph g
+                        ON p.object_type = g.object_type
+                       AND p.object_id   = g.object_id;
             """
 
             # Execute SQL query to update loose ends
             if update_loose_ends:
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_upd_loose_ends, verbose='print' in actions, query_id='K42g42')
+                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_upd_loose_ends, verbose='print' in actions, query_id='K42g42')
+
+            return
 
             # Define regex mapping for each schema to identify relevant tables
             regex_mapping = {
@@ -4249,7 +4365,7 @@ class GraphRegistry():
 
                 # Get the list of tables in the schema using the defined regex mapping
                 list_of_tables = db.get_tables_in_schema(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = engine_name,
                     schema_name = schema_name,
                     use_regex   = regex_mapping[schema_key]
                 )
@@ -4272,7 +4388,7 @@ class GraphRegistry():
 
                     # Get the list of columns for the current table
                     list_of_columns = db.get_column_names(
-                        engine_name = 'xaas_coresrv',
+                        engine_name = engine_name,
                         schema_name = schema_name,
                         table_name  = table_name
                     )
@@ -4338,7 +4454,8 @@ class GraphRegistry():
                         from_prefix, to_prefix = 'from_object', 'to_object'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.from_object_type, t.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.from_object_type, t.to_object_type",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_commit_template.format(
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4348,7 +4465,8 @@ class GraphRegistry():
                         from_prefix, to_prefix = 'doc', 'link'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.doc_type, t.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type, t.link_type",
                                                                              schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
-                        sql_query_commit = sql_query_obj2obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
+                        sql_query_commit = sql_query_obj2obj_commit_template.format(
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, from_prefix=from_prefix, to_prefix=to_prefix)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4358,7 +4476,8 @@ class GraphRegistry():
                         col_prefix = 'object'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.object_type",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_commit_template.format(
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
@@ -4368,7 +4487,8 @@ class GraphRegistry():
                         col_prefix = 'doc'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type",
                                                                          schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
-                        sql_query_commit = sql_query_obj_commit_template.format(schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
+                        sql_query_commit = sql_query_obj_commit_template.format(
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, col_prefix=col_prefix)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
@@ -4380,7 +4500,7 @@ class GraphRegistry():
                     if 'eval' in actions:
 
                         # Execute the evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='DFSHG4tf', verbose='print' in actions)
+                        out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='DFSHG4tf', verbose='print' in actions)
 
                         # Determine columns based on the type of table (object, object-to-object, doc, or doclink) and create a DataFrame to display the results
                         if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
@@ -4407,7 +4527,7 @@ class GraphRegistry():
                                 print(f"🔥 Deleting loose ends from table: '{schema_name}.{table_name}'.")
 
                                 # Execute the commit query
-                                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
+                                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
