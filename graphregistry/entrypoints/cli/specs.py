@@ -311,6 +311,7 @@ cli_definitions: Dict[str, Any] = {
                 args = [
                     dict(flags=('--update_loose_ends',   '-ul'), kwargs=dict(action='store_true', default=False, help="Refresh the NoLooseEnds reference table from source page profiles before cleaning.")),
                     dict(flags=('--include_scores_matrix', '-is'), kwargs=dict(action='store_true', default=False, help="Also clean scores matrix tables in graph_cache.")),
+                    dict(flags=('--refresh_graph',       '-rg'), kwargs=dict(action='store_true', default=False, help="Force recalculation of the Operations_N_Object_T_LargestConnectedGraph cache table.")),
                     dict(flags=('--actions',               ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
                 ],
                 common_args = ['env']

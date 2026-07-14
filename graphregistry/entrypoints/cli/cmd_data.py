@@ -504,12 +504,14 @@ def cmd_data_delete_loose_ends(args):
     # Get input options
     update_loose_ends   = args.update_loose_ends
     include_scores_matrix = args.include_scores_matrix
+    refresh_graph       = args.refresh_graph
     actions             = tuple(args.actions.split(',')) if args.actions else ()
 
     # Execute loose ends cleanup
     registry.indexdb.delete_loose_ends(
         update_loose_ends=update_loose_ends,
         include_scores_matrix=include_scores_matrix,
+        refresh_graph=refresh_graph,
         actions=actions,
     )
 

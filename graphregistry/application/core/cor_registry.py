@@ -4215,7 +4215,7 @@ class GraphRegistry():
             return
 
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
-        def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, use_cached_graph=False, actions=()):
+        def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, refresh_graph=False, actions=()):
 
             #-----------------------------------#
             # Step 1: Calculate connected graph #
@@ -4223,22 +4223,42 @@ class GraphRegistry():
 
             from sqlalchemy import text
 
+            cache_table_path = f"{glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph"
+
             # Local helper to escape a SQL string literal by doubling single quotes.
             def _sql_string(value):
                 return str(value).replace("'", "''")
 
+            # Local helper to check whether the cached largest-component graph exists and is non-empty.
+            def _graph_cache_exists():
+                try:
+                    tables = db.get_tables_in_schema(
+                        engine_name=engine_name,
+                        schema_name=glbcfg.schema_graph_cache_test,
+                        use_regex=[r'^Operations_N_Object_T_LargestConnectedGraph$']
+                    )
+                    if not tables:
+                        return False
+                    result = db.execute_query(
+                        engine_name=engine_name,
+                        query=f"SELECT 1 FROM {cache_table_path} LIMIT 1",
+                        query_id='cache_chk'
+                    )
+                    return bool(result)
+                except Exception:
+                    return False
+
             # Local helper to write a list of (object_type, object_id) tuples to the
             # Operations_N_Object_T_LargestConnectedGraph table in chunks.
             def _write_largest_component(nodes, chunk_size=10000):
-                table_path = f"{glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph"
-                lines = [f"TRUNCATE TABLE {table_path};"]
+                lines = [f"TRUNCATE TABLE {cache_table_path};"]
                 for i in range(0, len(nodes), chunk_size):
                     chunk = nodes[i:i + chunk_size]
                     values = ", ".join(
                         f"('{_sql_string(object_type)}', '{_sql_string(object_id)}')"
                         for object_type, object_id in chunk
                     )
-                    lines.append(f"INSERT INTO {table_path} (object_type, object_id) VALUES {values};")
+                    lines.append(f"INSERT INTO {cache_table_path} (object_type, object_id) VALUES {values};")
 
                 file_path = '/tmp/sql_query_upd_largest_component.sql'
                 with open(file_path, 'w') as f:
@@ -4250,9 +4270,14 @@ class GraphRegistry():
                     verbose='print' in actions
                 )
 
-            if use_cached_graph:
-                print("\n[🐬 GraphSearch DB] Using cached graph from Operations_N_Object_T_LargestConnectedGraph.")
+            if not refresh_graph and _graph_cache_exists():
+                print(f"\n[🐬 GraphSearch DB] Using cached graph from {cache_table_path}.")
             else:
+                if refresh_graph:
+                    print(f"\n[🐬 GraphSearch DB] Refreshing cached graph in {cache_table_path}.")
+                else:
+                    print(f"\n[🐬 GraphSearch DB] Graph cache not found or empty; computing and storing in {cache_table_path}.")
+
                 # Union-Find (Disjoint Set Union) structure for connected components.
                 # Far more memory efficient than building a full NetworkX graph.
                 class UnionFind:
