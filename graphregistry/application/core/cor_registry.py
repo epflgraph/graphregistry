@@ -4215,135 +4215,230 @@ class GraphRegistry():
             return
 
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
-        def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, actions=()):
+        def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, use_cached_graph=False, actions=()):
 
             #-----------------------------------#
             # Step 1: Calculate connected graph #
             #-----------------------------------#
 
-            # Get NetworkX
-            import networkx as nx
+            from sqlalchemy import text
 
-           # Initialize undirected graph
-            G = nx.Graph()
+            # Local helper to escape a SQL string literal by doubling single quotes.
+            def _sql_string(value):
+                return str(value).replace("'", "''")
 
-            # Get the list of tables in the schema using the defined regex mapping
-            list_of_tables = db.get_tables_in_schema(
-                engine_name = engine_name,
-                schema_name = glbcfg.schema_graphsearch_test,
-                use_regex   = [r'^Index_D_[^_]+$']
-            )
+            # Local helper to write a list of (object_type, object_id) tuples to the
+            # Operations_N_Object_T_LargestConnectedGraph table in chunks.
+            def _write_largest_component(nodes, chunk_size=10000):
+                table_path = f"{glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph"
+                lines = [f"TRUNCATE TABLE {table_path};"]
+                for i in range(0, len(nodes), chunk_size):
+                    chunk = nodes[i:i + chunk_size]
+                    values = ", ".join(
+                        f"('{_sql_string(object_type)}', '{_sql_string(object_id)}')"
+                        for object_type, object_id in chunk
+                    )
+                    lines.append(f"INSERT INTO {table_path} (object_type, object_id) VALUES {values};")
 
-            # Print list of affected tables
-            print('\n[🐬 GraphSearch DB] [EXTRACT NODES] The following tables will be searched:')
-            for t in list_of_tables:
-                print(f" - {glbcfg.schema_graphsearch_test}.{t}")
-            print('')
+                file_path = '/tmp/sql_query_upd_largest_component.sql'
+                with open(file_path, 'w') as f:
+                    f.write("\n".join(lines))
 
-            # Loop over each table in the list of tables, in order to build nodes first
-            for table_name in list_of_tables:
+                db.execute_query_from_file(
+                    engine_name=engine_name,
+                    file_path=file_path,
+                    verbose='print' in actions
+                )
 
-                # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table
-                sql_query_extract = f"""
-                    SELECT doc_type, doc_id
-                        FROM {glbcfg.schema_graphsearch_test}.{table_name}
-                """
+            if use_cached_graph:
+                print("\n[🐬 GraphSearch DB] Using cached graph from Operations_N_Object_T_LargestConnectedGraph.")
+            else:
+                # Union-Find (Disjoint Set Union) structure for connected components.
+                # Far more memory efficient than building a full NetworkX graph.
+                class UnionFind:
+                    __slots__ = ('parent', 'rank')
+                    def __init__(self):
+                        self.parent = []
+                        self.rank = []
 
-                # Execute SQL query to extract data from the current table
-                out = db.execute_query(engine_name=engine_name, query=sql_query_extract, query_id='jkwrt35')
+                    def add(self):
+                        idx = len(self.parent)
+                        self.parent.append(idx)
+                        self.rank.append(0)
+                        return idx
 
-                # Add nodes to the graph for each row in the output
-                for row in out:
-                    doc_type, doc_id = row
-                    G.add_node((doc_type, doc_id))
+                    def find(self, x):
+                        parent = self.parent
+                        while parent[x] != x:
+                            parent[x] = parent[parent[x]]  # path halving
+                            x = parent[x]
+                        return x
 
-            # Get the list of tables in the schema using the defined regex mapping
-            list_of_tables = db.get_tables_in_schema(
-                engine_name = engine_name,
-                schema_name = glbcfg.schema_graphsearch_test,
-                use_regex   = [r'Index_D_\w*_L_.*']
-            )
+                    def union(self, x, y):
+                        x_root = self.find(x)
+                        y_root = self.find(y)
+                        if x_root == y_root:
+                            return
+                        rank = self.rank
+                        if rank[x_root] < rank[y_root]:
+                            self.parent[x_root] = y_root
+                        elif rank[x_root] > rank[y_root]:
+                            self.parent[y_root] = x_root
+                        else:
+                            self.parent[y_root] = x_root
+                            rank[x_root] += 1
 
-            # Print list of affected tables
-            print('\n[🐬 GraphSearch DB] [EXTRACT EDGES] The following tables will be searched:')
-            for t in list_of_tables:
-                print(f" - {glbcfg.schema_graphsearch_test}.{t}")
-            print('')
+                uf = UnionFind()
+                node_to_index = {}
+                nodes_list = []  # index -> (doc_type, doc_id)
 
-            # Loop over each table in the list of tables, in order to build edges next
-            for table_name in list_of_tables:
+                def _get_node_index(node):
+                    idx = node_to_index.get(node)
+                    if idx is None:
+                        idx = uf.add()
+                        node_to_index[node] = idx
+                        nodes_list.append(node)
+                    return idx
 
-                # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table
-                sql_query_extract = f"""
-                    SELECT doc_type, doc_id, link_type, link_id
-                      FROM {glbcfg.schema_graphsearch_test}.{table_name}
-                """
+                # Local helper to stream rows from a SELECT without buffering the whole result set in RAM.
+                # Uses SQLAlchemy's stream_results mode with server-side cursors.
+                def _stream_rows(engine_name, query, fetch_size=10000, query_id=None):
+                    engine = db.engine[engine_name]
+                    connection = engine.connect()
+                    try:
+                        exec_conn = connection.execution_options(stream_results=True)
+                        result = exec_conn.execute(text(query))
+                        while True:
+                            chunk = result.fetchmany(fetch_size)
+                            if not chunk:
+                                break
+                            for row in chunk:
+                                yield row
+                    finally:
+                        connection.close()
 
-                # Execute SQL query to extract data from the current table
-                out = db.execute_query(engine_name=engine_name, query=sql_query_extract, query_id='GGg429')
+                # Get the list of tables in the schema using the defined regex mapping
+                list_of_tables = db.get_tables_in_schema(
+                    engine_name = engine_name,
+                    schema_name = glbcfg.schema_graphsearch_test,
+                    use_regex   = [r'^Index_D_[^_]+$']
+                )
 
-                # Add edges to the graph for each row in the output
-                for row in out:
-                    doc_type, doc_id, link_type, link_id = row
-                    G.add_edge((doc_type, doc_id), (link_type, link_id))
+                # Print list of affected tables
+                print('\n[🐬 GraphSearch DB] [EXTRACT NODES] The following tables will be searched:')
+                for t in list_of_tables:
+                    print(f" - {glbcfg.schema_graphsearch_test}.{t}")
+                print('')
 
-            # Get the connected components of the graph
-            connected_components = list(nx.connected_components(G))
+                # Loop over each table in the list of tables, in order to build nodes first
+                for table_name in tqdm(list_of_tables, desc='Extract nodes', unit='table'):
 
-            # Print the number of connected components found with the size of each
-            print(f"\n[🐬 GraphSearch DB] Found {len(connected_components)} connected components with sizes: {[len(c) for c in connected_components]}")
+                    # Generate SQL query to extract doc_type, doc_id from the current table
+                    sql_query_extract = f"""
+                        SELECT doc_type, doc_id
+                            FROM {glbcfg.schema_graphsearch_test}.{table_name}
+                    """
 
-            # Keep only the largest connected component
-            largest_component = max(connected_components, key=len)
+                    # Optionally count rows for a progress bar (small overhead, better UX)
+                    try:
+                        count_row = db.execute_query(
+                            engine_name=engine_name,
+                            query=f"SELECT COUNT(*) FROM {glbcfg.schema_graphsearch_test}.{table_name}",
+                            query_id='jkwrt35c'
+                        )
+                        total_rows = count_row[0][0] if count_row else 0
+                    except Exception:
+                        total_rows = None
 
-            # Print the size of the largest connected component
-            print(f"\n[🐬 GraphSearch DB] Largest connected component size: {len(largest_component)}")
+                    # Stream rows and register nodes
+                    for row in tqdm(
+                        _stream_rows(engine_name=engine_name, query=sql_query_extract, query_id='jkwrt35'),
+                        total=total_rows,
+                        desc=f'  {table_name}',
+                        unit='row',
+                        leave=False
+                    ):
+                        doc_type, doc_id = row
+                        _get_node_index((doc_type, doc_id))
 
-            # Extract node types and ids for largest connected component
-            largest_component_nodes = [(node[0], node[1]) for node in largest_component]
+                # Get the list of tables in the schema using the defined regex mapping
+                list_of_tables = db.get_tables_in_schema(
+                    engine_name = engine_name,
+                    schema_name = glbcfg.schema_graphsearch_test,
+                    use_regex   = [r'Index_D_\w*_L_.*']
+                )
 
-            # Generate batch insert SQL query to update Operations_N_Object_T_LargestConnectedGraph table with largest connected component nodes
-            sql_query_upd_largest_component = f"""
-            TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph (object_type, object_id)
-                    VALUES {', '.join([f"('{node[0]}', '{node[1]}')" for node in largest_component_nodes])};
-            """
+                # Print list of affected tables
+                print('\n[🐬 GraphSearch DB] [EXTRACT EDGES] The following tables will be searched:')
+                for t in list_of_tables:
+                    print(f" - {glbcfg.schema_graphsearch_test}.{t}")
+                print('')
 
-            # Save to file for execution in shell
-            with open('/tmp/sql_query_upd_largest_component.sql', 'w') as f:
-                f.write(sql_query_upd_largest_component)
+                # Loop over each table in the list of tables, in order to build edges next
+                for table_name in tqdm(list_of_tables, desc='Extract edges', unit='table'):
 
-            # Execute SQL query to update Operations_N_Object_T_LargestConnectedGraph table
-            db.execute_query_from_file(engine_name=engine_name, file_path='/tmp/sql_query_upd_largest_component.sql', verbose='print' in actions)
+                    # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table
+                    sql_query_extract = f"""
+                        SELECT doc_type, doc_id, link_type, link_id
+                          FROM {glbcfg.schema_graphsearch_test}.{table_name}
+                    """
+
+                    # Optionally count rows for a progress bar (small overhead, better UX)
+                    try:
+                        count_row = db.execute_query(
+                            engine_name=engine_name,
+                            query=f"SELECT COUNT(*) FROM {glbcfg.schema_graphsearch_test}.{table_name}",
+                            query_id='GGg429c'
+                        )
+                        total_rows = count_row[0][0] if count_row else 0
+                    except Exception:
+                        total_rows = None
+
+                    # Stream rows and union endpoints directly
+                    for row in tqdm(
+                        _stream_rows(engine_name=engine_name, query=sql_query_extract, query_id='GGg429'),
+                        total=total_rows,
+                        desc=f'  {table_name}',
+                        unit='row',
+                        leave=False
+                    ):
+                        doc_type, doc_id, link_type, link_id = row
+                        from_idx = _get_node_index((doc_type, doc_id))
+                        to_idx = _get_node_index((link_type, link_id))
+                        uf.union(from_idx, to_idx)
+
+                # Determine component sizes and find the largest component
+                component_sizes = {}
+                for idx in range(len(nodes_list)):
+                    root = uf.find(idx)
+                    component_sizes[root] = component_sizes.get(root, 0) + 1
+
+                sorted_components = sorted(component_sizes.items(), key=lambda x: x[1], reverse=True)
+                print(f"\n[🐬 GraphSearch DB] Found {len(sorted_components)} connected components with sizes: {[size for _, size in sorted_components]}")
+
+                largest_root, largest_size = sorted_components[0]
+                print(f"\n[🐬 GraphSearch DB] Largest connected component size: {largest_size}")
+
+                # Extract node types and ids for largest connected component
+                largest_component_nodes = [nodes_list[idx] for idx in range(len(nodes_list)) if uf.find(idx) == largest_root]
+
+                # Write largest component to the cache table
+                _write_largest_component(largest_component_nodes)
 
             # Generate SQL query to update loose ends in the Operations_N_Object_T_NoLooseEnds table
             sql_query_upd_loose_ends = f"""
             TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds;
                INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT p.object_type, p.object_id
-                      FROM {glbcfg.schema_registry}.Data_N_Object_T_PageProfile p
-                INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph g
-                        ON p.object_type = g.object_type
-                       AND p.object_id   = g.object_id;
+                    SELECT p.object_type, p.object_id FROM {glbcfg.schema_registry}.Data_N_Object_T_PageProfile;
                INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT p.object_type, p.object_id
-                      FROM {glbcfg.schema_lectures}.Data_N_Object_T_PageProfile p
-                INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph g
-                        ON p.object_type = g.object_type
-                       AND p.object_id   = g.object_id;
+                    SELECT p.object_type, p.object_id FROM {glbcfg.schema_lectures}.Data_N_Object_T_PageProfile;
                INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT p.object_type, p.object_id
-                      FROM {glbcfg.schema_ontology}.Data_N_Object_T_PageProfile p
-                INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph g
-                        ON p.object_type = g.object_type
-                       AND p.object_id   = g.object_id;
+                    SELECT p.object_type, p.object_id FROM {glbcfg.schema_ontology}.Data_N_Object_T_PageProfile;
             """
 
             # Execute SQL query to update loose ends
             if update_loose_ends:
                 db.execute_query_in_shell(engine_name=engine_name, query=sql_query_upd_loose_ends, verbose='print' in actions, query_id='K42g42')
-
-            return
 
             # Define regex mapping for each schema to identify relevant tables
             regex_mapping = {
@@ -4358,7 +4453,12 @@ class GraphRegistry():
                 regex_mapping['graph_cache'] += [r'Nodes_N_Object_.*', r'Edges_N_Object_.*']
 
             # Loop over each schema key to process tables
-            for schema_key in ['airflow', 'graph_cache', 'graphsearch', 'es_cache']:
+            for schema_key, allowed_nodes_table in [
+                ('airflow'    , 'Operations_N_Object_T_NoLooseEnds'),
+                ('graph_cache', 'Operations_N_Object_T_NoLooseEnds'),
+                ('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'),
+                ('es_cache'   , 'Operations_N_Object_T_LargestConnectedGraph')
+            ]:
 
                 # Get the schema name from the global configuration
                 schema_name = glbcfg.mysql_schema_names['test'][schema_key]
@@ -4397,7 +4497,7 @@ class GraphRegistry():
                     sql_query_obj_template = """
                               {eval_or_commit}
                          FROM {schema_name}.{table_name} t
-                    LEFT JOIN {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n
+                    LEFT JOIN {graph_cache_test}.{allowed_nodes_table} n
                            ON t.{col_prefix}_type = n.object_type
                           AND t.{col_prefix}_id   = n.object_id
                         WHERE n.object_id IS NULL
@@ -4408,10 +4508,10 @@ class GraphRegistry():
                     sql_query_obj2obj_template = """
                               {eval_or_commit}
                          FROM {schema_name}.{table_name} t
-                    LEFT JOIN {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_from
+                    LEFT JOIN {graph_cache_test}.{allowed_nodes_table} n_from
                            ON n_from.object_type = t.{from_prefix}_type
                           AND n_from.object_id   = t.{from_prefix}_id
-                    LEFT JOIN {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_to
+                    LEFT JOIN {graph_cache_test}.{allowed_nodes_table} n_to
                            ON n_to.object_type = t.{to_prefix}_type
                           AND n_to.object_id   = t.{to_prefix}_id
                         WHERE n_from.object_id IS NULL
@@ -4424,7 +4524,7 @@ class GraphRegistry():
                     sql_query_obj_commit_template = """
                         DELETE FROM {schema_name}.{table_name}
                          WHERE NOT EXISTS (
-                               SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n
+                               SELECT 1 FROM {graph_cache_test}.{allowed_nodes_table} n
                                 WHERE n.object_type = {schema_name}.{table_name}.{col_prefix}_type
                                   AND n.object_id   = {schema_name}.{table_name}.{col_prefix}_id
                          )
@@ -4433,12 +4533,12 @@ class GraphRegistry():
                     sql_query_obj2obj_commit_template = """
                         DELETE FROM {schema_name}.{table_name}
                          WHERE NOT EXISTS (
-                               SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_from
+                               SELECT 1 FROM {graph_cache_test}.{allowed_nodes_table} n_from
                                 WHERE n_from.object_type = {schema_name}.{table_name}.{from_prefix}_type
                                   AND n_from.object_id   = {schema_name}.{table_name}.{from_prefix}_id
                          )
                            AND NOT EXISTS (
-                               SELECT 1 FROM {graph_cache_test}.Operations_N_Object_T_NoLooseEnds n_to
+                               SELECT 1 FROM {graph_cache_test}.{allowed_nodes_table} n_to
                                 WHERE n_to.object_type = {schema_name}.{table_name}.{to_prefix}_type
                                   AND n_to.object_id   = {schema_name}.{table_name}.{to_prefix}_id
                          )
