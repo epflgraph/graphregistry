@@ -6393,12 +6393,9 @@ class GraphRegistry():
                 #---------------------------#
                 #---------------------------#
 
-                # Generate scores matrix table name
-                scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
-
                 # Full table paths
                 parentchild_table_path  = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{'Edges_N_Object_N_Object_T_ParentChildSymmetric'}"
-                scoresmatrix_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{scores_matrix_table_name_as}"
+                scoresmatrix_table_path = None  # set only for non-ontology SEM edges
                 buildup_doc_table_path  = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{self.buildup_doc_table_name}"
                 buildup_link_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{self.buildup_link_table_name}"
                 target_table_path       = f"{glbcfg.mysql_schema_names[self.engine_name]['graphsearch']}.{self.index_table_name}"
@@ -6554,15 +6551,21 @@ class GraphRegistry():
                                   FROM {final_scores_table}
                                  WHERE object_type = '{object_type}'
                                    AND to_process = 1
-                            """
+                             """
 
                     else:
+
+                        # Non-ontology SEM edges need the adjusted scores matrix table.
+                        # Compute it here so ORG links do not trigger the config_scores lookup.
+                        scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
+                        scoresmatrix_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{scores_matrix_table_name_as}"
 
                         # Generate SQL query 1
                         SQLQuery1 = f"""
                         REPLACE INTO {target_table_path}
                                      (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
                               SELECT s.from_institution_id AS  doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id,
+
                                        s.to_institution_id AS link_institution,   s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
                                      {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                      s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
@@ -6700,8 +6703,9 @@ class GraphRegistry():
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
 
-                # Generate scores matrix table name
-                scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
+                # Scores matrix table name is only needed for SEM/MIX links.
+                # It will be resolved lazily below so ORG links skip the config_scores lookup.
+                scores_matrix_table_name_as = None
 
                 # Ensure mixed view exists before trying to use it
                 GraphRegistry.IndexDB._ensure_mixed_view_exists(self.doc_type, self.link_type)
@@ -6721,6 +6725,13 @@ class GraphRegistry():
 
                     # Generate score column name
                     score_column_name = 'adjusted_row_rank'
+
+                    # Resolve scores matrix name lazily (MIX may or may not have a SEM component)
+                    if scores_matrix_table_name_as is None:
+                        try:
+                            scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
+                        except ValueError:
+                            scores_matrix_table_name_as = None
 
                     # Generate SQL query segment for fetching rows to process
                     to_process_sql_statement = f"""
@@ -6790,6 +6801,12 @@ class GraphRegistry():
                             """
 
                     else:
+
+                        # Resolve scores matrix name for non-ontology SEM edges (may not exist)
+                        try:
+                            scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
+                        except ValueError:
+                            scores_matrix_table_name_as = None
 
                         # SEM tables require a scores matrix table
                         if scores_matrix_table_name_as is None:
@@ -6968,11 +6985,11 @@ class GraphRegistry():
                 # Execute the commit query
                 db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='4cYaPsAQ')
 
-                # Generate scores matrix table name
-                scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
-
                 # Execute semantic related quries if the link type is 'Semantic'
                 if self.link_subtype == 'SEM':
+
+                    # Generate scores matrix table name
+                    scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
 
                     # Generate commit query
                     sql_query_commit = f"""
