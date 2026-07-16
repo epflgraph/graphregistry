@@ -241,6 +241,7 @@ class IndexConfig:
             # Assign to parsed options dictionary
             if len(graphsearch_obj_fields)>0:
                 self.settings['graphsearch']['fields']['docs'][doc_type] = graphsearch_obj_fields
+                self.settings['graphsearch']['fields']['docs_raw'][doc_type] = list_of_fields
 
             #------------------------------------------------------#
             # Fetch doc definitions for ElasticSearch cache tables #
@@ -263,6 +264,7 @@ class IndexConfig:
             # Assign to parsed options dictionary
             if len(elasticsearch_obj_fields)>0:
                 self.settings['elasticsearch']['fields']['docs'][doc_type] = elasticsearch_obj_fields
+                self.settings['elasticsearch']['fields']['docs_raw'][doc_type] = list_of_fields
 
             # Fetch ElasticSearch filters (if available)
             if doc_type              in index_config['es-filters']['docs']:
@@ -304,6 +306,7 @@ class IndexConfig:
                 # Assign to parsed options dictionary
                 if len(graphsearch_obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['default'][link_type] = graphsearch_obj_fields
+                    self.settings['graphsearch']['fields']['links']['default_raw'][link_type] = list_of_fields
 
                 #--------------------------------------------------------------------------#
                 # Fetch doclink ORDER BY rules for link ranking (default / semantic links) #
@@ -345,6 +348,7 @@ class IndexConfig:
                 # Assign to parsed options dictionary
                 if p2c_exists: # len(graphsearch_obj2obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_fields
+                    self.settings['graphsearch']['fields']['links']['parent_child_raw'][doc_type][link_type] = list_of_fields
 
                 #--------------------------------------------------------------------#
                 # Fetch doclink ORDER BY rules for link ranking (parent-child links) #
@@ -381,12 +385,13 @@ class IndexConfig:
                 # Assign list of fields to object's internal variables
                 elasticsearch_obj_fields = [
                     f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                    for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
                 ]
 
                 # Assign to parsed options dictionary
                 if len(elasticsearch_obj_fields)>0:
                     self.settings['elasticsearch']['fields']['links'][link_type] = elasticsearch_obj_fields
+                    self.settings['elasticsearch']['fields']['links_raw'][link_type] = list_of_fields
 
                 # Fetch ElasticSearch filters (if available)
                 if link_type  in index_config['es-filters']['links']:

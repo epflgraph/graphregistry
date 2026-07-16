@@ -5037,8 +5037,8 @@ class GraphRegistry():
                 # Fetch doc options
                 include_code_in_name = idxcfg.settings['options']['include_code_in_name'].get(doc_type, 0)
 
-                # Fetch object's list of custom fields
-                list_of_fields = idxcfg.settings['graphsearch']['fields' ]['docs'].get(doc_type, [])
+                # Fetch object's list of custom fields (raw format to preserve language/field split)
+                list_of_fields = idxcfg.settings['graphsearch']['fields' ]['docs_raw'].get(doc_type, [])
 
                 #----------------------------#
                 # Generate SQL query helpers #
@@ -5140,8 +5140,8 @@ class GraphRegistry():
                 # Fetch settings from JSON config #
                 #---------------------------------#
 
-                # Fetch organisational object-to-object list of custom fields
-                list_of_fields = idxcfg.settings['graphsearch']['fields' ]['links']['parent_child'].get(doc_type, {}).get(link_type, [])
+                # Fetch organisational object-to-object list of custom fields (raw format to preserve language/field split)
+                list_of_fields = idxcfg.settings['graphsearch']['fields' ]['links']['parent_child_raw'].get(doc_type, {}).get(link_type, [])
 
                 # Flip doc-link direction if needed
                 doc_type, link_type = sorted([doc_type, link_type])
