@@ -186,7 +186,7 @@ def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
             table_name = f"Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education.title()}_{gbc_or_as.upper()}"
             return table_name
         else:
-            return None
+            raise ValueError(f"Invalid input: ({from_object_type}, {to_object_type}, {gbc_or_as}). No corresponding scores matrix table found.")
 
 # Auxiliary function: Check if table exists and create it if not exists
 def create_table_if_not_exists(engine_name, schema_name, table_name):
@@ -6364,14 +6364,6 @@ class GraphRegistry():
                 # Generate scores matrix table name
                 scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
 
-                # Semantic links require a scores matrix table; skip if none exists
-                if self.link_subtype.upper() == 'SEM' and scores_matrix_table_name_as is None:
-                    sysmsg.warning(
-                        f"Skipping horizontal patch for {self.doc_type} --> {self.link_type} [{self.link_subtype}]: "
-                        f"no scores matrix table mapping found."
-                    )
-                    return
-
                 # Full table paths
                 parentchild_table_path  = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{'Edges_N_Object_N_Object_T_ParentChildSymmetric'}"
                 scoresmatrix_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{scores_matrix_table_name_as}"
@@ -6662,14 +6654,6 @@ class GraphRegistry():
 
                 # Table type: SEM
                 elif db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
-
-                    # SEM tables require a scores matrix table
-                    if scores_matrix_table_name_as is None:
-                        sysmsg.warning(
-                            f"Skipping ES horizontal patch for {self.doc_type} --> {self.link_type} [SEM]: "
-                            f"no scores matrix table mapping found."
-                        )
-                        return False
 
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM"
