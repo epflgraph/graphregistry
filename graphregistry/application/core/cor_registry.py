@@ -4910,12 +4910,6 @@ class GraphRegistry():
                 # Fetch organisational object-to-object list of custom fields
                 list_of_fields = idxcfg.settings['graphsearch']['fields' ]['links']['parent_child'].get(doc_type, {}).get(link_type, [])
 
-                # Return if no fields to process
-                if len(list_of_fields)==0:
-                    if 'print' in actions:
-                        sysmsg.warning(f"No custom fields found in config JSON for parent-child doclink type '{doc_type} --> {link_type}'. Nothing to do.")
-                    return
-
                 # Flip doc-link direction if needed
                 doc_type, link_type = sorted([doc_type, link_type])
 
@@ -4942,6 +4936,8 @@ class GraphRegistry():
                 # Add trailing comma if necessary
                 if len(sql_slice_field_names) > 0:
                     sql_slice_field_names += ', '
+                if len(sql_slice_field_values_as_names) > 0:
+                    sql_slice_field_values_as_names += ', '
 
                 #----------------------------#
 
@@ -4949,7 +4945,7 @@ class GraphRegistry():
                 sql_query = f"""
                   SELECT s.from_institution_id AS doc_institution, s.from_object_type AS  doc_type, s.from_object_id AS doc_id,
                          s.to_institution_id AS link_institution, s.to_object_type AS link_type, s.to_object_id AS link_id,
-                         {sql_slice_field_values_as_names},
+                         {sql_slice_field_values_as_names}
                          1 AS to_process
                     FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric s\n{sql_slice_joins_obj2obj}
                    WHERE (s.from_institution_id, s.from_object_type, s.to_institution_id, s.to_object_type) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}', '{glbcfg.object_type_to_institution_id[link_type]}', '{link_type}')
