@@ -6495,35 +6495,50 @@ class GraphRegistry():
 
                         final_scores_table, ontology_id_col, ontology_type, object_type = self._get_ontology_final_scores_source()
 
-                        # Generate SQL query 1: ontology as doc, object as link
-                        SQLQuery1 = f"""
-                        REPLACE INTO {target_table_path}
-                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                              SELECT 'Ont' AS doc_institution, '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
-                                     fs.institution_id AS link_institution, fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
-                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                     fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                                FROM {final_scores_table} fs
-                          INNER JOIN {buildup_link_table_path} i
-                                  ON (fs.object_type, fs.object_id) = ('{object_type}', i.doc_id)
-                               WHERE fs.object_type = '{object_type}'
-                                 AND fs.to_process = 1
-                        """
+                        # For ontology-object edges there are two index tables
+                        # (e.g. Category->Exercise and Exercise->Category). Each table should only
+                        # store its named forward direction to avoid duplicating the reverse rows
+                        # in both tables. The forward direction is:
+                        #   - SQLQuery1 when this table's doc_type is the ontology side
+                        #   - SQLQuery2 when this table's doc_type is the object side
+                        # Both queries use the link_type's buildup table and field set.
+                        if self.link_type == object_type:
+                            link_join_condition = f"(fs.object_type, fs.object_id) = ('{object_type}', i.doc_id)"
+                        else:
+                            link_join_condition = f"fs.{ontology_id_col} = i.doc_id"
 
-                        # Generate SQL query 2: object as doc, ontology as link
-                        SQLQuery2 = f"""
-                        REPLACE INTO {target_table_path}
-                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                              SELECT fs.institution_id AS doc_institution, fs.object_type AS doc_type, fs.object_id AS doc_id,
-                                     'Ont' AS link_institution, '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
-                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                     fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                                FROM {final_scores_table} fs
-                          INNER JOIN {buildup_link_table_path} i
-                                  ON (fs.object_type, fs.object_id) = ('{object_type}', i.doc_id)
-                               WHERE fs.object_type = '{object_type}'
-                                 AND fs.to_process = 1
-                        """
+                        if self.doc_type == ontology_type:
+                            # Forward: ontology as doc, object as link
+                            SQLQuery1 = f"""
+                            REPLACE INTO {target_table_path}
+                                         (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                                  SELECT 'Ont' AS doc_institution, '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
+                                         fs.institution_id AS link_institution, fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
+                                         {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                         fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
+                                    FROM {final_scores_table} fs
+                              INNER JOIN {buildup_link_table_path} i
+                                      ON {link_join_condition}
+                                   WHERE fs.object_type = '{object_type}'
+                                     AND fs.to_process = 1
+                            """
+                            SQLQuery2 = None
+                        else:
+                            # Forward: object as doc, ontology as link
+                            SQLQuery1 = None
+                            SQLQuery2 = f"""
+                            REPLACE INTO {target_table_path}
+                                         (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                                  SELECT fs.institution_id AS doc_institution, fs.object_type AS doc_type, fs.object_id AS doc_id,
+                                         'Ont' AS link_institution, '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
+                                         {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                         fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
+                                    FROM {final_scores_table} fs
+                              INNER JOIN {buildup_link_table_path} i
+                                      ON {link_join_condition}
+                                   WHERE fs.object_type = '{object_type}'
+                                     AND fs.to_process = 1
+                            """
 
                         # Doc ids to re-rank depend on which side is the doc
                         if self.doc_type in ('Concept', 'Category'):
@@ -6624,11 +6639,16 @@ class GraphRegistry():
                 if 'eval' in actions:
 
                     # Generate evaluation query (#1)
-                    sql_query_no_replace_1 = re.sub(r'REPLACE INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
-                    sql_query_eval_1 = f"""
-                        SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
-                        FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
-                    """
+                    if SQLQuery1 is not None:
+                        sql_query_no_replace_1 = re.sub(r'REPLACE INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
+                        sql_query_eval_1 = f"""
+                            SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                            FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                        """
+                    else:
+                        sql_query_eval_1 = f"""
+                            SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
+                        """
 
                     # Generate evaluation query (#2)
                     if SQLQuery2 is not None:
