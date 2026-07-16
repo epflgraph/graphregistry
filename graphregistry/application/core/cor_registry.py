@@ -4324,16 +4324,103 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🚜 ✅ Done horizontal patching of doc-link index tables.\n")
 
+        # Helper: create mixed (org+sem) view for a single doc-link type
+        @staticmethod
+        def _create_mixed_view_for_doclink(doc_type, link_type, test_mode=False):
+
+            # Generate table names
+            table_name_org = f"Index_D_{doc_type}_L_{link_type}_T_ORG"
+            table_name_sem = f"Index_D_{doc_type}_L_{link_type}_T_SEM"
+            table_name_mix = f"Index_D_{doc_type}_L_{link_type}_T_MIX"
+
+            # Ignore concept search table (special case)
+            if table_name_sem == 'Index_D_Lecture_L_Concept_T_SEM_Search':
+                sysmsg.warning(f"Skipping Index_D_Lecture_L_Concept_T_SEM_Search table.")
+                return
+
+            # Get list of columns for SEM table
+            list_of_columns_sem = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
+
+            # Remove row_id
+            if 'row_id' in list_of_columns_sem:
+                list_of_columns_sem.remove('row_id')
+
+            # Fix list of columns for ORG table
+            list_of_columns_org = ['degree_score' if c == 'semantic_score' else c for c in list_of_columns_sem]
+
+            # Generate SQL query
+            SQLQuery = f"""
+            CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
+
+                            SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
+                              FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
+                        INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                                      FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                                  GROUP BY doc_institution, doc_type, doc_id) o
+                             USING (doc_institution, doc_type, doc_id)
+                             WHERE doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
+
+                         UNION ALL
+
+                            SELECT {', '.join(list_of_columns_sem)}, (s.row_rank + COALESCE(o.max_row_rank, 0)) AS adjusted_row_rank
+                              FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
+                         LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                                      FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
+                                  GROUP BY doc_institution, doc_type, doc_id) o
+                             USING (doc_institution, doc_type, doc_id)
+                             WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
+                                      NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
+                               AND doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
+
+                          ORDER BY doc_id ASC, adjusted_row_rank ASC;
+            """
+
+            if test_mode:
+                print(SQLQuery)
+            else:
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery, query_id='tb1Vdfyq')
+
+        # Helper: ensure mixed view exists for a single doc-link type
+        @staticmethod
+        def _ensure_mixed_view_exists(doc_type, link_type, test_mode=False):
+
+            # Generate table names
+            table_name_org = f"Index_D_{doc_type}_L_{link_type}_T_ORG"
+            table_name_sem = f"Index_D_{doc_type}_L_{link_type}_T_SEM"
+            table_name_mix = f"Index_D_{doc_type}_L_{link_type}_T_MIX"
+
+            # Generate 'table exists' flags
+            table_exists_org = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
+            table_exists_sem = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
+            table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix, exclude_views=False)
+
+            # Cannot create MIX if either source table is missing
+            if not (table_exists_org and table_exists_sem):
+                sysmsg.trace(
+                    f"Cannot create MIX view for {doc_type} --> {link_type}. "
+                    f"ORG exists: {table_exists_org}, SEM exists: {table_exists_sem}."
+                )
+                return False
+
+            # Already exists
+            if table_exists_mix:
+                return True
+
+            # Create it
+            sysmsg.info(f"🛠️  Creating missing MIX view for {doc_type} --> {link_type}.")
+            GraphRegistry.IndexDB._create_mixed_view_for_doclink(doc_type, link_type, test_mode=test_mode)
+            return True
+
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
-            # Get intersection between doclink tuples or semantic and organisational types
+            # Get intersection between doclink tuples of semantic and organisational types
             doclinks_to_process = sorted(list(set(dynsql.doclink_types_sem) & set(dynsql.doclink_types_org)))
 
             # Loop over all doclink tuples
             for doc_type, link_type in tqdm(doclinks_to_process):
 
-                # Generate  table names
+                # Generate table names
                 table_name_org = f"Index_D_{doc_type}_L_{link_type}_T_ORG"
                 table_name_sem = f"Index_D_{doc_type}_L_{link_type}_T_SEM"
                 table_name_mix = f"Index_D_{doc_type}_L_{link_type}_T_MIX"
@@ -4344,55 +4431,17 @@ class GraphRegistry():
                 table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix)
 
                 # Only process if both SEM and ORG tables exist
-                if not (table_exists_org and table_exists_sem) or (table_exists_mix and not drop_existing):
+                if not (table_exists_org and table_exists_sem):
                     sysmsg.warning(f"Skipping doc-link type: {doc_type} --> {link_type}. SEM table exists: {table_exists_sem}. ORG table exists: {table_exists_org}. MIX table exists: {table_exists_mix}.")
                     continue
 
-                # Ignore concept search table (special case)
-                if table_name_sem == 'Index_D_Lecture_L_Concept_T_SEM_Search':
-                    sysmsg.warning(f"Skipping Index_D_Lecture_L_Concept_T_SEM_Search table.")
+                # Drop existing if requested
+                if table_exists_mix and not drop_existing:
+                    sysmsg.trace(f"MIX view already exists for {doc_type} --> {link_type}, skipping.")
                     continue
 
-                # Get list of columns for SEM table
-                list_of_columns_sem = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
-
-                # Remove row_id
-                list_of_columns_sem.remove('row_id')
-
-                # Fix list of columns for ORG table
-                list_of_columns_org = ['degree_score' if c == 'semantic_score' else c for c in list_of_columns_sem]
-
-                # Generate SQL query
-                SQLQuery = f"""
-                CREATE OR REPLACE VIEW {glbcfg.schema_graphsearch_test}.{table_name_mix} AS
-
-                                SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
-                                  FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
-                            INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                          FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                      GROUP BY doc_institution, doc_type, doc_id) o
-                                 USING (doc_institution, doc_type, doc_id)
-                                 WHERE doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
-
-                             UNION ALL
-
-                                SELECT {', '.join(list_of_columns_sem)}, (s.row_rank + COALESCE(o.max_row_rank, 0)) AS adjusted_row_rank
-                                  FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
-                             LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
-                                          FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                      GROUP BY doc_institution, doc_type, doc_id) o
-                                 USING (doc_institution, doc_type, doc_id)
-                                 WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
-                                          NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
-                                   AND doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
-
-                              ORDER BY doc_id ASC, adjusted_row_rank ASC;
-                """
-
-                if test_mode:
-                    print(SQLQuery)
-                else:
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery, query_id='tb1Vdfyq')
+                # Create the mixed view
+                GraphRegistry.IndexDB._create_mixed_view_for_doclink(doc_type, link_type, test_mode=test_mode)
 
         # TODO: Copy patched data to production cache schema [NEEDS WORK]
         def copy_patches_to_prod(self):
@@ -6545,6 +6594,9 @@ class GraphRegistry():
 
                 # Generate scores matrix table name
                 scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
+
+                # Ensure mixed view exists before trying to use it
+                GraphRegistry.IndexDB._ensure_mixed_view_exists(self.doc_type, self.link_type)
 
                 #--------------------------------------------------#
                 # Resolve table name or return if it doesn't exist #
