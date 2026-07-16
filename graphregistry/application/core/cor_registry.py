@@ -3356,12 +3356,189 @@ class GraphRegistry():
             # Fetch list of batch formulas to execute
             list_of_files = sorted(glob.glob(f'{SQL_FORMULAS_PATH}/{local_path}/formula.*.sql'))
 
+            # Load active node/edge types from Airflow config for type-specific folders
+            active_node_types = None
+            active_edge_types = None
+            active_scores_node_types = None
+            if local_path in (
+                'calculated_fields/obj',
+                'graph_traversals',
+                'calculated_fields/obj2obj',
+                'calculated_scores/obj2ontology/categories',
+                'calculated_scores/obj2ontology/concepts',
+                'calculated_scores/obj2ontology/concepts_union',
+                'calculated_scores/obj2ontology/categories_union',
+                'calculated_scores/degree_scores',
+            ):
+                config_json = GraphRegistry.Orchestration.TypeFlags().get_config_json()
+                if local_path == 'calculated_fields/obj':
+                    active_node_types = {
+                        node_type.lower()
+                        for node_type, process_fields, _ in config_json['nodes']
+                        if process_fields
+                    }
+                    sysmsg.info(f"   Active node types for fields: {sorted(active_node_types)}")
+                if local_path.startswith('calculated_scores/'):
+                    active_scores_node_types = {
+                        node_type.lower()
+                        for node_type, _, process_scores in config_json['nodes']
+                        if process_scores
+                    }
+                    sysmsg.info(f"   Active node types for scores: {sorted(active_scores_node_types)}")
+                active_edge_types = {
+                    tuple(sorted([src.lower(), dst.lower()]))
+                    for src, dst, is_active in config_json['edges']
+                    if is_active
+                }
+                sysmsg.info(f"   Active edge types for fields: {sorted(active_edge_types)}")
+
             # Loop over and execute all formulas
             for file_path in list_of_files:
+
+                # Extract formula name from file path
+                formula_name = re.findall(r'formula\.(.*)\.sql$', file_path)[0]
+
+                # Skip formulas that target inactive node/edge types
+                if local_path == 'calculated_fields/obj':
+                    formula_node_type = self._get_node_type_from_obj_formula(formula_name)
+                    if formula_node_type is not None and formula_node_type not in active_node_types:
+                        sysmsg.info(
+                            f"⏭️  Skipping obj formula '{formula_name}': "
+                            f"node type '{formula_node_type}' is not in active fields node types."
+                        )
+                        continue
+                elif local_path == 'graph_traversals':
+                    formula_edges = self._get_edge_types_from_traversal_formula(formula_name)
+                    inactive_edges = [e for e in formula_edges if e not in active_edge_types]
+                    if inactive_edges:
+                        sysmsg.info(
+                            f"⏭️  Skipping traversal formula '{formula_name}': "
+                            f"edge(s) {inactive_edges} are not in active fields edge types."
+                        )
+                        continue
+                elif local_path == 'calculated_fields/obj2obj':
+                    formula_edge = self._get_edge_type_from_obj2obj_formula(formula_name)
+                    if formula_edge is not None and formula_edge not in active_edge_types:
+                        sysmsg.info(
+                            f"⏭️  Skipping obj2obj formula '{formula_name}': "
+                            f"edge {formula_edge} is not in active fields edge types."
+                        )
+                        continue
+                elif local_path.startswith('calculated_scores/'):
+                    scores_filter = self._get_scores_filter_for_calculated_scores_formula(local_path, formula_name)
+                    if scores_filter is not None:
+                        filter_type, filter_value = scores_filter
+                        if filter_type == 'specific_node':
+                            if filter_value not in active_scores_node_types:
+                                sysmsg.info(
+                                    f"⏭️  Skipping calculated-scores formula '{formula_name}': "
+                                    f"node type '{filter_value}' is not in active scores node types."
+                                )
+                                continue
+                        elif filter_type == 'any_scores':
+                            if not active_scores_node_types:
+                                sysmsg.info(
+                                    f"⏭️  Skipping calculated-scores formula '{formula_name}': "
+                                    f"no active scores node types in the Airflow config."
+                                )
+                                continue
+
                 self.apply_formula_from_file(file_path=file_path, verbose=verbose)
 
             # Print status
             sysmsg.success(f"🧪 ✅ Done applying formulas.\n")
+
+        # Helper: extract edge types from a traversal formula filename
+        def _get_edge_types_from_traversal_formula(self, formula_name):
+            """
+            Parses a traversal formula filename and returns the edge types involved.
+
+            Examples:
+                '001.unit-person.affiliation'
+                    -> [('person', 'unit')]
+                '004.person-publication-concept.concept_detection'
+                    -> [('person', 'publication'), ('concept', 'publication')]
+            """
+            parts = formula_name.split('.')
+            if len(parts) < 2 or '-' not in parts[1]:
+                return []
+
+            path_types = parts[1].split('-')
+            edges = []
+            for i in range(len(path_types) - 1):
+                edges.append(tuple(sorted([path_types[i].lower(), path_types[i + 1].lower()])))
+            return edges
+
+        # Helper: extract edge type from an obj2obj calculated field formula filename
+        def _get_edge_type_from_obj2obj_formula(self, formula_name):
+            """
+            Parses an obj2obj calculated field formula filename and returns the edge type.
+
+            Example:
+                'course.person.latest_teaching_assignment_year'
+                    -> ('course', 'person')
+            """
+            parts = formula_name.split('.')
+            if len(parts) < 2:
+                return None
+            return tuple(sorted([parts[0].lower(), parts[1].lower()]))
+
+        # Helper: extract node type from an obj calculated field formula filename
+        def _get_node_type_from_obj_formula(self, formula_name):
+            """
+            Parses an obj calculated field formula filename and returns the node type.
+
+            Example:
+                'concept.node_degree'
+                    -> 'concept'
+            """
+            parts = formula_name.split('.')
+            if not parts:
+                return None
+            return parts[0].lower()
+
+        # Helper: determine scores filter for a calculated_scores formula
+        def _get_scores_filter_for_calculated_scores_formula(self, local_path, formula_name):
+            """
+            Returns a scores filter for calculated_scores formulas.
+
+            Scores formulas are governed by the node's process_scores flag in the
+            Airflow config (not the edge's process_fields flag).
+
+            Returns:
+                ('specific_node', node_type)  -> skip if node_type is not active for scores
+                ('any_scores', None)          -> skip if no node is active for scores
+                None                          -> cannot determine, run anyway
+            """
+            if local_path == 'calculated_scores/obj2ontology/categories':
+                # formula.{node_type}.concept_sum-scores_aggregation.sql
+                parts = formula_name.split('.')
+                if len(parts) >= 2:
+                    return ('specific_node', parts[0].lower())
+                return None
+
+            if local_path == 'calculated_scores/obj2ontology/concepts':
+                # Known patterns: formula.{number}.{node_type}.{calculation}.sql
+                # The second token is the target node type for the scores calculation.
+                parts = formula_name.split('.')
+                if len(parts) >= 2:
+                    return ('specific_node', parts[1].lower())
+                return None
+
+            # Union formulas aggregate concept/category scores produced upstream.
+            # Run them whenever any node is active for scores.
+            if local_path == 'calculated_scores/obj2ontology/concepts_union':
+                return ('any_scores', None)
+
+            if local_path == 'calculated_scores/obj2ontology/categories_union':
+                return ('any_scores', None)
+
+            if local_path == 'calculated_scores/degree_scores':
+                # Degree scores are global score computations. Run them whenever any
+                # node is active for scores (there is no per-edge scores flag).
+                return ('any_scores', None)
+
+            return None
 
         # Apply formula from SQL file
         def apply_formula_from_file(self, file_path, verbose=False):
@@ -3815,7 +3992,14 @@ class GraphRegistry():
                            WHERE t.score >= {score_thr}
                 """
 
+            # If commit action is requested, execute the query
             if 'commit' in actions:
+
+                # Print the commit query
+                if 'print' in actions:
+                    print_sql(sql_query, title='qHE7tP6J')
+
+                # Execute commit query
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose='print' in actions, query_id='qHE7tP6J')
 
     #-----------------------------------------------------------#
@@ -5395,6 +5579,10 @@ class GraphRegistry():
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
 
+                    # Print the evaluation query
+                    if 'print' in actions:
+                        print_sql(sql_query_eval, title='4KpdVwsE')
+
                     # Execute and validate the evaluation query
                     out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='4KpdVwsE')
                     out = out if type(out) is list else [[0,0]]
@@ -5675,6 +5863,10 @@ class GraphRegistry():
                 # In this case, we execute the query regardless of the 'eval' action,
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
+
+                    # Print the evaluation query
+                    if 'print' in actions:
+                        print_sql(sql_query_eval, title='hLdNx8Hb')
 
                     # Execute and validate the evaluation query
                     out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='hLdNx8Hb')
@@ -6513,7 +6705,8 @@ class GraphRegistry():
 
                     # Print the commit query
                     if 'print' in actions:
-                        print(sql_query_commit)
+                        # def print_sql(sql: str, *, params: Any = None, elapsed_ms: float | None = None, db: str | None = None, title: str = "SQL", show_header: bool = True, box_style: BoxStyle = "minimal", copyable: bool = False, theme: str = "monokai", word_wrap: bool = True, console: Console | None = None) -> None:
+                        print_sql(sql_query_commit, title='zwRx2b8a')
 
                     # Execute the commit SQL query
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='zwRx2b8a')
