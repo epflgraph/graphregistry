@@ -14,6 +14,8 @@
                              OR (object_type = 'Unit'        AND calculation_type = 'concept detection on user input')
                              OR (object_type = 'Widget'      AND calculation_type = 'concept detection on user input')
                              OR (object_type = 'Category'    AND calculation_type = 'concept sum-scores aggregation (bounded)')
+                             OR (object_type = 'Exercise'    AND calculation_type = 'manual mapping on exercise description')
+                             OR (object_type = 'Notebook'    AND calculation_type = 'manual mapping on notebook description')
                            THEN score END AS score_1,
 
                       CASE WHEN (object_type = 'Person'      AND calculation_type = 'abstract sum-scores aggregation (bounded)')
