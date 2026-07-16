@@ -222,28 +222,24 @@ class DynamicSQL:
         for (doc_type, link_type) in self.doclink_types_org:
             self.doclinks_org[(doc_type, link_type)] = self.DocLink(doc_type=doc_type, link_type=link_type, link_subtype='ORG')
 
-    #------------------------------#
-    # Method group: Static methods #
-    #------------------------------#
+    #----------------------------------#
+    # Method group: Instance methods   #
+    #----------------------------------#
 
-    @staticmethod
-    def get_fields(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None):
+    def get_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None):
         if link_type is None:
-            return DynamicSQL(db=db).get_all_doc_fields(doc_type=doc_type, index_group=index_group)
+            return self.get_all_doc_fields(doc_type=doc_type, index_group=index_group)
         else:
-            return DynamicSQL(db=db).get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
+            return self.get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
-    @staticmethod
-    def get_create_table(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, include_schema=False):
-        return DynamicSQL(db=db).get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+    def get_create_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
+        return self.get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
-    @staticmethod
-    def get_alter_table(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, include_schema=False):
-        return DynamicSQL(db=db).get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
+    def get_alter_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
+        return self.get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
-    @staticmethod
-    def compare_fields(doc_type, db: "GraphDB", link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
-        return DynamicSQL(db=db).compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
+    def compare_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
+        return self.compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
 
     #---------------------------------#
     # Method group: Table diagnostics #

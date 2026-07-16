@@ -94,8 +94,9 @@ cli_definitions: Dict[str, Any] = {
             'init' : dict(
                 help = "Initialize the Registry instance.",
                 func = cmd_setup_init,
-                args = [dict(flags = ('--dry_run' , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
-                        dict(flags = ('--verbose' , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
+                args = [dict(flags = ('--dry_run'     , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
+                        dict(flags = ('--verbose'     , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
+                        dict(flags = ('--index_tables', '-i'), kwargs = dict(action='store_true', default=False, help="Ensure index buildup tables from config_index.json exist.")),
                 ],
                 common_args = ['env'],
             )
