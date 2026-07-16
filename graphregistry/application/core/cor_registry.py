@@ -6327,7 +6327,39 @@ class GraphRegistry():
                     #                                   WHERE s.to_process = 1) c
                     #                  USING (doc_institution, doc_type, doc_id)
                     #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    #     """
+                    # """
+
+            # Helper: check if this doc-link is an ontology-object edge
+            def _is_ontology_object_edge(self):
+                """
+                Returns True if exactly one of doc_type/link_type is an ontology type
+                (Concept or Category), i.e. an object-to-ontology semantic edge.
+                """
+                ontology_types = {'Concept', 'Category'}
+                return (self.doc_type in ontology_types) != (self.link_type in ontology_types)
+
+            # Helper: get final-scores source for ontology-object edges
+            def _get_ontology_final_scores_source(self):
+                """
+                For ontology-object edges, returns the final scores table path,
+                the ontology id column name, the ontology type, and the object type.
+                """
+                ontology_types = {'Concept', 'Category'}
+                if self.doc_type in ontology_types:
+                    ontology_type = self.doc_type
+                    object_type = self.link_type
+                else:
+                    ontology_type = self.link_type
+                    object_type = self.doc_type
+
+                if ontology_type == 'Concept':
+                    final_scores_table = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.Edges_N_Object_N_Concept_T_FinalScores"
+                    ontology_id_col = 'concept_id'
+                else:  # Category
+                    final_scores_table = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.Edges_N_Object_N_Category_T_FinalScores"
+                    ontology_id_col = 'category_id'
+
+                return final_scores_table, ontology_id_col, ontology_type, object_type
 
             # ------- Patching ------- #
 
@@ -6457,44 +6489,89 @@ class GraphRegistry():
                 # Semantic table?
                 elif self.link_subtype.upper() == 'SEM':
 
-                    # Generate SQL query 1
-                    SQLQuery1 = f"""
-                    REPLACE INTO {target_table_path}
-                                 (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT s.from_institution_id AS  doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id,
-                                   s.to_institution_id AS link_institution,   s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
-                                 {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                 s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                            FROM {scoresmatrix_table_path} s
-                      INNER JOIN {buildup_link_table_path} i
-                              ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                           WHERE s.to_process = 1
-                    """
+                    # Ontology-object edges (e.g. Concept-Exercise) get their semantic scores
+                    # from the final scores tables, not from the object-to-object scores matrix.
+                    if self._is_ontology_object_edge():
 
-                    # Generate SQL query 2 (same as SQL query 1 but flipped)
-                    SQLQuery2 = f"""
-                    REPLACE INTO {target_table_path}
-                                 (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT   s.to_institution_id AS  doc_institution,   s.to_object_type AS  doc_type, s.to_object_id AS doc_id,
-                                 s.from_institution_id AS link_institution, s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
-                                 {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                 s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                            FROM {scoresmatrix_table_path} s
-                      INNER JOIN {buildup_link_table_path} i
-                              ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                           WHERE s.to_process = 1
-                    """
+                        final_scores_table, ontology_id_col, ontology_type, object_type = self._get_ontology_final_scores_source()
 
-                    # Generate SQL query 3
-                    SQLQuery3 = f"""
-                    REPLACE INTO {target_table_path}
-                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
-                                         CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
-                                                         row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
-                                    FROM {target_table_path}
-                              INNER JOIN (
+                        # Generate SQL query 1: ontology as doc, object as link
+                        SQLQuery1 = f"""
+                        REPLACE INTO {target_table_path}
+                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                              SELECT 'Ont' AS doc_institution, '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
+                                     fs.institution_id AS link_institution, fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
+                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                     fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
+                                FROM {final_scores_table} fs
+                          INNER JOIN {buildup_link_table_path} i
+                                  ON (fs.object_type, fs.object_id) = ('{object_type}', i.doc_id)
+                               WHERE fs.object_type = '{object_type}'
+                                 AND fs.to_process = 1
+                        """
+
+                        # Generate SQL query 2: object as doc, ontology as link
+                        SQLQuery2 = f"""
+                        REPLACE INTO {target_table_path}
+                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                              SELECT fs.institution_id AS doc_institution, fs.object_type AS doc_type, fs.object_id AS doc_id,
+                                     'Ont' AS link_institution, '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
+                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                     fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
+                                FROM {final_scores_table} fs
+                          INNER JOIN {buildup_link_table_path} i
+                                  ON (fs.object_type, fs.object_id) = ('{object_type}', i.doc_id)
+                               WHERE fs.object_type = '{object_type}'
+                                 AND fs.to_process = 1
+                        """
+
+                        # Doc ids to re-rank depend on which side is the doc
+                        if self.doc_type in ('Concept', 'Category'):
+                            doc_id_subquery = f"""
+                                SELECT DISTINCT {ontology_id_col} AS doc_id
+                                  FROM {final_scores_table}
+                                 WHERE object_type = '{object_type}'
+                                   AND to_process = 1
+                            """
+                        else:
+                            doc_id_subquery = f"""
+                                SELECT DISTINCT object_id AS doc_id
+                                  FROM {final_scores_table}
+                                 WHERE object_type = '{object_type}'
+                                   AND to_process = 1
+                            """
+
+                    else:
+
+                        # Generate SQL query 1
+                        SQLQuery1 = f"""
+                        REPLACE INTO {target_table_path}
+                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                              SELECT s.from_institution_id AS  doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id,
+                                       s.to_institution_id AS link_institution,   s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
+                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                     s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
+                                FROM {scoresmatrix_table_path} s
+                          INNER JOIN {buildup_link_table_path} i
+                                  ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
+                               WHERE s.to_process = 1
+                        """
+
+                        # Generate SQL query 2 (same as SQL query 1 but flipped)
+                        SQLQuery2 = f"""
+                        REPLACE INTO {target_table_path}
+                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                              SELECT   s.to_institution_id AS  doc_institution,   s.to_object_type AS  doc_type, s.to_object_id AS doc_id,
+                                     s.from_institution_id AS link_institution, s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
+                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                     s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
+                                FROM {scoresmatrix_table_path} s
+                          INNER JOIN {buildup_link_table_path} i
+                                  ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
+                               WHERE s.to_process = 1
+                        """
+
+                        doc_id_subquery = f"""
                                           SELECT DISTINCT IF(from_object_type="{self.doc_type}", from_object_id, to_object_id) AS doc_id
                                                      FROM {scoresmatrix_table_path}
                                                     WHERE (
@@ -6524,7 +6601,18 @@ class GraphRegistry():
                                                                 )
                                                           )
                                                       AND to_process = 1
-                                         ) t
+                        """
+
+                    # Generate SQL query 3 (re-rank)
+                    SQLQuery3 = f"""
+                    REPLACE INTO {target_table_path}
+                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
+                                         CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
+                                                         row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
+                                    FROM {target_table_path}
+                              INNER JOIN ({doc_id_subquery}) t
                                    USING (doc_id)
                                  ) tt
                            WHERE row_rank <= {row_rank_thr}
@@ -6661,18 +6749,48 @@ class GraphRegistry():
                     # Generate score column name
                     score_column_name = 'row_rank'
 
-                    # Generate SQL query segment for fetching rows to process
-                    to_process_sql_statement = f"""
-                        SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
-                                   FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                  WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process = 1
-                                  UNION
-                        SELECT DISTINCT to_object_type AS doc_type, to_object_id AS doc_id
-                                   FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                  WHERE (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}")
-                                    AND to_process = 1
-                    """
+                    # Ontology-object edges use final scores tables
+                    if self._is_ontology_object_edge():
+
+                        final_scores_table, ontology_id_col, ontology_type, object_type = self._get_ontology_final_scores_source()
+
+                        if self.doc_type in ('Concept', 'Category'):
+                            to_process_sql_statement = f"""
+                                SELECT DISTINCT '{ontology_type}' AS doc_type, {ontology_id_col} AS doc_id
+                                               FROM {final_scores_table}
+                                              WHERE object_type = '{object_type}'
+                                                AND to_process = 1
+                            """
+                        else:
+                            to_process_sql_statement = f"""
+                                SELECT DISTINCT '{object_type}' AS doc_type, object_id AS doc_id
+                                               FROM {final_scores_table}
+                                              WHERE object_type = '{object_type}'
+                                                AND to_process = 1
+                            """
+
+                    else:
+
+                        # SEM tables require a scores matrix table
+                        if scores_matrix_table_name_as is None:
+                            sysmsg.warning(
+                                f"Skipping ES horizontal patch for {self.doc_type} --> {self.link_type} [SEM]: "
+                                f"no scores matrix table mapping found."
+                            )
+                            return False
+
+                        # Generate SQL query segment for fetching rows to process
+                        to_process_sql_statement = f"""
+                            SELECT DISTINCT from_object_type AS doc_type, from_object_id AS doc_id
+                                       FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
+                                      WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
+                                        AND to_process = 1
+                                      UNION
+                            SELECT DISTINCT to_object_type AS doc_type, to_object_id AS doc_id
+                                       FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
+                                      WHERE (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}")
+                                        AND to_process = 1
+                        """
                 else:
                     return False
 
