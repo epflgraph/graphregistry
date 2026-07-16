@@ -1622,7 +1622,7 @@ class GraphRegistry():
 
                         # Print sql query if verbose
                         if verbose:
-                            print(sql_query)
+                            print_sql(sql_query, title='MY52N1XY')
 
                         # Reset all expiration flags
                         db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='MY52N1XY')
@@ -2023,7 +2023,7 @@ class GraphRegistry():
                             # Print evaluation query
                             if 'print' in actions:
                                 print('\nSQL evaluation query:\n\n')
-                                print(sql_query_eval)
+                                print_sql(sql_query_eval, title='D3YbxeVt')
                                 print('\n')
 
                             # Execute evaluation query
@@ -2049,7 +2049,7 @@ class GraphRegistry():
                             db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions, query_id='ht5AZcsE')
                         elif 'print' in actions:
                             print('\nSQL commit query:\n\n')
-                            print(sql_query_commit)
+                            print_sql(sql_query_commit, title='ht5AZcsE')
                             print('\n')
 
                 # Print status
@@ -2104,8 +2104,7 @@ class GraphRegistry():
                             # Print evaluation query
                             if 'print' in actions:
                                 print('\nSQL evaluation query:\n\n')
-                                print(sql_query_eval)
-                                print('\n')
+                                print_sql(sql_query_eval, title='kpAX4Cft')
 
                             # Execute evaluation query
                             out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='kpAX4Cft')
@@ -2127,7 +2126,7 @@ class GraphRegistry():
                             db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions, query_id='Q2dracb0')
                         elif 'print' in actions:
                             print('\nSQL commit query:\n\n')
-                            print(sql_query_commit)
+                            print_sql(sql_query_commit, title='Q2dracb0')
                             print('\n')
 
                 # Print status
@@ -2723,8 +2722,7 @@ class GraphRegistry():
                         # Print evaluation query
                         if 'print' in actions:
                             print('\nSQL evaluation query:\n\n')
-                            print(sql_query_eval)
-                            print('\n')
+                            print_sql(sql_query_eval, title='y9GdvZ4W')
 
                         # Execute evaluation query
                         out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='y9GdvZ4W')
@@ -2746,7 +2744,7 @@ class GraphRegistry():
                         db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
                     elif 'print' in actions:
                         print('\nSQL commit query:\n\n')
-                        print(sql_query_commit)
+                        print_sql(sql_query_commit, title='ERWG42')
                         print('\n')
 
                 # Print status
@@ -3315,7 +3313,7 @@ class GraphRegistry():
 
                 # Print evaluation query
                 if 'print' in actions:
-                    print(sql_query_eval)
+                    print_sql(sql_query_eval, title='8nZVFGbc')
 
                 # Execute evaluation query
                 out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='8nZVFGbc')
@@ -3341,7 +3339,7 @@ class GraphRegistry():
 
                 # Print commit query
                 if 'print' in actions:
-                    print(sql_query_commit)
+                    print_sql(sql_query_commit, title='Mn0to7TQ')
 
                 # Execute commit query in shell
                 # Note: 'execute_query_in_chunks' doesn't work with UNIONs
@@ -3848,7 +3846,7 @@ class GraphRegistry():
                     # Print evaluation query
                     if 'print' in actions:
                         print('\nExecuting query:')
-                        print(sql_eval_query)
+                        print_sql(sql_eval_query, title='f3LmCRzV')
 
                     # Execute evaluation query
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_eval_query, query_id='f3LmCRzV')
@@ -3858,7 +3856,7 @@ class GraphRegistry():
 
             # Print commit query
             if 'print' in actions:
-                print(sql_commit_query)
+                print_sql(sql_commit_query, title='wAbL4D8i')
 
             # Commit query
             if 'commit' in actions and sql_commit_query is not None:
@@ -3954,7 +3952,7 @@ class GraphRegistry():
 
                     # Print average score calculation query
                     if 'print' in actions:
-                        print(sql_query_avg)
+                        print_sql(sql_query_avg, title='gs1ieZYM')
 
                     # Execute average score calculation
                     if 'commit' in actions:
@@ -4389,6 +4387,28 @@ class GraphRegistry():
             table_name_sem = f"Index_D_{doc_type}_L_{link_type}_T_SEM"
             table_name_mix = f"Index_D_{doc_type}_L_{link_type}_T_MIX"
 
+            # Only create/use MIX views for pairs explicitly listed in mixed-scoring-tuples.
+            # Otherwise a stale ORG table can cause an on-demand MIX view to be created for a
+            # pair that should be SEM-only, leading to expensive and incorrect ES cache queries.
+            configured_mix_pairs = set(dynsql.doclink_types_mix)
+            if (doc_type, link_type) not in configured_mix_pairs:
+                # If a stale MIX view already exists, drop it so horizontal_patch_elasticsearch
+                # falls back to the correct ORG/SEM branch instead of querying the invalid view.
+                table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix, exclude_views=False)
+                if table_exists_mix:
+                    sysmsg.info(f"🗑️  Dropping stale MIX view for {doc_type} --> {link_type} (not in configured SEM∩ORG pairs).")
+                    db.execute_query_in_shell(
+                        engine_name='xaas_coresrv',
+                        query=f"DROP VIEW IF EXISTS {glbcfg.schema_graphsearch_test}.{table_name_mix}",
+                        query_id='xY7gHv2K'
+                    )
+                else:
+                    # sysmsg.trace(
+                    #     f"Skipping MIX view for {doc_type} --> {link_type}: not in configured SEM∩ORG pairs."
+                    # )
+                    pass
+                return False
+
             # Generate 'table exists' flags
             table_exists_org = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
             table_exists_sem = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
@@ -4414,8 +4434,8 @@ class GraphRegistry():
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
-            # Get intersection between doclink tuples of semantic and organisational types
-            doclinks_to_process = sorted(list(set(dynsql.doclink_types_sem) & set(dynsql.doclink_types_org)))
+            # Get mixed doclink tuples from config_scores.json
+            doclinks_to_process = sorted(list(set(dynsql.doclink_types_mix)))
 
             # Loop over all doclink tuples
             for doc_type, link_type in tqdm(doclinks_to_process):
@@ -5109,7 +5129,7 @@ class GraphRegistry():
                     # Print query
                     if 'print' in actions:
                         print("\nExecuting query:\n")
-                        print(sql_query_eval, '\n')
+                        print_sql(sql_query_eval, title='hpFZ8RAT')
 
                     # Execute evaluation query
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='hpFZ8RAT') # TODO: add verbose
@@ -5200,7 +5220,7 @@ class GraphRegistry():
 
                 # Print query
                 if 'print' in actions:
-                    print(sql_query)
+                    print_sql(sql_query, title='sfag24G')
 
                 # Evaluate query
                 if 'eval' in actions:
@@ -5515,7 +5535,7 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print(sql_query_eval)
+                        print_sql(sql_query_eval)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -5548,7 +5568,7 @@ class GraphRegistry():
 
                 # Print the commit query
                 if 'print' in actions:
-                    print(sql_query_commit)
+                    print_sql(sql_query_commit, title='T4VTvBv6')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -5648,7 +5668,7 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print(sql_query_eval)
+                        print_sql(sql_query_eval)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -5697,7 +5717,7 @@ class GraphRegistry():
 
                 # Print the commit query
                 if 'print' in actions:
-                    print(sql_query_commit)
+                    print_sql(sql_query_commit, title='vdEk9bpn')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -5933,7 +5953,7 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print(sql_query_eval)
+                        print_sql(sql_query_eval)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -5954,7 +5974,7 @@ class GraphRegistry():
 
                 # Print the commit query
                 if 'print' in actions:
-                    print(sql_query_commit)
+                    print_sql(sql_query_commit, title='FCQgBmb2')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -6176,7 +6196,7 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print(sql_query_eval)
+                        print_sql(sql_query_eval)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -6214,7 +6234,7 @@ class GraphRegistry():
 
                 # Print the commit query
                 if 'print' in actions:
-                    print(sql_query_commit)
+                    print_sql(sql_query_commit, title='Z16jRm9j')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -6683,8 +6703,8 @@ class GraphRegistry():
                     # Print the evaluation queries
                     if 'print' in actions:
                         print(f"\n🔍 Evaluation queries for {target_table_path}:")
-                        print(sql_query_eval_1)
-                        print(sql_query_eval_2)
+                        print_sql(sql_query_eval_1, title='z0rFNfM5')
+                        print_sql(sql_query_eval_2, title='oxyoF81R')
                         # print(sql_query_eval_3)
 
                     # Execute the evaluation queries
@@ -6906,7 +6926,7 @@ class GraphRegistry():
                     # Print the evaluation query
                     if 'print' in actions:
                         print(f"\n🔍 Evaluation query for {t}:") 
-                        print(sql_query_eval)
+                        print_sql(sql_query_eval, title='LLzeD3NV')
 
                     # Execute the evaluation query
                     out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='LLzeD3NV')

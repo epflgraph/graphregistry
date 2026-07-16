@@ -566,6 +566,9 @@ class ScoresConfig:
             for edge_tuple in self.settings['scored_edge_tuples'][edge_class]:
                 self.settings['scored_edge_tuple_to_class_mapping'][tuple(edge_tuple)] = edge_class
 
+        # Fetch mixed-scoring tuples (pairs that should use a MIX view for ES cache)
+        self.settings['mixed_scoring_tuples'] = [tuple(t) for t in scores_config.get('mixed-scoring-tuples', [])]
+
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "ScoresConfig":
         """Create a configuration instance from a JSON file."""

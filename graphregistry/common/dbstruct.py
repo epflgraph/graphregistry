@@ -203,6 +203,12 @@ class DynamicSQL:
         self.doclink_types_org += [tuple(reversed(t)) for t in p2c_tuples if t[0]!=t[1]]
         self.doclink_types_org  = sorted(self.doclink_types_org)
 
+        # Generate complete list of mixed (ORG+SEM) doclink tuples from config_scores.json
+        mixed_tuples = get_scores_config().settings['mixed_scoring_tuples']
+        self.doclink_types_mix  = [tuple(t) for t in mixed_tuples]
+        self.doclink_types_mix += [tuple(reversed(t)) for t in mixed_tuples if t[0]!=t[1]]
+        self.doclink_types_mix  = sorted(list(set(self.doclink_types_mix)))
+
         #--------------------#
         # Initialise objects #
         #--------------------#
