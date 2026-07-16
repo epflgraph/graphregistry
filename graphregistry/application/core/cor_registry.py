@@ -5962,7 +5962,16 @@ class GraphRegistry():
                     # Return if there are no rows to patch
                     if rows_to_patch == 0:
                         return
-                    # Else, execute the query in chunks
+                    # Small patches: run directly to avoid execute_query_in_chunks iterating
+                    # over a huge sparse row_id range and issuing thousands of shell commands.
+                    elif rows_to_patch <= 10000:
+                        db.execute_query_in_shell(
+                            engine_name = self.engine_name,
+                            query       = sql_query_commit,
+                            query_id    = 'FCQgBmb2',
+                            verbose     = 'print' in actions
+                        )
+                    # Large patches: keep chunking
                     else:
                         db.execute_query_in_chunks(
                             engine_name   = self.engine_name,
