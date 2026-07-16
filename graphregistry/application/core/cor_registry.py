@@ -4396,10 +4396,10 @@ class GraphRegistry():
 
             # Cannot create MIX if either source table is missing
             if not (table_exists_org and table_exists_sem):
-                sysmsg.trace(
-                    f"Cannot create MIX view for {doc_type} --> {link_type}. "
-                    f"ORG exists: {table_exists_org}, SEM exists: {table_exists_sem}."
-                )
+                # sysmsg.trace(
+                #     f"Cannot create MIX view for {doc_type} --> {link_type}. "
+                #     f"ORG exists: {table_exists_org}, SEM exists: {table_exists_sem}."
+                # )
                 return False
 
             # Already exists
