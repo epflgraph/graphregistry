@@ -3369,7 +3369,7 @@ class GraphRegistry():
                 'calculated_scores/degree_scores',
             ):
                 config_json = GraphRegistry.Orchestration.TypeFlags().get_config_json()
-                if local_path == 'calculated_fields/obj':
+                if local_path in ('calculated_fields/obj', 'graph_traversals'):
                     active_node_types = {
                         node_type.lower()
                         for node_type, process_fields, _ in config_json['nodes']
@@ -3406,12 +3406,19 @@ class GraphRegistry():
                         )
                         continue
                 elif local_path == 'graph_traversals':
-                    formula_edges = self._get_edge_types_from_traversal_formula(formula_name)
-                    inactive_edges = [e for e in formula_edges if e not in active_edge_types]
-                    if inactive_edges:
+                    # For traversals, require every non-ontology object type in the path to be
+                    # active for fields. Ontology types (concept/category) are ignored because
+                    # their activation is implicit via the object side.
+                    formula_node_types = self._get_node_types_from_traversal_formula(formula_name)
+                    non_ontology_types = [
+                        t for t in formula_node_types
+                        if t not in ('concept', 'category')
+                    ]
+                    inactive_types = [t for t in non_ontology_types if t not in active_node_types]
+                    if inactive_types:
                         sysmsg.info(
                             f"⏭️  Skipping traversal formula '{formula_name}': "
-                            f"edge(s) {inactive_edges} are not in active fields edge types."
+                            f"object type(s) {inactive_types} are not in active fields node types."
                         )
                         continue
                 elif local_path == 'calculated_fields/obj2obj':
@@ -3466,6 +3473,23 @@ class GraphRegistry():
             for i in range(len(path_types) - 1):
                 edges.append(tuple(sorted([path_types[i].lower(), path_types[i + 1].lower()])))
             return edges
+
+        # Helper: extract node types from a traversal formula filename
+        def _get_node_types_from_traversal_formula(self, formula_name):
+            """
+            Parses a traversal formula filename and returns the node/object types in the path.
+
+            Examples:
+                '003.publication-concept.concept_detection'
+                    -> ['publication', 'concept']
+                '004.person-publication-concept.concept_detection'
+                    -> ['person', 'publication', 'concept']
+            """
+            parts = formula_name.split('.')
+            if len(parts) < 2 or '-' not in parts[1]:
+                return []
+
+            return [t.lower() for t in parts[1].split('-')]
 
         # Helper: extract edge type from an obj2obj calculated field formula filename
         def _get_edge_type_from_obj2obj_formula(self, formula_name):
