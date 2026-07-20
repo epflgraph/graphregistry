@@ -3,24 +3,36 @@
 -- ==============================================
 
 -- ======================= Graph traversal: Unit-Person affiliation edges (CREATE TABLE)
-CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Unit_N_Person_T_Affiliation (
-                           institution_id VARCHAR(255) NOT NULL,
-                           unit_id        VARCHAR(255) NOT NULL,
-                           person_id      VARCHAR(255) NOT NULL,
-                           position_group VARCHAR(255) NOT NULL,
-                           PRIMARY KEY (institution_id, unit_id, person_id),
-                           KEY institution_id (institution_id),
-                           KEY unit_id (unit_id),
-                           KEY person_id (person_id),
-                           KEY position_group (position_group));
+CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
+                            unit_id        VARCHAR(255) NOT NULL,
+                            person_id      VARCHAR(255) NOT NULL,
+                            position_group VARCHAR(255) NOT NULL,
+                            to_process     TINYINT(4) NOT NULL DEFAULT 0,
+                            deleted        TINYINT(4) NOT NULL DEFAULT 0,
+                            row_id         BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+                            PRIMARY KEY (row_id),
+                            UNIQUE KEY unique_key (unit_id, person_id),
+                            KEY unit_id (unit_id),
+                            KEY person_id (person_id),
+                            KEY position_group (position_group),
+                            KEY to_process (to_process),
+                            KEY deleted (deleted));
+
+-- ============ Cleanup: Reset to_process flags
+         UPDATE [[traversals]].Unit_Person__Affiliation
+            SET to_process = 0
+          WHERE to_process = 1;
+
+-- ============ TODO: set deleted flags for relevant edges
 
 -- ============ Graph traversal: Unit-Person affiliation edges (REPLACE)
-   REPLACE INTO [[graph_cache]].Traversal_N_Unit_N_Person_T_Affiliation
-         SELECT p2u.to_institution_id   AS institution_id,
-                p2u.to_object_id        AS unit_id,
+   REPLACE INTO [[traversals]].Unit_Person__Affiliation
+                (unit_id, person_id, position_group, to_process)
+         SELECT p2u.to_object_id        AS unit_id,
                 p2u.from_object_id      AS person_id,
-                f2.from_field_value     AS position_group
-                
+                f2.from_field_value     AS position_group,
+                1 AS to_process
+
            FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
 
      INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
@@ -30,7 +42,7 @@ CREATE TABLE IF NOT EXISTS [[graph_cache]].Traversal_N_Unit_N_Person_T_Affiliati
      INNER JOIN [[registry]].Edges_N_Object_N_Object_T_ChildToParent p2u
              ON ( tp.from_institution_id,  tp.from_object_type,  tp.from_object_id,    tp.to_institution_id,    tp.to_object_type,    tp.to_object_id)
               = (p2u.from_institution_id, p2u.from_object_type, p2u.from_object_id,   p2u.to_institution_id,   p2u.to_object_type,   p2u.to_object_id)
-     
+
      INNER JOIN [[registry]].Data_N_Object_N_Object_T_CustomFields cf
              ON ( cf.from_institution_id,  cf.from_object_type,  cf.from_object_id,    cf.to_institution_id,    cf.to_object_type,    cf.to_object_id)
               = (p2u.from_institution_id, p2u.from_object_type, p2u.from_object_id,   p2u.to_institution_id,   p2u.to_object_type,   p2u.to_object_id)
