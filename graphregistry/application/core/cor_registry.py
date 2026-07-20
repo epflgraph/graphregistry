@@ -76,6 +76,13 @@ def resolve_repo_path(p: Union[str, Path]) -> Path:
 # Resolve SQL Formulas folder path
 SQL_FORMULAS_PATH = resolve_repo_path('database/formulas')
 
+# Short aliases for formula folder names (e.g. --formula_path=traversals/... -> graph_traversals)
+SQL_FORMULAS_FOLDER_ALIASES = {
+    'fields':     'calculated_fields',
+    'traversals': 'graph_traversals',
+    'scores':     'calculated_scores',
+}
+
 # Resolve Elasticsearch export path
 ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_export_path"])
 
@@ -3562,8 +3569,39 @@ class GraphRegistry():
 
             return None
 
+        # Apply a single SQL formula identified by a path relative to SQL_FORMULAS_PATH
+        def apply_formula_by_path(self, formula_path, actions=('eval',)):
+            """
+            Resolve a formula path relative to database/formulas and apply it.
+
+            Args:
+                formula_path: Path relative to database/formulas, e.g.
+                    'traversals/formula.007.course-lecture-slide-concept.concept_detection'.
+                actions: Tuple of actions to perform: print, eval, commit.
+            """
+            # Allow omitting the .sql extension
+            if not formula_path.endswith('.sql'):
+                formula_path = f"{formula_path}.sql"
+
+            # Resolve folder aliases (e.g. traversals -> graph_traversals)
+            parts = formula_path.split('/')
+            if parts and parts[0] in SQL_FORMULAS_FOLDER_ALIASES:
+                parts[0] = SQL_FORMULAS_FOLDER_ALIASES[parts[0]]
+            formula_path = '/'.join(parts)
+
+            full_path = SQL_FORMULAS_PATH / formula_path
+            if not full_path.is_file():
+                sysmsg.error(f"Formula file not found: {full_path}")
+                return
+            self.apply_formula_from_file(file_path=str(full_path), actions=actions)
+
         # Apply formula from SQL file
-        def apply_formula_from_file(self, file_path, verbose=False):
+        def apply_formula_from_file(self, file_path, verbose=False, actions=None):
+
+            # Backward-compatible default actions when called via the legacy verbose API
+            if actions is None:
+                actions = ('print', 'commit') if verbose else ('commit',)
+            actions = tuple(actions)
 
             # Extract formula name from file path
             formula_name = re.findall(r'formula\.(.*)\.sql$', file_path)[0]
@@ -3572,7 +3610,8 @@ class GraphRegistry():
             formula_type = re.findall(r'(.*)\/formula\..*\.sql$', file_path.replace(f'{SQL_FORMULAS_PATH}/', ''))[0]
 
             # Print status
-            sysmsg.trace(f"⚙️  Applying formula: '{formula_name}' ...")
+            if 'print' in actions or 'eval' in actions or verbose:
+                sysmsg.trace(f"⚙️  Applying formula: '{formula_name}' ...")
 
             # Read the SQL formula
             with open(file_path, 'r') as file:
@@ -3629,16 +3668,21 @@ class GraphRegistry():
                     key_column_names  = key_column_names,
                     upd_column_names  = upd_column_names,
                     eval_column_names = eval_column_names,
-                    actions           = ('print', 'commit') if verbose else ('commit'),
-                    verbose           = verbose,
+                    actions           = actions,
+                    verbose           = 'print' in actions,
                     query_id          = 'D9NxAGY2'
                 )
 
             # Execute as direct execution?
             elif execution_type == 'direct execution':
 
-                # Execute the SQL formula
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=verbose, query_id='Neg00cQJ')
+                # Print the formula when requested (avoid double-printing during commit)
+                if 'print' in actions:
+                    print_sql(sql_formula, title='Neg00cQJ')
+
+                # Execute the SQL formula when requested
+                if 'commit' in actions:
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=False, query_id='Neg00cQJ')
 
             # Unknown execution type
             else:

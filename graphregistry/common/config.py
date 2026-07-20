@@ -49,6 +49,7 @@ class GlobalConfig:
                 'registry'    : self.settings['mysql']['db_schema_names']['registry'],
                 'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
                 'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
+                'traversals'  : self.settings['mysql']['db_schema_names'].get('traversals', 'graph_traversals'),
                 'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
                 'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
@@ -72,6 +73,7 @@ class GlobalConfig:
         self.schema_registry = self.mysql_schema_names['test']['registry']
         self.schema_lectures = self.mysql_schema_names['test']['lectures']
         self.schema_airflow  = self.mysql_schema_names['test']['airflow']
+        self.schema_traversals = self.mysql_schema_names['test']['traversals']
         self.schema_es_cache = self.mysql_schema_names['test']['es_cache']
         self.schema_graph_cache_test = self.mysql_schema_names['test']['graph_cache']
         self.schema_graph_cache_prod = self.mysql_schema_names['prod']['graph_cache']

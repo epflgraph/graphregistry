@@ -16,13 +16,16 @@ def cmd_cache_update(args):
     print("🖥️  ~ Graph Registry CLI. Update cache from registry tables.")
 
     # Get input options
-    formulas = tuple(args.formulas.split(',')) if args.formulas else ()
-    actions  = tuple(args.actions.split(','))  if args.actions  else ()
-    matrix   = args.matrix if 'matrix' in args else False
+    formulas     = tuple(args.formulas.split(','))    if args.formulas     else ()
+    actions      = tuple(args.actions.split(','))     if args.actions      else ()
+    matrix       = args.matrix       if 'matrix'       in args else False
+    formula_path = args.formula_path if 'formula_path' in args else None
 
     # -----------------#
     # Execute commands #
     # -----------------#
+    if formula_path:
+        registry.cachemanager.apply_formula_by_path(formula_path=formula_path, actions=actions)
     if 'fields' in formulas and 'commit' in actions:
         registry.cachemanager.apply_calculated_field_formulas(verbose='print' in actions)
     if 'views' in formulas:
