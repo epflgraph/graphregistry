@@ -380,7 +380,7 @@ cli_definitions: Dict[str, Any] = {
                 args = [
                     dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict expiration to a single document type (default: all types).")),
                     dict(flags=('--older_than',    ), kwargs=dict(required=False, type=int, default=None, help="Expire objects last cached more than N days ago (default: 90).")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to expire per document type (default: 100).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help=f"Maximum number of objects to expire per document type (default: 100, max: see config limits.limit_per_type_max).")),
                     dict(flags=('--count',   '-c'), kwargs=dict(action='store_true', default=False, help="Only show how many objects would be affected (do not modify data).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
@@ -391,7 +391,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_refresh,
                 args = [
                     dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict refresh to a single document type (default: all types).")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config limits.limit_per_type_max).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', default=False, help="Recompute and persist checksums for matching objects.")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],

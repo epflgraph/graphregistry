@@ -1,10 +1,28 @@
 # graphregistry/entrypoints/cli/cmd_airflow.py
 import json
 from pathlib import Path
+from loguru import logger as sysmsg
 
 # #===========================#
 # # Command handler functions #
 # #===========================#
+
+#---------------------------------------------------#
+# Helper: Validate limit_per_type against config cap #
+#---------------------------------------------------#
+def _validate_limit_per_type(limit_per_type, limit_per_type_max):
+    """
+    Refuse to process if limit_per_type exceeds the configured maximum.
+    Returns True when the value is acceptable (including None), False otherwise.
+    """
+    if limit_per_type is not None and limit_per_type > limit_per_type_max:
+        sysmsg.warning(
+            f"limit_per_type ({limit_per_type}) exceeds LIMIT_PER_TYPE_MAX ({limit_per_type_max}). "
+            f"Large values may cause instability and frozen SQL operations that take a long time to rollback. "
+            f"Refusing to process."
+        )
+        return False
+    return True
 
 #-------------------------------------------#
 # Handler: Sync new data into airflow table #
@@ -214,8 +232,13 @@ def cmd_airflow_expire(args):
 
     # Fetch context objects
     gr = args.ctx.registry
+    glbcfg = args.ctx.global_config
     c = args.count
     v = args.verbose
+
+    # Validate safety limits
+    if not _validate_limit_per_type(args.limit_per_type, glbcfg.limit_per_type_max):
+        return
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")
@@ -255,8 +278,13 @@ def cmd_airflow_refresh(args):
 
     # Fetch context objects
     registry = args.ctx.registry
+    glbcfg = args.ctx.global_config
     r = args.refresh_checksums
     v = args.verbose
+
+    # Validate safety limits
+    if not _validate_limit_per_type(args.limit_per_type, glbcfg.limit_per_type_max):
+        return
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")

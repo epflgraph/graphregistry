@@ -80,6 +80,9 @@ class GlobalConfig:
         self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
         self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
 
+        # Safety limits
+        self.limit_per_type_max = self.settings.get('limits', {}).get('limit_per_type_max', 1000)
+
         # Object type to schema mapping
         self.object_type_to_schema = {
             'Category'       : self.schema_ontology,
