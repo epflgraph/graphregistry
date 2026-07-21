@@ -28,12 +28,16 @@ mysql:
     registry: graph_registry
     lectures: graph_lectures
     airflow: graph_airflow
+    traversals: graph_traversals
     elasticsearch_cache: elasticsearch_cache
     graph_cache_test: graph_cache
-    graph_cache_prod: graph_cache
+    graph_cache_prod: graph_cache_prod
     graphsearch_test: graphsearch_test
     graphsearch_prod: graphsearch_prod
     website: website
+
+limits:
+  limit_per_type_max: 1000
 
 elasticsearch:
   test_env:
