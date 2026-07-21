@@ -19,8 +19,8 @@
                            THEN score END AS score_1,
 
                       CASE WHEN (object_type = 'Person'      AND calculation_type = 'abstract sum-scores aggregation (bounded)')
-                             OR (object_type = 'Course'      AND calculation_type = 'slide sum-scores aggregation (bounded)')
-                             OR (object_type = 'Lecture'     AND calculation_type = 'slide sum-scores aggregation (bounded)')
+                             OR (object_type = 'Course'      AND calculation_type = 'average coverage over all lectures (bounded)')
+                             OR (object_type = 'Lecture'     AND calculation_type = 'percentage coverage in lecture (bounded)')
                              OR (object_type = 'MOOC'        AND calculation_type = 'people sum-scores aggregation (bounded)')
                              OR (object_type = 'Unit'        AND calculation_type = 'manual mapping on user input')
                            THEN score END AS score_2,
