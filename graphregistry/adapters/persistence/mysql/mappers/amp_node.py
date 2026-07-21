@@ -111,9 +111,10 @@ class MySQLNodeMapper:
     @staticmethod
     def to_basic_row(node: Node) -> dict[str, Any]:
         return {
-            'object_title' : node.title,
-            'text_source'  : node.text_source,
-            'raw_text'     : node.raw_text,
+            'object_title'   : node.title,
+            'text_source'    : node.text_source,
+            'raw_text'       : node.raw_text,
+            'record_deleted' : 0
         }
 
     @staticmethod
