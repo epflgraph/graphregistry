@@ -29,6 +29,7 @@ class TestMySQLEdgeFieldMapper:
         assert row["context"] == "taught_by"
         assert row["field_name"] == "semester"
         assert row["field_value"] == "fall"
+        assert row["record_deleted"] == 0
 
 
 class TestMySQLEdgeMapper:
@@ -41,6 +42,15 @@ class TestMySQLEdgeMapper:
         edge = MySQLEdgeMapper.from_parts(key=key, custom_field_rows=[("en", "semester", "fall")])
         assert edge.key == key
         assert len(edge.field_list.item_list) == 1
+
+    def test_to_basic_row_sets_record_deleted(self) -> None:
+        key = EdgeKey(
+            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
+            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            context="taught_by",
+        )
+        edge = Edge(key=key)
+        assert MySQLEdgeMapper.to_basic_row(edge) == {"record_deleted": 0}
 
     def test_to_simplified_dict_roundtrip(self) -> None:
         key = EdgeKey(

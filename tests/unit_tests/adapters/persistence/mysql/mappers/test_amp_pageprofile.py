@@ -65,4 +65,5 @@ class TestMySQLPageProfileMapper:
         assert row["short_code"] == "ML"
         assert row["name_en_value"] == "Machine Learning"
         assert row["name_en_is_auto_generated"] == 1
+        assert row["record_deleted"] == 0
         assert "name_fr_value" not in row

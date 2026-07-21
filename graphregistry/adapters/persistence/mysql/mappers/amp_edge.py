@@ -64,6 +64,7 @@ class MySQLEdgeFieldMapper:
             'field_language'      : field.key.field_language,
             'field_name'          : field.key.field_name,
             'field_value'         : field.field_value,
+            'record_deleted'      : 0,
         }
 
     @staticmethod
@@ -113,6 +114,17 @@ class MySQLEdgeMapper:
         Build an Edge from the separate SQL result parts.
         """
         return Edge(key=key, field_list=MySQLEdgeFieldMapper.from_rows(custom_field_rows, edge_key=key))
+
+    @staticmethod
+    def to_basic_row(edge: Edge) -> dict[str, Any]:
+        """
+        Return the persistence row for the edge shell.
+
+        The edge key columns are handled by the repository upsert; this row
+        contains only the non-key fields that must be reset on save, including
+        record_deleted so that re-saving undeletes a soft-deleted edge.
+        """
+        return {'record_deleted': 0}
 
     @staticmethod
     def to_custom_field_rows(edge: Edge) -> list[dict[str, Any]]:

@@ -114,6 +114,7 @@ class MySQLPageProfileMapper:
         row: dict[str, Any] = {
             "short_code": profile.short_code,
             "is_visible": int(profile.is_visible),
+            "record_deleted": 0,
         }
 
         for lang in cls.LANGUAGES:

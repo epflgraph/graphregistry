@@ -25,6 +25,7 @@ class MySQLConceptMapper:
             "concept_id"     : scored_concept.concept.id,
             "text_source"    : text_source,
             "score"          : scored_concept.score,
+            "record_deleted" : 0,
         }
 
     @staticmethod

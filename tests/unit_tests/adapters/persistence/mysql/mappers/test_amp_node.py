@@ -31,6 +31,7 @@ class TestMySQLNodeFieldMapper:
             "field_language": "en",
             "field_name": "level",
             "field_value": "master",
+            "record_deleted": 0,
         }
 
 
@@ -63,6 +64,7 @@ class TestMySQLNodeMapper:
             "object_title": "ML",
             "text_source": "user",
             "raw_text": "text",
+            "record_deleted": 0,
         }
 
     def test_to_scored_concepts_rows(self) -> None:
@@ -83,6 +85,7 @@ class TestMySQLNodeMapper:
             "concept_id": "c1",
             "text_source": "detected",
             "score": 0.9,
+            "record_deleted": 0,
         }]
 
     def test_simplified_dict_roundtrip(self) -> None:

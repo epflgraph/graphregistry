@@ -132,6 +132,10 @@ class MySQLEdgeRepository(EdgeRepository):
         # Upsert edge shell #
         #-------------------#
 
+        # Convert Edge object to the basic shell row; this includes record_deleted=0
+        # so that re-saving a previously soft-deleted edge resurrects it.
+        basic_row = MySQLEdgeMapper.to_basic_row(edge)
+
         # Resolve placeholders in template query and execute upsert query for the edge shell (basic fields)
         self.db.execute_upsert_row(
             engine_name       = engine_name,
@@ -155,8 +159,8 @@ class MySQLEdgeRepository(EdgeRepository):
                 edge.key.to_object_id,
                 edge.key.context,
             ],
-            upd_column_names  = [],
-            upd_column_values = [],
+            upd_column_names  = list(basic_row.keys()),
+            upd_column_values = list(basic_row.values()),
             actions           = actions,
         )
 

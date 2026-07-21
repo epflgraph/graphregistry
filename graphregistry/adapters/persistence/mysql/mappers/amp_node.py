@@ -37,6 +37,7 @@ class MySQLNodeFieldMapper:
             'field_language' : field.key.field_language,
             'field_name'     : field.key.field_name,
             'field_value'    : field.field_value,
+            'record_deleted' : 0,
         }
 
     @staticmethod
