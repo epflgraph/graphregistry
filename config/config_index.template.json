@@ -10,6 +10,7 @@
         "docs" : {
             "Category"    : ["depth"],
             "Course"      : ["latest_academic_year"],
+            "Exercise"    : ["breadcrumb_ontology", "difficulty", "question_type", ["en", "pdf_document_url"], ["fr", "pdf_document_url"]],
             "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
             "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
             "Notebook"    : ["notebook_type", "language", "repository_id", "html_document_url"],
@@ -167,6 +168,11 @@
         "sort_number_per_academic_year" : "char",
         "latest_teaching_assignment_year" : "char",
         "is_active_affiliation" : "bool",
-        "current_position_rank" : "bool"
+        "current_position_rank" : "bool",
+        "breadcrumb_ontology" : "text",
+        "difficulty" : "char",
+        "question_type" : "char",
+        "pdf_document_url_en" : "text",
+        "pdf_document_url_fr" : "text"
     }
 }
