@@ -8,21 +8,21 @@
 # Step 2: Reset and config airflow
 # graphregistry airflow reset --options=airflow,cache
 # graphregistry airflow config --typeflags=@airflow_config.json
+# graphregistry airflow status
 
 # Step 3: Sync new data
 # graphregistry airflow sync
 # graphregistry airflow update_checksums
 
 # Step 4: Decide what to process
-graphregistry airflow expire --older_than=30 --limit_per_type=10000
+graphregistry airflow expire --older_than=1 --limit_per_type=100
 graphregistry airflow refresh --limit_per_type=100
 graphregistry airflow status
 
 # Step 5: Knowledge graph generation sequence
-graphregistry cache update --formulas=fields,views,traversals,scores --actions=commit
-# graphregistry cache update --matrix --actions=commit,eval
+graphregistry cache update --formulas=fields,views,traversals,scores --actions=commit,eval
+graphregistry cache update --matrix --actions=commit,eval
 graphregistry index build --actions=commit,eval
-# graphregistry index mixed_views
 graphregistry index patch --actions=commit,eval
 # scripts/out_tables_stats.sh
 
@@ -32,12 +32,12 @@ graphregistry airflow update_dates --actions=commit
 graphregistry airflow reset --options=airflow,cache
 
 # Step 7: Clean up loose ends in graph cache, search, an elasticsearch indexes
-graphregistry data delete_loose_ends -ul -is --actions eval,commit
+# graphregistry data delete_loose_ends -rg -ul --actions eval,commit
 
 # ♻️ Repeat Steps 4-6 until no more left to process
 
 # # Step 8: ElasticSearch index creation and import
-# graphregistry index generate --target=elasticsearch --index_date=2026-05-21 -r -f
+# graphregistry index generate --target=elasticsearch --index_date=2026-07-14 -r -f
 # graphregistry es import --env=xaas_coresrv \
-#     --input_folder=/home/dockerhost/data/es_exports/2026-05-21/es_fullindex_2026-05-21 \
-#     --rename_to=graphsearch_test_2026-05-21_sample -r -f
+#     --input_folder=/home/dockerhost/data/es_exports/2026-07-14/es_fullindex_2026-07-14 \
+#     --rename_to=graphsearch_test_2026-07-14_sample -r -f

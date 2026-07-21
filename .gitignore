@@ -294,3 +294,13 @@ data
 .opencode
 opencode.sh
 resources
+airflow_config.json
+flourish_db_copy.sh
+nohup.out
+request.json
+run.sh
+config/_DELETE_config_index.prod.json
+config/config_global.template.yaml
+config/config_index.template.json
+scripts/run2.sh
+scripts/weird_bug.txt
