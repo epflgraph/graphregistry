@@ -30,10 +30,10 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Publication_Concept__ConceptDetection 
     REPLACE INTO [[traversals]].Publication_Concept__ConceptDetection
                  (publication_id, concept_id, score, idx_publication_id, to_process)
 
-          SELECT a2c.object_id           AS publication_id,
-                 a2c.concept_id          AS concept_id,
-                 a2c.score               AS score,
-                 LEFT(publication_id, 2) AS idx_publication_id
+          SELECT a2c.object_id          AS publication_id,
+                 a2c.concept_id         AS concept_id,
+                 a2c.score              AS score,
+                 LEFT(a2c.object_id, 2) AS idx_publication_id,
                  1 AS to_process
 
             FROM [[airflow]].Operations_N_Object_T_FieldsChanged tp
