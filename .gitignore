@@ -304,3 +304,5 @@ config/config_global.template.yaml
 config/config_index.template.json
 scripts/run2.sh
 scripts/weird_bug.txt
+list_tables.py
+update_object_type_columns.py
