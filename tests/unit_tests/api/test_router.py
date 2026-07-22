@@ -148,6 +148,21 @@ class TestEdgeEndpoints:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
+    def test_edges_save_defaults_context_to_part_of(self, api_client: TestClient) -> None:
+        payload: dict[str, Any] = {
+            "edge": {
+                "from_type": "Course",
+                "from_id": "CS-433",
+                "to_type": "Person",
+                "to_id": "p-1",
+            }
+        }
+        response = api_client.post("/api/edges/save", json=payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["saved_key"]["context"] == "part of"
+
     def test_edges_exists(self, api_client: TestClient) -> None:
         api_client.post("/api/edges/save", json={
             "edge": {

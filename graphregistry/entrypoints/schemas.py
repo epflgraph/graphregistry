@@ -64,7 +64,7 @@ class EdgeSpec(BaseModel):
     from_id       : str
     to_type       : ObjectType
     to_id         : str
-    context       : str
+    context       : str = Field(default="part of", description="Edge context. Defaults to 'part of' when saving edges.")
     custom_fields : list[CustomFieldSpec] | None = Field(default_factory=list)
 
 class EdgeListSpec(BaseModel):
