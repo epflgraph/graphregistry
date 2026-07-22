@@ -19,7 +19,6 @@ class MySQLConceptMapper:
     @staticmethod
     def to_upsert_row(node_key: NodeKey, text_source: str | None, scored_concept: ScoredConcept) -> dict[str, Any]:
         return {
-            "institution_id" : node_key.institution_id,
             "object_type"    : node_key.object_type,
             "object_id"      : node_key.object_id,
             "concept_id"     : scored_concept.concept.id,

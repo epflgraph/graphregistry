@@ -61,7 +61,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_exists'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -98,7 +97,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_get_basic'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -120,7 +118,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_get_custom'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -136,7 +133,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_get_profile'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -173,7 +169,6 @@ class MySQLNodeRepository(NodeRepository):
             sql_query = resolve_sql_query(
                 file_path      = sql_queries_paths['registry']['commit'][f'node_get_concepts_{map_type}'],
                 registry       = schema_name,
-                institution_id = key.institution_id,
                 object_type    = key.object_type,
                 object_id      = key.object_id
             )
@@ -220,8 +215,8 @@ class MySQLNodeRepository(NodeRepository):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Nodes_N_Object",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [node.key.object_type, node.key.object_id],
             upd_column_names  = list(basic_row.keys()),
             upd_column_values = list(basic_row.values()),
             actions           = actions,
@@ -236,7 +231,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_delete_custom'],
             registry       = schema_name,
-            institution_id = node.key.institution_id,
             object_type    = node.key.object_type,
             object_id      = node.key.object_id
         )
@@ -249,9 +243,8 @@ class MySQLNodeRepository(NodeRepository):
                 engine_name       = engine_name,
                 schema_name       = schema_name,
                 table_name        = "Data_N_Object_T_CustomFields",
-                key_column_names  = ["institution_id", "object_type", "object_id", "field_language", "field_name"],
+                key_column_names  = ["object_type", "object_id", "field_language", "field_name"],
                 key_column_values = [
-                    row["institution_id"],
                     row["object_type"],
                     row["object_id"],
                     row["field_language"],
@@ -274,8 +267,8 @@ class MySQLNodeRepository(NodeRepository):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Data_N_Object_T_PageProfile",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [node.key.object_type, node.key.object_id],
             upd_column_names  = list(page_profile_row.keys()),
             upd_column_values = list(page_profile_row.values()),
             actions           = actions,
@@ -307,9 +300,8 @@ class MySQLNodeRepository(NodeRepository):
                     engine_name       = engine_name,
                     schema_name       = schema_name,
                     table_name        = table_name,
-                    key_column_names  = ["institution_id", "object_type", "object_id", "concept_id", "text_source"],
+                    key_column_names  = ["object_type", "object_id", "concept_id", "text_source"],
                     key_column_values = [
-                        row["institution_id"],
                         row["object_type"],
                         row["object_id"],
                         row["concept_id"],
@@ -352,7 +344,6 @@ class MySQLNodeRepository(NodeRepository):
             sql_query = resolve_sql_query(
                 file_path      = sql_queries_paths['registry']['commit']['node_delete'],
                 registry       = schema_name,
-                institution_id = key.institution_id,
                 object_type    = key.object_type,
                 object_id      = key.object_id
             )
@@ -404,9 +395,8 @@ class MySQLNodeRepository(NodeRepository):
         # Construct NodeKey objects from fetched data
         node_keys = [
             NodeKey(
-                institution_id = row[0],
-                object_type    = cast(ObjectType, row[1]),
-                object_id      = row[2]
+                object_type    = cast(ObjectType, row[0]),
+                object_id      = row[1]
             ) for row in node_keys_data
         ]
 

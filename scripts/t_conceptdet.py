@@ -9,7 +9,6 @@ node_factory = NodeFactory(concept_gateway=gtw)
 
 node: Node = node_factory.create(
     key = NodeKey(
-        institution_id = 'EPFL',
         object_type    = 'Course',
         object_id      = 'MATH-101',
     ),

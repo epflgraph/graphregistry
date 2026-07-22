@@ -287,8 +287,8 @@ class DynamicSQL:
     def get_all_doc_fields(self, doc_type, index_group):
 
         # Get field list helpers
-        id_fields_wi  = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=True)
-        id_fields_woi = self.get_id_fields(unit_type='node', convention='doc-link', include_institution=False)
+        id_fields_wi  = self.get_id_fields(unit_type='node', convention='doc-link')
+        id_fields_woi = self.get_id_fields(unit_type='node', convention='doc-link')
         option_fields = list(get_index_config().settings['options'].keys())
         custom_fields = self.get_custom_fields(doc_type=doc_type, index_group=index_group)
 
@@ -311,8 +311,8 @@ class DynamicSQL:
     def get_all_doclink_fields(self, doc_type, link_type, link_subtype, index_group):
 
         # Get field list helpers
-        id_fields_wi  = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=True,  include_link_subtype=link_subtype is not None)
-        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_institution=False, include_link_subtype=link_subtype is not None or index_group=='elasticsearch')
+        id_fields_wi  = self.get_id_fields(unit_type='edge', convention='doc-link', include_link_subtype=link_subtype is not None)
+        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_link_subtype=link_subtype is not None or index_group=='elasticsearch')
         custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
         # print('==========>', "custom_fields ..... ", custom_fields)
@@ -335,49 +335,34 @@ class DynamicSQL:
     #===== ID fields =====#
 
     # General simplified method to get id-defining fields
-    def get_id_fields(self, unit_type, convention, include_institution=True, include_link_subtype=False):
+    def get_id_fields(self, unit_type, convention, include_link_subtype=False):
         if   unit_type=='node':
-            return self.get_doc_id_fields(convention=convention, include_institution=include_institution)
+            return self.get_doc_id_fields(convention=convention)
         elif unit_type=='edge':
-            return self.get_doclink_id_fields(convention=convention, include_institution=include_institution, include_link_subtype=include_link_subtype)
+            return self.get_doclink_id_fields(convention=convention, include_link_subtype=include_link_subtype)
         else:
             print("❌ Critical error [je42J1]: DynamicSQL.get_id_fields()")
             exit()
 
     # Export graphsearch doc id-defining fields for docs
-    def get_doc_id_fields(self, convention, include_institution=True):
+    def get_doc_id_fields(self, convention):
         if convention=='node-edge':
-            if include_institution:
-                return ['institution_id', 'object_type', 'object_id']
-            else:
-                return ['object_type', 'object_id']
+            return ['object_type', 'object_id']
         elif convention=='doc-link':
-            if include_institution:
-                return ['doc_institution', 'doc_type', 'doc_id']
-            else:
-                return ['doc_type', 'doc_id']
+            return ['doc_type', 'doc_id']
         else:
             print("❌ Critical error [F32gh3]: DynamicSQL.get_doc_id_fields()")
             exit()
 
     # Export graphsearch doc id-defining fields for doclinks
-    def get_doclink_id_fields(self, convention, include_institution=True, include_link_subtype=False):
+    def get_doclink_id_fields(self, convention, include_link_subtype=False):
         if convention=='node-edge':
-            if include_institution:
-                return ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
-            else:
-                return ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
+            return ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context']
         elif convention=='doc-link':
-            if include_institution:
-                if include_link_subtype:
-                    return ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
-                else:
-                    return ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_id']
+            if include_link_subtype:
+                return ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
             else:
-                if include_link_subtype:
-                    return ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
-                else:
-                    return ['doc_type', 'doc_id', 'link_type', 'link_id']
+                return ['doc_type', 'doc_id', 'link_type', 'link_id']
         else:
             print("❌ Critical error [KJ24rF]: DynamicSQL.get_doclink_id_fields()")
             exit()
@@ -524,9 +509,9 @@ class DynamicSQL:
 
         # Get id fields for unique key definition
         if link_type is None:
-            id_fields = self.get_doc_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+            id_fields = self.get_doc_id_fields(convention='doc-link')
         else:
-            id_fields = self.get_doclink_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+            id_fields = self.get_doclink_id_fields(convention='doc-link')
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
@@ -605,9 +590,9 @@ class DynamicSQL:
 
         # Get id fields for unique key definition
         if link_type is None:
-            id_fields = self.get_doc_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+            id_fields = self.get_doc_id_fields(convention='doc-link')
         else:
-            id_fields = self.get_doclink_id_fields(convention='doc-link', include_institution=False if index_group=='elasticsearch' else True)
+            id_fields = self.get_doclink_id_fields(convention='doc-link')
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)

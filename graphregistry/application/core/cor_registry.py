@@ -416,9 +416,9 @@ class GraphRegistry():
                     db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
                         query = f"""UPDATE {schema_name}.{table_name} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                                     USING (institution_id, object_type, object_id)
+                                     USING (object_type, object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                     USING (institution_id, object_type)
+                                     USING (object_type)
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
                                        AND tf.to_process = 1
@@ -442,11 +442,11 @@ class GraphRegistry():
                         db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
                             query = f"""UPDATE {schema_name}.{table_name} p
                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
-                                            ON ( p.{d1}_institution_id,  p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_institution_id, p.{d2}_object_type, p.{d2}_object_id)
-                                             = (fc.from_institution_id, fc.from_object_type, fc.from_object_id,  fc.to_institution_id,  fc.to_object_type,  fc.to_object_id)
+                                            ON ( p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_object_type, p.{d2}_object_id)
+                                             = (fc.from_object_type, fc.from_object_id,  fc.to_object_type,  fc.to_object_id)
                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                            ON ( p.{d1}_institution_id,  p.{d1}_object_type, p.{d2}_institution_id, p.{d2}_object_type)
-                                             = (tf.from_institution_id, tf.from_object_type,  tf.to_institution_id,  tf.to_object_type)
+                                            ON ( p.{d1}_object_type, p.{d2}_object_type)
+                                             = (tf.from_object_type,  tf.to_object_type)
                                            SET  p.to_process = 1
                                          WHERE fc.to_process = 1
                                            AND tf.to_process = 1
@@ -473,10 +473,10 @@ class GraphRegistry():
                         db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
                             query = f"""UPDATE {schema_name}.{table_name} p
                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                            ON (p.{d}_institution_id, p.{d}_object_type, p.{d}_object_id) = (se.institution_id, se.object_type, se.object_id)
+                                            ON (p.{d}_object_type, p.{d}_object_id) = (se.object_type, se.object_id)
                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                            ON ( p.from_institution_id,  p.from_object_type,  p.to_institution_id,  p.to_object_type)
-                                             = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+                                            ON ( p.from_object_type,  p.to_object_type)
+                                             = (tf.from_object_type, tf.to_object_type)
                                            SET  p.to_process = 1
                                          WHERE se.to_process = 1
                                            AND tf.to_process = 1
@@ -497,9 +497,9 @@ class GraphRegistry():
                     db.execute_query_in_shell(engine_name = 'xaas_coresrv',
                         query = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                                        ON (p.doc_institution, p.doc_type, p.doc_id) = (fc.institution_id, fc.object_type, fc.object_id)
+                                        ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                     USING (institution_id, object_type)
+                                     USING (object_type)
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
                                        AND tf.to_process = 1
@@ -521,11 +521,11 @@ class GraphRegistry():
                     db.execute_query_in_shell(engine_name='xaas_coresrv',
                         query = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
-                                        ON ( p.doc_institution,  p.doc_type,  p.doc_id, p.link_institution, p.link_type, p.link_id)
-                                         = (fc.from_institution_id, fc.from_object_type, fc.from_object_id,  fc.to_institution_id,  fc.to_object_type,  fc.to_object_id)
+                                        ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
+                                         = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                        ON ( p.doc_institution,  p.doc_type, p.link_institution, p.link_type)
-                                         = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+                                        ON (p.doc_type, p.link_type)
+                                         = (tf.from_object_type, tf.to_object_type)
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
                                        AND tf.to_process = 1
@@ -919,23 +919,23 @@ class GraphRegistry():
 
                 # Print object type flags
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                    SELECT institution_id, object_type, flag_type, to_process
+                    SELECT object_type, flag_type, to_process
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
                      WHERE to_process = 1
-                  ORDER BY institution_id, object_type, flag_type;
+                  ORDER BY object_type, flag_type;
                 """, query_id='Ghx1Go9x')
-                df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'flag_type', 'to_process'])
+                df = pd.DataFrame(out, columns=['object_type', 'flag_type', 'to_process'])
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
 
                 # Print object-to-object type flags
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                    SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, to_process
+                    SELECT from_object_type, to_object_type, to_process
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                      WHERE to_process = 1
-                  ORDER BY from_institution_id, from_object_type, to_institution_id, to_object_type;
+                  ORDER BY from_object_type, to_object_type;
                 """, query_id='NRWbEw5o')
-                df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'to_process'])
+                df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'to_process'])
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object-to-Object')
 
@@ -961,17 +961,14 @@ class GraphRegistry():
                 db.set_cells(
                     engine_name = 'xaas_coresrv',
                     schema_name = glbcfg.schema_airflow,
-                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==4 else ''}_T_TypeFlags",
+                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==2 else ''}_T_TypeFlags",
                     set         = [('to_process', to_process)],
                     where       = [
-                                    ('institution_id', object_type_key[0]),
-                                    ('object_type'   , object_type_key[1]),
+                                    ('object_type'   , object_type_key[0]),
                                     ('flag_type'     , flag_type)
-                                  ] if len(object_type_key)==2 else [
-                                    ('from_institution_id', object_type_key[0]),
-                                    ('from_object_type'   , object_type_key[1]),
-                                    ('to_institution_id'  , object_type_key[2]),
-                                    ('to_object_type'     , object_type_key[3])
+                                  ] if len(object_type_key)==1 else [
+                                    ('from_object_type'   , object_type_key[0]),
+                                    ('to_object_type'     , object_type_key[1])
                                   ],
                     verbose = verbose)
 
@@ -992,17 +989,14 @@ class GraphRegistry():
                 output = db.get_cells(
                     engine_name = 'xaas_coresrv',
                     schema_name = glbcfg.schema_airflow,
-                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==4 else ''}_T_TypeFlags",
+                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==2 else ''}_T_TypeFlags",
                     select      = ['to_process'],
                     where       = [
-                                    ('institution_id', object_type_key[0]),
-                                    ('object_type'   , object_type_key[1]),
+                                    ('object_type'   , object_type_key[0]),
                                     ('flag_type'     , flag_type)
-                                  ] if len(object_type_key)==2 else [
-                                    ('from_institution_id', object_type_key[0]),
-                                    ('from_object_type'   , object_type_key[1]),
-                                    ('to_institution_id'  , object_type_key[2]),
-                                    ('to_object_type'     , object_type_key[3])
+                                  ] if len(object_type_key)==1 else [
+                                    ('from_object_type'   , object_type_key[0]),
+                                    ('to_object_type'     , object_type_key[1])
                                   ],
                     verbose = verbose)
 
@@ -1049,21 +1043,18 @@ class GraphRegistry():
                 if 'nodes' in config_json:
                     for d in config_json['nodes']:
                         node_type, process_fields, process_scores = d
-                        institution_id = glbcfg.object_type_to_institution_id[node_type]
                         if process_fields:
-                            self.set(object_type_key=(institution_id, node_type), flag_type='fields', to_process=1)
+                            self.set(object_type_key=(node_type), flag_type='fields', to_process=1)
                         if process_scores:
-                            self.set(object_type_key=(institution_id, node_type), flag_type='scores', to_process=1)
+                            self.set(object_type_key=(node_type), flag_type='scores', to_process=1)
 
                 # Edge types
                 if 'edges' in config_json:
                     for d in config_json['edges']:
                         from_node_type, to_node_type, process_fields = d
-                        from_institution_id = glbcfg.object_type_to_institution_id[from_node_type]
-                        to_institution_id   = glbcfg.object_type_to_institution_id[to_node_type]
                         if process_fields:
-                            self.set(object_type_key=(from_institution_id, from_node_type, to_institution_id, to_node_type), to_process=1)
-                            self.set(object_type_key=(to_institution_id, to_node_type, from_institution_id, from_node_type), to_process=1)
+                            self.set(object_type_key=(from_node_type, to_node_type), to_process=1)
+                            self.set(object_type_key=(to_node_type, from_node_type), to_process=1)
 
             # Get airflow typeflags config JSON
             def get_config_json(self):
@@ -1076,10 +1067,8 @@ class GraphRegistry():
                      SELECT t1.object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t1
                  INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t2
-                      USING (institution_id, object_type)
-                      WHERE t1.institution_id IN ('Ont', 'EPFL')
-                        AND t1.flag_type = 'fields'
-                        AND t2.institution_id IN ('Ont', 'EPFL')
+                      USING (object_type)
+                      WHERE t1.flag_type = 'fields'
                         AND t2.flag_type = 'scores'
                         AND (t1.to_process = 1 OR t2.to_process = 1)
                 """
@@ -1089,12 +1078,10 @@ class GraphRegistry():
 
                 # Define SQL query for fetching edges config
                 sql_query = f"""
-                    SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
+                    SELECT DISTINCT    LEAST(from_object_type, to_object_type) AS from_object_type,
                                     GREATEST(from_object_type, to_object_type) AS to_object_type
                                FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
-                              WHERE from_institution_id IN ('Ont', 'EPFL')
-                                AND to_institution_id   IN ('Ont', 'EPFL')
-                                AND to_process = 1
+                              WHERE to_process = 1
                 """
 
                 # Execute the query
@@ -1158,33 +1145,33 @@ class GraphRegistry():
 
                     if len(object_key) == 2:
                         sql_query = f"""
-                            SELECT institution_id, object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
+                            SELECT object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                             WHERE (institution_id, object_type)
+                             WHERE (object_type)
                                  = ("{object_key[0]}", "{object_key[1]}")
                         """
 
                     elif len(object_key) == 3:
                         sql_query = f"""
-                            SELECT institution_id, object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
+                            SELECT object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                             WHERE (institution_id, object_type, object_id)
+                             WHERE (object_type, object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")
                         """
 
                     elif len(object_key) == 4:
                         sql_query = f"""
-                            SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
+                            SELECT from_object_type, to_object_type, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                             WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                             WHERE (from_object_type, to_object_type)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}")
                         """
 
                     elif len(object_key) == 6:
                         sql_query = f"""
-                            SELECT from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
+                            SELECT from_object_type, from_object_id, to_object_type, to_object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                             WHERE (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                             WHERE (from_object_type, from_object_id, to_object_type, to_object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}", "{object_key[4]}", "{object_key[5]}")
                         """
 
@@ -1194,29 +1181,29 @@ class GraphRegistry():
                         return
 
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='UeM1cM6K')
-                    df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
+                    df = pd.DataFrame(out, columns=['object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [by type or key]')
 
                 else:
 
                     out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                        SELECT institution_id, object_type, COUNT(*) AS n_to_process
+                        SELECT object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                          WHERE to_process = 1
-                      GROUP BY institution_id, object_type
+                      GROUP BY object_type
                     """, query_id='TDgw7fYz')
-                    df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
+                    df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [stats]')
 
                     out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                        SELECT from_institution_id, from_object_type, to_institution_id, to_object_type, COUNT(*) AS n_to_process
+                        SELECT from_object_type, to_object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                          WHERE to_process = 1
-                      GROUP BY from_institution_id, from_object_type, to_institution_id, to_object_type
+                      GROUP BY from_object_type, to_object_type
                     """, query_id='EqpDtL34')
-                    df = pd.DataFrame(out, columns=['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'n_to_process'])
+                    df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object-to-Object [stats]')
 
@@ -1240,32 +1227,26 @@ class GraphRegistry():
                     return
 
                 # Generate WHERE condition
-                if len(object_key) == 2:
+                if len(object_key) == 1:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1])
+                        ('object_type'   , object_key[0])
                     ]
-                elif len(object_key) == 3:
+                elif len(object_key) == 2:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1]),
-                        ('object_id'     , object_key[2])
+                        ('object_type'   , object_key[0]),
+                        ('object_id'     , object_key[1])
                     ]
+                # elif len(object_key) == 2:
+                #     where_conditions = [
+                #         ('from_object_type'   , object_key[0]),
+                #         ('to_object_type'     , object_key[1])
+                #     ]
                 elif len(object_key) == 4:
                     where_conditions = [
-                        ('from_institution_id', object_key[0]),
-                        ('from_object_type'   , object_key[1]),
-                        ('to_institution_id'  , object_key[2]),
-                        ('to_object_type'     , object_key[3])
-                    ]
-                elif len(object_key) == 6:
-                    where_conditions = [
-                        ('from_institution_id', object_key[0]),
-                        ('from_object_type'   , object_key[1]),
-                        ('from_object_id'     , object_key[2]),
-                        ('to_institution_id'  , object_key[3]),
-                        ('to_object_type'     , object_key[4]),
-                        ('to_object_id'       , object_key[5])
+                        ('from_object_type'   , object_key[0]),
+                        ('from_object_id'     , object_key[1]),
+                        ('to_object_type'     , object_key[2]),
+                        ('to_object_id'       , object_key[3])
                     ]
 
                 # Generate SET clause list
@@ -1302,38 +1283,32 @@ class GraphRegistry():
                 has_expired_condition = f"has_expired = {has_expired}" if has_expired is not None else "TRUE"
 
                 # Generate WHERE condition
-                if len(object_key) == 2:
+                if len(object_key) == 1:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1]),
+                        ('object_type'   , object_key[0]),
                         (None            , time_condition),
                         (None            , has_expired_condition)
                     ]
-                elif len(object_key) == 3:
+                elif len(object_key) == 2:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1]),
-                        ('object_id'     , object_key[2]),
+                        ('object_type'   , object_key[0]),
+                        ('object_id'     , object_key[1]),
                         (None            , time_condition),
                         (None            , has_expired_condition)
                     ]
+                # elif len(object_key) == 4:
+                #     where_conditions = [
+                #         ('from_object_type'   , object_key[1]),
+                #         ('to_object_type'     , object_key[3]),
+                #         (None                 , time_condition),
+                #         (None                 , has_expired_condition)
+                #     ]
                 elif len(object_key) == 4:
                     where_conditions = [
-                        ('from_institution_id', object_key[0]),
-                        ('from_object_type'   , object_key[1]),
-                        ('to_institution_id'  , object_key[2]),
-                        ('to_object_type'     , object_key[3]),
-                        (None                 , time_condition),
-                        (None                 , has_expired_condition)
-                    ]
-                elif len(object_key) == 6:
-                    where_conditions = [
-                        ('from_institution_id', object_key[0]),
-                        ('from_object_type'   , object_key[1]),
-                        ('from_object_id'     , object_key[2]),
-                        ('to_institution_id'  , object_key[3]),
-                        ('to_object_type'     , object_key[4]),
-                        ('to_object_id'       , object_key[5]),
+                        ('from_object_type'   , object_key[0]),
+                        ('from_object_id'     , object_key[1]),
+                        ('to_object_type'     , object_key[2]),
+                        ('to_object_id'       , object_key[3]),
                         (None                 , time_condition),
                         (None                 , has_expired_condition)
                     ]
@@ -1342,9 +1317,9 @@ class GraphRegistry():
                 output = db.get_cells(
                     engine_name = 'xaas_coresrv',
                     schema_name = glbcfg.schema_airflow,
-                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [4,6] else ''}_T_FieldsChanged",
-                    select      = ['institution_id', 'object_type', 'object_id', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'] if len(object_key) in [2,3] else
-                                  ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id', 'context', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'],
+                    table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [2,4] else ''}_T_FieldsChanged",
+                    select      = ['object_type', 'object_id', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'] if len(object_key) in [1,2] else
+                                  ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'],
                     where       = where_conditions,
                     verbose     = verbose)
 
@@ -1368,9 +1343,9 @@ class GraphRegistry():
                               SELECT cp.object_type, COUNT(*) AS n
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                               USING (institution_id, object_type, object_id)
+                               USING (object_type, object_id)
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (institution_id, object_type)
+                               USING (object_type)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND tf.flag_type = 'fields'
@@ -1382,13 +1357,13 @@ class GraphRegistry():
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                                    (institution_id, object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process)
-                              SELECT cp.institution_id, cp.object_type, cp.object_id, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                    (object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process)
+                              SELECT cp.object_type, cp.object_id, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                               USING (institution_id, object_type, object_id)
+                               USING (object_type, object_id)
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (institution_id, object_type)
+                               USING (object_type)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND tf.flag_type = 'fields'
@@ -1406,8 +1381,8 @@ class GraphRegistry():
                     # Execute object sync @@@@@@@@
                     sql_query = f"""
                                 INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
-                                           (institution_id, object_type, flag_type, to_process)
-                            SELECT DISTINCT institution_id, object_type, 'fields' AS flag_type, 0 AS to_process
+                                           (object_type, flag_type, to_process)
+                            SELECT DISTINCT object_type, 'fields' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
@@ -1421,9 +1396,9 @@ class GraphRegistry():
                               SELECT cp.from_object_type, cp.to_object_type, COUNT(*) AS n
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
-                               USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                               USING (from_object_type, from_object_id, to_object_type, to_object_id)
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                               USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                               USING (from_object_type, to_object_type)
                                WHERE fc.from_object_id IS NULL
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
@@ -1436,13 +1411,13 @@ class GraphRegistry():
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                                    (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process)
-                              SELECT cp.from_institution_id, cp.from_object_type, cp.from_object_id, cp.to_institution_id, cp.to_object_type, cp.to_object_id, cp.context, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                    (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process)
+                              SELECT cp.from_object_type, cp.from_object_id, cp.to_object_type, cp.to_object_id, cp.context, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
-                               USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                               USING (from_object_type, from_object_id, to_object_type, to_object_id)
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                               USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                               USING (from_object_type, to_object_type)
                                WHERE fc.from_object_id IS NULL
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
@@ -1461,8 +1436,8 @@ class GraphRegistry():
                     # Execute object sync @@@@@@@@
                     sql_query = f"""
                                 INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
-                                           (from_institution_id, from_object_type, to_institution_id, to_object_type, to_process)
-                            SELECT DISTINCT from_institution_id, from_object_type, to_institution_id, to_object_type, 0 AS to_process
+                                           (from_object_type, to_object_type, to_process)
+                            SELECT DISTINCT from_object_type, to_object_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_N_Object_T_TypeFlags.to_process;
                     """
@@ -1729,122 +1704,6 @@ class GraphRegistry():
                         rich.print_json(data=where_conditions)
                         print('')
 
-                    #---------------------------------------#
-                    # Refresh checksums and flags for NODEs #
-                    #---------------------------------------#
-
-                    # Deprecate this method
-                    if False:
-
-                        # Print status
-                        sysmsg.trace(f"Re-calculate checksums and set 'has_changed' flag for graph nodes.")
-
-                        # Process checksums only if 'refresh_checksums' is True
-                        if refresh_checksums:
-
-                            # Loop over node types tables
-                            with tqdm(glbcfg.object_type_to_institution_id.items(), unit='Node type') as pb:
-                                for object_type, institution_id in pb:
-
-                                    # Filter by doc type
-                                    if doc_type is not None and object_type != doc_type:
-                                        continue
-
-                                    # Print status
-                                    pb.set_description(f"⚙️  Node type: {object_type}".ljust(PBWIDTH)[:PBWIDTH])
-
-                                    # Get all objects with expired checksums
-                                    out = self.get(object_key=(institution_id, object_type), has_expired=1)
-
-                                    # If no edges found, continue to next iteration
-                                    if len(out) == 0:
-                                        continue
-
-                                    # Loop over objects with expired checksums
-                                    for dmy1, dmy2, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process in tqdm(out, desc=f"⚙️  Updating checksums for type '{object_type}'".ljust(PBWIDTH)[:PBWIDTH]):
-
-                                        # Get node (by which it calculates a new checksum)
-                                        node = GraphRegistry.Node(object_key=(institution_id, object_type, object_id))
-
-                                        # Assign new checksum and compare with previous
-                                        checksum_current = node.checksum
-                                        has_changed = 1 if checksum_current != checksum_previous else 0
-
-                                        # Set last_date_calculated to current date
-                                        # last_date_calculated = datetime.datetime.now().strftime('%Y-%m-%d')
-
-                                        # Commit new checksum and flag
-                                        self.set(
-                                            object_key           = (institution_id, object_type, object_id),
-                                            checksum_current     = checksum_current,
-                                            has_changed          = has_changed,
-                                            # last_date_calculated = last_date_calculated
-                                        )
-
-                        # Otherwise, move on
-                        else:
-                            sysmsg.warning(f"Flag 'refresh_checksums' is set to False. Skipping checksum refresh for nodes.")
-
-                    #---------------------------------------#
-                    # Refresh checksums and flags for EDGEs #
-                    #---------------------------------------#
-
-                    # Deprecate this method
-                    if False:
-
-                        # Print status
-                        sysmsg.trace(f"Re-calculate checksums and set 'has_changed' flag for graph edges.")
-
-                        # Process checksums only if 'refresh_checksums' is True
-                        if refresh_checksums:
-
-                            # Generate all tuple combinations of object types
-                            from_to_object_type_pairs = list(itertools.product(glbcfg.object_type_to_institution_id.items(), repeat=2))
-                            from_to_object_type_pairs = [(e[0][1],e[0][0],e[1][1],e[1][0]) for e in list(from_to_object_type_pairs)]
-
-                            # Loop over edge types tables
-                            with tqdm(from_to_object_type_pairs, unit='Edge type') as pb:
-                                for from_institution_id, from_object_type, to_institution_id, to_object_type in pb:
-
-                                    # Filter by doc type
-                                    if doc_type is not None and (from_object_type != doc_type and to_object_type != doc_type):
-                                        continue
-
-                                    # Print status
-                                    pb.set_description(f"⚙️  Edge type: {from_object_type} -> {to_object_type}".ljust(PBWIDTH)[:PBWIDTH])
-
-                                    # Get all edges with expired checksums
-                                    out = self.get(object_key=(from_institution_id, from_object_type, to_institution_id, to_object_type), has_expired=1)
-
-                                    # If no edges found, continue to next iteration
-                                    if len(out) == 0:
-                                        continue
-
-                                    # Loop over edges with expired checksums
-                                    for dmy1, dmy2, from_object_id, dmy3, dmy4, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process in tqdm(out, desc=f"⚙️  Updating checksums for edge '{from_object_type} -> {to_object_type}'".ljust(PBWIDTH)[:PBWIDTH]):
-
-                                        # Get edge (by which it calculates a new checksum)
-                                        edge = GraphRegistry.Edge(object_key=(from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context))
-
-                                        # Assign new checksum and compare with previous
-                                        checksum_current = edge.checksum
-                                        has_changed = 1 if checksum_current != checksum_previous else 0
-
-                                        # Set last_date_calculated to current date
-                                        # last_date_calculated = datetime.datetime.now().strftime('%Y-%m-%d')
-
-                                        # Commit new checksum and flag
-                                        self.set(
-                                            object_key           = (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id),
-                                            checksum_current     = checksum_current,
-                                            has_changed          = has_changed,
-                                            # last_date_calculated = last_date_calculated
-                                        )
-
-                        # Otherwise, move on
-                        else:
-                            sysmsg.warning(f"Flag 'refresh_checksums' is set to False. Skipping checksum refresh for edges.")
-
                     #-------------------------#
                     # Refresh checksums flags #
                     #-------------------------#
@@ -1912,8 +1771,8 @@ class GraphRegistry():
                         # """
 
                         # Table key definitions
-                        table_type_key = "institution_id, object_type" if u=='n' else "from_institution_id, from_object_type, to_institution_id, to_object_type, context"
-                        table_full_key = "institution_id, object_type, object_id" if u=='n' else "from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, context"
+                        table_type_key = "object_type" if u=='n' else "from_object_type, to_object_type, context"
+                        table_full_key = "object_type, object_id" if u=='n' else "from_object_type, from_object_id, to_object_type, to_object_id, context"
 
                         # Generate SQL query
                         sql_query = f"""
@@ -2151,29 +2010,29 @@ class GraphRegistry():
             def status(self, object_key=None):
                 if object_key is not None:
                     sql_query = f"""
-                        SELECT institution_id, object_type, object_id, last_date_cached, has_expired, to_process
+                        SELECT object_type, object_id, last_date_cached, has_expired, to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                     """
                     if len(object_key) == 2:
-                        sql_query += f"""WHERE (institution_id, object_type) = ("{object_key[0]}", "{object_key[1]}")"""
+                        sql_query += f"""WHERE (object_type) = ("{object_key[0]}", "{object_key[1]}")"""
                     elif len(object_key) == 3:
-                        sql_query += f"""WHERE (institution_id, object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")"""
+                        sql_query += f"""WHERE (object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")"""
                     else:
                         msg = 'Invalid key length.'
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='xGQc0t7t')
-                    df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
+                    df = pd.DataFrame(out, columns=['object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [by key or id]')
                 else:
                     out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                        SELECT institution_id, object_type, COUNT(*) AS n_to_process
+                        SELECT object_type, COUNT(*) AS n_to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                         WHERE to_process = 1
-                    GROUP BY institution_id, object_type
+                     GROUP BY object_type
                     """, query_id='ts8NQExF')
-                    df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
+                    df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [stats]')
 
@@ -2194,16 +2053,14 @@ class GraphRegistry():
                     return
 
                 # Generate WHERE condition
-                if len(object_key) == 2:
+                if len(object_key) == 1:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1])
+                        ('object_type'   , object_key[0])
                     ]
-                elif len(object_key) == 3:
+                elif len(object_key) == 2:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1]),
-                        ('object_id'     , object_key[2])
+                        ('object_type'   , object_key[0]),
+                        ('object_id'     , object_key[1])
                     ]
 
                 # Generate SET clause list
@@ -2240,18 +2097,16 @@ class GraphRegistry():
                 has_expired_condition = f"has_expired = {has_expired}" if has_expired is not None else "TRUE"
 
                 # Generate WHERE condition
-                if len(object_key) == 2:
+                if len(object_key) == 1:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1]),
+                        ('object_type'   , object_key[0]),
                         (None            , time_condition),
                         (None            , has_expired_condition)
                     ]
-                elif len(object_key) == 3:
+                elif len(object_key) == 2:
                     where_conditions = [
-                        ('institution_id', object_key[0]),
-                        ('object_type'   , object_key[1]),
-                        ('object_id'     , object_key[2]),
+                        ('object_type'   , object_key[0]),
+                        ('object_id'     , object_key[1]),
                         (None            , time_condition),
                         (None            , has_expired_condition)
                     ]
@@ -2261,7 +2116,7 @@ class GraphRegistry():
                     engine_name = 'xaas_coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = 'Operations_N_Object_T_ScoresExpired',
-                    select      = ['institution_id', 'object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'],
+                    select      = ['object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'],
                     where       = where_conditions,
                     verbose     = verbose)
 
@@ -2285,10 +2140,10 @@ class GraphRegistry():
                               SELECT n.object_type, COUNT(*) AS n
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
-                               USING (institution_id, object_type, object_id)
+                               USING (object_type, object_id)
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (institution_id, object_type)
-                               WHERE o.institution_id IS NULL
+                               USING (object_type)
+                               WHERE o.object_id IS NULL
                                  AND n.object_type != 'Transcript'
                                  AND n.object_type != 'Slide'
                                  AND tf.flag_type = 'fields'
@@ -2300,14 +2155,14 @@ class GraphRegistry():
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                                    (institution_id, object_type, object_id, last_date_cached, has_expired, to_process)
-                              SELECT n.institution_id, n.object_type, n.object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                    (object_type, object_id, last_date_cached, has_expired, to_process)
+                              SELECT n.object_type, n.object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
-                               USING (institution_id, object_type, object_id)
+                               USING (object_type, object_id)
                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (institution_id, object_type)
-                               WHERE o.institution_id IS NULL
+                               USING (object_type)
+                               WHERE o.object_id IS NULL
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
                                  AND tf.flag_type = 'fields'
                                  AND tf.to_process = 1
@@ -2324,8 +2179,8 @@ class GraphRegistry():
                     # Execute object sync @@@@@@@
                     sql_query = f"""
                                 INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
-                                           (institution_id, object_type, flag_type, to_process)
-                            SELECT DISTINCT institution_id, object_type, 'scores' AS flag_type, 0 AS to_process
+                                           (object_type, flag_type, to_process)
+                            SELECT DISTINCT object_type, 'scores' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
@@ -2627,15 +2482,15 @@ class GraphRegistry():
                         # Generate SQL query
                         sql_query = f"""
                                   UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired t2u
-		                      INNER JOIN (SELECT institution_id, object_type, object_id
-					                        FROM (SELECT institution_id, object_type, object_id, ROW_NUMBER() OVER (PARTITION BY institution_id, object_type) AS row_to_process
+		                      INNER JOIN (SELECT object_type, object_id
+					                        FROM (SELECT object_type, object_id, ROW_NUMBER() OVER (PARTITION BY object_type) AS row_to_process
                                                     FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                                    WHERE (has_expired = 1 OR last_date_cached IS NULL)
                                                      AND ({where_conditions['Operations_N_Object_T_ScoresExpired']})
                                                  ) tA
                                            WHERE row_to_process <= {limit_per_type}
                                          ) tB
-		                           USING (institution_id, object_type, object_id)
+		                           USING (object_type, object_id)
                                      SET t2u.to_process = 1
                         """
 
@@ -2948,38 +2803,36 @@ class GraphRegistry():
                 target_table = 'Data_N_Object_N_Object_T_AllFieldsSymmetric'
 
                 # List of evaluation columns
-                eval_columns = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type', 'field_name']
+                eval_columns = ['from_object_type', 'to_object_type', 'field_name']
 
                 # Initialise query stack
                 sql_query_stack = []
 
                 # Query template
                 sql_query_template = """
-                    SELECT cf.from_institution_id, cf.from_object_type, cf.from_object_id,
-                             cf.to_institution_id,   cf.to_object_type,   cf.to_object_id,
+                    SELECT cf.from_object_type, cf.from_object_id,
+                             cf.to_object_type,   cf.to_object_id,
                            cf.field_language, cf.field_name, cf.field_value
                       FROM %s.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_N_Object_T_%s cf
-                     USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                     USING (from_object_type, from_object_id, to_object_type, to_object_id)
                 INNER JOIN %s.Operations_N_Object_N_Object_T_TypeFlags tf
-                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                     USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
                        AND tf.to_process = 1
 
                  UNION ALL
 
-                    SELECT cf.to_institution_id   AS from_institution_id,
-                           cf.to_object_type      AS from_object_type,
+                    SELECT cf.to_object_type      AS from_object_type,
                            cf.to_object_id        AS from_object_id,
-                           cf.from_institution_id AS to_institution_id,
                            cf.from_object_type    AS to_object_type,
                            cf.from_object_id      AS to_object_id,
                            cf.field_language, cf.field_name, cf.field_value
                       FROM %s.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_N_Object_T_%s cf
-                     USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                     USING (from_object_type, from_object_id, to_object_type, to_object_id)
                 INNER JOIN %s.Operations_N_Object_N_Object_T_TypeFlags tf
-                     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                     USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
                        AND tf.to_process = 1
                 """
@@ -3007,19 +2860,6 @@ class GraphRegistry():
                 # Build query (base)
                 sql_query = '\n\t\tUNION ALL\n'.join(sql_query_stack)
 
-                # # Enclose query
-                # sql_query = f"""
-                #     SELECT from_institution_id, from_object_type, from_object_id,
-                #              to_institution_id,   to_object_type,   to_object_id,
-                #            field_language, field_name, field_value
-                #     FROM (
-                #         {sql_query}
-                #     ) AS t
-                # """
-
-                # # Specify input for execution method
-                # query_has_filters = False
-
             #------------------------------#
             # Process query for input name #
             #------------------------------#
@@ -3029,7 +2869,7 @@ class GraphRegistry():
                 target_table = 'Data_N_Object_T_PageProfile'
 
                 # List of evaluation columns
-                eval_columns = ['institution_id', 'object_type']
+                eval_columns = ['object_type']
 
                 # Initialise query stack
                 sql_query_stack = []
@@ -3039,12 +2879,12 @@ class GraphRegistry():
 
                     # Append query
                     sql_query_stack += [f"""
-                        SELECT pp.institution_id, pp.object_type, pp.object_id, pp.numeric_id_en, pp.numeric_id_fr, pp.numeric_id_de, pp.numeric_id_it, pp.short_code, pp.subtype_en, pp.subtype_fr, pp.subtype_de, pp.subtype_it, pp.name_en_is_auto_generated, pp.name_en_is_auto_corrected, pp.name_en_is_auto_translated, pp.name_en_translated_from, pp.name_en_value, pp.name_fr_is_auto_generated, pp.name_fr_is_auto_corrected, pp.name_fr_is_auto_translated, pp.name_fr_translated_from, pp.name_fr_value, pp.name_de_is_auto_generated, pp.name_de_is_auto_corrected, pp.name_de_is_auto_translated, pp.name_de_translated_from, pp.name_de_value, pp.name_it_is_auto_generated, pp.name_it_is_auto_corrected, pp.name_it_is_auto_translated, pp.name_it_translated_from, pp.name_it_value, pp.description_short_en_is_auto_generated, pp.description_short_en_is_auto_corrected, pp.description_short_en_is_auto_translated, pp.description_short_en_translated_from, pp.description_short_en_value, pp.description_short_fr_is_auto_generated, pp.description_short_fr_is_auto_corrected, pp.description_short_fr_is_auto_translated, pp.description_short_fr_translated_from, pp.description_short_fr_value, pp.description_short_de_is_auto_generated, pp.description_short_de_is_auto_corrected, pp.description_short_de_is_auto_translated, pp.description_short_de_translated_from, pp.description_short_de_value, pp.description_short_it_is_auto_generated, pp.description_short_it_is_auto_corrected, pp.description_short_it_is_auto_translated, pp.description_short_it_translated_from, pp.description_short_it_value, pp.description_medium_en_is_auto_generated, pp.description_medium_en_is_auto_corrected, pp.description_medium_en_is_auto_translated, pp.description_medium_en_translated_from, pp.description_medium_en_value, pp.description_medium_fr_is_auto_generated, pp.description_medium_fr_is_auto_corrected, pp.description_medium_fr_is_auto_translated, pp.description_medium_fr_translated_from, pp.description_medium_fr_value, pp.description_medium_de_is_auto_generated, pp.description_medium_de_is_auto_corrected, pp.description_medium_de_is_auto_translated, pp.description_medium_de_translated_from, pp.description_medium_de_value, pp.description_medium_it_is_auto_generated, pp.description_medium_it_is_auto_corrected, pp.description_medium_it_is_auto_translated, pp.description_medium_it_translated_from, pp.description_medium_it_value, pp.description_long_en_is_auto_generated, pp.description_long_en_is_auto_corrected, pp.description_long_en_is_auto_translated, pp.description_long_en_translated_from, pp.description_long_en_value, pp.description_long_fr_is_auto_generated, pp.description_long_fr_is_auto_corrected, pp.description_long_fr_is_auto_translated, pp.description_long_fr_translated_from, pp.description_long_fr_value, pp.description_long_de_is_auto_generated, pp.description_long_de_is_auto_corrected, pp.description_long_de_is_auto_translated, pp.description_long_de_translated_from, pp.description_long_de_value, pp.description_long_it_is_auto_generated, pp.description_long_it_is_auto_corrected, pp.description_long_it_is_auto_translated, pp.description_long_it_translated_from, pp.description_long_it_value, pp.external_key_en, pp.external_key_fr, pp.external_key_de, pp.external_key_it, pp.external_url_en, pp.external_url_fr, pp.external_url_de, pp.external_url_it, pp.is_visible, 1 AS to_process
+                        SELECT pp.object_type, pp.object_id, pp.numeric_id_en, pp.numeric_id_fr, pp.numeric_id_de, pp.numeric_id_it, pp.short_code, pp.subtype_en, pp.subtype_fr, pp.subtype_de, pp.subtype_it, pp.name_en_is_auto_generated, pp.name_en_is_auto_corrected, pp.name_en_is_auto_translated, pp.name_en_translated_from, pp.name_en_value, pp.name_fr_is_auto_generated, pp.name_fr_is_auto_corrected, pp.name_fr_is_auto_translated, pp.name_fr_translated_from, pp.name_fr_value, pp.name_de_is_auto_generated, pp.name_de_is_auto_corrected, pp.name_de_is_auto_translated, pp.name_de_translated_from, pp.name_de_value, pp.name_it_is_auto_generated, pp.name_it_is_auto_corrected, pp.name_it_is_auto_translated, pp.name_it_translated_from, pp.name_it_value, pp.description_short_en_is_auto_generated, pp.description_short_en_is_auto_corrected, pp.description_short_en_is_auto_translated, pp.description_short_en_translated_from, pp.description_short_en_value, pp.description_short_fr_is_auto_generated, pp.description_short_fr_is_auto_corrected, pp.description_short_fr_is_auto_translated, pp.description_short_fr_translated_from, pp.description_short_fr_value, pp.description_short_de_is_auto_generated, pp.description_short_de_is_auto_corrected, pp.description_short_de_is_auto_translated, pp.description_short_de_translated_from, pp.description_short_de_value, pp.description_short_it_is_auto_generated, pp.description_short_it_is_auto_corrected, pp.description_short_it_is_auto_translated, pp.description_short_it_translated_from, pp.description_short_it_value, pp.description_medium_en_is_auto_generated, pp.description_medium_en_is_auto_corrected, pp.description_medium_en_is_auto_translated, pp.description_medium_en_translated_from, pp.description_medium_en_value, pp.description_medium_fr_is_auto_generated, pp.description_medium_fr_is_auto_corrected, pp.description_medium_fr_is_auto_translated, pp.description_medium_fr_translated_from, pp.description_medium_fr_value, pp.description_medium_de_is_auto_generated, pp.description_medium_de_is_auto_corrected, pp.description_medium_de_is_auto_translated, pp.description_medium_de_translated_from, pp.description_medium_de_value, pp.description_medium_it_is_auto_generated, pp.description_medium_it_is_auto_corrected, pp.description_medium_it_is_auto_translated, pp.description_medium_it_translated_from, pp.description_medium_it_value, pp.description_long_en_is_auto_generated, pp.description_long_en_is_auto_corrected, pp.description_long_en_is_auto_translated, pp.description_long_en_translated_from, pp.description_long_en_value, pp.description_long_fr_is_auto_generated, pp.description_long_fr_is_auto_corrected, pp.description_long_fr_is_auto_translated, pp.description_long_fr_translated_from, pp.description_long_fr_value, pp.description_long_de_is_auto_generated, pp.description_long_de_is_auto_corrected, pp.description_long_de_is_auto_translated, pp.description_long_de_translated_from, pp.description_long_de_value, pp.description_long_it_is_auto_generated, pp.description_long_it_is_auto_corrected, pp.description_long_it_is_auto_translated, pp.description_long_it_translated_from, pp.description_long_it_value, pp.external_key_en, pp.external_key_fr, pp.external_key_de, pp.external_key_it, pp.external_url_en, pp.external_url_fr, pp.external_url_de, pp.external_url_it, pp.is_visible, 1 AS to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Data_N_Object_T_PageProfile pp
-                         USING (institution_id, object_type, object_id)
+                         USING (object_type, object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                         USING (institution_id, object_type)
+                         USING (object_type)
                          WHERE tp.to_process = 1
                            AND tf.flag_type = 'fields'
                            AND tf.to_process = 1
@@ -3055,7 +2895,7 @@ class GraphRegistry():
 
                 # # Enclose query
                 # sql_query = f"""
-                #     SELECT institution_id, object_type, object_id, numeric_id_en, numeric_id_fr, numeric_id_de, numeric_id_it, short_code, subtype_en, subtype_fr, subtype_de, subtype_it, name_en_is_auto_generated, name_en_is_auto_corrected, name_en_is_auto_translated, name_en_translated_from, name_en_value, name_fr_is_auto_generated, name_fr_is_auto_corrected, name_fr_is_auto_translated, name_fr_translated_from, name_fr_value, name_de_is_auto_generated, name_de_is_auto_corrected, name_de_is_auto_translated, name_de_translated_from, name_de_value, name_it_is_auto_generated, name_it_is_auto_corrected, name_it_is_auto_translated, name_it_translated_from, name_it_value, description_short_en_is_auto_generated, description_short_en_is_auto_corrected, description_short_en_is_auto_translated, description_short_en_translated_from, description_short_en_value, description_short_fr_is_auto_generated, description_short_fr_is_auto_corrected, description_short_fr_is_auto_translated, description_short_fr_translated_from, description_short_fr_value, description_short_de_is_auto_generated, description_short_de_is_auto_corrected, description_short_de_is_auto_translated, description_short_de_translated_from, description_short_de_value, description_short_it_is_auto_generated, description_short_it_is_auto_corrected, description_short_it_is_auto_translated, description_short_it_translated_from, description_short_it_value, description_medium_en_is_auto_generated, description_medium_en_is_auto_corrected, description_medium_en_is_auto_translated, description_medium_en_translated_from, description_medium_en_value, description_medium_fr_is_auto_generated, description_medium_fr_is_auto_corrected, description_medium_fr_is_auto_translated, description_medium_fr_translated_from, description_medium_fr_value, description_medium_de_is_auto_generated, description_medium_de_is_auto_corrected, description_medium_de_is_auto_translated, description_medium_de_translated_from, description_medium_de_value, description_medium_it_is_auto_generated, description_medium_it_is_auto_corrected, description_medium_it_is_auto_translated, description_medium_it_translated_from, description_medium_it_value, description_long_en_is_auto_generated, description_long_en_is_auto_corrected, description_long_en_is_auto_translated, description_long_en_translated_from, description_long_en_value, description_long_fr_is_auto_generated, description_long_fr_is_auto_corrected, description_long_fr_is_auto_translated, description_long_fr_translated_from, description_long_fr_value, description_long_de_is_auto_generated, description_long_de_is_auto_corrected, description_long_de_is_auto_translated, description_long_de_translated_from, description_long_de_value, description_long_it_is_auto_generated, description_long_it_is_auto_corrected, description_long_it_is_auto_translated, description_long_it_translated_from, description_long_it_value, external_key_en, external_key_fr, external_key_de, external_key_it, external_url_en, external_url_fr, external_url_de, external_url_it, is_visible, to_process
+                #     SELECT object_type, object_id, numeric_id_en, numeric_id_fr, numeric_id_de, numeric_id_it, short_code, subtype_en, subtype_fr, subtype_de, subtype_it, name_en_is_auto_generated, name_en_is_auto_corrected, name_en_is_auto_translated, name_en_translated_from, name_en_value, name_fr_is_auto_generated, name_fr_is_auto_corrected, name_fr_is_auto_translated, name_fr_translated_from, name_fr_value, name_de_is_auto_generated, name_de_is_auto_corrected, name_de_is_auto_translated, name_de_translated_from, name_de_value, name_it_is_auto_generated, name_it_is_auto_corrected, name_it_is_auto_translated, name_it_translated_from, name_it_value, description_short_en_is_auto_generated, description_short_en_is_auto_corrected, description_short_en_is_auto_translated, description_short_en_translated_from, description_short_en_value, description_short_fr_is_auto_generated, description_short_fr_is_auto_corrected, description_short_fr_is_auto_translated, description_short_fr_translated_from, description_short_fr_value, description_short_de_is_auto_generated, description_short_de_is_auto_corrected, description_short_de_is_auto_translated, description_short_de_translated_from, description_short_de_value, description_short_it_is_auto_generated, description_short_it_is_auto_corrected, description_short_it_is_auto_translated, description_short_it_translated_from, description_short_it_value, description_medium_en_is_auto_generated, description_medium_en_is_auto_corrected, description_medium_en_is_auto_translated, description_medium_en_translated_from, description_medium_en_value, description_medium_fr_is_auto_generated, description_medium_fr_is_auto_corrected, description_medium_fr_is_auto_translated, description_medium_fr_translated_from, description_medium_fr_value, description_medium_de_is_auto_generated, description_medium_de_is_auto_corrected, description_medium_de_is_auto_translated, description_medium_de_translated_from, description_medium_de_value, description_medium_it_is_auto_generated, description_medium_it_is_auto_corrected, description_medium_it_is_auto_translated, description_medium_it_translated_from, description_medium_it_value, description_long_en_is_auto_generated, description_long_en_is_auto_corrected, description_long_en_is_auto_translated, description_long_en_translated_from, description_long_en_value, description_long_fr_is_auto_generated, description_long_fr_is_auto_corrected, description_long_fr_is_auto_translated, description_long_fr_translated_from, description_long_fr_value, description_long_de_is_auto_generated, description_long_de_is_auto_corrected, description_long_de_is_auto_translated, description_long_de_translated_from, description_long_de_value, description_long_it_is_auto_generated, description_long_it_is_auto_corrected, description_long_it_is_auto_translated, description_long_it_translated_from, description_long_it_value, external_key_en, external_key_fr, external_key_de, external_key_it, external_url_en, external_url_fr, external_url_de, external_url_it, is_visible, to_process
                 #     FROM (
                 #         {sql_query}
                 #     ) AS t
@@ -3073,20 +2913,20 @@ class GraphRegistry():
                 target_table = 'Data_N_Object_T_AllFields'
 
                 # List of evaluation columns
-                eval_columns = ['institution_id', 'object_type', 'field_name']
+                eval_columns = ['object_type', 'field_name']
 
                 # Initialise query stack
                 sql_query_stack = []
 
                 # Query template
                 sql_query_template = """
-                    SELECT cf.institution_id, cf.object_type, cf.object_id,
+                    SELECT cf.object_type, cf.object_id,
                            cf.field_language, cf.field_name, cf.field_value
                       FROM %s.Operations_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_T_%s cf
-                     USING (institution_id, object_type, object_id)
+                     USING (object_type, object_id)
                 INNER JOIN %s.Operations_N_Object_T_TypeFlags tf
-                     USING (institution_id, object_type)
+                     USING (object_type)
                      WHERE tp.to_process = 1
                        AND tf.flag_type = 'fields'
                        AND tf.to_process = 1
@@ -3111,7 +2951,7 @@ class GraphRegistry():
 
                 # # Enclose query
                 # sql_query = f"""
-                #     SELECT institution_id, object_type, object_id, field_language, field_name, field_value
+                #     SELECT object_type, object_id, field_language, field_name, field_value
                 #     FROM (
                 #         {sql_query}
                 #     ) AS t
@@ -3129,7 +2969,7 @@ class GraphRegistry():
                 target_table = 'Edges_N_Object_N_Object_T_ParentChildSymmetric'
 
                 # List of evaluation columns
-                eval_columns = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
+                eval_columns = ['from_object_type', 'to_object_type']
 
                 # Initialise query stack
                 sql_query_stack = []
@@ -3140,154 +2980,36 @@ class GraphRegistry():
                     # Append query
                     sql_query_stack += [f"""
                         SELECT 'Child-to-Parent' AS edge_type,
-                               c2p.from_institution_id, c2p.from_object_type, c2p.from_object_id,
-                                 c2p.to_institution_id,   c2p.to_object_type,   c2p.to_object_id,
+                               c2p.from_object_type, c2p.from_object_id,
+                                 c2p.to_object_type,   c2p.to_object_id,
                                c2p.context, 1 AS to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
-                         USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                         USING (from_object_type, from_object_id, to_object_type, to_object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                         USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                         USING (from_object_type, to_object_type)
                          WHERE tp.to_process = 1
                            AND tf.to_process = 1
 
                      UNION ALL
 
                         SELECT 'Parent-to-Child' AS edge_type,
-                               c2p.to_institution_id   AS from_institution_id,
                                c2p.to_object_type      AS from_object_type,
                                c2p.to_object_id        AS from_object_id,
-                               c2p.from_institution_id AS to_institution_id,
                                c2p.from_object_type    AS to_object_type,
                                c2p.from_object_id      AS to_object_id,
                                CONCAT(c2p.context, ' (mirror)') AS context, 1 AS to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
-                         USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+                         USING (from_object_type, from_object_id, to_object_type, to_object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                         USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+                         USING (from_object_type, to_object_type)
                          WHERE tp.to_process = 1
                            AND tf.to_process = 1
                     """]
 
                 # Build query (base)
                 sql_query = '\n\t\tUNION ALL\n'.join(sql_query_stack)
-
-                # # Enclose query
-                # sql_query = f"""
-                #     SELECT edge_type,
-                #            from_institution_id, from_object_type, from_object_id,
-                #              to_institution_id,   to_object_type,   to_object_id,
-                #            context, to_process
-                #     FROM (
-                #         {sql_query}
-                #     ) AS t
-                # """
-
-                # # Specify input for execution method
-                # query_has_filters = False
-
-            # #------------------------------#
-            # # Process query for input name #
-            # #------------------------------#
-            # elif view_name == 'obj2obj: parent-child symmetric (ontology)':
-
-            #     # Target cache table
-            #     target_table = 'Edges_N_Object_N_Object_T_ParentChildSymmetric'
-
-            #     # List of evaluation columns
-            #     eval_columns = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
-
-            #     # Build query (base)
-            #     sql_query = f"""
-            #         SELECT 'Child-to-Parent' AS edge_type,
-            #                from_institution_id, from_object_type, c2p.from_id AS from_object_id,
-            #                to_institution_id, to_object_type,   c2p.to_id AS   to_object_id,
-            #                context, 1 AS to_process,
-            #                tp.row_id
-            #           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-            #     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-            #     INNER JOIN {glbcfg.schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
-            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-            #              = ('Ont', 'Category', c2p.from_id, 'Ont', 'Category', c2p.to_id)
-            #          WHERE tp.to_process = 1
-            #            AND tf.flag_type = 'fields'
-            #            AND tf.to_process = 1
-
-            #      UNION ALL
-
-            #         SELECT 'Parent-to-Child' AS edge_type,
-            #                from_institution_id, from_object_type,   to_id AS from_object_id,
-            #                to_institution_id, to_object_type, from_id AS   to_object_id,
-            #                context, 1 AS to_process,
-            #                tp.row_id
-            #           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-            #     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-            #     INNER JOIN {glbcfg.schema_ontology}.Edges_N_Category_N_Category_T_ChildToParent c2p
-            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-            #              = ('Ont', 'Category', c2p.to_id, 'Ont', 'Category', c2p.from_id)
-            #          WHERE tp.to_process = 1
-            #            AND tf.flag_type = 'fields'
-            #            AND tf.to_process = 1
-
-            #      UNION ALL
-
-            #         SELECT 'Parent-to-Child' AS edge_type,
-            #                from_institution_id, from_object_type, c.from_id AS from_object_id,
-            #                to_institution_id, to_object_type,   l.to_id AS   to_object_id,
-            #                context, 1 AS to_process,
-            #                tp.row_id
-            #           FROM {glbcfg.schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
-            #     INNER JOIN {glbcfg.schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
-            #             ON c.to_id = l.from_id
-            #     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-            #              = ('Ont', 'Category', c.from_id, 'Ont', 'Concept', l.to_id)
-            #             OR (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-            #              = ('Ont', 'Concept', c.from_id, 'Ont', 'Category', l.to_id)
-            #     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-            #          WHERE tp.to_process = 1
-            #            AND tf.flag_type = 'fields'
-            #            AND tf.to_process = 1
-
-            #      UNION ALL
-
-            #         SELECT 'Child-to-Parent' AS edge_type,
-            #                from_institution_id, from_object_type,   l.to_id AS from_object_id,
-            #                to_institution_id, to_object_type, c.from_id AS   to_object_id,
-            #                context, 1 AS to_process,
-            #                tp.row_id
-            #           FROM {glbcfg.schema_ontology}.Edges_N_Category_N_ConceptsCluster_T_ParentToChild c
-            #     INNER JOIN {glbcfg.schema_ontology}.Edges_N_ConceptsCluster_N_Concept_T_ParentToChild l
-            #             ON c.to_id = l.from_id
-            #     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
-            #             ON (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-            #              = ('Ont', 'Category', l.to_id, 'Ont', 'Concept', c.from_id)
-            #             OR (tp.from_institution_id, tp.from_object_type, tp.from_object_id, tp.to_institution_id, tp.to_object_type, tp.to_object_id)
-            #              = ('Ont', 'Concept', l.to_id, 'Ont', 'Category', c.from_id)
-            #     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-            #          USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
-            #          WHERE tp.to_process = 1
-            #            AND tf.flag_type = 'fields'
-            #            AND tf.to_process = 1
-            #     """
-
-            #     # Enclose query
-            #     sql_query = f"""
-            #         SELECT edge_type,
-            #                from_institution_id, from_object_type, from_object_id,
-            #                  to_institution_id,   to_object_type,   to_object_id,
-            #                context, to_process
-            #         FROM (
-            #             {sql_query}
-            #         ) AS t
-            #     """
-
-            #     # Specify input for execution method
-            #     query_has_filters = False
 
             #------------------------------#
             # Process query for input name #
@@ -3298,7 +3020,7 @@ class GraphRegistry():
                 target_table = 'template'
 
                 # List of evaluation columns
-                eval_columns = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
+                eval_columns = ['from_object_type', 'to_object_type']
 
                 # Build query (base)
                 sql_query = f"""
@@ -3307,10 +3029,6 @@ class GraphRegistry():
             #-------------------------#
             # Process resulting query #
             #-------------------------#
-
-            # # Print base query
-            # if 'print' in actions:
-            #     print(sql_query)
 
             # Evaluate query
             if 'eval' in actions:
@@ -3648,16 +3366,16 @@ class GraphRegistry():
                 # Define key and update column names, and target table (object calculated fields)
                 if formula_type == 'calculated_fields/obj':
                     target_table      = 'Data_N_Object_T_CalculatedFields'
-                    key_column_names  = ['institution_id', 'object_type', 'object_id']
+                    key_column_names  = ['object_type', 'object_id']
                     upd_column_names  = ['field_language', 'field_name', 'field_value']
-                    eval_column_names = ['institution_id', 'object_type']
+                    eval_column_names = ['object_type']
 
                 # Define key and update column names, and target table (object-to-object calculated fields)
                 elif formula_type == 'calculated_fields/obj2obj':
                     target_table      = 'Data_N_Object_N_Object_T_CalculatedFields'
-                    key_column_names  = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
+                    key_column_names  = ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
                     upd_column_names  = ['field_language', 'field_name', 'field_value']
-                    eval_column_names = ['from_institution_id', 'from_object_type', 'to_institution_id', 'to_object_type']
+                    eval_column_names = ['from_object_type', 'to_object_type']
 
                 # Execute SQL formula as safe inserts
                 db.execute_query_as_safe_inserts(
@@ -3719,7 +3437,7 @@ class GraphRegistry():
                 target_table = 'Data_N_Object_T_CalculatedFields'
 
                 # Define key and update column names
-                key_column_names = ['institution_id', 'object_type', 'object_id']
+                key_column_names = ['object_type', 'object_id']
                 upd_column_names = ['field_language', 'field_name', 'field_value']
 
                 # Read the SQL formula
@@ -3732,7 +3450,7 @@ class GraphRegistry():
                 target_table = 'Data_N_Object_N_Object_T_CalculatedFields'
 
                 # Define key and update column names
-                key_column_names = ['from_institution_id', 'from_object_type', 'from_object_id', 'to_institution_id', 'to_object_type', 'to_object_id']
+                key_column_names = ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
                 upd_column_names = ['field_language', 'field_name', 'field_value']
 
                 # Read the SQL formula
@@ -3760,7 +3478,7 @@ class GraphRegistry():
                 query             = sql_formula,
                 key_column_names  = key_column_names,
                 upd_column_names  = upd_column_names,
-                eval_column_names = ['institution_id', 'object_type'],
+                eval_column_names = ['object_type'],
                 actions           = ('print', 'commit') if verbose else ('commit'),
                 verbose           = verbose,
                 query_id          = 'ApR0YLT2'
@@ -3772,8 +3490,7 @@ class GraphRegistry():
             sql_query = f"""
           REPLACE INTO {glbcfg.schema_graph_cache_test}.Edges_N_Lecture_N_Concept_T_Timestamps AS
 
-                SELECT t2.from_institution_id    AS institution_id,
-                       t2.from_object_type       AS object_type,
+                SELECT t2.from_object_type       AS object_type,
                        t2.from_object_id         AS object_id,
                        t3.concept_id             AS concept_id,
                        MAX(t3.score)             AS detection_score,
@@ -3783,20 +3500,20 @@ class GraphRegistry():
                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged t1
 
             INNER JOIN graph_lectures.Edges_N_Object_N_Object_T_ChildToParent t2
-                    ON (   t1.institution_id,    t1.object_type,    t1.object_id)
-                     = (t2.to_institution_id, t2.to_object_type, t2.to_object_id)
+                    ON (   t1.object_type,    t1.object_id)
+                     = (t2.to_object_type, t2.to_object_id)
 
             INNER JOIN graph_lectures.Edges_N_Object_N_Concept_T_ConceptDetection t3
-                    ON (t2.from_institution_id, t2.from_object_type, t2.from_object_id)
-                     = (     t3.institution_id,      t3.object_type,      t3.object_id)
+                    ON (t2.from_object_type, t2.from_object_id)
+                     = (     t3.object_type,      t3.object_id)
 
             INNER JOIN graph_lectures.Data_N_Object_N_Object_T_CustomFields t4
-                    ON (  t2.to_institution_id,   t2.to_object_type,   t2.to_object_id, t2.from_institution_id, t2.from_object_type, t2.from_object_id)
-                     = (t4.from_institution_id, t4.from_object_type, t4.from_object_id,  t4.to_institution_id,   t4.to_object_type,   t4.to_object_id)
+                    ON (  t2.to_object_type,   t2.to_object_id, t2.from_object_type, t2.from_object_id)
+                     = (t4.from_object_type, t4.from_object_id,   t4.to_object_type,   t4.to_object_id)
 
             INNER JOIN graph_lectures.Data_N_Object_N_Object_T_CustomFields t5
-                    ON (  t2.to_institution_id,   t2.to_object_type,   t2.to_object_id, t2.from_institution_id, t2.from_object_type, t2.from_object_id)
-                     = (t5.from_institution_id, t5.from_object_type, t5.from_object_id, t5.to_institution_id,   t5.to_object_type,   t5.to_object_id)
+                    ON (  t2.to_object_type,   t2.to_object_id, t2.from_object_type, t2.from_object_id)
+                     = (t5.from_object_type, t5.from_object_id,   t5.to_object_type,   t5.to_object_id)
 
                  WHERE t1.object_type = 'Lecture'
                    AND (t2.from_object_type, t2.to_object_type) = ('Slide', 'Lecture')
@@ -3805,8 +3522,7 @@ class GraphRegistry():
                    AND (t5.from_object_type, t5.to_object_type, t5.field_name) = ('Lecture', 'Slide', 'timestamp')
                    AND t1.to_process = 1
 
-              GROUP BY t2.from_institution_id,
-                       t2.from_object_type,
+              GROUP BY t2.from_object_type,
                        t2.from_object_id,
                        t3.concept_id,
                        t5.field_value
@@ -3871,12 +3587,10 @@ class GraphRegistry():
                 # Generate commit SQL query
                 sql_commit_query = f"""
                      REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc}
-                                  (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
+                                  (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
 
-                           SELECT e1.institution_id  AS from_institution_id,
-                                  e1.object_type     AS from_object_type,
+                           SELECT e1.object_type     AS from_object_type,
                                   e1.object_id       AS from_object_id,
-                                  e2.institution_id  AS to_institution_id,
                                   e2.object_type     AS to_object_type,
                                   e2.object_id       AS to_object_id,
                                   SUM(e1.score*e2.score) AS score, 1 AS to_process
@@ -3897,8 +3611,8 @@ class GraphRegistry():
 
                               AND ((e1.object_type = e2.object_type AND e1.object_id < e2.object_id) OR (e1.object_type != e2.object_type))
 
-                         GROUP BY e1.institution_id, e1.object_type, e1.object_id,
-                                  e2.institution_id, e2.object_type, e2.object_id
+                         GROUP BY e1.object_type, e1.object_id,
+                                  e2.object_type, e2.object_id
 
                            HAVING COUNT(DISTINCT e1.concept_id) >= 4
                               AND SUM(e1.score*e2.score) >= 0.1
@@ -3958,11 +3672,9 @@ class GraphRegistry():
                 # Generate SQL query
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
-                          SELECT institution_id AS from_institution_id,
-                                 object_type    AS from_object_type,
+                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
+                          SELECT object_type    AS from_object_type,
                                  object_id      AS from_object_id,
-                                 'Ont'          AS to_institution_id,
                                  '{ontology_type}' AS to_object_type,
                                  {ontology_type.lower().replace(' ','_')}_id AS to_object_id,
                                  score, to_process
@@ -3977,11 +3689,9 @@ class GraphRegistry():
                 # Generate SQL query
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
-                          SELECT 'Ont'            AS from_institution_id,
-                                 'Concept'        AS from_object_type,
+                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
+                          SELECT 'Concept'        AS from_object_type,
                                  from_id          AS from_object_id,
-                                 'Ont'            AS to_institution_id,
                                  'Concept'        AS to_object_type,
                                  to_id            AS to_object_id,
                                  normalised_score AS score,
@@ -4009,8 +3719,8 @@ class GraphRegistry():
                     # Generate SQL query for average score calculation (if needed)
                     sql_query_avg = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG
-                                (from_institution_id, from_object_type, to_institution_id, to_object_type, avg_score, n_rows)
-                          SELECT from_institution_id, from_object_type, to_institution_id, to_object_type,
+                                (from_object_type, to_object_type, avg_score, n_rows)
+                          SELECT from_object_type, to_object_type,
                                  AVG(score) AS avg_score, COUNT(*) AS n_rows
                             FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc}
                            WHERE from_object_type = '{from_object_type}'
@@ -4031,8 +3741,8 @@ class GraphRegistry():
                 # Check first if an average score is available, return otherwise
                 sql_query_check = f"""
                     SELECT * FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG
-                     WHERE (from_institution_id, from_object_type, to_institution_id, to_object_type)
-                         = ('{glbcfg.object_type_to_institution_id[from_object_type]}', '{from_object_type}', '{glbcfg.object_type_to_institution_id[to_object_type]}', '{to_object_type}');
+                     WHERE (from_object_type, to_object_type)
+                         = ('{from_object_type}', '{to_object_type}');
                 """
                 out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_check, query_id='fTaH8sTj')
                 if len(out) == 0:
@@ -4042,10 +3752,10 @@ class GraphRegistry():
                 # Generate SQL query for adjusted scores calculation
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                 (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id, score, to_process)
-                          SELECT t.from_institution_id, t.from_object_type, t.from_object_id, t.to_institution_id, t.to_object_type, t.to_object_id, t.score, t.to_process
-                            FROM (SELECT gb.from_institution_id, gb.from_object_type, gb.from_object_id,
-                                           gb.to_institution_id,   gb.to_object_type,   gb.to_object_id,
+                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
+                          SELECT t.from_object_type, t.from_object_id, t.to_object_type, t.to_object_id, t.score, t.to_process
+                            FROM (SELECT gb.from_object_type, gb.from_object_id,
+                                           gb.to_object_type,   gb.to_object_id,
                                          (2/(1 + EXP(-gb.score/(4 * av.avg_score))) - 1) AS score, gb.to_process
                                     FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc} gb
                               INNER JOIN {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG av
@@ -4420,22 +4130,22 @@ class GraphRegistry():
 
                             SELECT {', '.join(list_of_columns_org)}, (s.row_rank) AS adjusted_row_rank
                               FROM {glbcfg.schema_graphsearch_test}.{table_name_org} s
-                        INNER JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                        INNER JOIN (SELECT doc_type, doc_id, MAX(row_rank) AS max_row_rank
                                       FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                  GROUP BY doc_institution, doc_type, doc_id) o
-                             USING (doc_institution, doc_type, doc_id)
+                                  GROUP BY doc_type, doc_id) o
+                             USING (doc_type, doc_id)
                              WHERE doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
 
                          UNION ALL
 
                             SELECT {', '.join(list_of_columns_sem)}, (s.row_rank + COALESCE(o.max_row_rank, 0)) AS adjusted_row_rank
                               FROM {glbcfg.schema_graphsearch_test}.{table_name_sem} s
-                         LEFT JOIN (SELECT doc_institution, doc_type, doc_id, MAX(row_rank) AS max_row_rank
+                         LEFT JOIN (SELECT doc_type, doc_id, MAX(row_rank) AS max_row_rank
                                       FROM {glbcfg.schema_graphsearch_test}.{table_name_org}
-                                  GROUP BY doc_institution, doc_type, doc_id) o
-                             USING (doc_institution, doc_type, doc_id)
-                             WHERE (s.doc_institution, s.doc_type, s.doc_id, s.link_institution, s.link_type, s.link_id)
-                                      NOT IN (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
+                                  GROUP BY doc_type, doc_id) o
+                             USING (doc_type, doc_id)
+                             WHERE (s.doc_type, s.doc_id, s.link_type, s.link_id)
+                                      NOT IN (SELECT doc_type, doc_id, link_type, link_id FROM {glbcfg.schema_graphsearch_test}.{table_name_org})
                                AND doc_id IN (SELECT doc_id FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} WHERE to_process = 1)
 
                           ORDER BY doc_id ASC, adjusted_row_rank ASC;
@@ -5137,7 +4847,7 @@ class GraphRegistry():
                     (
                         f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
                         f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
-                        f"{' '*6}LEFT JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_T_AllFields t{k+1} ON (t{k+1}.institution_id, t{k+1}.object_type, t{k+1}.object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}', p.object_id, '{field_language}', '{field_name}')"
+                        f"{' '*6}LEFT JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_T_AllFields t{k+1} ON (t{k+1}.object_type, t{k+1}.object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{doc_type}', p.object_id, '{field_language}', '{field_name}')"
                     )
                     for k, (field_language, field_name) in enumerate([tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields])
                 ])]
@@ -5158,22 +4868,22 @@ class GraphRegistry():
 
                 # Generate SQL query for replacing scores and fields
                 sql_query = f"""
-                    SELECT p.institution_id AS doc_institution, p.object_type AS doc_type, p.object_id AS doc_id,
+                    SELECT p.object_type AS doc_type, p.object_id AS doc_id,
                            {include_code_in_name} AS include_code_in_name,
                            {sql_slice_field_values_as_names}
                            COALESCE(d.avg_norm_log_degree, 0.001) AS degree_score,
                            1 AS to_process
                       FROM {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p\n{sql_slice_joins_obj}
                  LEFT JOIN {glbcfg.schema_graph_cache_test}.Nodes_N_Object_T_DegreeScores d
-                        ON (p.institution_id, p.object_type, p.object_id)
-                         = (d.institution_id, d.object_type, d.object_id)
+                        ON (p.object_type, p.object_id)
+                         = (d.object_type, d.object_id)
                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                        ON ( p.institution_id,  p.object_type,  p.object_id)
-                         = (fc.institution_id, fc.object_type, fc.object_id)
+                        ON ( p.object_type,  p.object_id)
+                         = (fc.object_type, fc.object_id)
                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                        ON ( p.institution_id,  p.object_type)
-                         = (tf.institution_id, tf.object_type)
-                     WHERE (p.institution_id, p.object_type) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}')
+                        ON ( p.object_type)
+                         = (tf.object_type)
+                     WHERE (p.object_type) = ('{doc_type}')
                        AND fc.to_process = 1
                        AND tf.to_process = 1
                 """
@@ -5182,7 +4892,7 @@ class GraphRegistry():
                 target_table = f'IndexBuildup_Fields_Docs_{doc_type}'
 
                 # List of evaluation columns
-                eval_columns = ['doc_institution', 'doc_type']
+                eval_columns = ['doc_type']
 
                 #-------------------------#
                 # Process resulting query #
@@ -5209,7 +4919,7 @@ class GraphRegistry():
                 if 'commit' in actions:
 
                     # Fetch target table column names
-                    target_table_columns = ['doc_institution', 'doc_type', 'doc_id', 'include_code_in_name'] + cachebuildup_obj_fields + ['degree_score', 'to_process']
+                    target_table_columns = ['doc_type', 'doc_id', 'include_code_in_name'] + cachebuildup_obj_fields + ['degree_score', 'to_process']
 
                     # Remove row_id (if exists)
                     if 'row_id' in target_table_columns:
@@ -5243,7 +4953,7 @@ class GraphRegistry():
                     (
                         f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
                         f"t{k+1}.field_value AS {field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language],
-                        f"{' '*6}LEFT JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_N_Object_T_AllFieldsSymmetric t{k+1} ON (t{k+1}.from_institution_id, t{k+1}.from_object_type, t{k+1}.from_object_id, t{k+1}.to_institution_id, t{k+1}.to_object_type, t{k+1}.to_object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}', s.from_object_id, '{glbcfg.object_type_to_institution_id[link_type]}', '{link_type}',   s.to_object_id, '{field_language}', '{field_name}')"
+                        f"{' '*6}LEFT JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_N_Object_T_AllFieldsSymmetric t{k+1} ON (t{k+1}.from_object_type, t{k+1}.from_object_id, t{k+1}.to_object_type, t{k+1}.to_object_id, t{k+1}.field_language, t{k+1}.field_name) = ('{doc_type}', s.from_object_id, '{link_type}',   s.to_object_id, '{field_language}', '{field_name}')"
                     )
                     for k, (field_language, field_name) in enumerate([tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields])
                 ])]
@@ -5264,12 +4974,12 @@ class GraphRegistry():
 
                 # Generate SQL query for replacing scores and fields
                 sql_query = f"""
-                  SELECT s.from_institution_id AS doc_institution, s.from_object_type AS  doc_type, s.from_object_id AS doc_id,
-                         s.to_institution_id AS link_institution, s.to_object_type AS link_type, s.to_object_id AS link_id,
+                  SELECT s.from_object_type AS  doc_type, s.from_object_id AS doc_id,
+                           s.to_object_type AS link_type, s.to_object_id AS link_id,
                          {sql_slice_field_values_as_names}
                          1 AS to_process
                     FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric s\n{sql_slice_joins_obj2obj}
-                   WHERE (s.from_institution_id, s.from_object_type, s.to_institution_id, s.to_object_type) = ('{glbcfg.object_type_to_institution_id[doc_type]}', '{doc_type}', '{glbcfg.object_type_to_institution_id[link_type]}', '{link_type}')
+                   WHERE (s.from_object_type, s.to_object_type) = ('{doc_type}', '{link_type}')
                      AND s.to_process = 1
                 """
 
@@ -5280,7 +4990,7 @@ class GraphRegistry():
                 create_table_if_not_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=target_table)
 
                 # List of evaluation columns
-                eval_columns = ['doc_institution', 'doc_type', 'link_institution', 'link_type']
+                eval_columns = ['doc_type', 'link_type']
 
                 #-------------------------#
                 # Process resulting query #
@@ -5302,7 +5012,7 @@ class GraphRegistry():
                 if 'commit' in actions:
 
                     # Fetch target table column names
-                    target_table_columns = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_id'] + cachebuildup_obj2obj_fields + ['to_process']
+                    target_table_columns = ['doc_type', 'doc_id', 'link_type', 'link_id'] + cachebuildup_obj2obj_fields + ['to_process']
 
                     # Remove row_id (if exists)
                     if 'row_id' in target_table_columns:
@@ -5328,7 +5038,7 @@ class GraphRegistry():
                 # Define internal variables
                 self.engine_name      = engine_name
                 self.table_name       = 'Data_N_Object_T_PageProfile'
-                self.key_column_names = ['institution_id', 'object_type', 'object_id']
+                self.key_column_names = ['object_type', 'object_id']
 
                 # Fetch column names to update
                 out = db.get_column_names(
@@ -5341,12 +5051,12 @@ class GraphRegistry():
             # ...
             def info(self):
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                    SELECT institution_id, object_type, COUNT(*) AS n_to_process
+                    SELECT object_type, COUNT(*) AS n_to_process
                     FROM {glbcfg.schema_graph_cache_test}.{self.table_name}
                     WHERE to_process = 1
-                    GROUP BY institution_id, object_type
+                    GROUP BY object_type
                 """, query_id='8ffjZPFr')
-                df = pd.DataFrame(out, columns=['institution_id', 'object_type', 'n_to_process'])
+                df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
                 print_dataframe(df, title=f'\n🔍 Evaluation results for page profile')
 
             # Index > Page Profile > Get engine
@@ -5407,7 +5117,7 @@ class GraphRegistry():
                 # SELECT DISTINCT '{rollback_date}' AS rollback_date, p.{', p.'.join(column_names)}
                 #             FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
                 #         INNER JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile c
-                #             USING (institution_id, object_type, object_id)
+                #             USING (object_type, object_id)
                 #             WHERE c.to_process = 1
                 #             AND ({' OR '.join([f'p.{c} != c.{c}' for c in column_names])});
                 # """
@@ -5431,9 +5141,9 @@ class GraphRegistry():
                     \t\t     SELECT {', '.join([f'p.{k}' for k in self.key_column_names])}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
                     \t\t       FROM {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{self.table_name} p
                     \t\t INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                    \t\t      USING (institution_id, object_type, object_id)
+                    \t\t      USING (object_type, object_id)
                     \t\t INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                    \t\t      USING (institution_id, object_type)
+                    \t\t      USING (object_type)
                     \t\t      WHERE tf.flag_type  = 'fields'
                     \t\t        AND  p.to_process = 1
                     \t\t        AND fc.to_process = 1
@@ -5452,7 +5162,7 @@ class GraphRegistry():
                     query             = sql_query,
                     key_column_names  = self.key_column_names,
                     upd_column_names  = self.upd_column_names,
-                    eval_column_names = ['institution_id', 'object_type'],
+                    eval_column_names = ['object_type'],
                     actions           = actions,
                     query_id          = 'Mp7U7rMW'
                 )
@@ -5480,7 +5190,7 @@ class GraphRegistry():
                 self.doc_type           = doc_type
                 self.buildup_table_name = f'IndexBuildup_Fields_Docs_{doc_type}'
                 self.index_table_name   = f'Index_D_{doc_type}'
-                self.key_column_names   = ['doc_institution', 'doc_type', 'doc_id']
+                self.key_column_names   = ['doc_type', 'doc_id']
 
                 # Create buildup and graphsearch tables if they don't exist
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_table_name)
@@ -5526,20 +5236,6 @@ class GraphRegistry():
             # Index > Docs > General patching > Generate snapshot
             def snapshot(self, rollback_date=False, actions=()):
                 raise NotImplementedError
-                if False:
-                    pass
-                    # Generate SQL query @@@@@@@
-                    SQLQuery = f"""
-                        INSERT INTO {glbcfg.schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type}
-                                    (rollback_date, doc_institution, doc_type, doc_id, include_code_in_name, {', '.join(self.custom_column_names_with_lang)}{',' if len(self.custom_column_names_with_lang)>0 else ''} degree_score)
-                    SELECT DISTINCT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.include_code_in_name, {', '.join([f'i.{c}' for c in self.custom_column_names_with_lang])}{',' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score
-                                FROM {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type} i
-                            INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} b
-                                USING (doc_institution, doc_type, doc_id)
-                                WHERE b.to_process = 1
-                                AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.custom_column_names_with_lang])} {'OR' if len(self.custom_column_names_with_lang)>0 else ''} i.degree_score != b.degree_score)
-                    ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    """
 
             # Index > Docs > General patching > Insert new rows, update existing fields (graphsearch test)
             def patch(self, actions=()):
@@ -5573,10 +5269,10 @@ class GraphRegistry():
                         FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
 
                    LEFT JOIN {target_schema_name}.{target_table_name} t
-                          ON (t.doc_institution, t.doc_type, t.doc_id) = (p.institution_id, p.object_type, p.object_id)
+                          ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
 
                   INNER JOIN {cache_schema_name}.{buildup_table_name} n
-                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process = 1 OR n.to_process = 1)
@@ -5626,10 +5322,10 @@ class GraphRegistry():
 
                 # Generate commit query
                 sql_query_commit = f"""
-                     SELECT n.doc_institution, n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
+                     SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
-                         ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
+                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
                         AND (p.to_process = 1 OR n.to_process = 1)
                 """
@@ -5651,9 +5347,9 @@ class GraphRegistry():
                             schema_name       = target_schema_name,
                             table_name        = target_table_name,
                             query             = sql_query_commit,
-                            key_column_names  = ['doc_institution', 'doc_type', 'doc_id'],
+                            key_column_names  = ['doc_type', 'doc_id'],
                             upd_column_names  = upd_column_names,
-                            eval_column_names = ['doc_institution', 'doc_type'],
+                            eval_column_names = ['doc_type'],
                             actions           = actions,
                             table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
                             chunk_size        = 100000,
@@ -5705,7 +5401,7 @@ class GraphRegistry():
                           ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
 
                   INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
-                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process = 1 OR n.to_process = 1)
@@ -5778,7 +5474,7 @@ class GraphRegistry():
                      SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
-                         ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
+                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
                         AND (p.to_process = 1 OR n.to_process = 1)
                 """
@@ -5813,16 +5509,6 @@ class GraphRegistry():
             # Index > Docs > General patching > Roll back to previous state
             def rollback(self, rollback_date, actions=()):
                 raise NotImplementedError
-                if False:
-                    pass
-                    # # Generate SQL query
-                    # sql_query = f"""
-                    #         UPDATE {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type} i
-                    #     INNER JOIN {glbcfg.schema_graph_cache_test}.IndexRollback_Fields_Docs_{self.doc_type} b
-                    #         USING (doc_institution, doc_type, doc_id)
-                    #             SET {', '.join([f'i.{c} = b.{c}' for c in self.graphsearch_obj_fields])}, i.degree_score = b.degree_score
-                    #         WHERE b.rollback_date = '{rollback_date}';
-                    # """
 
             #=====================================#
             # Airflow, Flag, and Checksum updates #
@@ -5837,7 +5523,7 @@ class GraphRegistry():
                   INNER JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p
                           ON (a.object_type, a.object_id) = (p.object_type, p.object_id)
                   INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} n
-                          ON (p.institution_id, p.object_type, p.object_id) = (n.doc_institution, n.doc_type, n.doc_id)
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE p.object_type = '{self.doc_type}'
                          AND (p.to_process = 1 OR n.to_process = 1)
@@ -5889,7 +5575,7 @@ class GraphRegistry():
                 self.buildup_doc_table_name  = f'IndexBuildup_Fields_Docs_{doc_type}'
                 self.buildup_link_table_name = f'IndexBuildup_Fields_Docs_{link_type}'
                 self.index_table_name        = f'Index_D_{doc_type}_L_{link_type}_T_{link_subtype.upper()}'
-                self.key_column_names        = ['doc_institution', 'doc_type', 'doc_id', 'link_institution', 'link_type', 'link_subtype', 'link_id']
+                self.key_column_names        = ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
 
                 # Create buildup and graphsearch tables if they don't exist
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_doc_table_name)
@@ -5931,40 +5617,6 @@ class GraphRegistry():
             # Index > Doc-Links > Vertical patching > Generate snapshot
             def vertical_snapshot_parentchild(self, rollback_date=False):
                 return NotImplementedError
-                if False:
-                    pass
-                    # # Generate the SQL query  @@@@@
-                    # sql_query = f"""
-                    #     INSERT INTO {glbcfg.schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type}
-                    #                 (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_id, {', '.join(self.graphsearch_obj2obj_fields)})
-
-                    #             SELECT '{rollback_date}' AS rollback_date,
-                    #                 t1.doc_institution, t1.doc_type, t1.doc_id, t1.link_institution, t1.link_type, t1.link_id,
-                    #                 {', '.join([f'COALESCE(t1.{c}, t2.{c}) AS {c}' for c in self.graphsearch_obj2obj_fields])}
-
-                    #             FROM (SELECT DISTINCT i.doc_institution, i.doc_type, i.doc_id,
-                    #                                     i.link_institution, i.link_type, i.link_id,
-                    #                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj2obj_fields])}
-                    #                             FROM {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_ORG i
-                    #                         INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
-                    #                                 ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                    #                                 = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
-                    #                             WHERE b.to_process = 1
-                    #                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
-                    #                 ) t1
-                    #         INNER JOIN (SELECT DISTINCT i.link_institution AS doc_institution, i.link_type AS doc_type, i.link_id AS doc_id,
-                    #                                     i.doc_institution AS link_institution, i.doc_type AS link_type, i.doc_id AS link_id,
-                    #                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj2obj_fields])}
-                    #                             FROM {glbcfg.schema_graphsearch_test}.Index_D_{self.link_type}_L_{self.doc_type}_T_ORG i
-                    #                         INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b    
-                    #                                 ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                    #                                 = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
-                    #                             WHERE b.to_process = 1
-                    #                                 AND ({' OR '.join([f'i.{c} != b.{c}' for c in self.graphsearch_obj2obj_fields])})
-                    #                 ) t2
-                    #             USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_id)
-                    # ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    # """
 
             # ------- Patching ------- #
 
@@ -5992,7 +5644,7 @@ class GraphRegistry():
                     SELECT COUNT(*) AS n_total, COALESCE(SUM({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}), 0) AS n_patch
                       FROM {buildup_link_table_path} b
                 INNER JOIN {target_table_path} i
-                        ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
+                        ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                      WHERE b.to_process = 1;
                 """
 
@@ -6034,7 +5686,7 @@ class GraphRegistry():
                 sql_query_commit = f"""
                     UPDATE {target_table_path} i
                 INNER JOIN {buildup_link_table_path} b
-                        ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
+                        ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                        SET {   ', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}
                      WHERE b.to_process = 1
                        AND ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])});
@@ -6127,8 +5779,8 @@ class GraphRegistry():
                     # Generate placeholder SQL chunk
                     obj2obj_placeholder = f"""
                  LEFT JOIN {buildup_link_table_path_obj2obj} l
-                        ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                         = (l.{m[f]}_institution, l.{m[f]}_type, l.{m[f]}_id, l.{m[not f]}_institution, l.{m[not f]}_type, l.{m[not f]}_id)
+                        ON (i.doc_type, i.doc_id, i.link_type, i.link_id)
+                         = (l.{m[f]}_type, l.{m[f]}_id, l.{m[not f]}_type, l.{m[not f]}_id)
                     """
 
                 # Generate evaluation query [of8T3uCG]
@@ -6139,7 +5791,7 @@ class GraphRegistry():
                            AS n_patch
                       FROM {buildup_link_table_path_obj} b
                 INNER JOIN {target_table_path} i
-                        ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
+                        ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                            {obj2obj_placeholder}
                      WHERE b.to_process = 1;
                 """
@@ -6174,7 +5826,7 @@ class GraphRegistry():
                 sql_query_commit = f"""
                     UPDATE {target_table_path} i
                 INNER JOIN {buildup_link_table_path_obj} b
-                        ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
+                        ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                            {obj2obj_placeholder}
                        SET {', '.join([f'i.{c}  = b.{c}' for c in self.graphsearch_obj_fields])}{',' if ec else ''}
                            {', '.join([f'i.{c}  = l.{c}' for c in self.graphsearch_obj2obj_fields])}
@@ -6328,27 +5980,6 @@ class GraphRegistry():
             # Index > Doc-Links > Vertical patching > Roll back to previous state
             def vertical_rollback_parentchild(self, rollback_date=False, actions=()):
                 return NotImplementedError
-                if False:
-                    pass
-                    # # Generate SQL query
-                    # SQLQuery = f"""
-                    #         UPDATE {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_ORG i
-                    #     INNER JOIN {glbcfg.schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b
-                    #             ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                    #             = (b.doc_institution, b.doc_type, b.doc_id, b.link_institution, b.link_type, b.link_id)
-                    #         SET {', '.join([f'i.{c} = b.{c}' for c in self.graphsearch_obj2obj_fields])}
-                    #         WHERE b.rollback_date = '{rollback_date}';
-                    # """
-
-                    # # Generate SQL query
-                    # SQLQuery = f"""
-                    #         UPDATE {glbcfg.schema_graphsearch_test}.Index_D_{self.link_type}_L_{self.doc_type}_T_ORG i
-                    #     INNER JOIN {glbcfg.schema_graph_cache_test}.IndexRollback_Fields_Links_ParentChild_{self.doc_type}_{self.link_type} b
-                    #             ON (i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_id)
-                    #             = (b.link_institution, b.link_type, b.link_id, b.doc_institution, b.doc_type, b.doc_id)
-                    #         SET {', '.join([f'i.{c} = b.{c}' for c in self.graphsearch_obj2obj_fields])}
-                    #         WHERE b.rollback_date = '{rollback_date}';
-                    # """
 
             #=====================#
             # Horizontal patching #
@@ -6359,72 +5990,6 @@ class GraphRegistry():
             # Index > Doc-Links > Horizontal patching > Generate snapshot
             def horizontal_snapshot(self, rollback_date, actions=()):
                 return NotImplementedError
-                if False:
-                    pass
-                    # # Check if there's something to process
-                    # if self.link_subtype.upper() == 'ORG':
-                    #     if len(db.execute_query(
-                    #         engine_name = 'xaas_coresrv',
-                    #         query = f"""
-                    #             SELECT 1
-                    #             FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric 
-                    #             WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                    #             AND to_process = 1 LIMIT 1"""
-                    #         )) == 0:
-                    #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
-                    #         return
-                    # elif self.link_subtype.upper() == 'SEM':
-                    #     if len(db.execute_query(
-                    #         engine_name = 'xaas_coresrv',
-                    #         query = f"""
-                    #             SELECT 1
-                    #             FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education}_AS
-                    #             WHERE ((from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                    #             OR     (to_object_type, from_object_type) = ("{self.doc_type}", "{self.link_type}"))
-                    #             AND to_process = 1 LIMIT 1"""
-                    #         )) == 0:
-                    #         # print(f"Nothing to process for {self.link_subtype.upper()} link types '{self.doc_type}' and '{self.link_type}'.")
-                    #         return
-
-                    # # Check if table exists
-                    # if not db.table_exists(engine_name='xaas_coresrv', schema_name=self.test_schema_name, table_name=self.index_table_name):
-                    #     return False
-
-                    # # Organisational table?
-                    # if self.link_subtype.upper() == 'ORG':
-
-                    #     # Generate SQL query @@@@@
-                    #     SQLQuery = f"""
-                    #     INSERT INTO {glbcfg.schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
-                    #                       (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
-                    #                 SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.degree_score AS score, i.row_score, i.row_rank
-                    #                   FROM {glbcfg.schema_graphsearch_test}.{self.index_table_name} i
-                    #             INNER JOIN (SELECT DISTINCT from_institution_id AS doc_institution, from_object_type AS doc_type, from_object_id AS doc_id
-                    #                                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric
-                    #                                   WHERE (from_object_type, to_object_type) = ("{self.doc_type}", "{self.link_type}")
-                    #                                     AND to_process = 1) c
-                    #                  USING (doc_institution, doc_type, doc_id)
-                    #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    #     """
-
-                    # # Semantic table?
-                    # elif self.link_subtype.upper() == 'SEM':
-
-                    #     # Generate SQL query @@@@@@
-                    #     SQLQuery = f"""
-                    #     INSERT INTO {glbcfg.schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
-                    #                       (rollback_date, doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, score, row_score, row_rank)
-                    #                 SELECT '{rollback_date}' AS rollback_date, i.doc_institution, i.doc_type, i.doc_id, i.link_institution, i.link_type, i.link_subtype, i.link_id, i.semantic_score AS score, i.row_score, i.row_rank
-                    #                   FROM {glbcfg.schema_graphsearch_test}.{self.index_table_name} i
-                    #             INNER JOIN (SELECT DISTINCT s.from_institution_id AS doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id
-                    #                                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education}_AS s
-                    #                              INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.link_type} i
-                    #                                      ON (s.from_object_type,   s.to_object_type,   s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                    #                                      OR (  s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                    #                                   WHERE s.to_process = 1) c
-                    #                  USING (doc_institution, doc_type, doc_id)
-                    #     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    # """
 
             # Helper: check if this doc-link is an ontology-object edge
             def _is_ontology_object_edge(self):
@@ -6527,9 +6092,9 @@ class GraphRegistry():
                         # Generate SQL query 1
                         SQLQuery1 = f"""
                         REPLACE INTO {target_table_path}
-                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
-                              SELECT p.from_institution_id AS  doc_institution, p.from_object_type AS  doc_type, p.from_object_id AS doc_id,
-                                       p.to_institution_id AS link_institution,   p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
+                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
+                              SELECT p.from_object_type AS  doc_type, p.from_object_id AS doc_id,
+                                       p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
                                      {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join([f'bl.{c}' for c in self.graphsearch_obj2obj_fields])}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''}
                                      bd.degree_score, 0 AS row_score, 99 AS row_rank
                                 FROM {parentchild_table_path} p
@@ -6548,9 +6113,9 @@ class GraphRegistry():
                         # Generate SQL query 1
                         SQLQuery1 = f"""
                         REPLACE INTO {target_table_path}
-                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank)
-                              SELECT p.from_institution_id AS  doc_institution, p.from_object_type AS  doc_type, p.from_object_id AS doc_id,
-                                       p.to_institution_id AS link_institution,   p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
+                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank)
+                              SELECT p.from_object_type AS  doc_type, p.from_object_id AS doc_id,
+                                       p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
                                      {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}
                                      bd.degree_score, 0 AS row_score, 99 AS row_rank
                                 FROM {parentchild_table_path} p
@@ -6564,9 +6129,9 @@ class GraphRegistry():
                     # Generate SQL query 3
                     SQLQuery3 = f"""
                     REPLACE INTO {target_table_path}
-                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
-                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
-                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score,
+                                        (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
+                          SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
+                            FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score,
                                         CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
                                                         row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
                                     FROM {target_table_path}
@@ -6605,9 +6170,9 @@ class GraphRegistry():
                             # Forward: ontology as doc, object as link
                             SQLQuery1 = f"""
                             REPLACE INTO {target_table_path}
-                                         (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                                  SELECT 'Ont' AS doc_institution, '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
-                                         fs.institution_id AS link_institution, fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
+                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                                  SELECT '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
+                                         fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
                                          {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                          fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
                                     FROM {final_scores_table} fs
@@ -6622,9 +6187,9 @@ class GraphRegistry():
                             SQLQuery1 = None
                             SQLQuery2 = f"""
                             REPLACE INTO {target_table_path}
-                                         (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                                  SELECT fs.institution_id AS doc_institution, fs.object_type AS doc_type, fs.object_id AS doc_id,
-                                         'Ont' AS link_institution, '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
+                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                                  SELECT fs.object_type AS doc_type, fs.object_id AS doc_id,
+                                         '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
                                          {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                          fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
                                     FROM {final_scores_table} fs
@@ -6660,10 +6225,9 @@ class GraphRegistry():
                         # Generate SQL query 1
                         SQLQuery1 = f"""
                         REPLACE INTO {target_table_path}
-                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                              SELECT s.from_institution_id AS  doc_institution, s.from_object_type AS doc_type, s.from_object_id AS doc_id,
-
-                                       s.to_institution_id AS link_institution,   s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
+                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                              SELECT s.from_object_type AS  doc_type, s.from_object_id AS doc_id,
+                                       s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
                                      {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                      s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
                                 FROM {scoresmatrix_table_path} s
@@ -6675,9 +6239,9 @@ class GraphRegistry():
                         # Generate SQL query 2 (same as SQL query 1 but flipped)
                         SQLQuery2 = f"""
                         REPLACE INTO {target_table_path}
-                                     (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                              SELECT   s.to_institution_id AS  doc_institution,   s.to_object_type AS  doc_type, s.to_object_id AS doc_id,
-                                     s.from_institution_id AS link_institution, s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
+                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                              SELECT   s.to_object_type AS  doc_type, s.to_object_id AS doc_id,
+                                     s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
                                      {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
                                      s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
                                 FROM {scoresmatrix_table_path} s
@@ -6721,9 +6285,9 @@ class GraphRegistry():
                     # Generate SQL query 3 (re-rank)
                     SQLQuery3 = f"""
                     REPLACE INTO {target_table_path}
-                                        (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT         doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                            FROM (SELECT doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
+                                        (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                          SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                            FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
                                          CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
                                                          row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
                                     FROM {target_table_path}
@@ -7049,7 +6613,7 @@ class GraphRegistry():
                     # SQLQuery = f"""
                     #         UPDATE {glbcfg.schema_graphsearch_test}.{table_name} i
                     #     INNER JOIN {glbcfg.schema_graph_cache_test}.IndexRollback_ScoreRanks_Links b
-                    #          USING (doc_institution, doc_type, doc_id, link_institution, link_type, link_subtype, link_id)
+                    #          USING (doc_type, doc_id, link_type, link_subtype, link_id)
                     #            SET i.{'semantic' if index_type=='SEM' else 'degree'}_score = b.score, i.row_score = b.row_score, i.row_rank = b.row_rank
                     #          WHERE (b.doc_type, b.link_type) = ("{source_doc_type}", "{target_doc_type}")
                     #            AND b.rollback_date = "{rollback_date}";
@@ -7074,7 +6638,7 @@ class GraphRegistry():
                   INNER JOIN {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type}_L_{self.link_type}_T_{self.link_subtype} i
                           ON (a.from_object_type, a.from_object_id, a.to_object_type, a.to_object_id) = (i.doc_type, i.doc_id, i.link_type, i.link_id)
                   INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.link_type} b
-                          ON (i.link_institution, i.link_type, i.link_id) = (b.doc_institution, b.doc_type, b.doc_id)
+                          ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE b.to_process = 1
                 """

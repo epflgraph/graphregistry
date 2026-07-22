@@ -1,8 +1,6 @@
 CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   to_object_id varchar(255) NOT NULL,
   context enum('accreditation','affiliation','authorship','coursebook','teacher') NOT NULL,
@@ -15,20 +13,17 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name,context),
-  KEY from_institution_id (from_institution_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,field_language,field_name,context),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id)
+  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   field_language enum('en','fr','de','it','n/a') NOT NULL,
@@ -40,17 +35,15 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (institution_id,object_type,object_id,field_language,field_name),
-  KEY institution_id (institution_id),
+  UNIQUE KEY unique_key (object_type,object_id,field_language,field_name),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY object_key (institution_id,object_type,object_id)
+  KEY object_key (object_type,object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   numeric_id_en int(10) unsigned DEFAULT NULL,
@@ -157,8 +150,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY object_key (institution_id,object_type,object_id),
-  KEY institution_id (institution_id),
+  UNIQUE KEY object_key (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY short_code (short_code),
@@ -174,7 +166,6 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ConceptDetection (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   concept_id varchar(255) NOT NULL,
@@ -186,18 +177,16 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ConceptDetection (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (institution_id,object_type,object_id,concept_id,text_source),
+  UNIQUE KEY unique_key (object_type,object_id,concept_id,text_source),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
-  KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY text_source (text_source),
-  KEY obj_ccp (institution_id,object_id,concept_id),
+  KEY obj_ccp (object_id,concept_id),
   KEY type_src (object_type,text_source)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_LLMPostValidated (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   concept_id varchar(255) NOT NULL,
@@ -209,18 +198,16 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_LLMPostValidated (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (institution_id,object_type,object_id,concept_id,text_source),
+  UNIQUE KEY unique_key (object_type,object_id,concept_id,text_source),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
-  KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY text_source (text_source),
-  KEY obj_ccp (institution_id,object_id,concept_id),
+  KEY obj_ccp (object_id,concept_id),
   KEY type_src (object_type,text_source)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ManualMapping (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   concept_id varchar(255) NOT NULL,
@@ -233,19 +220,16 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ManualMapping (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (institution_id,object_type,object_id,concept_id,text_source),
+  UNIQUE KEY unique_key (object_type,object_id,concept_id,text_source),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
-  KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY text_source (text_source)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   to_object_id varchar(255) NOT NULL,
   context enum('accreditation','affiliation','authorship','coursebook','teacher') NOT NULL,
@@ -255,24 +239,20 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,context),
-  KEY from_institution_id (from_institution_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,context),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY context (context),
-  KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
-  KEY edge_from_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,context),
-  KEY edge_to_key (from_institution_id,from_object_type,to_institution_id,to_object_type,to_object_id,context)
+  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
+  KEY edge_from_key (from_object_type,from_object_id,to_object_type,context),
+  KEY edge_to_key (from_object_type,to_object_type,to_object_id,context)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_IdMap (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   to_object_id varchar(255) NOT NULL,
   record_created_date datetime NOT NULL DEFAULT current_timestamp(),
@@ -280,21 +260,17 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_IdMap (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
-  KEY from_institution_id (from_institution_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Mapping_N_Field_N_Field (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   from_field_name varchar(64) NOT NULL,
   from_field_value varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   to_field_name varchar(64) NOT NULL,
   to_field_value varchar(255) NOT NULL,
@@ -302,18 +278,15 @@ CREATE TABLE IF NOT EXISTS Mapping_N_Field_N_Field (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_institution_id,from_object_type,from_field_name,from_field_value,to_institution_id,to_object_type,to_field_name,to_field_value,context),
-  KEY from_institution_id (from_institution_id),
+  UNIQUE KEY unique_key (from_object_type,from_field_name,from_field_value,to_object_type,to_field_name,to_field_value,context),
   KEY from_object_type (from_object_type),
   KEY from_field_name (from_field_name),
-  KEY to_institution_id (to_institution_id),
   KEY to_object_type (to_object_type),
   KEY to_field_name (to_field_name),
   KEY context (context)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Nodes_N_Object (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   object_title text DEFAULT NULL,
@@ -325,8 +298,7 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Object (
   row_id int(11) NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY object_key (institution_id,object_type,object_id),
-  KEY institution_id (institution_id),
+  UNIQUE KEY object_key (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY object_type_id (object_type,object_id)

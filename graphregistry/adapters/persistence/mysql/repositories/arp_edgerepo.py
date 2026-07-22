@@ -57,10 +57,8 @@ class MySQLEdgeRepository(EdgeRepository):
         sql_query = resolve_sql_query(
             file_path           = sql_queries_paths['registry']['commit']['edge_exists'],
             registry            = schema_name,
-            from_institution_id = key.from_institution_id,
             from_object_type    = key.from_object_type,
             from_object_id      = key.from_object_id,
-            to_institution_id   = key.to_institution_id,
             to_object_type      = key.to_object_type,
             to_object_id        = key.to_object_id,
             context             = key.context
@@ -97,10 +95,8 @@ class MySQLEdgeRepository(EdgeRepository):
         sql_query = resolve_sql_query(
             file_path           = sql_queries_paths['registry']['commit']['edge_get_custom'],
             registry            = schema_name,
-            from_institution_id = key.from_institution_id,
             from_object_type    = key.from_object_type,
             from_object_id      = key.from_object_id,
-            to_institution_id   = key.to_institution_id,
             to_object_type      = key.to_object_type,
             to_object_id        = key.to_object_id,
             context             = key.context
@@ -142,19 +138,15 @@ class MySQLEdgeRepository(EdgeRepository):
             schema_name       = schema_name,
             table_name        = "Edges_N_Object_N_Object_T_ChildToParent",
             key_column_names  = [
-                "from_institution_id",
                 "from_object_type",
                 "from_object_id",
-                "to_institution_id",
                 "to_object_type",
                 "to_object_id",
                 "context",
             ],
             key_column_values = [
-                edge.key.from_institution_id,
                 edge.key.from_object_type,
                 edge.key.from_object_id,
-                edge.key.to_institution_id,
                 edge.key.to_object_type,
                 edge.key.to_object_id,
                 edge.key.context,
@@ -174,10 +166,8 @@ class MySQLEdgeRepository(EdgeRepository):
         sql_query = resolve_sql_query(
             file_path           = sql_queries_paths['registry']['commit']['edge_delete_custom'],
             registry            = schema_name,
-            from_institution_id = edge.key.from_institution_id,
             from_object_type    = edge.key.from_object_type,
             from_object_id      = edge.key.from_object_id,
-            to_institution_id   = edge.key.to_institution_id,
             to_object_type      = edge.key.to_object_type,
             to_object_id        = edge.key.to_object_id,
             context             = edge.key.context
@@ -191,10 +181,8 @@ class MySQLEdgeRepository(EdgeRepository):
                 schema_name       = schema_name,
                 table_name        = "Data_N_Object_N_Object_T_CustomFields",
                 key_column_names  = [
-                    "from_institution_id",
                     "from_object_type",
                     "from_object_id",
-                    "to_institution_id",
                     "to_object_type",
                     "to_object_id",
                     "context",
@@ -202,10 +190,8 @@ class MySQLEdgeRepository(EdgeRepository):
                     "field_name",
                 ],
                 key_column_values = [
-                    row["from_institution_id"],
                     row["from_object_type"],
                     row["from_object_id"],
-                    row["to_institution_id"],
                     row["to_object_type"],
                     row["to_object_id"],
                     row["context"],
@@ -247,10 +233,8 @@ class MySQLEdgeRepository(EdgeRepository):
             sql_query = resolve_sql_query(
                 file_path           = sql_queries_paths['registry']['commit']['edge_delete'],
                 registry            = schema_name,
-                from_institution_id = key.from_institution_id,
                 from_object_type    = key.from_object_type,
                 from_object_id      = key.from_object_id,
-                to_institution_id   = key.to_institution_id,
                 to_object_type      = key.to_object_type,
                 to_object_id        = key.to_object_id,
                 context             = key.context

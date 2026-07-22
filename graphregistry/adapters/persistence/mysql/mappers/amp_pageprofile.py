@@ -109,7 +109,7 @@ class MySQLPageProfileMapper:
         Data_N_Object_T_PageProfile upsert/update columns.
 
         Identity columns are intentionally omitted:
-        institution_id, object_type, object_id
+        object_type, object_id
         """
         row: dict[str, Any] = {
             "short_code": profile.short_code,

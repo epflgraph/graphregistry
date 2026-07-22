@@ -1,7 +1,5 @@
-    SELECT cf1.from_institution_id AS from_institution_id,
-           cf1.from_object_type    AS from_object_type,
+    SELECT cf1.from_object_type    AS from_object_type,
            cf1.from_object_id      AS from_object_id,
-           cf1.to_institution_id   AS to_institution_id,
            cf1.to_object_type      AS to_object_type,
            cf1.to_object_id        AS to_object_id,
            'n/a'                   AS field_language,
@@ -26,13 +24,13 @@ INNER JOIN [[registry]].Data_N_Object_N_Object_T_CustomFields cf2
 
         -- Check object flags
 INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
-        ON (cf1.from_institution_id, cf1.from_object_type, cf1.from_object_id, cf1.to_institution_id, cf1.to_object_type, cf1.to_object_id)
-         = ( tp.from_institution_id,  tp.from_object_type,  tp.from_object_id,  tp.to_institution_id,  tp.to_object_type,  tp.to_object_id)
+        ON (cf1.from_object_type, cf1.from_object_id, cf1.to_object_type, cf1.to_object_id)
+         = ( tp.from_object_type,  tp.from_object_id,  tp.to_object_type,  tp.to_object_id)
 
         -- Check type flags
 INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
-        ON (tp.from_institution_id, tp.from_object_type, tp.to_institution_id, tp.to_object_type)
-         = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+        ON (tp.from_object_type, tp.to_object_type)
+         = (tf.from_object_type, tf.to_object_type)
 
      WHERE cf1.from_object_type = 'Person'
        AND cf1.to_object_type   = 'Unit'

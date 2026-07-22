@@ -1,5 +1,4 @@
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
-  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   object_id varchar(255) NOT NULL,
   numeric_id_en int(10) unsigned DEFAULT NULL,
@@ -102,8 +101,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   is_visible tinyint(4) NOT NULL DEFAULT 1,
   row_id int(10) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  UNIQUE KEY uid (institution_id,object_type,object_id),
-  KEY institution_id (institution_id),
+  UNIQUE KEY uid (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY is_visible (is_visible),

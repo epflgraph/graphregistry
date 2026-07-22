@@ -20,30 +20,27 @@ def expected_edge_key(edge_json: dict[str, Any]) -> tuple[str, str, str, str, st
 
 
 def node_label(node_json: dict[str, Any]) -> str:
-    institution_id, object_type, object_id = expected_node_key(node_json)
-    return f"{institution_id}:{object_type}:{object_id}"
+    object_type, object_id = expected_node_key(node_json)
+    return f"{object_type}:{object_id}"
 
 
 def edge_label(edge_json: dict[str, Any]) -> str:
     (
-        from_institution_id,
         from_object_type,
         from_object_id,
-        to_institution_id,
         to_object_type,
         to_object_id,
         context,
     ) = expected_edge_key(edge_json)
     return (
-        f"{from_institution_id}:{from_object_type}:{from_object_id} -> "
-        f"{to_institution_id}:{to_object_type}:{to_object_id} ({context})"
+        f"{from_object_type}:{from_object_id} -> "
+        f"{to_object_type}:{to_object_id} ({context})"
     )
 
 
 def _node_where_clause(node_json: dict[str, Any]) -> tuple[str, str, str]:
-    institution_id, object_type, object_id = expected_node_key(node_json)
+    object_type, object_id = expected_node_key(node_json)
     return (
-        f'institution_id = "{institution_id}"',
         f'object_type    = "{object_type}"',
         f'object_id      = "{object_id}"',
     )
@@ -51,19 +48,15 @@ def _node_where_clause(node_json: dict[str, Any]) -> tuple[str, str, str]:
 
 def _edge_where_clause(edge_json: dict[str, Any]) -> tuple[str, ...]:
     (
-        from_institution_id,
         from_object_type,
         from_object_id,
-        to_institution_id,
         to_object_type,
         to_object_id,
         context,
     ) = expected_edge_key(edge_json)
     return (
-        f'from_institution_id = "{from_institution_id}"',
         f'from_object_type    = "{from_object_type}"',
         f'from_object_id      = "{from_object_id}"',
-        f'to_institution_id   = "{to_institution_id}"',
         f'to_object_type      = "{to_object_type}"',
         f'to_object_id        = "{to_object_id}"',
         f'context             = "{context}"',

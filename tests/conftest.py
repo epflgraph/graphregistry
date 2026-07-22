@@ -39,26 +39,23 @@ from graphregistry.domain.types import ActionSet
 # --------------------------------------------------------------------------- #
 
 def make_node_key(
-    institution_id: str = "EPFL",
     object_type: str = "Course",
     object_id: str = "CS-433",
 ) -> NodeKey:
     return NodeKey(
-        institution_id=institution_id,
         object_type=object_type,  # type: ignore[arg-type]
         object_id=object_id,
     )
 
 
 def make_node(
-    institution_id: str = "EPFL",
     object_type: str = "Course",
     object_id: str = "CS-433",
     title: str = "Machine Learning",
     raw_text: str | None = "Learn machine learning.",
     custom_fields: list[dict[str, Any]] | None = None,
 ) -> Node:
-    key = make_node_key(institution_id, object_type, object_id)
+    key = make_node_key(object_type, object_id)
     field_list = NodeFieldList(
         item_list=[
             NodeField(
@@ -78,19 +75,15 @@ def make_node(
 
 
 def make_edge_key(
-    from_institution_id: str = "EPFL",
     from_object_type: str = "Course",
     from_object_id: str = "CS-433",
-    to_institution_id: str = "EPFL",
     to_object_type: str = "Person",
     to_object_id: str = "person-12345",
     context: str = "taught_by",
 ) -> EdgeKey:
     return EdgeKey(
-        from_institution_id=from_institution_id,
         from_object_type=from_object_type,  # type: ignore[arg-type]
         from_object_id=from_object_id,
-        to_institution_id=to_institution_id,
         to_object_type=to_object_type,  # type: ignore[arg-type]
         to_object_id=to_object_id,
         context=context,

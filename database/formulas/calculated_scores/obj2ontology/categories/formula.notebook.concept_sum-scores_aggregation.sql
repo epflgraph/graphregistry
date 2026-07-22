@@ -1,9 +1,9 @@
 -- ========= Object type: Notebook
 -- ========= Formula: 'concept sum-scores aggregation'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
-             (institution_id, object_type, object_id, category_id, calculation_type, score, to_process)
+             (object_type, object_id, category_id, calculation_type, score, to_process)
 
-      SELECT se.institution_id, se.object_type, se.object_id,
+      SELECT se.object_type, se.object_id,
              l.from_id AS category_id,
              'concept sum-scores aggregation' AS calculation_type,
              SUM(t.score) AS score, 1 AS to_process
@@ -13,8 +13,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
 
           -- Check object flags
   INNER JOIN [[airflow]].Operations_N_Object_T_ScoresExpired se
-          ON tf.institution_id = se.institution_id
-         AND tf.object_type = 'Notebook'
+          ON tf.object_type = 'Notebook'
          AND tf.flag_type   = 'scores'
          AND tf.to_process  = 1
          AND se.object_type = 'Notebook'
@@ -22,8 +21,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
 
           -- Join traversal
   INNER JOIN [[registry]].Edges_N_Object_N_Concept_T_ManualMapping t
-          ON se.institution_id = t.institution_id
-		 AND se.object_type = t.object_type
+          ON se.object_type = t.object_type
          AND se.object_id = t.object_id
 
           -- Join ontology

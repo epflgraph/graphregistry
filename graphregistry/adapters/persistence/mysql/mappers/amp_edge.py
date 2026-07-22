@@ -54,10 +54,8 @@ class MySQLEdgeFieldMapper:
     @staticmethod
     def to_upsert_row(field: EdgeField) -> dict[str, Any]:
         return {
-            'from_institution_id' : field.key.key.from_institution_id,
             'from_object_type'    : field.key.key.from_object_type,
             'from_object_id'      : field.key.key.from_object_id,
-            'to_institution_id'   : field.key.key.to_institution_id,
             'to_object_type'      : field.key.key.to_object_type,
             'to_object_id'        : field.key.key.to_object_id,
             'context'             : field.key.key.context,
@@ -70,10 +68,8 @@ class MySQLEdgeFieldMapper:
     @staticmethod
     def to_dict(field: EdgeField) -> dict[str, Any]:
         return {
-            'from_institution_id' : field.key.key.from_institution_id,
             'from_object_type'    : field.key.key.from_object_type,
             'from_object_id'      : field.key.key.from_object_id,
-            'to_institution_id'   : field.key.key.to_institution_id,
             'to_object_type'      : field.key.key.to_object_type,
             'to_object_id'        : field.key.key.to_object_id,
             'context'             : field.key.key.context,
@@ -133,10 +129,8 @@ class MySQLEdgeMapper:
     @staticmethod
     def to_simplified_dict(edge: Edge) -> dict[str, Any]:
         return {
-            'from_institution_id' : edge.key.from_institution_id,
             'from_object_type'    : edge.key.from_object_type,
             'from_object_id'      : edge.key.from_object_id,
-            'to_institution_id'   : edge.key.to_institution_id,
             'to_object_type'      : edge.key.to_object_type,
             'to_object_id'        : edge.key.to_object_id,
             'context'             : edge.key.context,
@@ -146,10 +140,8 @@ class MySQLEdgeMapper:
     @staticmethod
     def from_simplified_dict(data: dict[str, Any]) -> Edge:
         key = EdgeKey(
-            from_institution_id = data['from_institution_id'],
             from_object_type    = data['from_object_type'],
             from_object_id      = data['from_object_id'],
-            to_institution_id   = data['to_institution_id'],
             to_object_type      = data['to_object_type'],
             to_object_id        = data['to_object_id'],
             context             = data['context'],

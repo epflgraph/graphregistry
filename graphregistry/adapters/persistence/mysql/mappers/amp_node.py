@@ -31,7 +31,6 @@ class MySQLNodeFieldMapper:
     @staticmethod
     def to_upsert_row(field: NodeField) -> dict[str, Any]:
         return {
-            'institution_id' : field.key.key.institution_id,
             'object_type'    : field.key.key.object_type,
             'object_id'      : field.key.key.object_id,
             'field_language' : field.key.field_language,
@@ -47,7 +46,6 @@ class MySQLNodeFieldMapper:
     @staticmethod
     def to_dict(field: NodeField) -> dict[str, Any]:
         return {
-            'institution_id' : field.key.key.institution_id,
             'object_type'    : field.key.key.object_type,
             'object_id'      : field.key.key.object_id,
             'field_language' : field.key.field_language,
@@ -140,13 +138,12 @@ class MySQLNodeMapper:
         """Build a domain Node from the simplified test fixture shape.
 
         The simplified shape mirrors the integration test fixture and contains:
-        - institution_id, object_type, object_id
+        - object_type, object_id
         - object_title, text_source, raw_text
         - custom_fields (list of dicts with field_language, field_name, field_value)
         - page_profile (flattened name/description/external_* fields)
         """
         key = NodeKey(
-            institution_id=data["institution_id"],
             object_type=data["object_type"],
             object_id=data["object_id"],
         )
@@ -195,7 +192,6 @@ class MySQLNodeMapper:
         assert node.page_profile is not None
 
         data: dict[str, Any] = {
-            "institution_id": node.key.institution_id,
             "object_type": node.key.object_type,
             "object_id": node.key.object_id,
             "object_title": node.title,

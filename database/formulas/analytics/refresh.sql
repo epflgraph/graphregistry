@@ -35,8 +35,8 @@ REPLACE INTO graph_analytics._course_n_lectures
 -- ============ Object type: Lecture
 -- ============ Formula: 'top concepts ai validated'
    REPLACE INTO _1_DEV_graph_cache.Edges_N_Object_N_Concept_T_CalculatedScores
-               (institution_id, object_type, object_id, concept_id, calculation_type, score)
-         SELECT institution_id, object_type, object_id, concept_id,
+               (object_type, object_id, concept_id, calculation_type, score)
+         SELECT object_type, object_id, concept_id,
                 'top concepts ai validated' AS calculation_type, score
            FROM _1_DEV_graph_lectures.Edges_N_Object_N_Concept_T_LLMPostValidated
           WHERE object_type = 'Lecture';
@@ -45,8 +45,8 @@ REPLACE INTO graph_analytics._course_n_lectures
 -- ============ Object type: Lecture
 -- ============ Formula: 'slide count ai validated'
    REPLACE INTO _1_DEV_graph_cache.Edges_N_Object_N_Concept_T_CalculatedScores
-                (institution_id, object_type, object_id, concept_id, calculation_type, score)
-         SELECT 'EPFL' AS institution_id, 'Lecture' AS object_type, lecture_id AS object_id, concept_id,
+                (object_type, object_id, concept_id, calculation_type, score)
+         SELECT 'Lecture' AS object_type, lecture_id AS object_id, concept_id,
                 'slide count ai validated' AS calculation_type,
                 -- COUNT(DISTINCT slide_id) / MAX(n_slides) AS score
                 COUNT(DISTINCT slide_id) / MAX(n_slides) * (1 - EXP(-MAX(n_slides) / 15.0)) AS score

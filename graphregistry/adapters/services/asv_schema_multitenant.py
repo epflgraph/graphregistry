@@ -54,17 +54,17 @@ class MultiTenantSchemaResolver(SchemaResolver):
         """
         self.tenant_config = tenant_config
 
-    # Helper method: Retrieve tenant config
-    def _get_tenant(self, institution_id: str) -> dict:
-        """
-        Retrieve tenant configuration for a given institution_id.
+    # # Helper method: Retrieve tenant config
+    # def _get_tenant(self, institution_id: str) -> dict:
+    #     """
+    #     Retrieve tenant configuration for a given institution_id.
 
-        Raises:
-            ValueError: if the institution_id is not configured
-        """
-        if institution_id not in self.tenant_config:
-            raise ValueError(f"Unknown tenant: {institution_id}")
-        return self.tenant_config[institution_id]
+    #     Raises:
+    #         ValueError: if the institution_id is not configured
+    #     """
+    #     if institution_id not in self.tenant_config:
+    #         raise ValueError(f"Unknown tenant: {institution_id}")
+    #     return self.tenant_config[institution_id]
 
     # Class method: Resolve schema for a Node
     def for_node(self, key: NodeKey) -> EngineSchema:
@@ -81,7 +81,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
         - Select tenant using key.institution_id
         - Map key.object_type to a schema via node_schema_map
         """
-        tenant = self._get_tenant(key.institution_id)
+        tenant = self._get_tenant('EPFL')
         engine_name = tenant["engine_name"]
         node_type = key.object_type
         schema = tenant["node_schema_map"][node_type]
@@ -103,7 +103,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
         - Normalize edge type as a sorted tuple of object types
         - Map edge type to a schema via edge_schema_map
         """
-        tenant = self._get_tenant(key.from_institution_id)
+        tenant = self._get_tenant('EPFL')
         engine_name = tenant["engine_name"]
         a = key.from_object_type
         b = key.to_object_type
