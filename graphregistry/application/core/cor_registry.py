@@ -2820,6 +2820,8 @@ class GraphRegistry():
                      USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
                        AND tf.to_process = 1
+                       AND cf.from_object_type NOT IN ('Slide')
+                       AND   cf.to_object_type NOT IN ('Slide')
 
                  UNION ALL
 
@@ -2835,6 +2837,8 @@ class GraphRegistry():
                      USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
                        AND tf.to_process = 1
+                       AND cf.from_object_type NOT IN ('Slide')
+                       AND   cf.to_object_type NOT IN ('Slide')
                 """
 
                 # Append queries for custom fields
@@ -2930,6 +2934,7 @@ class GraphRegistry():
                      WHERE tp.to_process = 1
                        AND tf.flag_type = 'fields'
                        AND tf.to_process = 1
+                       AND cf.object_type NOT IN ('Slide')
                 """
 
                 # Append queries for custom fields
