@@ -32,7 +32,7 @@ class MySQLNodeRepository(NodeRepository):
     #----------------------------------------#
 
     # Method: Get list of existing nodes given an object type and id string pattern
-    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str, str]]:
+    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
 
         # Get schema name from object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
@@ -49,7 +49,7 @@ class MySQLNodeRepository(NodeRepository):
         node_list = self.db.execute_query(engine_name=engine_name, query=sql_query)
 
         # Return node list
-        return cast(list[tuple[str, str, str]], node_list)
+        return cast(list[tuple[str, str]], node_list)
 
     # Method: Check if a node exists in persistence from the node key
     def exists(self, key: NodeKey) -> bool:
@@ -390,7 +390,7 @@ class MySQLNodeRepository(NodeRepository):
         )
 
         # Execute SQL query and fetch result
-        node_keys_data = cast(list[tuple[str, str, str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        node_keys_data = cast(list[tuple[str, str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
 
         # Construct NodeKey objects from fetched data
         node_keys = [

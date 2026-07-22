@@ -24,7 +24,7 @@ class MySQLEdgeRepository(EdgeRepository):
         self.msg = GraphLogger()
 
     # Method: Get list of existing nodes given an object type and id string pattern
-    def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str, str, str]]:
+    def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str]]:
 
         # Get schema name from object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
@@ -45,7 +45,7 @@ class MySQLEdgeRepository(EdgeRepository):
         edge_list = self.db.execute_query(engine_name=engine_name, query=sql_query)
 
         # Return edge list
-        return cast(list[tuple[str, str, str, str, str, str, str]], edge_list)
+        return cast(list[tuple[str, str, str, str, str]], edge_list)
 
     # Method: Check if an edge exists in persistence based on the edge key
     def exists(self, key: EdgeKey) -> bool:

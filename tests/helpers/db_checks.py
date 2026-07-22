@@ -9,12 +9,12 @@ from graphdb.core.graphdb import GraphDB
 from graphregistry.entrypoints.mappers import SpecMapper
 
 
-def expected_node_key(node_json: dict[str, Any]) -> tuple[str, str, str]:
+def expected_node_key(node_json: dict[str, Any]) -> tuple[str, str]:
     node = SpecMapper.from_node_spec(node_json)
     return node.key.to_tuple()
 
 
-def expected_edge_key(edge_json: dict[str, Any]) -> tuple[str, str, str, str, str, str, str]:
+def expected_edge_key(edge_json: dict[str, Any]) -> tuple[str, str, str, str, str]:
     edge = SpecMapper.from_edge_spec(edge_json)
     return edge.key.to_tuple()
 
@@ -38,7 +38,7 @@ def edge_label(edge_json: dict[str, Any]) -> str:
     )
 
 
-def _node_where_clause(node_json: dict[str, Any]) -> tuple[str, str, str]:
+def _node_where_clause(node_json: dict[str, Any]) -> tuple[str, str]:
     object_type, object_id = expected_node_key(node_json)
     return (
         f'object_type    = "{object_type}"',

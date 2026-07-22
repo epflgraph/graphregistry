@@ -9,7 +9,7 @@ from graphregistry.domain.types import ActionSet
 @runtime_checkable
 class NodeRepository(Protocol):
 
-    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str, str]]:
+    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
         ...
 
     def exists(self, key: NodeKey) -> bool:

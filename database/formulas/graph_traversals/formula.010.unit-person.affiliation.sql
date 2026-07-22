@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
               = (p2u.from_object_type, p2u.from_object_id, p2u.to_object_type, p2u.to_object_id)
 
      INNER JOIN [[registry]].Data_N_Object_N_Object_T_CustomFields cf
-             ON ( cf.from_object_type,  cf.from_object_id   cf.to_object_type,  cf.to_object_id)
+             ON ( cf.from_object_type,  cf.from_object_id,  cf.to_object_type,  cf.to_object_id)
               = (p2u.from_object_type, p2u.from_object_id, p2u.to_object_type, p2u.to_object_id)
 
      INNER JOIN [[registry]].Mapping_N_Field_N_Field f1 ON cf.field_value    = f1.from_field_value

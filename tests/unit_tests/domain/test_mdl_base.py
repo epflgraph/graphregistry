@@ -31,7 +31,7 @@ class TestNodeKey:
 
     def test_node_key_from_tuple_wrong_length(self) -> None:
         with pytest.raises(ValidationError):
-            NodeKey.model_validate(("Course"))
+            NodeKey.model_validate(("Course",))
 
     def test_node_key_is_frozen(self) -> None:
         key = NodeKey(object_type="Course", object_id="CS-433")
@@ -55,7 +55,7 @@ class TestNodeFieldKey:
         assert key.to_tuple() == ("Course", "CS-433", "en", "level")
 
     def test_from_tuple_wrong_length(self) -> None:
-        with pytest.raises(ValueError, match="must have 5 elements"):
+        with pytest.raises(ValueError, match="must have 4 elements"):
             NodeFieldKey.from_tuple(("Course", "CS-433", "en"))
 
 
@@ -96,5 +96,5 @@ class TestEdgeFieldKey:
         assert key.field_name == "semester"
 
     def test_from_tuple_wrong_length(self) -> None:
-        with pytest.raises(ValueError, match="must have 9 elements"):
+        with pytest.raises(ValueError, match="must have 7 elements"):
             EdgeFieldKey.from_tuple(("Course", "CS-433", "Person", "p-1", "taught_by"))

@@ -125,16 +125,16 @@ class FakeNodeRepository:
     """In-memory implementation of NodeRepository for fast unit tests."""
 
     def __init__(self) -> None:
-        self._store: dict[tuple[str, str, str], Node] = {}
+        self._store: dict[tuple[str, str], Node] = {}
 
-    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str, str]]:
+    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str]]:
         results = [
             key.to_tuple()
             for key in (NodeKey.from_tuple(k) for k in self._store)
             if key.object_type == object_type
         ]
         if id_pattern and id_pattern != "*":
-            results = [row for row in results if id_pattern.replace("*", "") in row[2]]
+            results = [row for row in results if id_pattern.replace("*", "") in row[1]]
         return results
 
     def exists(self, key: NodeKey) -> bool:
@@ -191,19 +191,19 @@ class FakeEdgeRepository:
     """In-memory implementation of EdgeRepository for fast unit tests."""
 
     def __init__(self) -> None:
-        self._store: dict[tuple[str, ...], Edge] = {}
+        self._store: dict[tuple[str, str, str, str, str], Edge] = {}
 
     def _tuple(self, key: EdgeKey) -> tuple[str, ...]:
         return key.to_tuple()
 
-    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str, str, str]]:
+    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str]]:
         results = [
             key.to_tuple()
             for key in (EdgeKey.from_tuple(k) for k in self._store)
             if (key.from_object_type, key.to_object_type) == object_type
         ]
         if id_pattern and id_pattern != "*":
-            results = [row for row in results if id_pattern.replace("*", "") in row[2] or id_pattern.replace("*", "") in row[5]]
+            results = [row for row in results if id_pattern.replace("*", "") in row[1] or id_pattern.replace("*", "") in row[3]]
         return results
 
     def exists(self, key: EdgeKey) -> bool:
