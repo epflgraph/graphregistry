@@ -2,8 +2,8 @@
 -- ========= Object type: Lecture
 -- ========= Formula: 'top concepts ai validated'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (institution_id, object_type, object_id, concept_id, calculation_type, score)
-      SELECT institution_id, object_type, object_id, concept_id,
+            (object_type, object_id, concept_id, calculation_type, score)
+      SELECT object_type, object_id, concept_id,
              'top concepts ai validated' AS calculation_type, score
         FROM [[lectures]].Edges_N_Object_N_Concept_T_LLMPostValidated
        WHERE object_type = 'Lecture';

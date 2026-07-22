@@ -357,7 +357,7 @@ class DynamicSQL:
     # Export graphsearch doc id-defining fields for doclinks
     def get_doclink_id_fields(self, convention, include_link_subtype=False):
         if convention=='node-edge':
-            return ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context']
+            return ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
         elif convention=='doc-link':
             if include_link_subtype:
                 return ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']

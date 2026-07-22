@@ -1,7 +1,6 @@
 {
     "nodes": [
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MATH-132",
             "object_title": "Probability and Linear Algebra for Machine Learning",
@@ -38,7 +37,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "STAT-201",
             "object_title": "Statistical Inference and Modeling",
@@ -75,7 +73,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "COMP-140",
             "object_title": "Foundations of Optimization",
@@ -112,7 +109,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MLAI-210",
             "object_title": "Introduction to Machine Learning",
@@ -149,7 +145,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-245",
             "object_title": "Principles of Learning from Data",
@@ -186,7 +181,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "DATA-202",
             "object_title": "Applied Machine Learning Fundamentals",
@@ -223,7 +217,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MATH-305",
             "object_title": "Linear Models in Data Science",
@@ -260,7 +253,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "STAT-322",
             "object_title": "Regularization Techniques in Machine Learning",
@@ -297,7 +289,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-330",
             "object_title": "Maximum Likelihood and Linear Prediction",
@@ -334,7 +325,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-350",
             "object_title": "Decision Trees and Applications",
@@ -371,7 +361,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "DATA-315",
             "object_title": "Ensemble Learning",
@@ -408,7 +397,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MLAI-320",
             "object_title": "Advanced Tree-Based Methods",
@@ -445,7 +433,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "STAT-410",
             "object_title": "Support Vector Machines",
@@ -482,7 +469,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MATH-415",
             "object_title": "Kernel Methods in Machine Learning",
@@ -519,7 +505,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-425",
             "object_title": "Nonlinear Classification Techniques",
@@ -556,7 +541,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "NEUR-510",
             "object_title": "Introduction to Neural Networks",
@@ -593,7 +577,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MLAI-530",
             "object_title": "Deep Learning Fundamentals",
@@ -630,7 +613,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "COMP-545",
             "object_title": "Optimization in Neural Networks",
@@ -667,7 +649,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-601",
             "object_title": "Convolutional Neural Networks",
@@ -704,7 +685,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "NEUR-620",
             "object_title": "Recurrent Neural Networks",
@@ -741,7 +721,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MLAI-635",
             "object_title": "Attention and Transformers",
@@ -778,7 +757,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "NLP-701",
             "object_title": "Natural Language Processing",
@@ -815,7 +793,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "LING-725",
             "object_title": "Deep Learning for NLP",
@@ -852,7 +829,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-740",
             "object_title": "Large Language Models and Prompting",
@@ -889,7 +865,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "DATA-801",
             "object_title": "Unsupervised Learning",
@@ -926,7 +901,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "MLAI-815",
             "object_title": "Generative Models",
@@ -963,7 +937,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CSCI-835",
             "object_title": "Advanced Representation Learning",
@@ -1000,7 +973,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "104582",
             "object_title": "Alice Dupont",
@@ -1036,7 +1008,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "239174",
             "object_title": "Martin Keller",
@@ -1072,7 +1043,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "327519",
             "object_title": "Claire Moreau",
@@ -1108,7 +1078,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "458203",
             "object_title": "James Whitman",
@@ -1144,7 +1113,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "509381",
             "object_title": "Sophie Berger",
@@ -1180,7 +1148,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "618472",
             "object_title": "Thomas Steiner",
@@ -1216,7 +1183,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "702315",
             "object_title": "Camille Laurent",
@@ -1252,7 +1218,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "819204",
             "object_title": "David Fischer",
@@ -1288,7 +1253,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "920183",
             "object_title": "Isabelle Fournier",
@@ -1324,7 +1288,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "103827",
             "object_title": "Robert Lang",
@@ -1360,7 +1323,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "112384",
             "object_title": "Elena Schmitt",
@@ -1396,7 +1358,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "124759",
             "object_title": "Paul Harrison",
@@ -1432,7 +1393,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "136802",
             "object_title": "Charlotte Meier",
@@ -1468,7 +1428,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "148923",
             "object_title": "Jonathan Blake",
@@ -1504,7 +1463,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "159632",
             "object_title": "Marie Lefevre",
@@ -1540,7 +1498,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "162048",
             "object_title": "Sebastian Kruger",
@@ -1576,7 +1533,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "173501",
             "object_title": "Anna Weber",
@@ -1612,7 +1568,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "185034",
             "object_title": "Lucas Bernard",
@@ -1648,7 +1603,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Person",
             "object_id": "196407",
             "object_title": "Juliette Martin",
@@ -1684,26 +1638,22 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "(racine)",
             "object_title": "",
             "text_source": "unit website",
             "raw_text": "",
-            "custom_fields": [
-            ],
-            "page_profile": {
-            }
+            "custom_fields": [],
+            "page_profile": {}
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "FUMI",
             "object_title": "Fictitious University of Machine Intelligence",
             "text_source": "unit website",
             "raw_text": "Fictitious University of Machine Intelligence. The Fictitious University of Machine Intelligence (FUMI) is dedicated to advancing knowledge in artificial intelligence, data science, and engineering. With strong ties to industry and public institutions, FUMI fosters innovation through interdisciplinary programs, open science practices, and a commitment to responsible, human-centered AI. Its ecosystem includes leading departments and labs that translate fundamental discoveries into real-world impact.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "1990-06-23"
@@ -1733,14 +1683,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "DCS",
             "object_title": "Department of Computer Science",
             "text_source": "unit website",
             "raw_text": "Department of Computer Science. The Department of Computer Science (DCS) unites scholars working across machine learning, natural language processing, computer vision, systems, and theoretical computer science. DCS offers undergraduate to doctoral programs with strong methodological training and extensive hands-on experience. Partnerships with industry and public-sector organizations enable impactful, scalable deployments.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "2008-08-10"
@@ -1770,14 +1719,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "DISR",
             "object_title": "Department of Intelligent Systems & Robotics",
             "text_source": "unit website",
             "raw_text": "Department of Intelligent Systems & Robotics. The Department of Intelligent Systems & Robotics (DISR) conducts research on autonomous decision-making, safe and reliable control, and the societal integration of AI. With facilities for embodied robotics and interactive systems, DISR trains students to design responsible, human-centered technologies for transportation, healthcare, and education.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "1998-12-01"
@@ -1807,14 +1755,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "VAIL",
             "object_title": "Vision and AI Lab",
             "text_source": "unit website",
             "raw_text": "Vision and AI Lab. The Vision and AI Lab (VAIL) advances computer vision through robust, transparent learning methods. Research spans recognition, detection, and imaging, emphasizing interpretability and clinical applicability via collaborations with hospitals and industry partners.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "2019-01-27"
@@ -1844,19 +1791,18 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "MLNLP",
             "object_title": "Machine Learning for Natural Language Processing Lab",
             "text_source": "unit website",
             "raw_text": "Machine Learning for Natural Language Processing Lab. The Machine Learning for Natural Language Processing Lab (MLNLP) researches language modeling, cross-lingual transfer, and low-resource NLP. The lab collaborates with linguistics teams and global partners to broaden access to AI across languages and domains.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "1990-03-25"
                 },
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_terminated",
                     "field_value": "2024-10-13"
@@ -1886,14 +1832,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "SECURE",
             "object_title": "Secure and Scalable Machine Learning Lab",
             "text_source": "unit website",
             "raw_text": "Secure and Scalable Machine Learning Lab. The Secure and Scalable Machine Learning Lab (SECURE) develops robust ML for enterprise and public infrastructures. Research includes anomaly detection, federated optimization, and privacy guarantees, with deployments in cloud and edge environments.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "2012-03-10"
@@ -1923,14 +1868,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "RLAI",
             "object_title": "Reinforcement Learning and Autonomous Intelligence Lab",
             "text_source": "unit website",
             "raw_text": "Reinforcement Learning and Autonomous Intelligence Lab. The Reinforcement Learning and Autonomous Intelligence Lab (RLAI) builds algorithms for adaptive decision-making in robots and autonomous systems. Research spans sim-to-real transfer, safe exploration, and equilibrium analysis in multi-agent environments.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "2009-02-01"
@@ -1960,14 +1904,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "FAIRX",
             "object_title": "Fairness and Explainable AI Lab",
             "text_source": "unit website",
             "raw_text": "Fairness and Explainable AI Lab. The Fairness and Explainable AI Lab (FAIRX) develops methods and frameworks for algorithmic fairness, interpretability, and governance. The lab collaborates with policy groups and NGOs to align technical advances with societal values.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "2025-02-29"
@@ -1997,14 +1940,13 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Unit",
             "object_id": "EDUAI",
             "object_title": "AI for Education and Learning Sciences Lab",
             "text_source": "unit website",
             "raw_text": "AI for Education and Learning Sciences Lab. The AI for Education and Learning Sciences Lab (EDUAI) integrates reinforcement learning, multimodal analytics, and learning sciences to personalize education at scale. Field deployments evaluate impact on engagement and achievement.",
             "custom_fields": [
-                {		
+                {
                     "field_language": "n/a",
                     "field_name": "date_established",
                     "field_value": "2004-11-07"
@@ -2034,7 +1976,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "a3f19c7e5b82d4fa",
             "object_title": "Interpretable Neural Networks for Medical Imaging",
@@ -2080,7 +2021,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "f8c72e19d5a3b6c2",
             "object_title": "Visual Attention Mechanisms in Deep CNNs",
@@ -2126,7 +2066,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "d2a9e5f3c8b7f14e",
             "object_title": "Explainability Metrics for Deep Vision Models",
@@ -2172,7 +2111,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "0f1e2d3c4b5a6978",
             "object_title": "Adaptive Reinforcement Learning for Mobile Robots",
@@ -2218,7 +2156,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "abc123def4567890",
             "object_title": "Transfer Learning in Multi-Agent Reinforcement Systems",
@@ -2264,7 +2201,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "fedcba9876543210",
             "object_title": "Policy Gradient Approaches for Complex Robotic Tasks",
@@ -2310,7 +2246,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1a2b3c4d5e6f7890",
             "object_title": "Cross-Lingual Embedding Alignment for Low-Resource Languages",
@@ -2356,7 +2291,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "9988776655443322",
             "object_title": "Transformer Fine-Tuning for Multilingual Sentiment Analysis",
@@ -2402,7 +2336,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "abcdefabcdefabcd",
             "object_title": "Transfer Learning Strategies in Multilingual Transformers",
@@ -2448,7 +2381,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "c1d2e3f4a5b69788",
             "object_title": "Bayesian Neural Networks for Uncertainty Estimation",
@@ -2494,7 +2426,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1f2e3d4c5b6a7980",
             "object_title": "Causal Discovery with Bayesian Graphical Models",
@@ -2540,7 +2471,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "9a8b7c6d5e4f3210",
             "object_title": "Uncertainty-Aware Deep Learning in Critical Systems",
@@ -2586,7 +2516,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "f7e6d5c4b3a29180",
             "object_title": "Generative Adversarial Networks for Creative Arts",
@@ -2632,7 +2561,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "abc987654321cdef",
             "object_title": "Diffusion Models in Generative Design",
@@ -2678,7 +2606,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "0a1b2c3d4e5f6789",
             "object_title": "Ethical Considerations in Generative AI",
@@ -2724,7 +2651,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1234abcd5678ef90",
             "object_title": "Scalable Graph Neural Networks for Recommender Systems",
@@ -2770,7 +2696,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "ffeeddccbbaa9988",
             "object_title": "Graph-Based Representations in Social Network Analysis",
@@ -2816,7 +2741,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "9876abcd5432ef10",
             "object_title": "Efficient Graph Learning for Real-Time Systems",
@@ -2862,7 +2786,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aa11bb22cc33dd44",
             "object_title": "Fairness Metrics in Machine Learning Systems",
@@ -2908,7 +2831,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "55ee66ff77889900",
             "object_title": "Algorithmic Transparency in Decision Support Systems",
@@ -2954,7 +2876,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "ddeeff0011223344",
             "object_title": "Regulatory Frameworks for Ethical AI",
@@ -3000,7 +2921,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "cafebabefeedface",
             "object_title": "Reinforcement Learning for Highway Driving",
@@ -3046,7 +2966,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "deadbeef1234cafe",
             "object_title": "Safe Exploration Strategies in RL for Autonomous Vehicles",
@@ -3092,7 +3011,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "beadfacefeedcafe",
             "object_title": "Simulation-to-Real Transfer in RL for Driving",
@@ -3138,7 +3056,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "123abc456def7890",
             "object_title": "Domain Adaptation for Multilingual NLP",
@@ -3184,7 +3101,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aa55bb66cc77dd88",
             "object_title": "Transfer Learning in Low-Resource Languages",
@@ -3230,7 +3146,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "ff0011aa223344bb",
             "object_title": "Cross-Lingual Sentiment Analysis with Transformers",
@@ -3276,7 +3191,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aa22bb33cc44dd55",
             "object_title": "Deep Learning Models for Financial Time-Series Forecasting",
@@ -3322,7 +3236,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1122aabb3344ccdd",
             "object_title": "Climate Modeling with Recurrent Neural Networks",
@@ -3368,7 +3281,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "ffeeddccbbaa2211",
             "object_title": "Hybrid Time-Series Models for Energy Demand Forecasting",
@@ -3414,7 +3326,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aabbccddeeff0011",
             "object_title": "Generative Models for Medical Imaging Augmentation",
@@ -3460,7 +3371,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1234abcd5678efab",
             "object_title": "Explainable AI for Radiology",
@@ -3506,7 +3416,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "deadbeefcafebabe",
             "object_title": "Diffusion Models for CT Image Reconstruction",
@@ -3552,7 +3461,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "cafefeedfacebead",
             "object_title": "Convex Optimization in Large-Scale Machine Learning",
@@ -3598,7 +3506,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "beadfeedcafecafe",
             "object_title": "Duality in Deep Learning Optimization",
@@ -3644,7 +3551,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "f1e2d3c4b5a69788",
             "object_title": "Provably Efficient Algorithms for Sparse Data",
@@ -3690,7 +3596,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "11aa22bb33cc44dd",
             "object_title": "Reinforcement Learning for Adaptive Tutoring Systems",
@@ -3736,7 +3641,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "55aa66bb77cc88dd",
             "object_title": "Human-Centered Design in Intelligent Tutoring",
@@ -3782,7 +3686,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "ccddeeff00112233",
             "object_title": "Personalized Curricula with Reinforcement Learning",
@@ -3828,7 +3731,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "8899aabbccddeeff",
             "object_title": "Anomaly Detection in Network Security Using Deep Autoencoders",
@@ -3874,7 +3776,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "abcd11223344efef",
             "object_title": "Graph-Based Intrusion Detection Systems",
@@ -3920,7 +3821,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1122cc3344bb55aa",
             "object_title": "Explainable AI in Fraud Detection Systems",
@@ -3966,7 +3866,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aa00bb11cc22dd33",
             "object_title": "Causal Inference in Healthcare Machine Learning",
@@ -4012,7 +3911,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "44556677aabb8899",
             "object_title": "Fairness in Predictive Models for Public Health",
@@ -4058,7 +3956,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "ffee1122dd33cc44",
             "object_title": "Policy Evaluation with Causal Machine Learning",
@@ -4104,7 +4001,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aa11cc22bb33dd44",
             "object_title": "Federated Learning with Differential Privacy Guarantees",
@@ -4150,7 +4046,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "55ee44dd33cc22bb",
             "object_title": "Scalable Federated Optimization Algorithms",
@@ -4196,7 +4091,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1122aabb3344ccdd",
             "object_title": "Privacy-Preserving Healthcare Analytics with Federated Learning",
@@ -4242,7 +4136,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "cafebabe1122dead",
             "object_title": "Multimodal Learning in Educational AI Systems",
@@ -4288,7 +4181,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "beefcafe3344feed",
             "object_title": "Human-AI Collaboration in Digital Classrooms",
@@ -4334,7 +4226,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "deadface5566bead",
             "object_title": "Personalized Education with Multimodal AI Tutors",
@@ -4380,7 +4271,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "aa77bb88cc99dd00",
             "object_title": "Reinforcement Learning for Multi-Agent Games",
@@ -4426,7 +4316,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "cc55dd66aa77bb88",
             "object_title": "Optimization in Reinforcement Learning for Auctions",
@@ -4472,7 +4361,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "1122dd33cc44aa55",
             "object_title": "Game-Theoretic Analysis of Multi-Agent RL Systems",
@@ -4518,7 +4406,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Publication",
             "object_id": "face1122babe3344",
             "object_title": "Trustworthy AI for Clinical Decision Support",
@@ -4564,7 +4451,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "VISMED",
             "object_title": "VisionMed AI",
@@ -4594,7 +4480,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "LANGX",
             "object_title": "LangX AI",
@@ -4624,7 +4509,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "ROBIX",
             "object_title": "Robix Robotics",
@@ -4654,7 +4538,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "SAFDR",
             "object_title": "SafeDrive AI",
@@ -4684,7 +4567,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "FAIRLY",
             "object_title": "Fairly AI",
@@ -4714,7 +4596,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "SECLRN",
             "object_title": "SecureLearn",
@@ -4744,7 +4625,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "GENART",
             "object_title": "GenArt AI",
@@ -4774,7 +4654,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "CAUSAL",
             "object_title": "CausalHealth",
@@ -4804,7 +4683,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "MULTIEDU",
             "object_title": "MultiEdu AI",
@@ -4834,7 +4712,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Startup",
             "object_id": "FINAI",
             "object_title": "FinSight AI",
@@ -4866,10 +4743,8 @@
     ],
     "edges": [
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MATH-132",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "teacher",
@@ -4882,10 +4757,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "STAT-201",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "teacher",
@@ -4898,10 +4771,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "COMP-140",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "teacher",
@@ -4914,10 +4785,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "COMP-140",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "teacher",
@@ -4930,10 +4799,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "teacher",
@@ -4946,10 +4813,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-245",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "teacher",
@@ -4962,10 +4827,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "DATA-202",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "teacher",
@@ -4978,10 +4841,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MATH-305",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "teacher",
@@ -4994,10 +4855,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "STAT-322",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "teacher",
@@ -5010,10 +4869,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "STAT-322",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "teacher",
@@ -5026,10 +4883,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-330",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "teacher",
@@ -5042,10 +4897,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-350",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "teacher",
@@ -5058,10 +4911,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "DATA-315",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "teacher",
@@ -5074,10 +4925,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "DATA-315",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "teacher",
@@ -5090,10 +4939,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-320",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "teacher",
@@ -5106,10 +4953,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "STAT-410",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "teacher",
@@ -5122,10 +4967,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MATH-415",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "teacher",
@@ -5138,10 +4981,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-425",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "teacher",
@@ -5154,10 +4995,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "NEUR-510",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "teacher",
@@ -5170,10 +5009,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-530",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "teacher",
@@ -5186,10 +5023,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-530",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "teacher",
@@ -5202,10 +5037,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "COMP-545",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "teacher",
@@ -5218,10 +5051,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "COMP-545",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "teacher",
@@ -5234,10 +5065,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-601",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "teacher",
@@ -5250,10 +5079,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-601",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "teacher",
@@ -5266,10 +5093,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "NEUR-620",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "teacher",
@@ -5282,10 +5107,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-635",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "teacher",
@@ -5298,10 +5121,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "NLP-701",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "teacher",
@@ -5314,10 +5135,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "LING-725",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "teacher",
@@ -5330,10 +5149,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-740",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "teacher",
@@ -5346,10 +5163,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-740",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "teacher",
@@ -5362,10 +5177,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "DATA-801",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "teacher",
@@ -5378,10 +5191,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-815",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "teacher",
@@ -5394,10 +5205,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "CSCI-835",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "teacher",
@@ -5410,10 +5219,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-901",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "teacher",
@@ -5426,10 +5233,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Course",
             "from_object_id": "MLAI-901",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "819204",
             "context": "teacher",
@@ -5442,1570 +5247,1256 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "a3f19c7e5b82d4fa",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "a3f19c7e5b82d4fa",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "a3f19c7e5b82d4fa",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f8c72e19d5a3b6c2",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f8c72e19d5a3b6c2",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "d2a9e5f3c8b7f14e",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "d2a9e5f3c8b7f14e",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "d2a9e5f3c8b7f14e",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "0f1e2d3c4b5a6978",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "0f1e2d3c4b5a6978",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "819204",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abc123def4567890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abc123def4567890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abc123def4567890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "fedcba9876543210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "fedcba9876543210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1a2b3c4d5e6f7890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1a2b3c4d5e6f7890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9988776655443322",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9988776655443322",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9988776655443322",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abcdefabcdefabcd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abcdefabcdefabcd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abcdefabcdefabcd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "c1d2e3f4a5b69788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "c1d2e3f4a5b69788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1f2e3d4c5b6a7980",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1f2e3d4c5b6a7980",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1f2e3d4c5b6a7980",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9a8b7c6d5e4f3210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9a8b7c6d5e4f3210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9a8b7c6d5e4f3210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9a8b7c6d5e4f3210",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f7e6d5c4b3a29180",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f7e6d5c4b3a29180",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abc987654321cdef",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abc987654321cdef",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abc987654321cdef",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "0a1b2c3d4e5f6789",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "0a1b2c3d4e5f6789",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "0a1b2c3d4e5f6789",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1234abcd5678ef90",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1234abcd5678ef90",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffeeddccbbaa9988",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffeeddccbbaa9988",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffeeddccbbaa9988",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9876abcd5432ef10",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "9876abcd5432ef10",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11bb22cc33dd44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11bb22cc33dd44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55ee66ff77889900",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55ee66ff77889900",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55ee66ff77889900",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ddeeff0011223344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ddeeff0011223344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ddeeff0011223344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafebabefeedface",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "819204",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafebabefeedface",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadbeef1234cafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "819204",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadbeef1234cafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadbeef1234cafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "162048",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beadfacefeedcafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "819204",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beadfacefeedcafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beadfacefeedcafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "123abc456def7890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "123abc456def7890",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa55bb66cc77dd88",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa55bb66cc77dd88",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa55bb66cc77dd88",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ff0011aa223344bb",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ff0011aa223344bb",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ff0011aa223344bb",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa22bb33cc44dd55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa22bb33cc44dd55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122aabb3344ccdd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122aabb3344ccdd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffeeddccbbaa2211",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffeeddccbbaa2211",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffeeddccbbaa2211",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aabbccddeeff0011",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aabbccddeeff0011",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aabbccddeeff0011",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1234abcd5678efab",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1234abcd5678efab",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadbeefcafebabe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadbeefcafebabe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafefeedfacebead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafefeedfacebead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beadfeedcafecafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beadfeedcafecafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beadfeedcafecafe",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f1e2d3c4b5a69788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f1e2d3c4b5a69788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "f1e2d3c4b5a69788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "11aa22bb33cc44dd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "11aa22bb33cc44dd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55aa66bb77cc88dd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55aa66bb77cc88dd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55aa66bb77cc88dd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ccddeeff00112233",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ccddeeff00112233",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ccddeeff00112233",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "8899aabbccddeeff",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "8899aabbccddeeff",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abcd11223344efef",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abcd11223344efef",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "618472",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "abcd11223344efef",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122cc3344bb55aa",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122cc3344bb55aa",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122cc3344bb55aa",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa00bb11cc22dd33",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa00bb11cc22dd33",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "44556677aabb8899",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "44556677aabb8899",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "44556677aabb8899",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffee1122dd33cc44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffee1122dd33cc44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "ffee1122dd33cc44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11cc22bb33dd44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "162048",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11cc22bb33dd44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11cc22bb33dd44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55ee44dd33cc22bb",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "162048",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55ee44dd33cc22bb",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122aabb3344ccdd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "162048",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122aabb3344ccdd",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafebabe1122dead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafebabe1122dead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beefcafe3344feed",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beefcafe3344feed",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beefcafe3344feed",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadface5566bead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadface5566bead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "deadface5566bead",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa77bb88cc99dd00",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa77bb88cc99dd00",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cc55dd66aa77bb88",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cc55dd66aa77bb88",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cc55dd66aa77bb88",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122dd33cc44aa55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "185034",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122dd33cc44aa55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "124759",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122dd33cc44aa55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11bb22ee33ff44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "aa11bb22ee33ff44",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55cc66dd77aa8899",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55cc66dd77aa8899",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "55cc66dd77aa8899",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122ee33ff44aa55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "196407",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "1122ee33ff44aa55",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafe1234dead5678",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafe1234dead5678",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "cafe1234dead5678",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beef5566feed7788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "beef5566feed7788",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "face1122babe3344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "face1122babe3344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "face1122babe3344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Publication",
             "from_object_id": "face1122babe3344",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "458203",
             "context": "authorship",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "104582",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "VAIL",
             "context": "accreditation",
@@ -7023,10 +6514,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "112384",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "VAIL",
             "context": "accreditation",
@@ -7044,10 +6533,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "196407",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "VAIL",
             "context": "accreditation",
@@ -7070,10 +6557,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "239174",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "RLAI",
             "context": "accreditation",
@@ -7096,10 +6581,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "819204",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "RLAI",
             "context": "accreditation",
@@ -7117,10 +6600,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "185034",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "RLAI",
             "context": "accreditation",
@@ -7138,10 +6619,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "327519",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "MLNLP",
             "context": "accreditation",
@@ -7159,10 +6638,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "920183",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "MLNLP",
             "context": "accreditation",
@@ -7180,10 +6657,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "702315",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "FAIRX",
             "context": "accreditation",
@@ -7201,10 +6676,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "159632",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "FAIRX",
             "context": "accreditation",
@@ -7222,10 +6695,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "618472",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "SECURE",
             "context": "accreditation",
@@ -7243,10 +6714,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "148923",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "SECURE",
             "context": "accreditation",
@@ -7264,10 +6733,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "162048",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "SECURE",
             "context": "accreditation",
@@ -7285,10 +6752,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "136802",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
@@ -7311,10 +6776,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "173501",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
@@ -7337,10 +6800,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "103827",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
@@ -7358,10 +6819,8 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "509381",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "EDUAI",
             "context": "accreditation",
@@ -7379,240 +6838,192 @@
             ]
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "DCS",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "FUMI",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "DISR",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "FUMI",
             "context": "affiliation",
             "custom_fields": []
         },
-{
-            "from_institution_id": "EPFL",
+        {
             "from_object_type": "Unit",
             "from_object_id": "FUMI",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "(racine)",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "VAIL",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "DCS",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "MLNLP",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "DCS",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "SECURE",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "DCS",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "RLAI",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "DISR",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "FAIRX",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "DISR",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Unit",
             "from_object_id": "EDUAI",
-            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "DISR",
             "context": "affiliation",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "VISMED",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "104582",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "VISMED",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "112384",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "LANGX",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "327519",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "LANGX",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "920183",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "ROBIX",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "SAFDR",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "819204",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "SAFDR",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "239174",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "FAIRLY",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "702315",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "SECLRN",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "162048",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "SECLRN",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "148923",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "GENART",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "509381",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "CAUSAL",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "159632",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "MULTIEDU",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "173501",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "MULTIEDU",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "136802",
             "context": "founder",
             "custom_fields": []
         },
         {
-            "from_institution_id": "EPFL",
             "from_object_type": "Startup",
             "from_object_id": "FINAI",
-            "to_institution_id": "EPFL",
             "to_object_type": "Person",
             "to_object_id": "103827",
             "context": "founder",
