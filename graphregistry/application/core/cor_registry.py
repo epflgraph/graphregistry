@@ -943,8 +943,8 @@ class GraphRegistry():
             def set(self, object_type_key, flag_type=None, to_process=None, verbose=False):
 
                 # Check object_type_key input
-                if not isinstance(object_type_key, tuple) or len(object_type_key) not in [2, 4]:
-                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 2 or 4.")
+                if not isinstance(object_type_key, tuple) or len(object_type_key) not in [1, 2]:
+                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 1 or 2.")
                     return
 
                 # Check flag_type input
@@ -976,8 +976,8 @@ class GraphRegistry():
             def get(self, object_type_key, flag_type=False, verbose=False):
 
                 # Check object_type_key input
-                if not isinstance(object_type_key, tuple) or len(object_type_key) not in [2, 4]:
-                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 2 or 4.")
+                if not isinstance(object_type_key, tuple) or len(object_type_key) not in [1, 2]:
+                    sysmsg.error("Invalid object_type_key. It should be a tuple of length 1 or 2.")
                     return
 
                 # Check flag_type input
@@ -1044,9 +1044,9 @@ class GraphRegistry():
                     for d in config_json['nodes']:
                         node_type, process_fields, process_scores = d
                         if process_fields:
-                            self.set(object_type_key=(node_type), flag_type='fields', to_process=1)
+                            self.set(object_type_key=(node_type,), flag_type='fields', to_process=1)
                         if process_scores:
-                            self.set(object_type_key=(node_type), flag_type='scores', to_process=1)
+                            self.set(object_type_key=(node_type,), flag_type='scores', to_process=1)
 
                 # Edge types
                 if 'edges' in config_json:
