@@ -306,3 +306,5 @@ scripts/run2.sh
 scripts/weird_bug.txt
 list_tables.py
 update_object_type_columns.py
+count_object_type_triples.py
+count_object_type_triples.json

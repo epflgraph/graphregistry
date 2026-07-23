@@ -308,7 +308,7 @@ class GraphRegistry():
             self.scoresexpired.status()
 
         # Reset airflow and chache flags
-        # Options: ('typeflags', 'airflow', 'cache')
+        # Options: ('typeflags', 'airflow', 'cache', 'traversals')
         def reset(self, options=(), doc_type=None, verbose=False):
 
             # Print status
@@ -319,7 +319,7 @@ class GraphRegistry():
                 sysmsg.trace(f"Selected option(s): {options}.")
             else:
                 sysmsg.warning("Nothing to do: 'options' parameter missing.")
-                sysmsg.warning("options : 'typeflags', 'airflow', 'cache'")
+                sysmsg.warning("options : 'typeflags', 'airflow', 'cache', 'traversals'")
 
             # Reset types
             if 'typeflags' in options:
@@ -367,7 +367,8 @@ class GraphRegistry():
                 # Get list of tables in 'graph_cache' schema containing 'to_process' column
                 list_of_tables = sorted([(glbcfg.schema_graph_cache_test, table_name)
                     for table_name in db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test)
-                    if db.has_column(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name, column_name='to_process')])
+                    if not table_name.startswith('_')
+                    and db.has_column(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name, column_name='to_process')])
 
                 # Print list of affected tables
                 print('\nThe following tables will be affected:')
@@ -390,6 +391,40 @@ class GraphRegistry():
 
                 # Print status
                 sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_graph_cache_test}' tables.")
+
+            # Reset flags on traversals
+            if 'traversals' in options:
+
+                # Print status
+                sysmsg.info("🧹 📝 Reset 'to_process' flags in traversals tables.")
+
+                # Get list of tables in 'traversals' schema containing 'to_process' column
+                list_of_tables = sorted([(glbcfg.schema_traversals, table_name)
+                    for table_name in db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.schema_traversals)
+                    if not table_name.startswith('_')
+                    and db.has_column(engine_name='xaas_coresrv', schema_name=glbcfg.schema_traversals, table_name=table_name, column_name='to_process')])
+
+                # Print list of affected tables
+                print('\nThe following tables will be affected:')
+                for s,t in list_of_tables:
+                    print(f" - {s}.{t}")
+                print('')
+
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_traversals}' traversals tables ...")
+
+                # Loop over 'traversals' tables
+                with tqdm(list_of_tables, unit='table') as pb:
+                    for schema_name, table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                        db.execute_query_in_shell(engine_name = 'xaas_coresrv',
+                            query    = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;",
+                            query_id = 'X7vYqZ3A',
+                            verbose  = verbose
+                        )
+
+                # Print status
+                sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_traversals}' tables.")
 
             # Print status
             sysmsg.success("🧹 ✅ Done resetting flags.\n")
@@ -2810,9 +2845,13 @@ class GraphRegistry():
 
                 # Query template
                 sql_query_template = """
-                    SELECT cf.from_object_type, cf.from_object_id,
-                             cf.to_object_type,   cf.to_object_id,
-                           cf.field_language, cf.field_name, cf.field_value
+                    SELECT cf.from_object_type,
+                           cf.from_object_id,
+                           cf.to_object_type,
+                           cf.to_object_id,
+                           cf.context,
+                           cf.field_language, cf.field_name, cf.field_value,
+                           1 AS to_process, 0 AS deleted
                       FROM %s.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_N_Object_T_%s cf
                      USING (from_object_type, from_object_id, to_object_type, to_object_id)
@@ -2829,7 +2868,9 @@ class GraphRegistry():
                            cf.to_object_id        AS from_object_id,
                            cf.from_object_type    AS to_object_type,
                            cf.from_object_id      AS to_object_id,
-                           cf.field_language, cf.field_name, cf.field_value
+                           cf.context             AS context,
+                           cf.field_language, cf.field_name, cf.field_value,
+                           1 AS to_process, 0 AS deleted
                       FROM %s.Operations_N_Object_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_N_Object_T_%s cf
                      USING (from_object_type, from_object_id, to_object_type, to_object_id)
@@ -2855,7 +2896,7 @@ class GraphRegistry():
                 # Append query for cached calculated fields
                 sql_query_stack += [sql_query_template % (
                     glbcfg.schema_airflow,
-                    glbcfg.schema_graph_cache_test, 'CalculatedFields', 
+                    glbcfg.schema_graph_cache_test, 'CalculatedFields',
                     glbcfg.schema_airflow,
                     glbcfg.schema_airflow,
                     glbcfg.schema_graph_cache_test, 'CalculatedFields',
@@ -2883,7 +2924,7 @@ class GraphRegistry():
 
                     # Append query
                     sql_query_stack += [f"""
-                        SELECT pp.object_type, pp.object_id, pp.numeric_id_en, pp.numeric_id_fr, pp.numeric_id_de, pp.numeric_id_it, pp.short_code, pp.subtype_en, pp.subtype_fr, pp.subtype_de, pp.subtype_it, pp.name_en_is_auto_generated, pp.name_en_is_auto_corrected, pp.name_en_is_auto_translated, pp.name_en_translated_from, pp.name_en_value, pp.name_fr_is_auto_generated, pp.name_fr_is_auto_corrected, pp.name_fr_is_auto_translated, pp.name_fr_translated_from, pp.name_fr_value, pp.name_de_is_auto_generated, pp.name_de_is_auto_corrected, pp.name_de_is_auto_translated, pp.name_de_translated_from, pp.name_de_value, pp.name_it_is_auto_generated, pp.name_it_is_auto_corrected, pp.name_it_is_auto_translated, pp.name_it_translated_from, pp.name_it_value, pp.description_short_en_is_auto_generated, pp.description_short_en_is_auto_corrected, pp.description_short_en_is_auto_translated, pp.description_short_en_translated_from, pp.description_short_en_value, pp.description_short_fr_is_auto_generated, pp.description_short_fr_is_auto_corrected, pp.description_short_fr_is_auto_translated, pp.description_short_fr_translated_from, pp.description_short_fr_value, pp.description_short_de_is_auto_generated, pp.description_short_de_is_auto_corrected, pp.description_short_de_is_auto_translated, pp.description_short_de_translated_from, pp.description_short_de_value, pp.description_short_it_is_auto_generated, pp.description_short_it_is_auto_corrected, pp.description_short_it_is_auto_translated, pp.description_short_it_translated_from, pp.description_short_it_value, pp.description_medium_en_is_auto_generated, pp.description_medium_en_is_auto_corrected, pp.description_medium_en_is_auto_translated, pp.description_medium_en_translated_from, pp.description_medium_en_value, pp.description_medium_fr_is_auto_generated, pp.description_medium_fr_is_auto_corrected, pp.description_medium_fr_is_auto_translated, pp.description_medium_fr_translated_from, pp.description_medium_fr_value, pp.description_medium_de_is_auto_generated, pp.description_medium_de_is_auto_corrected, pp.description_medium_de_is_auto_translated, pp.description_medium_de_translated_from, pp.description_medium_de_value, pp.description_medium_it_is_auto_generated, pp.description_medium_it_is_auto_corrected, pp.description_medium_it_is_auto_translated, pp.description_medium_it_translated_from, pp.description_medium_it_value, pp.description_long_en_is_auto_generated, pp.description_long_en_is_auto_corrected, pp.description_long_en_is_auto_translated, pp.description_long_en_translated_from, pp.description_long_en_value, pp.description_long_fr_is_auto_generated, pp.description_long_fr_is_auto_corrected, pp.description_long_fr_is_auto_translated, pp.description_long_fr_translated_from, pp.description_long_fr_value, pp.description_long_de_is_auto_generated, pp.description_long_de_is_auto_corrected, pp.description_long_de_is_auto_translated, pp.description_long_de_translated_from, pp.description_long_de_value, pp.description_long_it_is_auto_generated, pp.description_long_it_is_auto_corrected, pp.description_long_it_is_auto_translated, pp.description_long_it_translated_from, pp.description_long_it_value, pp.external_key_en, pp.external_key_fr, pp.external_key_de, pp.external_key_it, pp.external_url_en, pp.external_url_fr, pp.external_url_de, pp.external_url_it, pp.is_visible, 1 AS to_process
+                        SELECT pp.object_type, pp.object_id, pp.numeric_id_en, pp.numeric_id_fr, pp.numeric_id_de, pp.numeric_id_it, pp.short_code, pp.subtype_en, pp.subtype_fr, pp.subtype_de, pp.subtype_it, pp.name_en_is_auto_generated, pp.name_en_is_auto_corrected, pp.name_en_is_auto_translated, pp.name_en_translated_from, pp.name_en_value, pp.name_fr_is_auto_generated, pp.name_fr_is_auto_corrected, pp.name_fr_is_auto_translated, pp.name_fr_translated_from, pp.name_fr_value, pp.name_de_is_auto_generated, pp.name_de_is_auto_corrected, pp.name_de_is_auto_translated, pp.name_de_translated_from, pp.name_de_value, pp.name_it_is_auto_generated, pp.name_it_is_auto_corrected, pp.name_it_is_auto_translated, pp.name_it_translated_from, pp.name_it_value, pp.description_short_en_is_auto_generated, pp.description_short_en_is_auto_corrected, pp.description_short_en_is_auto_translated, pp.description_short_en_translated_from, pp.description_short_en_value, pp.description_short_fr_is_auto_generated, pp.description_short_fr_is_auto_corrected, pp.description_short_fr_is_auto_translated, pp.description_short_fr_translated_from, pp.description_short_fr_value, pp.description_short_de_is_auto_generated, pp.description_short_de_is_auto_corrected, pp.description_short_de_is_auto_translated, pp.description_short_de_translated_from, pp.description_short_de_value, pp.description_short_it_is_auto_generated, pp.description_short_it_is_auto_corrected, pp.description_short_it_is_auto_translated, pp.description_short_it_translated_from, pp.description_short_it_value, pp.description_medium_en_is_auto_generated, pp.description_medium_en_is_auto_corrected, pp.description_medium_en_is_auto_translated, pp.description_medium_en_translated_from, pp.description_medium_en_value, pp.description_medium_fr_is_auto_generated, pp.description_medium_fr_is_auto_corrected, pp.description_medium_fr_is_auto_translated, pp.description_medium_fr_translated_from, pp.description_medium_fr_value, pp.description_medium_de_is_auto_generated, pp.description_medium_de_is_auto_corrected, pp.description_medium_de_is_auto_translated, pp.description_medium_de_translated_from, pp.description_medium_de_value, pp.description_medium_it_is_auto_generated, pp.description_medium_it_is_auto_corrected, pp.description_medium_it_is_auto_translated, pp.description_medium_it_translated_from, pp.description_medium_it_value, pp.description_long_en_is_auto_generated, pp.description_long_en_is_auto_corrected, pp.description_long_en_is_auto_translated, pp.description_long_en_translated_from, pp.description_long_en_value, pp.description_long_fr_is_auto_generated, pp.description_long_fr_is_auto_corrected, pp.description_long_fr_is_auto_translated, pp.description_long_fr_translated_from, pp.description_long_fr_value, pp.description_long_de_is_auto_generated, pp.description_long_de_is_auto_corrected, pp.description_long_de_is_auto_translated, pp.description_long_de_translated_from, pp.description_long_de_value, pp.description_long_it_is_auto_generated, pp.description_long_it_is_auto_corrected, pp.description_long_it_is_auto_translated, pp.description_long_it_translated_from, pp.description_long_it_value, pp.external_key_en, pp.external_key_fr, pp.external_key_de, pp.external_key_it, pp.external_url_en, pp.external_url_fr, pp.external_url_de, pp.external_url_it, pp.is_visible, 1 AS to_process, 0 AS deleted
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Data_N_Object_T_PageProfile pp
                          USING (object_type, object_id)
@@ -2896,17 +2937,6 @@ class GraphRegistry():
 
                 # Build query (base)
                 sql_query = '\n\t\tUNION ALL\n'.join(sql_query_stack)
-
-                # # Enclose query
-                # sql_query = f"""
-                #     SELECT object_type, object_id, numeric_id_en, numeric_id_fr, numeric_id_de, numeric_id_it, short_code, subtype_en, subtype_fr, subtype_de, subtype_it, name_en_is_auto_generated, name_en_is_auto_corrected, name_en_is_auto_translated, name_en_translated_from, name_en_value, name_fr_is_auto_generated, name_fr_is_auto_corrected, name_fr_is_auto_translated, name_fr_translated_from, name_fr_value, name_de_is_auto_generated, name_de_is_auto_corrected, name_de_is_auto_translated, name_de_translated_from, name_de_value, name_it_is_auto_generated, name_it_is_auto_corrected, name_it_is_auto_translated, name_it_translated_from, name_it_value, description_short_en_is_auto_generated, description_short_en_is_auto_corrected, description_short_en_is_auto_translated, description_short_en_translated_from, description_short_en_value, description_short_fr_is_auto_generated, description_short_fr_is_auto_corrected, description_short_fr_is_auto_translated, description_short_fr_translated_from, description_short_fr_value, description_short_de_is_auto_generated, description_short_de_is_auto_corrected, description_short_de_is_auto_translated, description_short_de_translated_from, description_short_de_value, description_short_it_is_auto_generated, description_short_it_is_auto_corrected, description_short_it_is_auto_translated, description_short_it_translated_from, description_short_it_value, description_medium_en_is_auto_generated, description_medium_en_is_auto_corrected, description_medium_en_is_auto_translated, description_medium_en_translated_from, description_medium_en_value, description_medium_fr_is_auto_generated, description_medium_fr_is_auto_corrected, description_medium_fr_is_auto_translated, description_medium_fr_translated_from, description_medium_fr_value, description_medium_de_is_auto_generated, description_medium_de_is_auto_corrected, description_medium_de_is_auto_translated, description_medium_de_translated_from, description_medium_de_value, description_medium_it_is_auto_generated, description_medium_it_is_auto_corrected, description_medium_it_is_auto_translated, description_medium_it_translated_from, description_medium_it_value, description_long_en_is_auto_generated, description_long_en_is_auto_corrected, description_long_en_is_auto_translated, description_long_en_translated_from, description_long_en_value, description_long_fr_is_auto_generated, description_long_fr_is_auto_corrected, description_long_fr_is_auto_translated, description_long_fr_translated_from, description_long_fr_value, description_long_de_is_auto_generated, description_long_de_is_auto_corrected, description_long_de_is_auto_translated, description_long_de_translated_from, description_long_de_value, description_long_it_is_auto_generated, description_long_it_is_auto_corrected, description_long_it_is_auto_translated, description_long_it_translated_from, description_long_it_value, external_key_en, external_key_fr, external_key_de, external_key_it, external_url_en, external_url_fr, external_url_de, external_url_it, is_visible, to_process
-                #     FROM (
-                #         {sql_query}
-                #     ) AS t
-                # """
-
-                # # Specify input for execution method
-                # query_has_filters = False
 
             #------------------------------#
             # Process query for input name #
@@ -2925,7 +2955,8 @@ class GraphRegistry():
                 # Query template
                 sql_query_template = """
                     SELECT cf.object_type, cf.object_id,
-                           cf.field_language, cf.field_name, cf.field_value
+                           cf.field_language, cf.field_name, cf.field_value,
+                           1 AS to_process, 0 AS deleted
                       FROM %s.Operations_N_Object_T_FieldsChanged tp
                 INNER JOIN %s.Data_N_Object_T_%s cf
                      USING (object_type, object_id)
@@ -2953,17 +2984,6 @@ class GraphRegistry():
 
                 # Build query (base)
                 sql_query = '\n\t\tUNION ALL\n'.join(sql_query_stack)
-
-                # # Enclose query
-                # sql_query = f"""
-                #     SELECT object_type, object_id, field_language, field_name, field_value
-                #     FROM (
-                #         {sql_query}
-                #     ) AS t
-                # """
-
-                # Specify input for execution method
-                # query_has_filters = False
 
             #------------------------------#
             # Process query for input name #
