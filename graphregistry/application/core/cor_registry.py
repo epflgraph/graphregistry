@@ -2849,17 +2849,17 @@ class GraphRegistry():
             sysmsg.success(f"🚀 ✅ Done applying formulas and committing updated data to '{glbcfg.schema_graph_cache_test}'.\n")
 
         # Batch apply formulas: calculated fields only
-        def apply_calculated_field_formulas(self, verbose=False):
+        def apply_calculated_field_formulas(self, verbose=False, actions=None):
             for local_path in [
                 'calculated_fields/obj',
                 'calculated_fields/obj2obj'
             ]:
-                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
+                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose, actions=actions)
 
         # Batch apply formulas: traversal and scoring
-        def apply_traversal_and_scoring_formulas(self, verbose=False):
-            self.apply_traversals(verbose=verbose)
-            self.apply_scoring_formulas(verbose=verbose)
+        def apply_traversal_and_scoring_formulas(self, verbose=False, actions=None):
+            self.apply_traversals(verbose=verbose, actions=actions)
+            self.apply_scoring_formulas(verbose=verbose, actions=actions)
 
         # Batch apply formulas: traversal and scoring
         def apply_traversals(self, verbose=False, actions=None):
@@ -2869,7 +2869,7 @@ class GraphRegistry():
                 self.apply_formulas_from_folder(local_path=local_path, verbose=verbose, actions=actions)
 
         # Batch apply formulas: traversal and scoring
-        def apply_scoring_formulas(self, verbose=False):
+        def apply_scoring_formulas(self, verbose=False, actions=None):
             for local_path in [
                 'calculated_scores/obj2ontology/concepts',
                 'calculated_scores/obj2ontology/concepts_union',
@@ -2877,7 +2877,7 @@ class GraphRegistry():
                 'calculated_scores/obj2ontology/categories_union',
                 'calculated_scores/degree_scores'
             ]:
-                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
+                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose, actions=actions)
 
         # Update all scores
         def update_scores_matrix(self, score_thr=0.1, actions=()):
@@ -3225,84 +3225,11 @@ class GraphRegistry():
             # Fetch list of batch formulas to execute
             list_of_files = sorted(glob.glob(f'{SQL_FORMULAS_PATH}/{local_path}/formula.*.sql'))
 
-            # Load active node/edge types from Airflow config for type-specific folders
-            active_node_types = None
-            active_edge_types = None
-            active_scores_node_types = None
-            if local_path in (
-                'calculated_fields/obj',
-                'graph_traversals',
-                'calculated_fields/obj2obj',
-                'calculated_scores/obj2ontology/categories',
-                'calculated_scores/obj2ontology/concepts',
-                'calculated_scores/obj2ontology/concepts_union',
-                'calculated_scores/obj2ontology/categories_union',
-                'calculated_scores/degree_scores',
-            ):
-                config_json = GraphRegistry.Orchestration.TypeFlags().get_config_json()
-                if local_path in ('calculated_fields/obj', 'graph_traversals'):
-                    active_node_types = {
-                        node_type.lower()
-                        for node_type, process_fields, _ in config_json['nodes']
-                        if process_fields
-                    }
-                    sysmsg.info(f"   Active node types for fields: {sorted(active_node_types)}")
-                if local_path.startswith('calculated_scores/'):
-                    active_scores_node_types = {
-                        node_type.lower()
-                        for node_type, _, process_scores in config_json['nodes']
-                        if process_scores
-                    }
-                    sysmsg.info(f"   Active node types for scores: {sorted(active_scores_node_types)}")
-                active_edge_types = {
-                    tuple(sorted([src.lower(), dst.lower()]))
-                    for src, dst, is_active in config_json['edges']
-                    if is_active
-                }
-                sysmsg.info(f"   Active edge types for fields: {sorted(active_edge_types)}")
-
             # Loop over and execute all formulas
             for file_path in list_of_files:
 
                 # Extract formula name from file path
                 formula_name = re.findall(r'formula\.(.*)\.sql$', file_path)[0]
-
-                # Skip formulas that target inactive node/edge types
-                if local_path == 'calculated_fields/obj':
-                    formula_node_type = self._get_node_type_from_obj_formula(formula_name)
-                    if formula_node_type is not None and formula_node_type not in active_node_types:
-                        sysmsg.info(
-                            f"⏭️  Skipping obj formula '{formula_name}': "
-                            f"node type '{formula_node_type}' is not in active fields node types."
-                        )
-                        continue
-
-                elif local_path == 'calculated_fields/obj2obj':
-                    formula_edge = self._get_edge_type_from_obj2obj_formula(formula_name)
-                    if formula_edge is not None and formula_edge not in active_edge_types:
-                        sysmsg.info(
-                            f"⏭️  Skipping obj2obj formula '{formula_name}': "
-                            f"edge {formula_edge} is not in active fields edge types."
-                        )
-                        continue
-                elif local_path.startswith('calculated_scores/'):
-                    scores_filter = self._get_scores_filter_for_calculated_scores_formula(local_path, formula_name)
-                    if scores_filter is not None:
-                        filter_type, filter_value = scores_filter
-                        if filter_type == 'specific_node':
-                            if filter_value not in active_scores_node_types:
-                                sysmsg.info(
-                                    f"⏭️  Skipping calculated-scores formula '{formula_name}': "
-                                    f"node type '{filter_value}' is not in active scores node types."
-                                )
-                                continue
-                        elif filter_type == 'any_scores':
-                            if not active_scores_node_types:
-                                sysmsg.info(
-                                    f"⏭️  Skipping calculated-scores formula '{formula_name}': "
-                                    f"no active scores node types in the Airflow config."
-                                )
-                                continue
 
                 self.apply_formula_from_file(file_path=file_path, verbose=verbose, actions=actions)
 

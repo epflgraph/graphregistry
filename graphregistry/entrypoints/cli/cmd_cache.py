@@ -27,13 +27,13 @@ def cmd_cache_update(args):
     if formula_path:
         registry.cachemanager.apply_formula_by_path(formula_path=formula_path, actions=actions)
     if 'fields' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_calculated_field_formulas(verbose='print' in actions)
+        registry.cachemanager.apply_calculated_field_formulas(verbose='print' in actions, actions=actions)
     if 'views' in formulas:
         registry.cachemanager.materialize_views(actions=actions)
     if 'traversals' in formulas and 'commit' in actions:
         registry.cachemanager.apply_traversals(verbose='print' in actions, actions=actions)
     if 'scores' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_scoring_formulas(verbose='print' in actions)
+        registry.cachemanager.apply_scoring_formulas(verbose='print' in actions, actions=actions)
     if matrix is True:
         registry.cachemanager.update_scores_matrix(score_thr=0.1, actions=actions)
 
