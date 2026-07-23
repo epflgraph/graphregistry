@@ -623,8 +623,9 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_Checksums (
   from_object_id varchar(255) NOT NULL,
   to_object_type varchar(16) NOT NULL,
   to_object_id varchar(255) NOT NULL,
+  context varchar(64) NOT NULL,
   checksum_val varchar(32) DEFAULT NULL,
-  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id),
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id,context),
   KEY object_type (from_object_type),
   KEY object_id (from_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -634,8 +635,9 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_ChecksumsCustomFields 
   from_object_id varchar(255) NOT NULL,
   to_object_type varchar(16) NOT NULL,
   to_object_id varchar(255) NOT NULL,
+  context varchar(64) NOT NULL,
   checksum_val varchar(32) DEFAULT NULL,
-  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id),
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id,context),
   KEY object_type (from_object_type),
   KEY object_id (from_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -645,8 +647,9 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_ChecksumsObject (
   from_object_id varchar(255) NOT NULL,
   to_object_type varchar(16) NOT NULL,
   to_object_id varchar(255) NOT NULL,
+  context varchar(64) NOT NULL,
   checksum_val varchar(32) DEFAULT NULL,
-  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id),
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type,to_object_id,context),
   KEY object_type (from_object_type),
   KEY object_id (from_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

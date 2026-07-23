@@ -654,6 +654,10 @@ class GraphRegistry():
                                   AND t.to_process = 1
                  """
 
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='VBk3hp3Z')
+
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='VBk3hp3Z')
 
@@ -679,6 +683,10 @@ class GraphRegistry():
                              AND t.to_process = 1
                  """
 
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='CmNTYc97')
+
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='CmNTYc97')
 
@@ -694,6 +702,10 @@ class GraphRegistry():
                            WHERE t.flag_type = 'fields'
                              AND t.to_process = 1;
                  """
+
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='XUiwHdd6')
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='XUiwHdd6')
@@ -726,6 +738,10 @@ class GraphRegistry():
                                  AND t.flag_type = 'fields'
                                  AND t.to_process = 1
                  """
+
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='5nVWX6nk')
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5nVWX6nk')
@@ -761,6 +777,10 @@ class GraphRegistry():
                              AND t.to_process = 1
                          GROUP BY object_type, object_id
                  """
+
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='oTWu6bBL')
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='oTWu6bBL')
@@ -839,8 +859,8 @@ class GraphRegistry():
                 # Generate SQL query (Object-to-object checksum > All types)
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsObject
-                                (from_object_type, from_object_id, to_object_type, to_object_id, checksum_val)
-                          SELECT from_object_type, from_object_id, to_object_type, to_object_id,
+                                (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_val)
+                          SELECT from_object_type, from_object_id, to_object_type, to_object_id, context,
                                  MD5(CONCAT(
                                     MD5(COALESCE(from_object_type, "__null__")), MD5(COALESCE(from_object_id, "__null__")),
                                     MD5(COALESCE(  to_object_type, "__null__")), MD5(COALESCE(  to_object_id, "__null__")),
@@ -851,6 +871,10 @@ class GraphRegistry():
                            USING (from_object_type, to_object_type)
                            WHERE to_process = 1
                 """
+
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='LnzeNnx1')
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='LnzeNnx1')
@@ -873,8 +897,8 @@ class GraphRegistry():
                 # Generate SQL query (Object-to-object custom fields checksum > All types)
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsCustomFields
-                                (from_object_type, from_object_id, to_object_type, to_object_id, checksum_val)
-                          SELECT from_object_type, from_object_id, to_object_type, to_object_id,
+                                (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_val)
+                          SELECT from_object_type, from_object_id, to_object_type, to_object_id, context,
                                  MD5(GROUP_CONCAT(MD5(CONCAT(
                                     MD5(COALESCE(field_language, "__null__")), MD5(COALESCE(field_name, "__null__")), MD5(COALESCE(field_value, "__null__"))
                                  )) ORDER BY field_language, field_name, field_value)) AS checksum_val
@@ -882,8 +906,12 @@ class GraphRegistry():
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
                            USING (from_object_type, to_object_type)
                            WHERE to_process = 1
-                        GROUP BY from_object_type, from_object_id, to_object_type, to_object_id
+                         GROUP BY from_object_type, from_object_id, to_object_type, to_object_id, context
                 """
+
+                # Print query if verbose
+                if verbose:
+                    print_sql(sql_query, title='WZ4gEw01')
 
                 # Execute query in shell
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='WZ4gEw01')
@@ -898,12 +926,12 @@ class GraphRegistry():
             # Generate SQL query (Final checksum > All types)
             sql_query = f"""
                 REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_Checksums
-                            (from_object_type, from_object_id, to_object_type, to_object_id, checksum_val)
-                      SELECT o.from_object_type, o.from_object_id, o.to_object_type, o.to_object_id,
+                            (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_val)
+                      SELECT o.from_object_type, o.from_object_id, o.to_object_type, o.to_object_id, o.context,
                              MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
                         FROM {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsObject o
                    LEFT JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsCustomFields c
-                       USING (from_object_type, from_object_id, to_object_type, to_object_id)
+                       USING (from_object_type, from_object_id, to_object_type, to_object_id, context)
                   INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
                        USING (from_object_type, to_object_type)
                        WHERE to_process = 1
@@ -923,7 +951,7 @@ class GraphRegistry():
             sql_query = f"""
                       UPDATE {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged f
                   INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_Checksums c
-                       USING (from_object_type, from_object_id, to_object_type, to_object_id)
+                       USING (from_object_type, from_object_id, to_object_type, to_object_id, context)
                   INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
                        USING (from_object_type, to_object_type)
                          SET f.checksum_current = c.checksum_val
