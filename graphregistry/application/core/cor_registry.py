@@ -3118,9 +3118,12 @@ class GraphRegistry():
                     # Append query
                     sql_query_stack += [f"""
                         SELECT 'Child-to-Parent' AS edge_type,
-                               c2p.from_object_type, c2p.from_object_id,
-                                 c2p.to_object_type,   c2p.to_object_id,
-                               c2p.context, 1 AS to_process
+                               c2p.from_object_type,
+                               c2p.from_object_id,
+                               c2p.to_object_type,
+                               c2p.to_object_id,
+                               c2p.context,
+                               1 AS to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
@@ -3136,7 +3139,8 @@ class GraphRegistry():
                                c2p.to_object_id        AS from_object_id,
                                c2p.from_object_type    AS to_object_type,
                                c2p.from_object_id      AS to_object_id,
-                               CONCAT(c2p.context, ' (mirror)') AS context, 1 AS to_process
+                               c2p.context             AS context,
+                               1 AS to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
