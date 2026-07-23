@@ -1685,12 +1685,14 @@ class GraphRegistry():
                         if verbose:
                             print(f"\nExecuting query:\n{sql_query}\n")
 
-                        # Set random date for "last_date_cached" column
+                        # Set random date for "last_date_cached" column.
+                        # chunk_filter scopes boundary discovery to rows actually touched by the UPDATE.
                         db.execute_query_in_chunks(
                             engine_name = 'xaas_coresrv',
                             schema_name = glbcfg.schema_airflow,
                             table_name  = table_name,
                             query       = sql_query,
+                            chunk_filter = where_conditions[table_name],
                             chunk_size  = 1000000,
                             verbose     = verbose,
                             query_id    = '1GVbHk4y'
@@ -2428,12 +2430,14 @@ class GraphRegistry():
                         if verbose:
                             print(f"\nExecuting query:\n{sql_query}\n")
 
-                        # Set random date for "last_date_cached" column
+                        # Set random date for "last_date_cached" column.
+                        # chunk_filter scopes boundary discovery to rows actually touched by the UPDATE.
                         db.execute_query_in_chunks(
                             engine_name = 'xaas_coresrv',
                             schema_name = glbcfg.schema_airflow,
                             table_name  = 'Operations_N_Object_T_ScoresExpired',
                             query       = sql_query,
+                            chunk_filter = where_conditions['Operations_N_Object_T_ScoresExpired'],
                             chunk_size  = 100000,
                             verbose     = verbose,
                             query_id    = 'q1kQA2gx'
@@ -5518,7 +5522,14 @@ class GraphRegistry():
                             sysmsg.trace(f"⚙️  Processing page profile (commit query {qn}/2) ...")
                             sysmsg.trace(f"🔥 Executing commit query {qn}/2 on table: '{target_schema_name}.{target_table_name}' ...")
 
-                            # Execute the commit query as safe inserts in chunks
+                            # Execute the commit query as safe inserts in chunks.
+                            # chunk_filter scopes the boundary discovery to the rows of PageProfile that
+                            # satisfy the p-table predicates, so chunks are dense over matching row_ids.
+                            # The n.to_process=1 predicate in query 2 is still evaluated inside the query.
+                            chunk_filter_by_query = {
+                                1: f"object_type = '{self.doc_type}' AND to_process = 1",
+                                2: f"object_type = '{self.doc_type}' AND to_process = 0",
+                            }
                             db.execute_query_as_safe_inserts_in_chunks(
                                 engine_name       = self.engine_name,
                                 schema_name       = target_schema_name,
@@ -5529,6 +5540,7 @@ class GraphRegistry():
                                 eval_column_names = ['doc_type'],
                                 actions           = actions,
                                 table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
+                                chunk_filter      = chunk_filter_by_query[qn],
                                 chunk_size        = 100000,
                                 row_id_name       = 'p.row_id',
                                 query_id          = f"T4VTvBv6[{qn}/2]"
@@ -5711,7 +5723,14 @@ class GraphRegistry():
                             sysmsg.trace(f"⚙️  Processing page profile (commit query {qn}/2) ...")
                             sysmsg.trace(f"🔥 Executing commit query {qn}/2 on table: '{target_schema_name}.{target_table_name}' ...")
 
-                            # Execute the commit query as safe inserts in chunks
+                            # Execute the commit query as safe inserts in chunks.
+                            # chunk_filter scopes the boundary discovery to the rows of PageProfile that
+                            # satisfy the p-table predicates, so chunks are dense over matching row_ids.
+                            # The n.to_process=1 predicate in query 2 is still evaluated inside the query.
+                            chunk_filter_by_query = {
+                                1: f"object_type = '{self.doc_type}' AND to_process = 1",
+                                2: f"object_type = '{self.doc_type}' AND to_process = 0",
+                            }
                             db.execute_query_as_safe_inserts_in_chunks(
                                 engine_name       = self.engine_name,
                                 schema_name       = target_schema_name,
@@ -5722,6 +5741,7 @@ class GraphRegistry():
                                 eval_column_names = ['doc_type'],
                                 actions           = actions,
                                 table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
+                                chunk_filter      = chunk_filter_by_query[qn],
                                 chunk_size        = 100000,
                                 row_id_name       = 'p.row_id',
                                 query_id          = f"vdEk9bpn[{qn}/2]"
@@ -5946,13 +5966,16 @@ class GraphRegistry():
                             query_id    = 'FCQgBmb2',
                             verbose     = 'print' in actions
                         )
-                    # Large patches: keep chunking
+                    # Large patches: keep chunking.
+                    # chunk_filter scopes boundary discovery to target rows that have a pending
+                    # buildup counterpart, avoiding empty chunks over sparse row_id ranges.
                     else:
                         db.execute_query_in_chunks(
                             engine_name   = self.engine_name,
                             schema_name   = target_schema_name,
                             table_name    = target_table_name,
                             query         = sql_query_commit,
+                            chunk_filter  = f"EXISTS (SELECT 1 FROM {buildup_link_table_path} b WHERE (b.doc_type, b.doc_id) = (link_type, link_id) AND b.to_process = 1)",
                             chunk_size    = 10000,
                             row_id_name   = 'i.row_id',
                             show_progress = False,
@@ -6076,13 +6099,16 @@ class GraphRegistry():
                     # Return if there are no rows to patch
                     if rows_to_patch == 0:
                         return
-                    # Else, execute the query in chunks
+                    # Else, execute the query in chunks.
+                    # chunk_filter scopes boundary discovery to target rows that have a pending
+                    # buildup counterpart, avoiding empty chunks over sparse row_id ranges.
                     else:
                         db.execute_query_in_chunks(
                             engine_name   = self.engine_name,
                             schema_name   = target_schema_name,
                             table_name    = target_table_name,
                             query         = sql_query_commit,
+                            chunk_filter  = f"EXISTS (SELECT 1 FROM {buildup_link_table_path_obj} b WHERE (b.doc_type, b.doc_id) = (link_type, link_id) AND b.to_process = 1)",
                             chunk_size    = 10000,
                             row_id_name   = 'i.row_id',
                             show_progress = False,
@@ -6197,13 +6223,16 @@ class GraphRegistry():
                     # Return if there are no rows to patch
                     if rows_to_patch == 0:
                         return
-                    # Else, execute the query in chunks
+                    # Else, execute the query in chunks.
+                    # chunk_filter scopes boundary discovery to target rows that have a pending
+                    # PageProfile / buildup counterpart, avoiding empty chunks over sparse row_id ranges.
                     else:
                         db.execute_query_in_chunks(
                             engine_name = self.engine_name,
                             schema_name = target_schema_name,
                             table_name  = target_table_name,
                             query       = sql_query_commit,
+                            chunk_filter = f"EXISTS (SELECT 1 FROM {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p INNER JOIN {buildup_link_table_path} l ON (l.doc_type, l.doc_id) = (p.object_type, p.object_id) WHERE (p.object_type, p.object_id) = (link_type, link_id) AND p.object_type = '{self.link_type}' AND (p.to_process = 1 OR l.to_process = 1))",
                             chunk_size  = 10000,
                             row_id_name = 't.row_id',
                             query_id    = 'Z16jRm9j',
@@ -6279,8 +6308,11 @@ class GraphRegistry():
                     sysmsg.error("Invalid link subtype.")
                     return
 
+                # Get score type
+                score_type = index_to_score_type.get(self.link_subtype.upper())
+
                 # Initialise ORDER BY statement with default SQL
-                order_by = f'{index_to_score_type[self.link_subtype.upper()]} DESC, link_id ASC'
+                order_by = f'{score_type} DESC, link_id ASC'
 
                 # If additional fields are included in ordering rules, prepend them
                 if len(order_by_rules_list)>0:
@@ -6367,8 +6399,8 @@ class GraphRegistry():
                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
                           SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
                             FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score,
-                                        CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
-                                                        row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
+                                         1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS row_score,
+                                                    row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})  AS row_rank
                                     FROM {target_table_path}
                               INNER JOIN (SELECT DISTINCT IF(from_object_type='{self.doc_type}', from_object_id, to_object_id) AS doc_id
                                                      FROM {parentchild_table_path}
@@ -6377,7 +6409,8 @@ class GraphRegistry():
                                                       AND to_process = 1) t
                                    USING (doc_id)
                                  ) tt
-                           WHERE row_rank <= {row_rank_thr}
+                           WHERE {score_type} >= 0.1
+                             AND row_rank <= {row_rank_thr}
                     """
 
                 # Semantic table?
@@ -6520,16 +6553,17 @@ class GraphRegistry():
                     # Generate SQL query 3 (re-rank)
                     SQLQuery3 = f"""
                     REPLACE INTO {target_table_path}
-                                        (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                            FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
-                                         CAST(1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS FLOAT) AS row_score,
-                                                         row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})            AS row_rank
+                                        (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                          SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                            FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
+                                         1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS row_score,
+                                                    row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})  AS row_rank
                                     FROM {target_table_path}
                               INNER JOIN ({doc_id_subquery}) t
                                    USING (doc_id)
                                  ) tt
-                           WHERE row_rank <= {row_rank_thr}
+                           WHERE {score_type} >= 0.1
+                             AND row_rank <= {row_rank_thr}
                     """
 
                 #------------------------------#
