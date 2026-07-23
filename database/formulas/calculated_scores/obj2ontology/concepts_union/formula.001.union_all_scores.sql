@@ -11,15 +11,15 @@
                           WHERE se.to_process = 1
                             AND tf.flag_type  = 'scores'
                             AND tf.to_process = 1
-                            AND (    (s.object_type, s.calculation_type) = ('EPFL', 'Course'  , 'average coverage over all lectures (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('EPFL', 'Lecture' ,     'percentage coverage in lecture (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('EPFL', 'Lecture' ,             'LLM keyword extraction (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('EPFL', 'MOOC'    ,       'slide sum-scores aggregation (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('EPFL', 'MOOC'    ,      'people sum-scores aggregation (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('EPFL', 'Person'  ,    'abstract sum-scores aggregation (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('EPFL', 'Unit'    ,    'abstract sum-scores aggregation (bounded)')
-                                  OR (s.object_type, s.calculation_type) = ('Ont' , 'Category',     'concept sum-scores aggregation (bounded)')
-                                )
+                             AND (    (s.object_type, s.calculation_type) = ('Course'  , 'average coverage over all lectures (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('Lecture' ,     'percentage coverage in lecture (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('Lecture' ,             'LLM keyword extraction (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('MOOC'    ,       'slide sum-scores aggregation (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('MOOC'    ,      'people sum-scores aggregation (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('Person'  ,    'abstract sum-scores aggregation (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('Unit'    ,    'abstract sum-scores aggregation (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('Category',     'concept sum-scores aggregation (bounded)')
+                                 )
                             AND s.score >= 0.1
                         ) AS new
 ON DUPLICATE KEY UPDATE score      = new.score,
