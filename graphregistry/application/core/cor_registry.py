@@ -3511,7 +3511,7 @@ class GraphRegistry():
                 # Define key and update column names, and target table (object-to-object calculated fields)
                 elif formula_type == 'calculated_fields/obj2obj':
                     target_table      = 'Data_N_Object_N_Object_T_CalculatedFields'
-                    key_column_names  = ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
+                    key_column_names  = ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context']
                     upd_column_names  = ['field_language', 'field_name', 'field_value']
                     eval_column_names = ['from_object_type', 'to_object_type']
 
@@ -3588,7 +3588,7 @@ class GraphRegistry():
                 target_table = 'Data_N_Object_N_Object_T_CalculatedFields'
 
                 # Define key and update column names
-                key_column_names = ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
+                key_column_names = ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context']
                 upd_column_names = ['field_language', 'field_name', 'field_value']
 
                 # Read the SQL formula

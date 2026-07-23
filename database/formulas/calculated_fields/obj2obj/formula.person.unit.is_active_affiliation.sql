@@ -2,6 +2,7 @@
            e.from_object_id        AS from_object_id,
            e.to_object_type        AS to_object_type,
            e.to_object_id          AS to_object_id,
+           'accreditation'         AS context,
            'n/a'                   AS field_language,
            'is_active_affiliation' AS field_name,
 
@@ -19,7 +20,7 @@ INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
 INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
      USING (from_object_type, to_object_type)
 
-     WHERE (e.from_object_type, e.to_object_type) = ('Person', 'Unit')
+     WHERE (e.from_object_type, e.to_object_type, e.context) = ('Person', 'Unit', 'accreditation')
        AND e.field_name = 'end_datetime'
        AND tp.to_process = 1
        AND tf.to_process = 1

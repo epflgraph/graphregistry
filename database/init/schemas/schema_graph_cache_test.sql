@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   from_object_id varchar(255) NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
   to_object_id varchar(255) NOT NULL,
+  context varchar(64) NOT NULL,
   field_language enum('en','fr','de','it','n/a') NOT NULL,
   field_name varchar(255) NOT NULL,
   field_value text NOT NULL,
@@ -32,10 +33,11 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
+  KEY context (context),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
-  KEY uid (from_object_type,from_object_id,to_object_type,to_object_id,field_language,field_name)
+  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id,context),
+  KEY uid (from_object_type,from_object_id,to_object_type,to_object_id,context,field_language,field_name)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
