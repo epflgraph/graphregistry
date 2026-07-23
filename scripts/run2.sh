@@ -6,7 +6,7 @@
 # graphregistry ai detect_concepts
 
 # Step 2: Reset and config airflow
-# graphregistry airflow reset --options=airflow,cache
+# graphregistry airflow reset --options=airflow,traversals,cache
 # graphregistry airflow config --typeflags=@airflow_config.json
 # graphregistry airflow status
 
@@ -15,7 +15,7 @@
 # graphregistry airflow update_checksums
 
 # Step 4: Decide what to process
-graphregistry airflow expire --older_than=1 --limit_per_type=100
+graphregistry airflow expire --older_than=30 --limit_per_type=100
 graphregistry airflow refresh --limit_per_type=100
 graphregistry airflow status
 
