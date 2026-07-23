@@ -179,7 +179,7 @@ class IndexConfig:
         tree = lambda: defaultdict(tree); self.settings = tree()
 
         # Fetch list of supported doc types
-        doc_types = index_config['doc-types']
+        doc_types = index_config['object-selection']['nodes']
 
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types
