@@ -5,7 +5,7 @@
         -- Check type flags
 INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
         ON (tf.from_object_type, tf.to_object_type)
-         = ('Ont', 'Concept', 'Ont', 'Concept')
+         = ('Concept', 'Concept')
 
      WHERE tf.to_process = 1
   GROUP BY from_id
