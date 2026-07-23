@@ -2862,11 +2862,11 @@ class GraphRegistry():
             self.apply_scoring_formulas(verbose=verbose)
 
         # Batch apply formulas: traversal and scoring
-        def apply_traversals(self, verbose=False):
+        def apply_traversals(self, verbose=False, actions=None):
             for local_path in [
                 'graph_traversals',
             ]:
-                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose)
+                self.apply_formulas_from_folder(local_path=local_path, verbose=verbose, actions=actions)
 
         # Batch apply formulas: traversal and scoring
         def apply_scoring_formulas(self, verbose=False):
@@ -3217,7 +3217,7 @@ class GraphRegistry():
                 db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=False, query_id='Mn0to7TQ')
 
         # Apply formula from SQL file
-        def apply_formulas_from_folder(self, local_path, verbose=False):
+        def apply_formulas_from_folder(self, local_path, verbose=False, actions=None):
 
             # Print status
             sysmsg.info(f"🧪 📝 Apply formulas of type '{local_path}'.")
@@ -3276,22 +3276,7 @@ class GraphRegistry():
                             f"node type '{formula_node_type}' is not in active fields node types."
                         )
                         continue
-                elif local_path == 'graph_traversals':
-                    # For traversals, require every non-ontology object type in the path to be
-                    # active for fields. Ontology types (concept/category) are ignored because
-                    # their activation is implicit via the object side.
-                    formula_node_types = self._get_node_types_from_traversal_formula(formula_name)
-                    non_ontology_types = [
-                        t for t in formula_node_types
-                        if t not in ('concept', 'category')
-                    ]
-                    inactive_types = [t for t in non_ontology_types if t not in active_node_types]
-                    if inactive_types:
-                        sysmsg.info(
-                            f"⏭️  Skipping traversal formula '{formula_name}': "
-                            f"object type(s) {inactive_types} are not in active fields node types."
-                        )
-                        continue
+
                 elif local_path == 'calculated_fields/obj2obj':
                     formula_edge = self._get_edge_type_from_obj2obj_formula(formula_name)
                     if formula_edge is not None and formula_edge not in active_edge_types:
@@ -3319,7 +3304,7 @@ class GraphRegistry():
                                 )
                                 continue
 
-                self.apply_formula_from_file(file_path=file_path, verbose=verbose)
+                self.apply_formula_from_file(file_path=file_path, verbose=verbose, actions=actions)
 
             # Print status
             sysmsg.success(f"🧪 ✅ Done applying formulas.\n")

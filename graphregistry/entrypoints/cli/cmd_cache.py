@@ -31,7 +31,7 @@ def cmd_cache_update(args):
     if 'views' in formulas:
         registry.cachemanager.materialize_views(actions=actions)
     if 'traversals' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_traversals(verbose='print' in actions)
+        registry.cachemanager.apply_traversals(verbose='print' in actions, actions=actions)
     if 'scores' in formulas and 'commit' in actions:
         registry.cachemanager.apply_scoring_formulas(verbose='print' in actions)
     if matrix is True:
