@@ -20,7 +20,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
          AND se.to_process  = 1
 
           -- Join traversal
-  INNER JOIN [[graph_cache]].Traversal_N_Person_N_Publication_N_Concept_T_ConceptDetection t
+  INNER JOIN [[traversals]].Person_Publication_Concept__ConceptDetection t
           ON se.object_id = t.person_id
 
           -- Join ontology
