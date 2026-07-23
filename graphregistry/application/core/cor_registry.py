@@ -5010,24 +5010,16 @@ class GraphRegistry():
 
                 # Generate SQL query for replacing scores and fields
                 sql_query = f"""
-                    SELECT p.object_type AS doc_type, p.object_id AS doc_id,
-                           {include_code_in_name} AS include_code_in_name,
-                           {sql_slice_field_values_as_names}
-                           COALESCE(d.avg_norm_log_degree, 0.001) AS degree_score,
-                           1 AS to_process
-                      FROM {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p\n{sql_slice_joins_obj}
-                 LEFT JOIN {glbcfg.schema_graph_cache_test}.Nodes_N_Object_T_DegreeScores d
-                        ON (p.object_type, p.object_id)
-                         = (d.object_type, d.object_id)
-                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                        ON ( p.object_type,  p.object_id)
-                         = (fc.object_type, fc.object_id)
-                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                        ON ( p.object_type)
-                         = (tf.object_type)
-                     WHERE (p.object_type) = ('{doc_type}')
-                       AND fc.to_process = 1
-                       AND tf.to_process = 1
+                SELECT DISTINCT p.object_type AS doc_type, p.object_id AS doc_id,
+                                {include_code_in_name} AS include_code_in_name,
+                                {sql_slice_field_values_as_names}
+                                COALESCE(d.avg_norm_log_degree, 0.001) AS degree_score,
+                                1 AS to_process
+                           FROM {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p\n{sql_slice_joins_obj}
+                      LEFT JOIN {glbcfg.schema_graph_cache_test}.Nodes_N_Object_T_DegreeScores d
+                             ON (p.object_type, p.object_id) = (d.object_type, d.object_id)
+                          WHERE p.object_type = '{doc_type}'
+                            AND p.to_process = 1
                 """
 
                 # Target cache table
@@ -5188,7 +5180,7 @@ class GraphRegistry():
                     schema_name = glbcfg.mysql_schema_names[self.engine_name]['graph_cache'],
                     table_name  = self.table_name
                 )
-                self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process']]
+                self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process', 'deleted']]
 
             # ...
             def info(self):
@@ -5404,7 +5396,7 @@ class GraphRegistry():
                 ])
 
                 # Generate evaluation query
-                sql_query_eval = f"""
+                sql_query_eval_1 = f"""
                       SELECT COUNT(*) AS n_total,
                              COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
                              ), 0) AS n_patch
@@ -5417,7 +5409,25 @@ class GraphRegistry():
                           ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
-                         AND (p.to_process = 1 OR n.to_process = 1)
+                         AND p.to_process = 1
+                """
+
+                # Generate evaluation query
+                sql_query_eval_2 = f"""
+                      SELECT COUNT(*) AS n_total,
+                             COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
+                             ), 0) AS n_patch
+                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
+
+                   LEFT JOIN {target_schema_name}.{target_table_name} t
+                          ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+
+                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+
+                       WHERE p.object_type = '{self.doc_type}'
+                         AND p.to_process = 0
+                         AND n.to_process = 1
                 """
 
                 # Execute the evaluation query.
@@ -5426,8 +5436,15 @@ class GraphRegistry():
                 if 'commit' in actions or 'eval' in actions:
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='Rj0R4w2q')
-                    out = out if type(out) is list else [[0,0]]
+                    out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1, query_id='Rj0R4w2q[1/2]')
+                    out_1 = out_1 if type(out_1) is list else [[0,0]]
+
+                    # Execute and validate the evaluation query
+                    out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2, query_id='Rj0R4w2q[2/2]')
+                    out_2 = out_2 if type(out_2) is list else [[0,0]]
+
+                    # Combine the results of both evaluation queries
+                    out = [[out_1[0][0] + out_2[0][0], out_1[0][1] + out_2[0][1]]]
 
                     # Extract evalutation parameters
                     rows_to_process, rows_to_patch = out[0]
@@ -5441,7 +5458,8 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print_sql(sql_query_eval)
+                        print_sql(sql_query_eval_1)
+                        print_sql(sql_query_eval_2)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -5463,18 +5481,30 @@ class GraphRegistry():
                 ] + [f'n.{c}' for c in self.graphsearch_obj_fields]
 
                 # Generate commit query
-                sql_query_commit = f"""
+                sql_query_commit_1 = f"""
                      SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_table_name} n
                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
-                        AND (p.to_process = 1 OR n.to_process = 1)
+                        AND p.to_process = 1
+                """
+
+                # Generate commit query
+                sql_query_commit_2 = f"""
+                     SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
+                       FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
+                 INNER JOIN {cache_schema_name}.{buildup_table_name} n
+                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                      WHERE p.object_type = '{self.doc_type}'
+                        AND p.to_process = 0
+                        AND n.to_process = 1
                 """
 
                 # Print the commit query
                 if 'print' in actions:
-                    print_sql(sql_query_commit, title='T4VTvBv6')
+                    print_sql(sql_query_commit_1, title='T4VTvBv6[1/2]')
+                    print_sql(sql_query_commit_2, title='T4VTvBv6[2/2]')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -5484,20 +5514,25 @@ class GraphRegistry():
                         return
                     # Else, execute the query as safe inserts
                     else:
-                        db.execute_query_as_safe_inserts_in_chunks(
-                            engine_name       = self.engine_name,
-                            schema_name       = target_schema_name,
-                            table_name        = target_table_name,
-                            query             = sql_query_commit,
-                            key_column_names  = ['doc_type', 'doc_id'],
-                            upd_column_names  = upd_column_names,
-                            eval_column_names = ['doc_type'],
-                            actions           = actions,
-                            table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
-                            chunk_size        = 100000,
-                            row_id_name       = 'p.row_id',
-                            query_id          = 'T4VTvBv6'
-                        )
+                        for qn, sql_query_commit in enumerate([sql_query_commit_1, sql_query_commit_2], start=1):
+                            sysmsg.trace(f"⚙️  Processing page profile (commit query {qn}/2) ...")
+                            sysmsg.trace(f"🔥 Executing commit query {qn}/2 on table: '{target_schema_name}.{target_table_name}' ...")
+
+                            # Execute the commit query as safe inserts in chunks
+                            db.execute_query_as_safe_inserts_in_chunks(
+                                engine_name       = self.engine_name,
+                                schema_name       = target_schema_name,
+                                table_name        = target_table_name,
+                                query             = sql_query_commit,
+                                key_column_names  = ['doc_type', 'doc_id'],
+                                upd_column_names  = upd_column_names,
+                                eval_column_names = ['doc_type'],
+                                actions           = actions,
+                                table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
+                                chunk_size        = 100000,
+                                row_id_name       = 'p.row_id',
+                                query_id          = f"T4VTvBv6[{qn}/2]"
+                            )
 
             # Index > Docs > General patching > Insert new rows, update existing fields (elascticsearch cache)
             def patch_elasticsearch(self, actions=()):
@@ -5533,7 +5568,7 @@ class GraphRegistry():
                 ])
 
                 # Generate evaluation query
-                sql_query_eval = f"""
+                sql_query_eval_1 = f"""
                       SELECT COUNT(*) AS n_total,
                              COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
                              ), 0) AS n_patch
@@ -5546,7 +5581,25 @@ class GraphRegistry():
                           ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
 
                        WHERE p.object_type = '{self.doc_type}'
-                         AND (p.to_process = 1 OR n.to_process = 1)
+                         AND p.to_process = 1
+                """
+
+                # Generate evaluation query
+                sql_query_eval_2 = f"""
+                      SELECT COUNT(*) AS n_total,
+                             COALESCE(SUM(\n\t\t\t\t\t{compare_conditions}
+                             ), 0) AS n_patch
+                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
+
+                   LEFT JOIN {target_schema_name}.{target_table_name} t
+                          ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+
+                  INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+
+                       WHERE p.object_type = '{self.doc_type}'
+                         AND p.to_process = 0
+                         AND n.to_process = 1
                 """
 
                 # Execute the evaluation query.
@@ -5556,11 +5609,19 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print_sql(sql_query_eval, title='4KpdVwsE')
+                        print_sql(sql_query_eval_1, title='4KpdVwsE[1/2]')
+                        print_sql(sql_query_eval_2, title='4KpdVwsE[2/2]')
 
                     # Execute and validate the evaluation query
-                    out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='4KpdVwsE')
-                    out = out if type(out) is list else [[0,0]]
+                    out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1, query_id='4KpdVwsE[1/2]')
+                    out_1 = out_1 if type(out_1) is list else [[0,0]]
+
+                    # Execute and validate the evaluation query
+                    out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2, query_id='4KpdVwsE[2/2]')
+                    out_2 = out_2 if type(out_2) is list else [[0,0]]
+
+                    # Build combied out (with sums)
+                    out = [[out_1[0][0]+out_2[0][0], out_1[0][1]+out_2[0][1]]]
 
                     # Extract evalutation parameters
                     rows_to_process, rows_to_patch = out[0]
@@ -5574,7 +5635,8 @@ class GraphRegistry():
 
                     # Print the evaluation query
                     if 'print' in actions:
-                        print_sql(sql_query_eval)
+                        print_sql(sql_query_eval_1)
+                        print_sql(sql_query_eval_2)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -5612,18 +5674,30 @@ class GraphRegistry():
                 ] + [f'n.{c}' for c in self.elasticsearch_obj_fields]
 
                 # Generate commit query
-                sql_query_commit = f"""
+                sql_query_commit_1 = f"""
                      SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
                        FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
                  INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                       WHERE p.object_type = '{self.doc_type}'
-                        AND (p.to_process = 1 OR n.to_process = 1)
+                        AND p.to_process = 1
+                """
+
+                # Generate commit query
+                sql_query_commit_2 = f"""
+                     SELECT n.doc_type, n.doc_id, {', '.join([f'{v} AS {c}' for c, v in zip(upd_column_names, upd_column_values)])}
+                       FROM {cache_schema_name}.Data_N_Object_T_PageProfile p
+                 INNER JOIN {cache_schema_name}.{buildup_link_table_name} n
+                         ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                      WHERE p.object_type = '{self.doc_type}'
+                        AND p.to_process = 0
+                        AND n.to_process = 1
                 """
 
                 # Print the commit query
                 if 'print' in actions:
-                    print_sql(sql_query_commit, title='vdEk9bpn')
+                    print_sql(sql_query_commit_1, title='vdEk9bpn[1/2]')
+                    print_sql(sql_query_commit_2, title='vdEk9bpn[2/2]')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -5633,20 +5707,25 @@ class GraphRegistry():
                         return
                     # Else, execute the query as safe inserts
                     else:
-                        db.execute_query_as_safe_inserts_in_chunks(
-                            engine_name       = self.engine_name,
-                            schema_name       = target_schema_name,
-                            table_name        = target_table_name,
-                            query             = sql_query_commit,
-                            key_column_names  = ['doc_type', 'doc_id'],
-                            upd_column_names  = upd_column_names,
-                            eval_column_names = ['doc_type'],
-                            actions           = ('commit'),
-                            table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
-                            chunk_size        = 100000,
-                            row_id_name       = 'p.row_id',
-                            query_id          = 'vdEk9bpn'
-                        )
+                        for qn, sql_query_commit in enumerate([sql_query_commit_1, sql_query_commit_2], start=1):
+                            sysmsg.trace(f"⚙️  Processing page profile (commit query {qn}/2) ...")
+                            sysmsg.trace(f"🔥 Executing commit query {qn}/2 on table: '{target_schema_name}.{target_table_name}' ...")
+
+                            # Execute the commit query as safe inserts in chunks
+                            db.execute_query_as_safe_inserts_in_chunks(
+                                engine_name       = self.engine_name,
+                                schema_name       = target_schema_name,
+                                table_name        = target_table_name,
+                                query             = sql_query_commit,
+                                key_column_names  = ['doc_type', 'doc_id'],
+                                upd_column_names  = upd_column_names,
+                                eval_column_names = ['doc_type'],
+                                actions           = actions,
+                                table_to_chunk    = f"{cache_schema_name}.Data_N_Object_T_PageProfile",
+                                chunk_size        = 100000,
+                                row_id_name       = 'p.row_id',
+                                query_id          = f"vdEk9bpn[{qn}/2]"
+                            )
 
             # Index > Docs > General patching > Roll back to previous state
             def rollback(self, rollback_date, actions=()):
@@ -5660,7 +5739,7 @@ class GraphRegistry():
             def airflow_update(self, verbose=False):
 
                 # Generate commit query
-                sql_query_commit = f"""
+                sql_query_commit_1 = f"""
                       UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged a
                   INNER JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p
                           ON (a.object_type, a.object_id) = (p.object_type, p.object_id)
@@ -5668,11 +5747,25 @@ class GraphRegistry():
                           ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE p.object_type = '{self.doc_type}'
-                         AND (p.to_process = 1 OR n.to_process = 1)
+                         AND p.to_process = 1
+                """
+
+                # Generate commit query
+                sql_query_commit_2 = f"""
+                      UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged a
+                  INNER JOIN {glbcfg.schema_graph_cache_test}.Data_N_Object_T_PageProfile p
+                          ON (a.object_type, a.object_id) = (p.object_type, p.object_id)
+                  INNER JOIN {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{self.doc_type} n
+                          ON (p.object_type, p.object_id) = (n.doc_type, n.doc_id)
+                         SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
+                       WHERE p.object_type = '{self.doc_type}'
+                         AND p.to_process = 0
+                         AND n.to_process = 1
                 """
 
                 # Execute the commit query
-                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit, verbose=verbose, query_id='42vKAJcy')
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit_1, verbose=verbose, query_id='42vKAJcy[1/2]')
+                db.execute_query_in_shell(engine_name=self.engine_name, query=sql_query_commit_2, verbose=verbose, query_id='42vKAJcy[2/2]')
 
             # Index > Docs > Flags cleanup > Update 'Data_N_Object_T_PageProfile' and 'IndexBuildup_Fields_Docs_*' [to_process=0]
             def flags_cleanup(self, verbose=False):
@@ -6678,6 +6771,52 @@ class GraphRegistry():
                            {sql_query_chunk_2}
                 """
 
+                # !TEST: Override with optimised evaluation query
+                # Generate evaluation query
+                sql_query_eval = f"""
+                    SELECT
+                        COALESCE(SUM(e.row_id IS NULL), 0) AS rows_to_insert,
+                        COALESCE(
+                            SUM(
+                                e.row_id IS NOT NULL
+                                AND e.link_rank <> dl.{score_column_name}
+                            ),
+                            0
+                        ) AS rows_to_replace
+                    FROM (
+                        {to_process_sql_statement}
+                    ) AS tp
+
+                    STRAIGHT_JOIN {glbcfg.schema_graphsearch_test}.{table_name} AS dl
+                        {f"FORCE INDEX (idx_doc_rank_link)" if not table_name.endswith('MIX') else ""}
+                        ON dl.doc_type = tp.doc_type
+                    AND dl.doc_id = tp.doc_id
+                    AND dl.row_rank <= {row_rank_thr}
+
+                    INNER JOIN {glbcfg.schema_graphsearch_test}.Index_D_{self.doc_type} AS d
+                        ON d.doc_type = dl.doc_type
+                    AND d.doc_id = dl.doc_id
+
+                    INNER JOIN {glbcfg.schema_graphsearch_test}.Index_D_{self.link_type} AS l
+                        ON l.doc_type = dl.link_type
+                    AND l.doc_id = dl.link_id
+
+                    INNER JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile AS p
+                        ON p.object_type = l.doc_type
+                    AND p.object_id = l.doc_id
+
+                    LEFT JOIN {t} AS e
+                        ON e.doc_type = dl.doc_type
+                    AND e.doc_id = dl.doc_id
+                    AND e.link_type = dl.link_type
+                    AND e.link_subtype = dl.link_subtype
+                    AND e.link_id = dl.link_id
+
+                    WHERE 1 = 1
+                        {'AND' if self.elasticsearch_filters else ''}
+                        {' AND '.join(f'l.{f}' for f in self.elasticsearch_filters)}
+                """
+
                 # Execute the evaluation query.
                 # In this case, we execute the query regardless of the 'eval' action,
                 # in order to reduce the execution time of the patch operation on 'commit'.
@@ -6728,44 +6867,6 @@ class GraphRegistry():
             # Index > Doc-Links > Horizontal patching > Roll back to previous state
             def horizontal_rollback(self, source_doc_type, target_doc_type, index_type, rollback_date, test_mode=False):
                 raise NotImplementedError
-                if False:
-                    pass
-                    # # Check if there's something to process
-                    # if len(db.execute_query(
-                    #     engine_name = 'xaas_coresrv',
-                    #     query = f"""
-                    #         SELECT 1
-                    #         FROM {glbcfg.schema_graph_cache_test}.IndexRollback_ScoreRanks_Links
-                    #         WHERE (doc_type, link_type) = ("{source_doc_type}", "{target_doc_type}")
-                    #         AND link_subtype IN ({"'Parent-to-Child', 'Child-to-Parent'" if index_type=='ORG' else "'Semantic'"})
-                    #         AND rollback_date = "{rollback_date}" LIMIT 1"""
-                    #     )) == 0:
-                    #     # print(f"Nothing to process for link types '{source_doc_type}' and '{target_doc_type}'.")
-                    #     return
-
-                    # # Generate table name
-                    # table_name = f'Index_D_{source_doc_type}_L_{target_doc_type}_T_{index_type}'
-
-                    # # Check if table exists
-                    # if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name):
-                    #     # print(f"Table '{glbcfg.schema_graphsearch_test}.{table_name}' does not exist.")
-                    #     return False
-
-                    # # Generate SQL query
-                    # SQLQuery = f"""
-                    #         UPDATE {glbcfg.schema_graphsearch_test}.{table_name} i
-                    #     INNER JOIN {glbcfg.schema_graph_cache_test}.IndexRollback_ScoreRanks_Links b
-                    #          USING (doc_type, doc_id, link_type, link_subtype, link_id)
-                    #            SET i.{'semantic' if index_type=='SEM' else 'degree'}_score = b.score, i.row_score = b.row_score, i.row_rank = b.row_rank
-                    #          WHERE (b.doc_type, b.link_type) = ("{source_doc_type}", "{target_doc_type}")
-                    #            AND b.rollback_date = "{rollback_date}";
-                    #         """
-
-                    # # Execute SQL query
-                    # if test_mode:
-                    #     print(SQLQuery)
-                    # else:
-                    #     db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery)
 
             #=================#
             # Airflow updates #
