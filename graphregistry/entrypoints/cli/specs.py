@@ -370,6 +370,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Update object checksums based on typeflag activation.",
                 func = cmd_airflow_update_checksums,
                 args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, default='commit', help="Comma-separated actions to perform: print,eval,commit (default=commit).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []

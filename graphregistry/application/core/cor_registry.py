@@ -610,7 +610,7 @@ class GraphRegistry():
             self.scoresexpired.update_dates(doc_type=doc_type, actions=actions)
 
         # Update object checksums based on typeflag activation
-        def update_checksums_v2(self, verbose=False):
+        def update_checksums_v2(self, actions=('commit',), verbose=False):
 
             # Print status
             sysmsg.info("🧩 📝 Update object checksums based on typeflag activation.")
@@ -642,8 +642,6 @@ class GraphRegistry():
 
                 # Generate SQL query (Object checksum > All non-ontology types)
                 sql_query = f"""
-                        REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject
-                                    (object_type, object_id, checksum_val)
                               SELECT object_type, object_id,
                                      MD5(CONCAT(MD5(COALESCE(object_type, "__null__")), MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(object_title, "__null__")), MD5(COALESCE(text_source, "__null__")), MD5(COALESCE(raw_text, "__null__")))) AS checksum_val
                                  FROM {schema_name}.Nodes_N_Object o
@@ -658,8 +656,19 @@ class GraphRegistry():
                 if verbose:
                     print_sql(sql_query, title='VBk3hp3Z')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='VBk3hp3Z')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_T_ChecksumsObject',
+                    query=sql_query,
+                    key_column_names=['object_type', 'object_id'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='VBk3hp3Z'
+                )
 
             # Ontology tables exception
             # Check if there's something to process based on typeflags
@@ -672,8 +681,6 @@ class GraphRegistry():
 
                 # Generate SQL query (Object checksum > Concept)
                 sql_query = f"""
-                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject
-                                (object_type, object_id, checksum_val)
                           SELECT object_type, object_id,
                                  MD5(CONCAT(MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(name, "__null__")), MD5(COALESCE(is_ontology_category, "__null__")), MD5(COALESCE(is_ontology_concept, "__null__")), MD5(COALESCE(is_ontology_neighbour, "__null__")), MD5(COALESCE(is_noise, "__null__")), MD5(COALESCE(is_unused, "__null__")))) AS checksum_val
                             FROM {glbcfg.schema_ontology}.Nodes_N_Concept o
@@ -687,28 +694,48 @@ class GraphRegistry():
                 if verbose:
                     print_sql(sql_query, title='CmNTYc97')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='CmNTYc97')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_T_ChecksumsObject',
+                    query=sql_query,
+                    key_column_names=['object_type', 'object_id'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='CmNTYc97'
+                )
 
                 # Generate SQL query (Object checksum > Category)
                 sql_query = f"""
-                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject
-                                (object_type, object_id, checksum_val)
                           SELECT object_type, object_id,
                                  MD5(CONCAT(MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(name, "__null__")), MD5(COALESCE(depth, "__null__")), MD5(COALESCE(reference_page_id, "__null__")), MD5(COALESCE(reference_page_key, "__null__")), MD5(COALESCE(reference_page_url, "__null__")))) AS checksum_val
                             FROM {glbcfg.schema_ontology}.Nodes_N_Category o
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
                            USING (object_type)
                            WHERE t.flag_type = 'fields'
-                             AND t.to_process = 1;
+                             AND t.to_process = 1
                  """
 
                 # Print query if verbose
                 if verbose:
                     print_sql(sql_query, title='XUiwHdd6')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='XUiwHdd6')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_T_ChecksumsObject',
+                    query=sql_query,
+                    key_column_names=['object_type', 'object_id'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='XUiwHdd6'
+                )
 
             #------------------------#
             # Page profile checksums #
@@ -727,8 +754,6 @@ class GraphRegistry():
 
                 # Generate SQL query (Page profile checksum > All types)
                 sql_query = f"""
-                        REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsPageProfile
-                                    (object_type, object_id, checksum_val)
                               SELECT object_type, object_id,
                                      MD5(CONCAT(MD5(COALESCE(numeric_id_en, "__null__")), MD5(COALESCE(numeric_id_fr, "__null__")), MD5(COALESCE(numeric_id_de, "__null__")), MD5(COALESCE(numeric_id_it, "__null__")), MD5(COALESCE(short_code, "__null__")), MD5(COALESCE(subtype_en, "__null__")), MD5(COALESCE(subtype_fr, "__null__")), MD5(COALESCE(subtype_de, "__null__")), MD5(COALESCE(subtype_it, "__null__")), MD5(COALESCE(name_en_is_auto_generated, "__null__")), MD5(COALESCE(name_en_is_auto_corrected, "__null__")), MD5(COALESCE(name_en_is_auto_translated, "__null__")), MD5(COALESCE(name_en_translated_from, "__null__")), MD5(COALESCE(name_en_value, "__null__")), MD5(COALESCE(name_fr_is_auto_generated, "__null__")), MD5(COALESCE(name_fr_is_auto_corrected, "__null__")), MD5(COALESCE(name_fr_is_auto_translated, "__null__")), MD5(COALESCE(name_fr_translated_from, "__null__")), MD5(COALESCE(name_fr_value, "__null__")), MD5(COALESCE(name_de_is_auto_generated, "__null__")), MD5(COALESCE(name_de_is_auto_corrected, "__null__")), MD5(COALESCE(name_de_is_auto_translated, "__null__")), MD5(COALESCE(name_de_translated_from, "__null__")), MD5(COALESCE(name_de_value, "__null__")), MD5(COALESCE(name_it_is_auto_generated, "__null__")), MD5(COALESCE(name_it_is_auto_corrected, "__null__")), MD5(COALESCE(name_it_is_auto_translated, "__null__")), MD5(COALESCE(name_it_translated_from, "__null__")), MD5(COALESCE(name_it_value, "__null__")), MD5(COALESCE(description_short_en_is_auto_generated, "__null__")), MD5(COALESCE(description_short_en_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_en_is_auto_translated, "__null__")), MD5(COALESCE(description_short_en_translated_from, "__null__")), MD5(COALESCE(description_short_en_value, "__null__")), MD5(COALESCE(description_short_fr_is_auto_generated, "__null__")), MD5(COALESCE(description_short_fr_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_fr_is_auto_translated, "__null__")), MD5(COALESCE(description_short_fr_translated_from, "__null__")), MD5(COALESCE(description_short_fr_value, "__null__")), MD5(COALESCE(description_short_de_is_auto_generated, "__null__")), MD5(COALESCE(description_short_de_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_de_is_auto_translated, "__null__")), MD5(COALESCE(description_short_de_translated_from, "__null__")), MD5(COALESCE(description_short_de_value, "__null__")), MD5(COALESCE(description_short_it_is_auto_generated, "__null__")), MD5(COALESCE(description_short_it_is_auto_corrected, "__null__")), MD5(COALESCE(description_short_it_is_auto_translated, "__null__")), MD5(COALESCE(description_short_it_translated_from, "__null__")), MD5(COALESCE(description_short_it_value, "__null__")), MD5(COALESCE(description_medium_en_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_en_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_en_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_en_translated_from, "__null__")), MD5(COALESCE(description_medium_en_value, "__null__")), MD5(COALESCE(description_medium_fr_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_fr_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_fr_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_fr_translated_from, "__null__")), MD5(COALESCE(description_medium_fr_value, "__null__")), MD5(COALESCE(description_medium_de_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_de_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_de_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_de_translated_from, "__null__")), MD5(COALESCE(description_medium_de_value, "__null__")), MD5(COALESCE(description_medium_it_is_auto_generated, "__null__")), MD5(COALESCE(description_medium_it_is_auto_corrected, "__null__")), MD5(COALESCE(description_medium_it_is_auto_translated, "__null__")), MD5(COALESCE(description_medium_it_translated_from, "__null__")), MD5(COALESCE(description_medium_it_value, "__null__")), MD5(COALESCE(description_long_en_is_auto_generated, "__null__")), MD5(COALESCE(description_long_en_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_en_is_auto_translated, "__null__")), MD5(COALESCE(description_long_en_translated_from, "__null__")), MD5(COALESCE(description_long_en_value, "__null__")), MD5(COALESCE(description_long_fr_is_auto_generated, "__null__")), MD5(COALESCE(description_long_fr_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_fr_is_auto_translated, "__null__")), MD5(COALESCE(description_long_fr_translated_from, "__null__")), MD5(COALESCE(description_long_fr_value, "__null__")), MD5(COALESCE(description_long_de_is_auto_generated, "__null__")), MD5(COALESCE(description_long_de_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_de_is_auto_translated, "__null__")), MD5(COALESCE(description_long_de_translated_from, "__null__")), MD5(COALESCE(description_long_de_value, "__null__")), MD5(COALESCE(description_long_it_is_auto_generated, "__null__")), MD5(COALESCE(description_long_it_is_auto_corrected, "__null__")), MD5(COALESCE(description_long_it_is_auto_translated, "__null__")), MD5(COALESCE(description_long_it_translated_from, "__null__")), MD5(COALESCE(description_long_it_value, "__null__")), MD5(COALESCE(external_key_en, "__null__")), MD5(COALESCE(external_key_fr, "__null__")), MD5(COALESCE(external_key_de, "__null__")), MD5(COALESCE(external_key_it, "__null__")), MD5(COALESCE(external_url_en, "__null__")), MD5(COALESCE(external_url_fr, "__null__")), MD5(COALESCE(external_url_de, "__null__")), MD5(COALESCE(external_url_it, "__null__")), MD5(COALESCE(is_visible, "__null__")))) AS checksum_val
                                 FROM {schema_name}.Data_N_Object_T_PageProfile p
@@ -743,8 +768,19 @@ class GraphRegistry():
                 if verbose:
                     print_sql(sql_query, title='5nVWX6nk')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5nVWX6nk')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_T_ChecksumsPageProfile',
+                    query=sql_query,
+                    key_column_names=['object_type', 'object_id'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='5nVWX6nk'
+                )
 
             #-------------------------#
             # Custom fields checksums #
@@ -763,8 +799,6 @@ class GraphRegistry():
 
                 # Generate SQL query (Custom fields checksum > All types)
                 sql_query = f"""
-                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsCustomFields
-                                (object_type, object_id, checksum_val)
                           SELECT object_type, object_id,
                                  MD5(GROUP_CONCAT(MD5(CONCAT(
                                     MD5(COALESCE(field_language, "__null__")), MD5(COALESCE(field_name, "__null__")), MD5(COALESCE(field_value, "__null__"))
@@ -782,8 +816,19 @@ class GraphRegistry():
                 if verbose:
                     print_sql(sql_query, title='oTWu6bBL')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='oTWu6bBL')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_T_ChecksumsCustomFields',
+                    query=sql_query,
+                    key_column_names=['object_type', 'object_id'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='oTWu6bBL'
+                )
 
             #------------------------#
             # Final object checksums #
@@ -794,8 +839,6 @@ class GraphRegistry():
 
             # Generate SQL query (Final checksum > All types)
             sql_query = f"""
-                REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_Checksums
-                            (object_type, object_id, checksum_val)
                       SELECT object_type, o.object_id,
                              MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(p.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
                         FROM {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ChecksumsObject o
@@ -809,30 +852,43 @@ class GraphRegistry():
                           AND t.to_process = 1
              """
 
-            # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='y0yFAafh')
+            # Upsert computed checksums into target table
+            db.execute_query_as_safe_inserts(
+                engine_name='xaas_coresrv',
+                schema_name=glbcfg.schema_graph_cache_test,
+                table_name='Operations_N_Object_T_Checksums',
+                query=sql_query,
+                key_column_names=['object_type', 'object_id'],
+                upd_column_names=['checksum_val'],
+                eval_column_names=['object_type'],
+                actions=actions,
+                verbose=verbose,
+                query_id='y0yFAafh'
+            )
 
             #----------------------------------#
             # Apply checksums to Airflow table #
             #----------------------------------#
 
-            # Print status
-            sysmsg.trace(f"⚙️ Processing checksums: Object > Applying to Airflow ...")
+            if 'commit' in actions:
 
-            # Generate SQL query
-            sql_query = f"""
-                      UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged f
-                  INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_Checksums c
-                       USING (object_type, object_id)
-                  INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
-                       USING (object_type)
-                         SET f.checksum_current = c.checksum_val
-                       WHERE t.flag_type = 'fields'
-                         AND t.to_process = 1
-            """
+                # Print status
+                sysmsg.trace(f"⚙️ Processing checksums: Object > Applying to Airflow ...")
 
-            # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='j65waWD2')
+                # Generate SQL query
+                sql_query = f"""
+                          UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged f
+                      INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_Checksums c
+                           USING (object_type, object_id)
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                           USING (object_type)
+                             SET f.checksum_current = c.checksum_val
+                           WHERE t.flag_type = 'fields'
+                             AND t.to_process = 1
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='j65waWD2')
 
             # Print status
             sysmsg.trace(f"☑️ Done processing checksums for Object.")
@@ -858,8 +914,6 @@ class GraphRegistry():
 
                 # Generate SQL query (Object-to-object checksum > All types)
                 sql_query = f"""
-                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsObject
-                                (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_val)
                           SELECT from_object_type, from_object_id, to_object_type, to_object_id, context,
                                  MD5(CONCAT(
                                     MD5(COALESCE(from_object_type, "__null__")), MD5(COALESCE(from_object_id, "__null__")),
@@ -876,8 +930,19 @@ class GraphRegistry():
                 if verbose:
                     print_sql(sql_query, title='LnzeNnx1')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='LnzeNnx1')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_N_Object_T_ChecksumsObject',
+                    query=sql_query,
+                    key_column_names=['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['from_object_type', 'to_object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='LnzeNnx1'
+                )
 
             #---------------------------------------------#
             # Custom fields in object-to-object checksums #
@@ -896,8 +961,6 @@ class GraphRegistry():
 
                 # Generate SQL query (Object-to-object custom fields checksum > All types)
                 sql_query = f"""
-                    REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsCustomFields
-                                (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_val)
                           SELECT from_object_type, from_object_id, to_object_type, to_object_id, context,
                                  MD5(GROUP_CONCAT(MD5(CONCAT(
                                     MD5(COALESCE(field_language, "__null__")), MD5(COALESCE(field_name, "__null__")), MD5(COALESCE(field_value, "__null__"))
@@ -913,8 +976,19 @@ class GraphRegistry():
                 if verbose:
                     print_sql(sql_query, title='WZ4gEw01')
 
-                # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='WZ4gEw01')
+                # Upsert computed checksums into target table
+                db.execute_query_as_safe_inserts(
+                    engine_name='xaas_coresrv',
+                    schema_name=glbcfg.schema_graph_cache_test,
+                    table_name='Operations_N_Object_N_Object_T_ChecksumsCustomFields',
+                    query=sql_query,
+                    key_column_names=['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context'],
+                    upd_column_names=['checksum_val'],
+                    eval_column_names=['from_object_type', 'to_object_type'],
+                    actions=actions,
+                    verbose=verbose,
+                    query_id='WZ4gEw01'
+                )
 
             #----------------------------------#
             # Final object-to-object checksums #
@@ -925,8 +999,6 @@ class GraphRegistry():
 
             # Generate SQL query (Final checksum > All types)
             sql_query = f"""
-                REPLACE INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_Checksums
-                            (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_val)
                       SELECT o.from_object_type, o.from_object_id, o.to_object_type, o.to_object_id, o.context,
                              MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
                         FROM {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_ChecksumsObject o
@@ -937,29 +1009,42 @@ class GraphRegistry():
                        WHERE to_process = 1
             """
 
-            # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='JJQ2pj3y')
+            # Upsert computed checksums into target table
+            db.execute_query_as_safe_inserts(
+                engine_name='xaas_coresrv',
+                schema_name=glbcfg.schema_graph_cache_test,
+                table_name='Operations_N_Object_N_Object_T_Checksums',
+                query=sql_query,
+                key_column_names=['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id', 'context'],
+                upd_column_names=['checksum_val'],
+                eval_column_names=['from_object_type', 'to_object_type'],
+                actions=actions,
+                verbose=verbose,
+                query_id='JJQ2pj3y'
+            )
 
             #----------------------------------#
             # Apply checksums to Airflow table #
             #----------------------------------#
 
-            # Print status
-            sysmsg.trace(f"⚙️ Processing checksums: Object-to-Object > Applying to Airflow ...")
+            if 'commit' in actions:
 
-            # Generate SQL query
-            sql_query = f"""
-                      UPDATE {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged f
-                  INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_Checksums c
-                       USING (from_object_type, from_object_id, to_object_type, to_object_id, context)
-                  INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
-                       USING (from_object_type, to_object_type)
-                         SET f.checksum_current = c.checksum_val
-                       WHERE t.to_process = 1
-            """
+                # Print status
+                sysmsg.trace(f"⚙️ Processing checksums: Object-to-Object > Applying to Airflow ...")
 
-            # Execute query in shell
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Fpas6ysH')
+                # Generate SQL query
+                sql_query = f"""
+                          UPDATE {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged f
+                      INNER JOIN {glbcfg.schema_graph_cache_test}.Operations_N_Object_N_Object_T_Checksums c
+                           USING (from_object_type, from_object_id, to_object_type, to_object_id, context)
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
+                           USING (from_object_type, to_object_type)
+                             SET f.checksum_current = c.checksum_val
+                           WHERE t.to_process = 1
+                """
+
+                # Execute query in shell
+                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Fpas6ysH')
 
             # Print status
             sysmsg.trace(f"☑️ Done processing checksums for Object-to-Object.")
