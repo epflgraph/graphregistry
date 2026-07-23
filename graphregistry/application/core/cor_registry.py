@@ -4404,6 +4404,9 @@ class GraphRegistry():
                 use_regex   = [r'^Index_D_[^_]*_L_[^_]*_T_SEM+$']
             )
 
+            # Exclude private/internal backup tables that start with an underscore
+            index_tables = [t for t in index_tables if not t.startswith('_')]
+
             # Print list of affected tables
             print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
             for t in index_tables:
@@ -4583,6 +4586,9 @@ class GraphRegistry():
                     use_regex   = [r'^Index_D_[^_]+$']
                 )
 
+                # Exclude private/internal backup tables that start with an underscore
+                list_of_tables = [t for t in list_of_tables if not t.startswith('_')]
+
                 # Print list of affected tables
                 print('\n[🐬 GraphSearch DB] [EXTRACT NODES] The following tables will be searched:')
                 for t in list_of_tables:
@@ -4624,8 +4630,11 @@ class GraphRegistry():
                 list_of_tables = db.get_tables_in_schema(
                     engine_name = engine_name,
                     schema_name = glbcfg.schema_graphsearch_test,
-                    use_regex   = [r'Index_D_\w*_L_.*']
+                    use_regex   = [r'^Index_D_[^_]+_L_.+']
                 )
+
+                # Exclude private/internal backup tables that start with an underscore
+                list_of_tables = [t for t in list_of_tables if not t.startswith('_')]
 
                 # Print list of affected tables
                 print('\n[🐬 GraphSearch DB] [EXTRACT EDGES] The following tables will be searched:')
@@ -4701,15 +4710,15 @@ class GraphRegistry():
 
             # Define regex mapping for each schema to identify relevant tables
             regex_mapping = {
-                'airflow'     : [r'Operations_.*'],
-                'graph_cache' : [r'Data_.*', r'IndexBuildup_.*', r'Operations_N_Object_T_Checksums.*', r'Operations_N_Object_N_Object_T_Checksums.*'],
+                'airflow'     : [r'^Operations_.*'],
+                'graph_cache' : [r'^Data_.*', r'^IndexBuildup_.*', r'^Operations_N_Object_T_Checksums.*', r'^Operations_N_Object_N_Object_T_Checksums.*'],
                 'graphsearch' : False,
                 'es_cache'    : False,
             }
 
             # Include scores matrix tables in the graph_cache schema if specified
             if include_scores_matrix:
-                regex_mapping['graph_cache'] += [r'Nodes_N_Object_.*', r'Edges_N_Object_.*']
+                regex_mapping['graph_cache'] += [r'^Nodes_N_Object_.*', r'^Edges_N_Object_.*']
 
             # Loop over each schema key to process tables
             for schema_key, allowed_nodes_table in [
@@ -4728,6 +4737,9 @@ class GraphRegistry():
                     schema_name = schema_name,
                     use_regex   = regex_mapping[schema_key]
                 )
+
+                # Exclude private/internal backup tables that start with an underscore
+                list_of_tables = [t for t in list_of_tables if not t.startswith('_')]
 
                 # Exclude tables containing the string "ProcessingTokens" and "Checksums"
                 list_of_tables = [t for t in list_of_tables if "ProcessingTokens" not in t and "Checksums" not in t]
