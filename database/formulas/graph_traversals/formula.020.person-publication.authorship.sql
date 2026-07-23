@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication__Authorship (
                             KEY deleted (deleted));
 
 -- ============ Cleanup: Reset to_process flags
-         UPDATE [[traversals]].Unit_Person__Affiliation
+         UPDATE [[traversals]].Person_Publication__Authorship
             SET to_process = 0
           WHERE to_process = 1;
 
