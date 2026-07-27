@@ -259,24 +259,20 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
   KEY edge_to_key (from_object_type,to_object_type,to_object_id,context)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_IdMap (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
+CREATE TABLE Edges_N_Object_N_Object_T_IdMap (
+  from_object_type varchar(32) NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') NOT NULL,
+  to_object_type varchar(32) NOT NULL,
   to_object_id varchar(255) NOT NULL,
   record_created_date datetime NOT NULL DEFAULT current_timestamp(),
   record_updated_date datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   record_deleted tinyint(4) NOT NULL DEFAULT 0,
-  row_id int(11) NOT NULL AUTO_INCREMENT,
+  row_id int(11) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id),
-  KEY from_institution_id (from_institution_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY record_deleted (record_deleted)
