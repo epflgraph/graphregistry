@@ -317,3 +317,4 @@ add_doc_rank_link_index.py
 nohup_copy_tables.out
 config/
 scripts/
+logs/
