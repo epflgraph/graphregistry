@@ -5109,6 +5109,8 @@ class GraphRegistry():
                     table_name  = self.table_name
                 )
                 self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process', 'deleted']]
+                # !IMPORTANT: This instruction needs to make sure that existing rows will be set to deleted=0 if they are updated
+                # I believe this is still not the case
 
             # ...
             def info(self):
