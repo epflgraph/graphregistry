@@ -332,7 +332,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_reset,
                 args = [
                     dict(flags=('--doc_type',), kwargs=dict(required=False, type=str, default=None,        help="Restrict reset to a single document type (default: all types).")),
-                    dict(flags=('--options', ), kwargs=dict(required=False, type=str, default='typeflags', help="Comma-separated options to apply. Options: typeflags,airflow,cache (default: typeflags).")),
+                    dict(flags=('--options', ), kwargs=dict(required=False, type=str, default='typeflags', help="Comma-separated options to apply. Options: typeflags,airflow,cache,traversals (default: typeflags).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []
@@ -370,6 +370,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Update object checksums based on typeflag activation.",
                 func = cmd_airflow_update_checksums,
                 args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, default='commit', help="Comma-separated actions to perform: print,eval,commit (default=commit).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []

@@ -232,7 +232,6 @@ class LectureOperations:
 
         # Get the enrichment task for the lecture
         task = self.repo.get_enrichment_task(NodeKey(
-            institution_id = 'EPFL',
             object_type    = 'Lecture',
             object_id      = lecture_id,
         ))
@@ -254,7 +253,6 @@ class LectureOperations:
 
         # Print status
         self.msg.enriched(NodeKey(
-            institution_id = 'EPFL',
             object_type    = 'Lecture',
             object_id      = lecture_id,
         ))
@@ -327,7 +325,6 @@ class LectureOperations:
 
         # Print status
         self.msg.concepts_validated(NodeKey(
-            institution_id = 'EPFL',
             object_type    = 'Lecture',
             object_id      = lecture_id,
         ))

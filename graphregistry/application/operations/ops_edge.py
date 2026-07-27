@@ -18,7 +18,7 @@ class EdgeOperations:
     def __init__(self, repo: EdgeRepository):
         self.repo = repo
 
-    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str, str, str]]:
+    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str]]:
         return self.repo.list(object_type=object_type, id_pattern=id_pattern)
 
     def exists(self, key: EdgeKey) -> bool:

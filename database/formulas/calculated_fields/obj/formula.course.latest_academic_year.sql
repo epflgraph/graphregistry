@@ -1,5 +1,4 @@
-    SELECT e.from_institution_id  AS institution_id,
-           e.from_object_type     AS object_type,
+    SELECT e.from_object_type     AS object_type,
            e.from_object_id       AS object_id,
            'n/a'                  AS field_language,
            'latest_academic_year' AS field_name,
@@ -10,11 +9,11 @@
 
         -- Check object flags
 INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
-     USING (from_institution_id, from_object_type, from_object_id, to_institution_id, to_object_type, to_object_id)
+     USING (from_object_type, from_object_id, to_object_type, to_object_id)
 
         -- Check type flags
 INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
-     USING (from_institution_id, from_object_type, to_institution_id, to_object_type)
+     USING (from_object_type, to_object_type)
 
      WHERE (e.from_object_type, e.to_object_type, e.context) = ('Course', 'Person', 'teacher')
        AND e.field_name = 'teaching_assignment_year'

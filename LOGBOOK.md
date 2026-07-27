@@ -48,3 +48,7 @@
 - 👉 implement handling of "file not found" in graphai endpoints
 - 👉 make db exports always overwrite the export folder, or at least ask for confirmation
 
+### July
+- 👉 `avg_scores` and `log_degrees` formulas take a long time even with no active flags
+- 👉 make distinction between typeflags and airflow in reset cache operation
+- 👉 implement soft delete throughout cache updates

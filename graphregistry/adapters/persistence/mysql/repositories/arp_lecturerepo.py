@@ -54,7 +54,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Extract lecture ids from query result and convert them into NodeKey objects
         undownloaded_lecture_keys = NodeKeyList(
             item_list=[
-                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                NodeKey(object_type='Lecture', object_id=lecture_id)
                 for (lecture_id,) in undownloaded_lectures
             ]
         )
@@ -105,8 +105,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['video_download_task_id'],
             upd_column_values = [task_id],
             actions           = ('commit',)
@@ -164,7 +164,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Extract lecture ids from query result and convert them into NodeKey objects
         unfinished_video_task_keys = NodeKeyList(
             item_list=[
-                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                NodeKey(object_type='Lecture', object_id=lecture_id)
                 for (lecture_id,) in unfinished_video_tasks
             ]
         )
@@ -183,8 +183,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['video_token'],
             upd_column_values = [video_token],
             actions           = ('commit',)
@@ -246,7 +246,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Extract lecture ids from query result and convert them into NodeKey objects
         lecture_keys_with_unextracted_audio = NodeKeyList(
             item_list=[
-                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                NodeKey(object_type='Lecture', object_id=lecture_id)
                 for (lecture_id,) in lectures_with_unextracted_audio
             ]
         )
@@ -256,7 +256,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
 
     # Method: Save the audio extraction task ID for a lecture in persistence (this can be used later to check the status of the extraction or retrieve the extracted audio)
     def save_audio_extraction_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
-        
+
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
@@ -265,8 +265,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['audio_extraction_task_id'],
             upd_column_values = [task_id],
             actions           = ('commit',)
@@ -324,7 +324,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Extract lecture ids from query result and convert them into NodeKey objects
         unfinished_audio_task_keys = NodeKeyList(
             item_list=[
-                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                NodeKey(object_type='Lecture', object_id=lecture_id)
                 for (lecture_id,) in unfinished_audio_tasks
             ]
         )
@@ -343,8 +343,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['audio_token'],
             upd_column_values = [audio_token],
             actions           = ('commit',)
@@ -399,24 +399,24 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             airflow   = airflow_schema_name,
             limit     = limit if limit is not None else 16
         )
-        
+
         # Execute query and fetch result
         lectures_with_undetected_slides = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
-        
+
         # Extract lecture ids from query result and convert them into NodeKey objects
         lecture_keys_with_undetected_slides = NodeKeyList(
             item_list=[
-                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                NodeKey(object_type='Lecture', object_id=lecture_id)
                 for (lecture_id,) in lectures_with_undetected_slides
             ]
         )
-        
+
         # Return the list of lecture keys with undetected slides
         return lecture_keys_with_undetected_slides
 
     # Method: Save the slide detection task ID for a lecture in persistence (this can be used later to check the status of the detection or retrieve the detected slides)
     def save_slide_detection_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
-        
+
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
@@ -425,8 +425,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['slide_detection_task_id'],
             upd_column_values = [task_id],
             actions           = ('commit',)
@@ -484,32 +484,31 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Extract lecture ids from query result and convert them into NodeKey objects
         unfinished_slide_task_keys = NodeKeyList(
             item_list=[
-                NodeKey(institution_id='EPFL', object_type='Lecture', object_id=lecture_id)
+                NodeKey(object_type='Lecture', object_id=lecture_id)
                 for (lecture_id,) in unfinished_slide_tasks
             ]
         )
 
         # Return the list of lecture keys with unfinished slide detection tasks
         return unfinished_slide_task_keys
-    
+
     # Method: Save the slide tokens for a lecture in persistence (this can be used to retrieve the detected slides or check if the slides have been processed)
     def save_slide_tokens(self, lecture_key: NodeKey, slide_num_and_tokens: list[tuple[int, str]]) -> NodeKey:
-        
+
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
-        
+
         # Get video token
         video_token = self.get_video_token(lecture_key)
 
         # Loop over slide tokens
         for slide_num, slide_token in slide_num_and_tokens:
-            
+
             # Generate slide id from lecture id and slide number
             slide_id = f"{lecture_key.object_id}-{slide_num:04d}"
-            
+
             # Create slide key
             slide_key = NodeKey(
-                institution_id = lecture_key.institution_id,
                 object_type    = "Slide",
                 object_id      = slide_id
             )
@@ -519,8 +518,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
                 engine_name       = engine_name,
                 schema_name       = schema_name,
                 table_name        = "Operations_N_Slide_T_ProcessingTokens",
-                key_column_names  = ["institution_id", "object_type", "object_id"],
-                key_column_values = [slide_key.institution_id, slide_key.object_type, slide_key.object_id],
+                key_column_names  = ["object_type", "object_id"],
+                key_column_values = [slide_key.object_type, slide_key.object_id],
                 upd_column_names  = ['video_token', 'image_token'],
                 upd_column_values = [video_token, slide_token],
                 actions           = ('commit',)
@@ -528,19 +527,19 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
 
             # Print status message
             self.msg.airflow_saved(slide_key)
-            
+
         # Set 'slides_detected' flag to True for the lecture
         self.db.execute_upsert_row(
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [lecture_key.institution_id, lecture_key.object_type, lecture_key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['slides_detected'],
             upd_column_values = [True],
             actions           = ('commit',)
         )
-        
+
         # Print status message
         self.msg.airflow_saved(lecture_key)
 
@@ -588,7 +587,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
 
         # Get schema names from object type using the schema resolver
         engine_name, lecture_schema_name = self.schema_resolver.for_node(key)
-        _, ontology_schema_name = self.schema_resolver.for_node(NodeKey(institution_id='dummy', object_type='Concept', object_id='dummy'))
+        _, ontology_schema_name = self.schema_resolver.for_node(NodeKey(object_type='Concept', object_id='dummy'))
 
         #----------------------------#
         # Get lecture's basic fields #
@@ -624,7 +623,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         #======================#
 
         # Create node key from lecture id
-        node_key = NodeKey(institution_id='EPFL', object_type='Lecture', object_id=result.lecture_id)
+        node_key = NodeKey(object_type='Lecture', object_id=result.lecture_id)
 
         # Check if lecture exists first (return None if not found)
         if not self.node_repo.exists(node_key):
@@ -662,7 +661,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         for keyframe in result.keyframes:
 
             # Create node key for the slide using the lecture id and the keyframe id
-            slide_node_key = NodeKey(institution_id='EPFL', object_type='Slide', object_id=keyframe.keyframe_id)
+            slide_node_key = NodeKey(object_type='Slide', object_id=keyframe.keyframe_id)
 
             # Check if slide node exists first (return None if not found)
             if not self.node_repo.exists(slide_node_key):

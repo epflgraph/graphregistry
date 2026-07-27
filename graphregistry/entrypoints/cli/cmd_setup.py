@@ -108,7 +108,7 @@ def cmd_setup_init(args):
 
                 # Open SQL file and get all table names that should be created
                 with open(sql_file_path, 'r') as sql_file:
-                    match = re.findall(r'CREATE (TABLE IF NOT EXISTS|OR REPLACE VIEW)\s*([^\s]*)\s*', sql_file.read())
+                    match = re.findall(r'CREATE\s+(TABLE(?:\s+IF\s+NOT\s+EXISTS)?|OR\s+REPLACE\s+VIEW)\s+([^\s(]+)', sql_file.read(), re.IGNORECASE)
 
                 # Check if any tables were found in the SQL file
                 if not match:

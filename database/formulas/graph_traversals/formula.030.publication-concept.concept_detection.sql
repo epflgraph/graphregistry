@@ -30,19 +30,19 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Publication_Concept__ConceptDetection 
     REPLACE INTO [[traversals]].Publication_Concept__ConceptDetection
                  (publication_id, concept_id, score, idx_publication_id, to_process)
 
-          SELECT a2c.object_id           AS publication_id,
-                 a2c.concept_id          AS concept_id,
-                 a2c.score               AS score,
-                 LEFT(publication_id, 2) AS idx_publication_id
+          SELECT a2c.object_id          AS publication_id,
+                 a2c.concept_id         AS concept_id,
+                 a2c.score              AS score,
+                 LEFT(a2c.object_id, 2) AS idx_publication_id,
                  1 AS to_process
 
             FROM [[airflow]].Operations_N_Object_T_FieldsChanged tp
 
       INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
-           USING (institution_id, object_type)
+           USING (object_type)
 
       INNER JOIN [[registry]].Edges_N_Object_N_Concept_T_ConceptDetection a2c
-           USING (institution_id, object_type, object_id)
+           USING (object_type, object_id)
 
            WHERE a2c.object_type = 'Publication'
              AND a2c.score >= 0.1

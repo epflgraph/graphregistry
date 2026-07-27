@@ -10,8 +10,8 @@ from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeF
 class TestMySQLEdgeFieldMapper:
     def test_from_row(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         field = MySQLEdgeFieldMapper.from_row(("en", "semester", "fall"), edge_key=key)
@@ -20,8 +20,8 @@ class TestMySQLEdgeFieldMapper:
 
     def test_to_upsert_row(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         field = EdgeField(key=EdgeFieldKey(key=key, field_language="en", field_name="semester"), field_value="fall")
@@ -35,8 +35,8 @@ class TestMySQLEdgeFieldMapper:
 class TestMySQLEdgeMapper:
     def test_from_parts(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         edge = MySQLEdgeMapper.from_parts(key=key, custom_field_rows=[("en", "semester", "fall")])
@@ -45,8 +45,8 @@ class TestMySQLEdgeMapper:
 
     def test_to_basic_row_sets_record_deleted(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         edge = Edge(key=key)
@@ -54,8 +54,8 @@ class TestMySQLEdgeMapper:
 
     def test_to_simplified_dict_roundtrip(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         field = EdgeField(key=EdgeFieldKey(key=key, field_language="en", field_name="semester"), field_value="fall")
@@ -68,8 +68,8 @@ class TestMySQLEdgeMapper:
 
     def test_simplified_dict_list_roundtrip(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         edge = Edge(key=key)

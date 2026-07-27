@@ -36,16 +36,16 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
            FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
 
      INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
-             ON (tp.from_institution_id, tp.from_object_type, tp.to_institution_id, tp.to_object_type)
-              = (tf.from_institution_id, tf.from_object_type, tf.to_institution_id, tf.to_object_type)
+             ON (tp.from_object_type, tp.to_object_type)
+              = (tf.from_object_type, tf.to_object_type)
 
      INNER JOIN [[registry]].Edges_N_Object_N_Object_T_ChildToParent p2u
-             ON ( tp.from_institution_id,  tp.from_object_type,  tp.from_object_id,    tp.to_institution_id,    tp.to_object_type,    tp.to_object_id)
-              = (p2u.from_institution_id, p2u.from_object_type, p2u.from_object_id,   p2u.to_institution_id,   p2u.to_object_type,   p2u.to_object_id)
+             ON ( tp.from_object_type,  tp.from_object_id,  tp.to_object_type,  tp.to_object_id)
+              = (p2u.from_object_type, p2u.from_object_id, p2u.to_object_type, p2u.to_object_id)
 
      INNER JOIN [[registry]].Data_N_Object_N_Object_T_CustomFields cf
-             ON ( cf.from_institution_id,  cf.from_object_type,  cf.from_object_id,    cf.to_institution_id,    cf.to_object_type,    cf.to_object_id)
-              = (p2u.from_institution_id, p2u.from_object_type, p2u.from_object_id,   p2u.to_institution_id,   p2u.to_object_type,   p2u.to_object_id)
+             ON ( cf.from_object_type,  cf.from_object_id,  cf.to_object_type,  cf.to_object_id)
+              = (p2u.from_object_type, p2u.from_object_id, p2u.to_object_type, p2u.to_object_id)
 
      INNER JOIN [[registry]].Mapping_N_Field_N_Field f1 ON cf.field_value    = f1.from_field_value
      INNER JOIN [[registry]].Mapping_N_Field_N_Field f2 ON f1.to_field_value = f2.from_field_value

@@ -39,26 +39,23 @@ from graphregistry.domain.types import ActionSet
 # --------------------------------------------------------------------------- #
 
 def make_node_key(
-    institution_id: str = "EPFL",
     object_type: str = "Course",
     object_id: str = "CS-433",
 ) -> NodeKey:
     return NodeKey(
-        institution_id=institution_id,
         object_type=object_type,  # type: ignore[arg-type]
         object_id=object_id,
     )
 
 
 def make_node(
-    institution_id: str = "EPFL",
     object_type: str = "Course",
     object_id: str = "CS-433",
     title: str = "Machine Learning",
     raw_text: str | None = "Learn machine learning.",
     custom_fields: list[dict[str, Any]] | None = None,
 ) -> Node:
-    key = make_node_key(institution_id, object_type, object_id)
+    key = make_node_key(object_type, object_id)
     field_list = NodeFieldList(
         item_list=[
             NodeField(
@@ -78,19 +75,15 @@ def make_node(
 
 
 def make_edge_key(
-    from_institution_id: str = "EPFL",
     from_object_type: str = "Course",
     from_object_id: str = "CS-433",
-    to_institution_id: str = "EPFL",
     to_object_type: str = "Person",
     to_object_id: str = "person-12345",
     context: str = "taught_by",
 ) -> EdgeKey:
     return EdgeKey(
-        from_institution_id=from_institution_id,
         from_object_type=from_object_type,  # type: ignore[arg-type]
         from_object_id=from_object_id,
-        to_institution_id=to_institution_id,
         to_object_type=to_object_type,  # type: ignore[arg-type]
         to_object_id=to_object_id,
         context=context,
@@ -132,16 +125,16 @@ class FakeNodeRepository:
     """In-memory implementation of NodeRepository for fast unit tests."""
 
     def __init__(self) -> None:
-        self._store: dict[tuple[str, str, str], Node] = {}
+        self._store: dict[tuple[str, str], Node] = {}
 
-    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str, str]]:
+    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str]]:
         results = [
             key.to_tuple()
             for key in (NodeKey.from_tuple(k) for k in self._store)
             if key.object_type == object_type
         ]
         if id_pattern and id_pattern != "*":
-            results = [row for row in results if id_pattern.replace("*", "") in row[2]]
+            results = [row for row in results if id_pattern.replace("*", "") in row[1]]
         return results
 
     def exists(self, key: NodeKey) -> bool:
@@ -198,19 +191,19 @@ class FakeEdgeRepository:
     """In-memory implementation of EdgeRepository for fast unit tests."""
 
     def __init__(self) -> None:
-        self._store: dict[tuple[str, ...], Edge] = {}
+        self._store: dict[tuple[str, str, str, str, str], Edge] = {}
 
     def _tuple(self, key: EdgeKey) -> tuple[str, ...]:
         return key.to_tuple()
 
-    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str, str, str]]:
+    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str]]:
         results = [
             key.to_tuple()
             for key in (EdgeKey.from_tuple(k) for k in self._store)
             if (key.from_object_type, key.to_object_type) == object_type
         ]
         if id_pattern and id_pattern != "*":
-            results = [row for row in results if id_pattern.replace("*", "") in row[2] or id_pattern.replace("*", "") in row[5]]
+            results = [row for row in results if id_pattern.replace("*", "") in row[1] or id_pattern.replace("*", "") in row[3]]
         return results
 
     def exists(self, key: EdgeKey) -> bool:

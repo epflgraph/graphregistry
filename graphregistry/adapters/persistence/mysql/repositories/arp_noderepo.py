@@ -32,7 +32,7 @@ class MySQLNodeRepository(NodeRepository):
     #----------------------------------------#
 
     # Method: Get list of existing nodes given an object type and id string pattern
-    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str, str]]:
+    def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
 
         # Get schema name from object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
@@ -49,7 +49,7 @@ class MySQLNodeRepository(NodeRepository):
         node_list = self.db.execute_query(engine_name=engine_name, query=sql_query)
 
         # Return node list
-        return cast(list[tuple[str, str, str]], node_list)
+        return cast(list[tuple[str, str]], node_list)
 
     # Method: Check if a node exists in persistence from the node key
     def exists(self, key: NodeKey) -> bool:
@@ -61,7 +61,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_exists'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -98,7 +97,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_get_basic'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -120,7 +118,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_get_custom'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -136,7 +133,6 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_get_profile'],
             registry       = schema_name,
-            institution_id = key.institution_id,
             object_type    = key.object_type,
             object_id      = key.object_id
         )
@@ -173,7 +169,6 @@ class MySQLNodeRepository(NodeRepository):
             sql_query = resolve_sql_query(
                 file_path      = sql_queries_paths['registry']['commit'][f'node_get_concepts_{map_type}'],
                 registry       = schema_name,
-                institution_id = key.institution_id,
                 object_type    = key.object_type,
                 object_id      = key.object_id
             )
@@ -220,8 +215,8 @@ class MySQLNodeRepository(NodeRepository):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Nodes_N_Object",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [node.key.object_type, node.key.object_id],
             upd_column_names  = list(basic_row.keys()),
             upd_column_values = list(basic_row.values()),
             actions           = actions,
@@ -236,12 +231,10 @@ class MySQLNodeRepository(NodeRepository):
         sql_query = resolve_sql_query(
             file_path      = sql_queries_paths['registry']['commit']['node_delete_custom'],
             registry       = schema_name,
-            institution_id = node.key.institution_id,
             object_type    = node.key.object_type,
             object_id      = node.key.object_id
         )
-        # !TEMPORARY: Commenting out the deletion of custom fields to avoid accidental data loss during development. Uncomment in production.
-        # self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query)
+        self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query)
 
         # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
         for row in MySQLNodeMapper.to_custom_field_rows(node):
@@ -249,16 +242,15 @@ class MySQLNodeRepository(NodeRepository):
                 engine_name       = engine_name,
                 schema_name       = schema_name,
                 table_name        = "Data_N_Object_T_CustomFields",
-                key_column_names  = ["institution_id", "object_type", "object_id", "field_language", "field_name"],
+                key_column_names  = ["object_type", "object_id", "field_language", "field_name"],
                 key_column_values = [
-                    row["institution_id"],
                     row["object_type"],
                     row["object_id"],
                     row["field_language"],
                     row["field_name"],
                 ],
-                upd_column_names  = ["field_value"],
-                upd_column_values = [row["field_value"]],
+                upd_column_names  = ["field_value", "record_deleted"],
+                upd_column_values = [row["field_value"], 0],
                 actions           = actions,
             )
 
@@ -274,8 +266,8 @@ class MySQLNodeRepository(NodeRepository):
             engine_name       = engine_name,
             schema_name       = schema_name,
             table_name        = "Data_N_Object_T_PageProfile",
-            key_column_names  = ["institution_id", "object_type", "object_id"],
-            key_column_values = [node.key.institution_id, node.key.object_type, node.key.object_id],
+            key_column_names  = ["object_type", "object_id"],
+            key_column_values = [node.key.object_type, node.key.object_id],
             upd_column_names  = list(page_profile_row.keys()),
             upd_column_values = list(page_profile_row.values()),
             actions           = actions,
@@ -307,16 +299,15 @@ class MySQLNodeRepository(NodeRepository):
                     engine_name       = engine_name,
                     schema_name       = schema_name,
                     table_name        = table_name,
-                    key_column_names  = ["institution_id", "object_type", "object_id", "concept_id", "text_source"],
+                    key_column_names  = ["object_type", "object_id", "concept_id", "text_source"],
                     key_column_values = [
-                        row["institution_id"],
                         row["object_type"],
                         row["object_id"],
                         row["concept_id"],
                         row["text_source"]
                     ],
-                    upd_column_names  = ["score"],
-                    upd_column_values = [row["score"]],
+                    upd_column_names  = ["score", "record_deleted"],
+                    upd_column_values = [row["score"], 0],
                     actions           = actions,
                 )
 
@@ -352,7 +343,6 @@ class MySQLNodeRepository(NodeRepository):
             sql_query = resolve_sql_query(
                 file_path      = sql_queries_paths['registry']['commit']['node_delete'],
                 registry       = schema_name,
-                institution_id = key.institution_id,
                 object_type    = key.object_type,
                 object_id      = key.object_id
             )
@@ -399,14 +389,13 @@ class MySQLNodeRepository(NodeRepository):
         )
 
         # Execute SQL query and fetch result
-        node_keys_data = cast(list[tuple[str, str, str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        node_keys_data = cast(list[tuple[str, str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
 
         # Construct NodeKey objects from fetched data
         node_keys = [
             NodeKey(
-                institution_id = row[0],
-                object_type    = cast(ObjectType, row[1]),
-                object_id      = row[2]
+                object_type    = cast(ObjectType, row[0]),
+                object_id      = row[1]
             ) for row in node_keys_data
         ]
 

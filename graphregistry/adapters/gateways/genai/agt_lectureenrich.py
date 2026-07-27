@@ -25,7 +25,7 @@ class GenAILectureEnrichmentGateway:
     """
 
     # Default limit for the gpt-oss-120b model currently used through RCP.
-    DEFAULT_MAX_CONTEXT_LENGTH = 131_070
+    DEFAULT_MAX_CONTEXT_LENGTH = 131_072
 
     def __init__(
         self,

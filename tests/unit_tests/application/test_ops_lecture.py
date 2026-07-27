@@ -26,7 +26,7 @@ def test_explicit_video_gateway_is_used() -> None:
         processing_state=repo,
         video_processing_gateway=video_gtw,
     )
-    result = ops.get_video_download_result(NodeKey(institution_id="EPFL", object_type="Lecture", object_id="L-1"))
+    result = ops.get_video_download_result(NodeKey(object_type="Lecture", object_id="L-1"))
 
     assert result == {"token": "vid-1"}
     video_gtw.get_video_download_result.assert_called_once_with(task_id="task-123")
@@ -36,4 +36,4 @@ def test_missing_video_gateway_raises() -> None:
     repo = FakeLectureRepo()
     ops = LectureOperations(repo=repo, processing_state=repo)
     with pytest.raises(ValueError, match="Missing gateway: video_processing"):
-        ops.get_video_download_result(NodeKey(institution_id="EPFL", object_type="Lecture", object_id="L-1"))
+        ops.get_video_download_result(NodeKey(object_type="Lecture", object_id="L-1"))

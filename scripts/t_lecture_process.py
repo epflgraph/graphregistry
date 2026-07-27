@@ -24,7 +24,6 @@ if __name__ == "__main__":
 
     # Generate a test NodeKey for a lecture
     test_key = NodeKey(
-        institution_id = 'EPFL',
         object_type    = 'Lecture',
         object_id      = '0_042zj2ns'
     )
@@ -117,7 +116,6 @@ if __name__ == "__main__":
         exit()
         # For demonstration purposes, we will use the test key instead of the retrieved lecture keys 
         lecture_key = NodeKey(
-            institution_id = 'EPFL',
             object_type    = 'Lecture',
             object_id      = '0_042zj2ns'
         )

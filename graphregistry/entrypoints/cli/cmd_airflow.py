@@ -182,6 +182,7 @@ def cmd_airflow_update_checksums(args):
     gr = args.ctx.registry
 
     # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ('commit',)
     v = args.verbose
 
     # Print headers
@@ -189,7 +190,7 @@ def cmd_airflow_update_checksums(args):
 
     # Execute command:
     # - ...
-    gr.orchestrator.update_checksums_v2(verbose=v)
+    gr.orchestrator.update_checksums_v2(actions=actions, verbose=v)
 
     # Print footers
     print("🖥️  ~ Done.")

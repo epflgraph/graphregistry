@@ -253,7 +253,7 @@ node_modules/
 ./setup.sh
 package-lock.json
 docker-compose.yml
-config/config_graphai_client.json
+config/config_graphai.json
 example_config_dict.json
 pyrightconfig.json
 memhog.py
@@ -304,3 +304,17 @@ config/config_global.template.yaml
 config/config_index.template.json
 scripts/run2.sh
 scripts/weird_bug.txt
+list_tables.py
+update_object_type_columns.py
+count_object_type_triples.py
+count_object_type_triples.json
+update_table_collations.py
+update_institution_columns.py
+graphdb_patched.py
+copy_scores_tables.py
+add_institution_defaults.py
+add_doc_rank_link_index.py
+nohup_copy_tables.out
+config/
+scripts/
+logs/

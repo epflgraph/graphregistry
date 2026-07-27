@@ -1,8 +1,8 @@
 -- ==================== Put all calculation types in columns
             INSERT INTO [[graph_cache]].Edges_N_Object_N_Concept_T_ScoringMatrix
-                       (institution_id, object_type, object_id, concept_id, score_1, score_2, score_3, to_process)
-                 SELECT institution_id, object_type, object_id, concept_id, score_1, score_2, score_3, to_process
-                   FROM (SELECT institution_id, object_type, object_id, concept_id,
+                       (object_type, object_id, concept_id, score_1, score_2, score_3, to_process)
+                 SELECT object_type, object_id, concept_id, score_1, score_2, score_3, to_process
+                   FROM (SELECT object_type, object_id, concept_id,
 
                       CASE WHEN (object_type = 'Person'      AND calculation_type = 'concept detection on user input')
                              OR (object_type = 'Course'      AND calculation_type = 'manual mapping on user input')

@@ -24,7 +24,7 @@ class MySQLEdgeRepository(EdgeRepository):
         self.msg = GraphLogger()
 
     # Method: Get list of existing nodes given an object type and id string pattern
-    def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str, str, str]]:
+    def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str]]:
 
         # Get schema name from object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
@@ -45,7 +45,7 @@ class MySQLEdgeRepository(EdgeRepository):
         edge_list = self.db.execute_query(engine_name=engine_name, query=sql_query)
 
         # Return edge list
-        return cast(list[tuple[str, str, str, str, str, str, str]], edge_list)
+        return cast(list[tuple[str, str, str, str, str]], edge_list)
 
     # Method: Check if an edge exists in persistence based on the edge key
     def exists(self, key: EdgeKey) -> bool:
@@ -57,10 +57,8 @@ class MySQLEdgeRepository(EdgeRepository):
         sql_query = resolve_sql_query(
             file_path           = sql_queries_paths['registry']['commit']['edge_exists'],
             registry            = schema_name,
-            from_institution_id = key.from_institution_id,
             from_object_type    = key.from_object_type,
             from_object_id      = key.from_object_id,
-            to_institution_id   = key.to_institution_id,
             to_object_type      = key.to_object_type,
             to_object_id        = key.to_object_id,
             context             = key.context
@@ -97,10 +95,8 @@ class MySQLEdgeRepository(EdgeRepository):
         sql_query = resolve_sql_query(
             file_path           = sql_queries_paths['registry']['commit']['edge_get_custom'],
             registry            = schema_name,
-            from_institution_id = key.from_institution_id,
             from_object_type    = key.from_object_type,
             from_object_id      = key.from_object_id,
-            to_institution_id   = key.to_institution_id,
             to_object_type      = key.to_object_type,
             to_object_id        = key.to_object_id,
             context             = key.context
@@ -142,19 +138,15 @@ class MySQLEdgeRepository(EdgeRepository):
             schema_name       = schema_name,
             table_name        = "Edges_N_Object_N_Object_T_ChildToParent",
             key_column_names  = [
-                "from_institution_id",
                 "from_object_type",
                 "from_object_id",
-                "to_institution_id",
                 "to_object_type",
                 "to_object_id",
                 "context",
             ],
             key_column_values = [
-                edge.key.from_institution_id,
                 edge.key.from_object_type,
                 edge.key.from_object_id,
-                edge.key.to_institution_id,
                 edge.key.to_object_type,
                 edge.key.to_object_id,
                 edge.key.context,
@@ -174,10 +166,8 @@ class MySQLEdgeRepository(EdgeRepository):
         sql_query = resolve_sql_query(
             file_path           = sql_queries_paths['registry']['commit']['edge_delete_custom'],
             registry            = schema_name,
-            from_institution_id = edge.key.from_institution_id,
             from_object_type    = edge.key.from_object_type,
             from_object_id      = edge.key.from_object_id,
-            to_institution_id   = edge.key.to_institution_id,
             to_object_type      = edge.key.to_object_type,
             to_object_id        = edge.key.to_object_id,
             context             = edge.key.context
@@ -191,10 +181,8 @@ class MySQLEdgeRepository(EdgeRepository):
                 schema_name       = schema_name,
                 table_name        = "Data_N_Object_N_Object_T_CustomFields",
                 key_column_names  = [
-                    "from_institution_id",
                     "from_object_type",
                     "from_object_id",
-                    "to_institution_id",
                     "to_object_type",
                     "to_object_id",
                     "context",
@@ -202,18 +190,16 @@ class MySQLEdgeRepository(EdgeRepository):
                     "field_name",
                 ],
                 key_column_values = [
-                    row["from_institution_id"],
                     row["from_object_type"],
                     row["from_object_id"],
-                    row["to_institution_id"],
                     row["to_object_type"],
                     row["to_object_id"],
                     row["context"],
                     row["field_language"],
                     row["field_name"],
                 ],
-                upd_column_names  = ["field_value"],
-                upd_column_values = [row["field_value"]],
+                upd_column_names  = ["field_value", "record_deleted"],
+                upd_column_values = [row["field_value"], 0],
                 actions           = actions,
             )
 
@@ -247,10 +233,8 @@ class MySQLEdgeRepository(EdgeRepository):
             sql_query = resolve_sql_query(
                 file_path           = sql_queries_paths['registry']['commit']['edge_delete'],
                 registry            = schema_name,
-                from_institution_id = key.from_institution_id,
                 from_object_type    = key.from_object_type,
                 from_object_id      = key.from_object_id,
-                to_institution_id   = key.to_institution_id,
                 to_object_type      = key.to_object_type,
                 to_object_id        = key.to_object_id,
                 context             = key.context

@@ -9,14 +9,14 @@ from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 class TestMySQLPageProfileMapper:
     def test_from_empty_row_returns_default_profile(self) -> None:
-        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        key = NodeKey(object_type="Course", object_id="CS-433")
         profile = MySQLPageProfileMapper.from_row(None, node_key=key)
         assert profile.key == key
         assert profile.short_code == ""
         assert profile.is_visible is True
 
     def test_from_row_populates_basic_fields(self) -> None:
-        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        key = NodeKey(object_type="Course", object_id="CS-433")
         row = {
             "short_code": "ML",
             "is_visible": 0,
@@ -34,7 +34,7 @@ class TestMySQLPageProfileMapper:
         assert profile.external_url.get_value("en") == "https://example.com"
 
     def test_from_row_populates_generated_name(self) -> None:
-        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        key = NodeKey(object_type="Course", object_id="CS-433")
         row = {
             "name_en_value": "Machine Learning",
             "name_en_is_auto_generated": 1,
@@ -46,7 +46,7 @@ class TestMySQLPageProfileMapper:
         assert profile.name.get_value("fr") == "Apprentissage automatique"
 
     def test_from_row_populates_descriptions(self) -> None:
-        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        key = NodeKey(object_type="Course", object_id="CS-433")
         row = {
             "description_short_en_value": "Short",
             "description_long_en_value": "Long description",
@@ -58,7 +58,7 @@ class TestMySQLPageProfileMapper:
         assert profile.description.long.get("en").translated_from == "fr"
 
     def test_to_row_omits_empty_values(self) -> None:
-        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        key = NodeKey(object_type="Course", object_id="CS-433")
         profile = PageProfile(key=key, short_code="ML")
         profile.name.set("en", "Machine Learning", is_auto_generated=True)
         row = MySQLPageProfileMapper.to_row(profile)

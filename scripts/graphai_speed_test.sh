@@ -6,7 +6,7 @@
 #   export GRAPHAI_TOKEN="<bearer token>"
 #   ./scripts/graphai_speed_test.sh [iterations]
 #
-# If GRAPHAI_TOKEN is not set, the script reads config/config_graphai_client.json,
+# If GRAPHAI_TOKEN is not set, the script reads config/config_graphai.json,
 # calls POST /token once, and caches the token in /tmp/graphai_token.cache for 25 min.
 #
 # Requirements: curl, jq
@@ -20,7 +20,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-GRAPHAI_CONFIG="${GRAPHAI_CONFIG:-${REPO_ROOT}/config/config_graphai_client.json}"
+GRAPHAI_CONFIG="${GRAPHAI_CONFIG:-${REPO_ROOT}/config/config_graphai.json}"
 GRAPHAI_HOST="${GRAPHAI_HOST:-}"
 GRAPHAI_TOKEN="${GRAPHAI_TOKEN:-}"
 TOKEN_CACHE="/tmp/graphai_token.cache"

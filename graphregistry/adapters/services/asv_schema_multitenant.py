@@ -54,17 +54,17 @@ class MultiTenantSchemaResolver(SchemaResolver):
         """
         self.tenant_config = tenant_config
 
-    # Helper method: Retrieve tenant config
-    def _get_tenant(self, institution_id: str) -> dict:
+    # Helper method: Retrieve the default tenant config
+    def _get_tenant(self) -> dict:
         """
-        Retrieve tenant configuration for a given institution_id.
+        Retrieve the default tenant configuration.
 
         Raises:
-            ValueError: if the institution_id is not configured
+            ValueError: if no tenant configuration is available
         """
-        if institution_id not in self.tenant_config:
-            raise ValueError(f"Unknown tenant: {institution_id}")
-        return self.tenant_config[institution_id]
+        if not self.tenant_config:
+            raise ValueError("No tenant configuration available")
+        return next(iter(self.tenant_config.values()))
 
     # Class method: Resolve schema for a Node
     def for_node(self, key: NodeKey) -> EngineSchema:
@@ -78,10 +78,10 @@ class MultiTenantSchemaResolver(SchemaResolver):
             (engine_name, schema_name)
 
         Resolution logic:
-        - Select tenant using key.institution_id
+        - Select the default tenant
         - Map key.object_type to a schema via node_schema_map
         """
-        tenant = self._get_tenant(key.institution_id)
+        tenant = self._get_tenant()
         engine_name = tenant["engine_name"]
         node_type = key.object_type
         schema = tenant["node_schema_map"][node_type]
@@ -99,11 +99,11 @@ class MultiTenantSchemaResolver(SchemaResolver):
             (engine_name, schema_name)
 
         Resolution logic:
-        - Select tenant using key.from_institution_id
+        - Select the default tenant
         - Normalize edge type as a sorted tuple of object types
         - Map edge type to a schema via edge_schema_map
         """
-        tenant = self._get_tenant(key.from_institution_id)
+        tenant = self._get_tenant()
         engine_name = tenant["engine_name"]
         a = key.from_object_type
         b = key.to_object_type

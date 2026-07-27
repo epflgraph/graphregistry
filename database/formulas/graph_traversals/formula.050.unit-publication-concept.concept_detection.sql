@@ -39,25 +39,15 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Publication_Concept__ConceptDetec
                  LEFT(p2a.publication_id, 2) AS idx_publication_id,
                  1 AS to_process
 
-              -- Start with: (Unit, Person) tuples to process
-            FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
-
-              -- Link to: Unit-Person affiliation edges
-      INNER JOIN [[graph_cache]].Traversal_N_Unit_N_Person_T_Affiliation u2p
-              ON (tp.from_object_type, tp.from_object_id, tp.to_object_type, tp.to_object_id)
-               = ('Person', person_id, 'Unit', unit_id)
-
-              -- Check type flags
-      INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
-              ON tf.object_type = 'Unit'
+              -- Start with: Unit-Person affiliation edges
+            FROM [[traversals]].Unit_Person__Affiliation u2p
 
               -- Link to: Person-Publication authorship edges
-      INNER JOIN [[graph_cache]].Traversal_N_Person_N_Publication_T_Authorship p2a
+      INNER JOIN [[traversals]].Person_Publication__Authorship p2a
            USING (person_id)
 
               -- Link to: Publication-Concept detection scores
-      INNER JOIN [[graph_cache]].Traversal_N_Publication_N_Concept_T_ConceptDetection a2c
+      INNER JOIN [[traversals]].Publication_Concept__ConceptDetection a2c
            USING (publication_id)
 
-           WHERE tp.to_process = 1
-             AND tf.to_process = 1;
+           WHERE u2p.to_process = 1;

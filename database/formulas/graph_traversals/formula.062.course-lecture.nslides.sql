@@ -11,10 +11,16 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Course_Lecture__NSlides (
                             KEY course_id (course_id),
                             KEY lecture_id (lecture_id));
 
+-- ============ Cleanup: Reset to_process flags
+         UPDATE [[traversals]].Course_Lecture__NSlides
+            SET to_process = 0
+          WHERE to_process = 1;
+
 -- ========= Graph traversal: Course number of lectures (REPLACE)
 REPLACE INTO [[traversals]].Course_Lecture__NSlides
-             (course_id, lecture_id, n_slides)
-      SELECT course_id, lecture_id, COUNT(DISTINCT slide_id) AS n_slides
+             (course_id, lecture_id, n_slides, to_process)
+      SELECT course_id, lecture_id, COUNT(DISTINCT slide_id) AS n_slides,
+             1 AS to_process
         FROM [[traversals]].Course_Lecture_Slide_Concept__LLMValidated
        WHERE to_process = 1
     GROUP BY course_id, lecture_id;

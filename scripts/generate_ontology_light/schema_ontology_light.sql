@@ -8,10 +8,8 @@ CREATE TABLE IF NOT EXISTS _category_ids (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
-  from_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
   from_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
   from_object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  to_institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') COLLATE utf8mb4_unicode_ci NOT NULL,
   to_object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
   to_object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   context enum('accreditation','affiliation','authorship','coursebook','teacher','founder') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -23,20 +21,17 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
   row_id int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id,field_language,field_name,context),
-  KEY from_institution_id (from_institution_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,field_language,field_name,context),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_institution_id (to_institution_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY edge_key (from_institution_id,from_object_type,from_object_id,to_institution_id,to_object_type,to_object_id)
+  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
-  institution_id varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
   object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   field_language enum('en','fr','de','it','n/a') COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -46,30 +41,26 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
   record_updated_date datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   row_id int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY row_id (row_id),
-  UNIQUE KEY unique_key (institution_id,object_type,object_id,field_language,field_name),
-  KEY institution_id (institution_id),
+  UNIQUE KEY unique_key (object_type,object_id,field_language,field_name),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY object_key (institution_id,object_type,object_id)
+  KEY object_key (object_type,object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_Embeddings (
-  institution_id varchar(6) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Ont',
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'Concept',
   object_id varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   embedding text COLLATE utf8mb4_unicode_ci,
   row_id int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  UNIQUE KEY object_key (institution_id,object_type,object_id),
-  KEY institution_id (institution_id),
+  UNIQUE KEY object_key (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
-  institution_id varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
   object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   numeric_id_en int unsigned DEFAULT NULL,
@@ -174,11 +165,10 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   record_updated_date datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   row_id int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY row_id (row_id),
-  UNIQUE KEY unique_key (institution_id,object_type,object_id),
-  KEY institution_id (institution_id),
+  UNIQUE KEY unique_key (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
-  KEY object_key (institution_id,object_type,object_id),
+  KEY object_key (object_type,object_id),
   KEY subtype_en (subtype_en),
   KEY subtype_fr (subtype_fr),
   KEY subtype_de (subtype_de),
@@ -277,7 +267,6 @@ CREATE TABLE IF NOT EXISTS Edges_N_ConceptsCluster_N_Concept_T_ParentToChild (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Nodes_N_Category (
-  institution_id varchar(6) COLLATE utf8mb4_unicode_ci NOT NULL,
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci NOT NULL,
   object_id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -288,7 +277,6 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Category (
   reference_page_url varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   row_id int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY row_id (row_id),
-  KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY id (id),
@@ -299,7 +287,6 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Category (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Nodes_N_Concept (
-  institution_id varchar(6) COLLATE utf8mb4_unicode_ci DEFAULT 'Ont',
   object_type enum('Category','Chart','Concept','Course','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Specialisation','Startup','Strategic area','StudyPlan','Unit','Widget') COLLATE utf8mb4_unicode_ci DEFAULT 'Concept',
   object_id varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   id varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -311,7 +298,6 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Concept (
   is_unused tinyint(1) NOT NULL,
   row_id int NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY id (id),
@@ -337,21 +323,21 @@ CREATE TABLE IF NOT EXISTS Edges_N_Category_N_OAlexTopic_T_Semantic (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE OR REPLACE VIEW Edges_N_Object_N_Object_T_ChildToParent AS
-    SELECT 'Ont' AS from_institution_id, 'Concept'  AS from_object_type,   t1.to_id AS from_object_id,
-           'Ont' AS   to_institution_id, 'Category' AS   to_object_type, t2.from_id AS   to_object_id,
+    SELECT 'Concept'  AS from_object_type,   t1.to_id AS from_object_id,
+           'Category' AS   to_object_type, t2.from_id AS   to_object_id,
            'ontology tree' AS context, t1.row_id
       FROM Edges_N_ConceptsCluster_N_Concept_T_ParentToChild t1
 INNER JOIN Edges_N_Category_N_ConceptsCluster_T_ParentToChild t2
         ON t1.from_id = t2.to_id
  UNION ALL
-    SELECT 'Ont' AS from_institution_id, 'Category' AS from_object_type, from_id AS from_object_id,
-           'Ont' AS   to_institution_id, 'Category' AS   to_object_type,   to_id AS   to_object_id,
+    SELECT 'Category' AS from_object_type, from_id AS from_object_id,
+           'Category' AS   to_object_type,   to_id AS   to_object_id,
            'ontology tree' AS context, row_id
       FROM Edges_N_Category_N_Category_T_ChildToParent;
 
 CREATE OR REPLACE VIEW Nodes_N_Object AS
-   SELECT institution_id, object_type, object_id, name AS object_title, NULL AS text_source, NULL AS raw_text, row_id
+   SELECT object_type, object_id, name AS object_title, NULL AS text_source, NULL AS raw_text, row_id
      FROM Nodes_N_Concept
 UNION ALL  
-   SELECT institution_id, object_type, object_id, name AS object_title, NULL AS text_source, NULL AS raw_text, row_id
+   SELECT object_type, object_id, name AS object_title, NULL AS text_source, NULL AS raw_text, row_id
      FROM Nodes_N_Category;

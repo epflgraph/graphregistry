@@ -131,27 +131,6 @@ class GlobalConfig:
         for k, v in self.object_type_to_schema.items():
             self.schema_to_object_types[v].append(k)
 
-        # Object type to institution id mapping
-        self.object_type_to_institution_id = {
-            'Category'       : 'Ont',
-            'Concept'        : 'Ont',
-            'Curated area'   : 'Ont',
-            'Course'         : 'EPFL',
-            'Exercise'       : 'EPFL',
-            'Lecture'        : 'EPFL',
-            'MOOC'           : 'EPFL',
-            'Notebook'       : 'EPFL',
-            'Person'         : 'EPFL',
-            'Publication'    : 'EPFL',
-            'Slide'          : 'EPFL',
-            'Specialisation' : 'EPFL',
-            'Startup'        : 'EPFL',
-            'Transcript'     : 'EPFL',
-            'StudyPlan'      : 'EPFL',
-            'Unit'           : 'EPFL',
-            'Widget'         : 'EPFL',
-        }
-
         # Page profile columns
         self.page_profile_columns = ["numeric_id_en", "numeric_id_fr", "numeric_id_de", "numeric_id_it", "short_code", "subtype_en", "subtype_fr", "subtype_de", "subtype_it", "name_en_is_auto_generated", "name_en_is_auto_corrected", "name_en_is_auto_translated", "name_en_translated_from", "name_en_value", "name_fr_is_auto_generated", "name_fr_is_auto_corrected", "name_fr_is_auto_translated", "name_fr_translated_from", "name_fr_value", "name_de_is_auto_generated", "name_de_is_auto_corrected", "name_de_is_auto_translated", "name_de_translated_from", "name_de_value", "name_it_is_auto_generated", "name_it_is_auto_corrected", "name_it_is_auto_translated", "name_it_translated_from", "name_it_value", "description_short_en_is_auto_generated", "description_short_en_is_auto_corrected", "description_short_en_is_auto_translated", "description_short_en_translated_from", "description_short_en_value", "description_short_fr_is_auto_generated", "description_short_fr_is_auto_corrected", "description_short_fr_is_auto_translated", "description_short_fr_translated_from", "description_short_fr_value", "description_short_de_is_auto_generated", "description_short_de_is_auto_corrected", "description_short_de_is_auto_translated", "description_short_de_translated_from", "description_short_de_value", "description_short_it_is_auto_generated", "description_short_it_is_auto_corrected", "description_short_it_is_auto_translated", "description_short_it_translated_from", "description_short_it_value", "description_medium_en_is_auto_generated", "description_medium_en_is_auto_corrected", "description_medium_en_is_auto_translated", "description_medium_en_translated_from", "description_medium_en_value", "description_medium_fr_is_auto_generated", "description_medium_fr_is_auto_corrected", "description_medium_fr_is_auto_translated", "description_medium_fr_translated_from", "description_medium_fr_value", "description_medium_de_is_auto_generated", "description_medium_de_is_auto_corrected", "description_medium_de_is_auto_translated", "description_medium_de_translated_from", "description_medium_de_value", "description_medium_it_is_auto_generated", "description_medium_it_is_auto_corrected", "description_medium_it_is_auto_translated", "description_medium_it_translated_from", "description_medium_it_value"]
 
@@ -200,7 +179,7 @@ class IndexConfig:
         tree = lambda: defaultdict(tree); self.settings = tree()
 
         # Fetch list of supported doc types
-        doc_types = index_config['doc-types']
+        doc_types = index_config['object-selection']['nodes']
 
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types

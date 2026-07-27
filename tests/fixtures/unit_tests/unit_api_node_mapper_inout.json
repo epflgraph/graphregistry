@@ -25,7 +25,6 @@
             },
             "output": {
                 "key": {
-                    "institution_id": "EPFL",
                     "object_type": "Course",
                     "object_id": "CS-433"
                 },
@@ -37,7 +36,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Course",
                                     "object_id": "CS-433"
                                 },
@@ -49,7 +47,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Course",
                                     "object_id": "CS-433"
                                 },
@@ -62,7 +59,6 @@
                 },
                 "page_profile": {
                     "key": {
-                        "institution_id": "EPFL",
                         "object_type": "Course",
                         "object_id": "CS-433"
                     },
@@ -149,7 +145,7 @@
                         },
                         {
                             "language": "fr",
-                            "text": "Probabilités et statistiques"
+                            "text": "Probabilit\u00e9s et statistiques"
                         }
                     ],
                     "description": [
@@ -159,7 +155,7 @@
                         },
                         {
                             "language": "fr",
-                            "text": "Ce cours couvre la théorie des probabilités, les variables aléatoires, l’estimation, les tests d’hypothèses et les modèles linéaires."
+                            "text": "Ce cours couvre la th\u00e9orie des probabilit\u00e9s, les variables al\u00e9atoires, l\u2019estimation, les tests d\u2019hypoth\u00e8ses et les mod\u00e8les lin\u00e9aires."
                         }
                     ],
                     "url": [
@@ -183,7 +179,6 @@
             },
             "output": {
                 "key": {
-                    "institution_id": "EPFL",
                     "object_type": "Course",
                     "object_id": "MATH-203"
                 },
@@ -195,7 +190,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Course",
                                     "object_id": "MATH-203"
                                 },
@@ -208,7 +202,6 @@
                 },
                 "page_profile": {
                     "key": {
-                        "institution_id": "EPFL",
                         "object_type": "Course",
                         "object_id": "MATH-203"
                     },
@@ -233,7 +226,7 @@
                                 "is_auto_corrected": false,
                                 "is_auto_translated": false,
                                 "translated_from": null,
-                                "value": "Probabilités et statistiques"
+                                "value": "Probabilit\u00e9s et statistiques"
                             }
                         },
                         "LANGUAGES": [
@@ -276,7 +269,7 @@
                                     "is_auto_corrected": false,
                                     "is_auto_translated": false,
                                     "translated_from": null,
-                                    "value": "Ce cours couvre la théorie des probabilités, les variables aléatoires, l’estimation, les tests d’hypothèses et les modèles linéaires."
+                                    "value": "Ce cours couvre la th\u00e9orie des probabilit\u00e9s, les variables al\u00e9atoires, l\u2019estimation, les tests d\u2019hypoth\u00e8ses et les mod\u00e8les lin\u00e9aires."
                                 }
                             },
                             "LANGUAGES": [
@@ -354,7 +347,7 @@
                             },
                             {
                                 "language": "fr",
-                                "text": "Ce cours introduit les algorithmes et structures de données fondamentaux, notamment le tri, la recherche, les algorithmes de graphes, la programmation dynamique, les algorithmes gloutons, l’analyse de complexité et les preuves de correction."
+                                "text": "Ce cours introduit les algorithmes et structures de donn\u00e9es fondamentaux, notamment le tri, la recherche, les algorithmes de graphes, la programmation dynamique, les algorithmes gloutons, l\u2019analyse de complexit\u00e9 et les preuves de correction."
                             }
                         ]
                     },
@@ -364,7 +357,6 @@
             },
             "output": {
                 "key": {
-                    "institution_id": "EPFL",
                     "object_type": "Course",
                     "object_id": "CS-250"
                 },
@@ -376,7 +368,6 @@
                 },
                 "page_profile": {
                     "key": {
-                        "institution_id": "EPFL",
                         "object_type": "Course",
                         "object_id": "CS-250"
                     },
@@ -474,7 +465,7 @@
                                     "is_auto_corrected": false,
                                     "is_auto_translated": false,
                                     "translated_from": null,
-                                    "value": "Ce cours introduit les algorithmes et structures de données fondamentaux, notamment le tri, la recherche, les algorithmes de graphes, la programmation dynamique, les algorithmes gloutons, l’analyse de complexité et les preuves de correction."
+                                    "value": "Ce cours introduit les algorithmes et structures de donn\u00e9es fondamentaux, notamment le tri, la recherche, les algorithmes de graphes, la programmation dynamique, les algorithmes gloutons, l\u2019analyse de complexit\u00e9 et les preuves de correction."
                                 }
                             },
                             "LANGUAGES": [
@@ -549,7 +540,6 @@
             },
             "output": {
                 "key": {
-                    "institution_id": "EPFL",
                     "object_type": "Person",
                     "object_id": "person-12345"
                 },
@@ -561,7 +551,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Person",
                                     "object_id": "person-12345"
                                 },
@@ -573,7 +562,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Person",
                                     "object_id": "person-12345"
                                 },
@@ -586,7 +574,6 @@
                 },
                 "page_profile": {
                     "key": {
-                        "institution_id": "EPFL",
                         "object_type": "Person",
                         "object_id": "person-12345"
                     },
@@ -713,7 +700,6 @@
             },
             "output": {
                 "key": {
-                    "institution_id": "EPFL",
                     "object_type": "Publication",
                     "object_id": "doi-10.1234-example-ml-2024"
                 },
@@ -725,7 +711,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Publication",
                                     "object_id": "doi-10.1234-example-ml-2024"
                                 },
@@ -737,7 +722,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Publication",
                                     "object_id": "doi-10.1234-example-ml-2024"
                                 },
@@ -750,7 +734,6 @@
                 },
                 "page_profile": {
                     "key": {
-                        "institution_id": "EPFL",
                         "object_type": "Publication",
                         "object_id": "doi-10.1234-example-ml-2024"
                     },
@@ -850,7 +833,7 @@
                         },
                         {
                             "language": "fr",
-                            "text": "Laboratoire d’apprentissage automatique"
+                            "text": "Laboratoire d\u2019apprentissage automatique"
                         }
                     ],
                     "description": {
@@ -879,7 +862,6 @@
             },
             "output": {
                 "key": {
-                    "institution_id": "EPFL",
                     "object_type": "Unit",
                     "object_id": "ml-lab"
                 },
@@ -891,7 +873,6 @@
                         {
                             "key": {
                                 "key": {
-                                    "institution_id": "EPFL",
                                     "object_type": "Unit",
                                     "object_id": "ml-lab"
                                 },
@@ -904,7 +885,6 @@
                 },
                 "page_profile": {
                     "key": {
-                        "institution_id": "EPFL",
                         "object_type": "Unit",
                         "object_id": "ml-lab"
                     },
@@ -932,7 +912,7 @@
                                 "is_auto_corrected": false,
                                 "is_auto_translated": false,
                                 "translated_from": null,
-                                "value": "Laboratoire d’apprentissage automatique"
+                                "value": "Laboratoire d\u2019apprentissage automatique"
                             }
                         },
                         "LANGUAGES": [

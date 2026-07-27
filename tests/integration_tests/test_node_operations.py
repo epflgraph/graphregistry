@@ -49,7 +49,6 @@ def sample_data() -> dict[str, Any]:
 @pytest.fixture
 def node_key(sample_data: dict[str, Any]) -> NodeKey:
     return NodeKey(
-        institution_id=sample_data["institution_id"],
         object_type=sample_data["object_type"],
         object_id=sample_data["object_id"],
     )

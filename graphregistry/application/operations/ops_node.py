@@ -29,7 +29,7 @@ class NodeOperations:
     #----------------------------------------#
 
     # Method: List nodes by object type and optional ID pattern, returning a list of (object_type, id, title) tuples
-    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str, str]]:
+    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str]]:
         return self.repo.list(object_type=object_type, id_pattern=id_pattern)
 
     # Method: Check if a node exists by its key

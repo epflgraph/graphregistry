@@ -22,7 +22,6 @@ node_ops = NodeOperations(
 # Example node to enrich with concept detection
 node = Node(
     key=NodeKey(
-        institution_id="EPFL",
         object_type="Course",
         object_id="MATH-101",
     ),
