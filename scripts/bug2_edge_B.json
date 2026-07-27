@@ -7,9 +7,16 @@
         "context": "teacher",
         "custom_fields": [
             {
-                "field_language": "n/a",
-                "field_name": "teaching_assignment_year",
+                "field_name": "teaching_assignment_year_2025-2026",
                 "field_value": "2025-2026"
+            },
+            {
+                "field_name": "teaching_assignment_year_2024-2025",
+                "field_value": "2024-2025"
+            },
+            {
+                "field_name": "teaching_assignment_year_2023-2024",
+                "field_value": "2023-2024"
             }
         ]
     }

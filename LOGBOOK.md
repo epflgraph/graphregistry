@@ -48,3 +48,6 @@
 - 👉 implement handling of "file not found" in graphai endpoints
 - 👉 make db exports always overwrite the export folder, or at least ask for confirmation
 
+- avg_scores
+log_degrees
+make distinction between typeflags and airflow

@@ -308,3 +308,10 @@ list_tables.py
 update_object_type_columns.py
 count_object_type_triples.py
 count_object_type_triples.json
+update_table_collations.py
+update_institution_columns.py
+graphdb_patched.py
+copy_scores_tables.py
+add_institution_defaults.py
+add_doc_rank_link_index.py
+nohup_copy_tables.out
