@@ -253,7 +253,7 @@ node_modules/
 ./setup.sh
 package-lock.json
 docker-compose.yml
-config/config_graphai_client.json
+config/config_graphai.json
 example_config_dict.json
 pyrightconfig.json
 memhog.py
@@ -316,3 +316,4 @@ add_institution_defaults.py
 add_doc_rank_link_index.py
 nohup_copy_tables.out
 config/
+scripts/
