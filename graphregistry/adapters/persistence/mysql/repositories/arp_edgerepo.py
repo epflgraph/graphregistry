@@ -198,8 +198,8 @@ class MySQLEdgeRepository(EdgeRepository):
                     row["field_language"],
                     row["field_name"],
                 ],
-                upd_column_names  = ["field_value"],
-                upd_column_values = [row["field_value"]],
+                upd_column_names  = ["field_value", "record_deleted"],
+                upd_column_values = [row["field_value"], 0],
                 actions           = actions,
             )
 

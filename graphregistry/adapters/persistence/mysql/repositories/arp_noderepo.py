@@ -234,8 +234,7 @@ class MySQLNodeRepository(NodeRepository):
             object_type    = node.key.object_type,
             object_id      = node.key.object_id
         )
-        # !TEMPORARY: Commenting out the deletion of custom fields to avoid accidental data loss during development. Uncomment in production.
-        # self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query)
+        self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query)
 
         # Convert Node object to a list of dicts representing the custom fields rows, then upsert each row
         for row in MySQLNodeMapper.to_custom_field_rows(node):
@@ -250,8 +249,8 @@ class MySQLNodeRepository(NodeRepository):
                     row["field_language"],
                     row["field_name"],
                 ],
-                upd_column_names  = ["field_value"],
-                upd_column_values = [row["field_value"]],
+                upd_column_names  = ["field_value", "record_deleted"],
+                upd_column_values = [row["field_value"], 0],
                 actions           = actions,
             )
 
@@ -307,8 +306,8 @@ class MySQLNodeRepository(NodeRepository):
                         row["concept_id"],
                         row["text_source"]
                     ],
-                    upd_column_names  = ["score"],
-                    upd_column_values = [row["score"]],
+                    upd_column_names  = ["score", "record_deleted"],
+                    upd_column_values = [row["score"], 0],
                     actions           = actions,
                 )
 
