@@ -242,6 +242,19 @@ class IndexConfig:
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types
 
+        # Fetch the configured edge selection (from_type, to_type, context).
+        # The context is the canonical relationship to use when flattening the
+        # 5-tuple edge identity into a 4-tuple index link identity.
+        edge_selection = index_config.get('object-selection', {}).get('edges', [])
+        self.settings['edge_selection'] = [list(triple) for triple in edge_selection]
+        self.settings['edge_selection_contexts'] = {
+            f"{a}|{b}": context
+            for (a, b, context) in (
+                tuple(sorted([triple[0], triple[1]]) + [triple[2]])
+                for triple in edge_selection
+            )
+        }
+
         # Fetch data types for SQL field definitions
         self.settings['data_types'] = index_config['data-types']
 
