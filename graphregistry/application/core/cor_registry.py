@@ -1251,17 +1251,23 @@ class GraphRegistry():
                     node_types_to_process = [node_type for node_type, process_fields, _ in config_json['nodes'] if process_fields]
 
                     # Get edges to process directly from config json
-                    edge_types_to_process = set([tuple(sorted([from_node_type, to_node_type])) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields is True])
+                    edge_types_from_flags = set([tuple(sorted([from_node_type, to_node_type])) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields is True])
 
-                    # Filter by available edge types in index config
-                    edge_types_available = set([
-                        tuple(sorted([d,l]))
-                        for d in idxcfg.settings['graphsearch']['fields' ]['links']['parent_child']
-                        for l in idxcfg.settings['graphsearch']['fields' ]['links']['parent_child'][d]
-                    ])
+                    # Filter by the edge types explicitly selected in config_index.json.
+                    # object-selection.edges defines the (from_type, to_type, context)
+                    # triples that should be indexed; only those pairs are processed.
+                    edge_types_available = set(idxcfg.settings['edge_selection_contexts'])
 
                     # Calculate set intersection
-                    edge_types_to_process = edge_types_to_process.intersection(edge_types_available)
+                    edge_types_to_process = edge_types_from_flags.intersection(edge_types_available)
+                    sysmsg.trace(
+                        "get_types_to_process(fields): nodes={}, edges_from_typeflags={}, "
+                        "edges_available_from_index={}, edges_after_filter={}",
+                        node_types_to_process,
+                        edge_types_from_flags,
+                        edge_types_available,
+                        edge_types_to_process,
+                    )
 
                 # Processing scores?
                 elif fields_or_scores=='scores':
@@ -5006,6 +5012,24 @@ class GraphRegistry():
                 # Flip doc-link direction if needed
                 doc_type, link_type = sorted([doc_type, link_type])
 
+                # Resolve the canonical context for this edge pair from config_index.json.
+                # object-selection.edges defines which (from_type, to_type, context) triple
+                # should be used when flattening the 5-tuple edge into a 4-tuple index link.
+                edge_pair_key = (doc_type, link_type)
+                edge_context = idxcfg.settings['edge_selection_contexts'].get(edge_pair_key)
+                sysmsg.trace(
+                    "build_links_parentchild: doc_type='{}' link_type='{}' edge_pair_key={} context='{}'",
+                    doc_type,
+                    link_type,
+                    edge_pair_key,
+                    edge_context,
+                )
+                if edge_context is None:
+                    sysmsg.warning(
+                        f"No edge context configured for '{doc_type}' <-> '{link_type}' "
+                        "in config_index.json object-selection.edges. Skipping."
+                    )
+                    return
                 #----------------------------#
                 # Generate SQL query helpers #
                 #----------------------------#
@@ -5040,8 +5064,9 @@ class GraphRegistry():
                            s.to_object_type AS link_type, s.to_object_id AS link_id,
                          {sql_slice_field_values_as_names}
                          1 AS to_process
-                    FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric s\n{sql_slice_joins_obj2obj}
+                     FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ParentChildSymmetric s\n{sql_slice_joins_obj2obj}
                    WHERE (s.from_object_type, s.to_object_type) = ('{doc_type}', '{link_type}')
+                     AND s.context = '{edge_context}'
                      AND s.to_process = 1
                 """
 
@@ -6266,6 +6291,22 @@ class GraphRegistry():
                 # Cross-engine collate correction
                 colate_correct = 'COLLATE utf8mb4_unicode_ci' if self.engine_name=='prod' else ''
 
+                # Resolve the canonical context for this edge pair from config_index.json.
+                edge_pair_key = tuple(sorted([self.doc_type, self.link_type]))
+                edge_context = idxcfg.settings['edge_selection_contexts'].get(edge_pair_key)
+                sysmsg.trace(
+                    "horizontal_patch_parentchild: doc_type='{}' link_type='{}' edge_pair_key={} context='{}'",
+                    self.doc_type,
+                    self.link_type,
+                    edge_pair_key,
+                    edge_context,
+                )
+                if edge_context is None:
+                    sysmsg.warning(
+                        f"No edge context configured for '{self.doc_type}' <-> '{self.link_type}' "
+                        "in config_index.json object-selection.edges. Skipping."
+                    )
+                    return
                 #--------------------------#
                 # Build commit SQL queries #
                 #--------------------------#
@@ -6296,9 +6337,10 @@ class GraphRegistry():
                            LEFT JOIN {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type if buildup_table_exists_direct else self.link_type}_{self.link_type if buildup_table_exists_direct else self.doc_type} bl
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                 AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.to_process = 1
-                        """
+                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
+                                  AND p.context        {colate_correct} = '{edge_context}'
+                                  AND p.to_process = 1
+                         """
 
                     # No buildup table
                     else:
@@ -6315,9 +6357,10 @@ class GraphRegistry():
                            LEFT JOIN {buildup_link_table_path} bd
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                 AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.to_process = 1
-                        """
+                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
+                                  AND p.context        {colate_correct} = '{edge_context}'
+                                  AND p.to_process = 1
+                         """
 
                     # Generate SQL query 3
                     SQLQuery3 = f"""
@@ -6330,9 +6373,10 @@ class GraphRegistry():
                                     FROM {target_table_path}
                               INNER JOIN (SELECT DISTINCT IF(from_object_type='{self.doc_type}', from_object_id, to_object_id) AS doc_id
                                                      FROM {parentchild_table_path}
-                                                    WHERE from_object_type {colate_correct} = '{self.doc_type}'
-                                                      AND to_object_type   {colate_correct} = '{self.link_type}'
-                                                      AND to_process = 1) t
+                                                     WHERE from_object_type {colate_correct} = '{self.doc_type}'
+                                                       AND to_object_type   {colate_correct} = '{self.link_type}'
+                                                       AND context          {colate_correct} = '{edge_context}'
+                                                       AND to_process = 1) t
                                    USING (doc_id)
                                  ) tt
                            WHERE {score_type} >= 0.1

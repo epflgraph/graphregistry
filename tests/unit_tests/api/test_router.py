@@ -11,34 +11,6 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from graphregistry.application.operations.ops_edge import EdgeOperations
-from graphregistry.application.operations.ops_node import NodeOperations
-from graphregistry.domain.models.entities.mdl_base import NodeKeyList
-from graphregistry.domain.models.entities.mdl_edge import EdgeList
-from graphregistry.domain.models.entities.mdl_node import NodeList
-from graphregistry.entrypoints.api.main import create_app
-from graphregistry.entrypoints.api.router import get_edge_ops, get_node_ops
-from tests.conftest import FakeEdgeRepository, FakeNodeRepository, make_edge, make_node
-
-
-@pytest.fixture
-def api_client() -> TestClient:
-    """Build a TestClient with fake repositories injected into the router."""
-    node_repo = FakeNodeRepository()
-    edge_repo = FakeEdgeRepository()
-
-    def _node_ops() -> NodeOperations:
-        return NodeOperations(repo=node_repo)
-
-    def _edge_ops() -> EdgeOperations:
-        return EdgeOperations(repo=edge_repo)
-
-    app = create_app()
-    app.dependency_overrides[get_node_ops] = _node_ops
-    app.dependency_overrides[get_edge_ops] = _edge_ops
-
-    return TestClient(app)
-
 
 class TestStatusEndpoint:
     def test_status(self, api_client: TestClient) -> None:
@@ -141,7 +113,7 @@ class TestEdgeEndpoints:
                 "from_id": "CS-433",
                 "to_type": "Person",
                 "to_id": "p-1",
-                "context": "taught_by",
+                "context": "teacher",
             }
         }
         response = api_client.post("/api/edges/save", json=payload)
@@ -149,12 +121,13 @@ class TestEdgeEndpoints:
         assert response.json()["success"] is True
 
     def test_edges_save_defaults_context_to_part_of(self, api_client: TestClient) -> None:
+        # "Lecture" -> "Course" with context "part of" is an allowed edge type.
         payload: dict[str, Any] = {
             "edge": {
-                "from_type": "Course",
-                "from_id": "CS-433",
-                "to_type": "Person",
-                "to_id": "p-1",
+                "from_type": "Lecture",
+                "from_id": "lec-1",
+                "to_type": "Course",
+                "to_id": "CS-433",
             }
         }
         response = api_client.post("/api/edges/save", json=payload)
@@ -168,14 +141,14 @@ class TestEdgeEndpoints:
             "edge": {
                 "from_type": "Course", "from_id": "CS-433",
                 "to_type": "Person", "to_id": "p-1",
-                "context": "taught_by",
+                "context": "teacher",
             }
         })
         response = api_client.post("/api/edges/exists", json={
             "key": {
                 "from_type": "Course", "from_id": "CS-433",
                 "to_type": "Person", "to_id": "p-1",
-                "context": "taught_by",
+                "context": "teacher",
             }
         })
         assert response.status_code == 200
@@ -186,14 +159,14 @@ class TestEdgeEndpoints:
             "edge": {
                 "from_type": "Course", "from_id": "CS-433",
                 "to_type": "Person", "to_id": "p-1",
-                "context": "taught_by",
+                "context": "teacher",
             }
         })
         response = api_client.post("/api/edges/delete_many", json={
             "key_list": [{
                 "from_type": "Course", "from_id": "CS-433",
                 "to_type": "Person", "to_id": "p-1",
-                "context": "taught_by",
+                "context": "teacher",
             }]
         })
         assert response.status_code == 200
@@ -208,7 +181,7 @@ class TestEdgeEndpoints:
                 "from_id": "CS-433",
                 "to_type": "Person",
                 "to_id": "p-1",
-                "context": "taught_by",
+                "context": "teacher",
                 "custom_fields": [
                     {"field_name": "credits", "field_value": 2},
                 ],

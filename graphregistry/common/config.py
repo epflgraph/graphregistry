@@ -160,6 +160,64 @@ class GlobalConfig:
         print('mysql_schema_names:')
         rich.print_json(data=self.mysql_schema_names)
 
+#==============================#
+# Class definition: APIConfig  #
+#==============================#
+class APIConfig:
+    """Class to handle API-specific configuration, including allowed types."""
+
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_api.json"
+
+    def __init__(self, api_config: dict | None = None):
+        """Load and parse the API configuration.
+
+        ``allowed_node_types`` is exposed as a set of object type names.
+        ``allowed_edge_tuples`` is exposed as a set of
+        ``(from_type, to_type, context)`` triples.
+
+        The configuration file is required. If it is missing, a clear error is
+        raised explaining where the file should be placed.
+        """
+        if api_config is None:
+            try:
+                api_config = self._load_raw()
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(
+                    f"API configuration file not found: {exc.filename}. "
+                    f"Create this file at {self.DEFAULT_PATH} with the "
+                    "allowed node/edge types, or mount it into the container "
+                    f"at {self.DEFAULT_PATH}."
+                ) from exc
+
+        allowed = api_config.get("allowed-types", {})
+        # Preserve the config file order for OpenAPI examples, while also
+        # providing sets for O(1) membership checks in validators.
+        self.allowed_node_types_list = list(allowed.get("nodes", []))
+        self.allowed_edge_tuples_list = [
+            tuple(triple) for triple in allowed.get("edges", [])
+        ]
+        self.allowed_node_types = set(self.allowed_node_types_list)
+        self.allowed_edge_tuples = set(self.allowed_edge_tuples_list)
+
+    @classmethod
+    def from_file(cls, path: str | Path | None = None) -> "APIConfig":
+        """Create an API configuration instance from a JSON file."""
+        return cls(cls._load_raw(path))
+
+    @classmethod
+    def _load_raw(cls, path: str | Path | None = None) -> dict:
+        if path is None:
+            path = cls.DEFAULT_PATH
+        path = Path(path)
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def print(self):
+        print('Allowed node types:')
+        rich.print_json(data=self.allowed_node_types_list)
+        print('Allowed edge tuples:')
+        rich.print_json(data=[list(t) for t in self.allowed_edge_tuples_list])
+
 #===============================#
 # Class definition: IndexConfig #
 #===============================#
@@ -183,6 +241,19 @@ class IndexConfig:
 
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types
+
+        # Fetch the configured edge selection (from_type, to_type, context).
+        # The context is the canonical relationship to use when flattening the
+        # 5-tuple edge identity into a 4-tuple index link identity.
+        edge_selection = index_config.get('object-selection', {}).get('edges', [])
+        self.settings['edge_selection'] = [list(triple) for triple in edge_selection]
+        self.settings['edge_selection_contexts'] = {
+            (a, b): context
+            for (a, b, context) in (
+                tuple(sorted([triple[0], triple[1]]) + [triple[2]])
+                for triple in edge_selection
+            )
+        }
 
         # Fetch data types for SQL field definitions
         self.settings['data_types'] = index_config['data-types']
@@ -387,8 +458,19 @@ class IndexConfig:
                 if len(elasticsearch_filters)>0:
                     self.settings['elasticsearch']['filters']['links'][link_type] = elasticsearch_filters
 
-        # Convert defaultdict to normal dict for easier handling
-        self.settings = json.loads(json.dumps(self.settings))
+        # Convert defaultdict to normal dict for easier handling.
+        # We cannot use json.dumps/loads because edge_selection_contexts uses
+        # tuple keys (e.g. ("Person", "Unit")).
+        def _to_dict(obj):
+            if isinstance(obj, defaultdict):
+                obj = dict(obj)
+            if isinstance(obj, dict):
+                return {k: _to_dict(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_to_dict(v) for v in obj]
+            return obj
+
+        self.settings = _to_dict(self.settings)
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "IndexConfig":

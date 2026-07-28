@@ -36,9 +36,13 @@ COPY docker ./docker
 
 # Install the graphregistry package itself in editable mode so that package
 # metadata (including the version) is available to importlib.metadata.
-RUN pip install --no-cache-dir -e .
+# --no-deps is used because all runtime dependencies were already installed
+# from docker/requirements.txt; without it, any change to the source code would
+# invalidate this layer and re-run the full dependency resolution.
+RUN pip install --no-deps --no-cache-dir -e .
 
-# Create a directory for configuration files and ensure the entrypoint script is executable
+# Create a directory for configuration files and ensure the entrypoint script is executable.
+# Runtime configs (including config_api.json) are mounted at deploy time, not baked into the image.
 RUN mkdir -p /app/config \
     && chmod +x /app/docker/entrypoint.sh
 
