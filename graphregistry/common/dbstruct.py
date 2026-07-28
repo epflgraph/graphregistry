@@ -310,23 +310,33 @@ class DynamicSQL:
     # General simplified method to get all combined fields
     def get_all_doclink_fields(self, doc_type, link_type, link_subtype, index_group):
 
+        # Decide whether the physical table stores link_subtype as an ID column.
+        # Index-buildup/rollback and ES cache doc-link tables do not; GraphSearch
+        # doc-link tables (ORG/SEM) still do.
+        include_link_subtype_by_group = {
+            'indexbuildup': False,
+            'indexrollback': False,
+            'graphsearch': True,
+            'elasticsearch': False,
+        }
+        include_link_subtype = include_link_subtype_by_group.get(index_group, link_subtype is not None)
+
         # Get field list helpers
-        id_fields_wi  = self.get_id_fields(unit_type='edge', convention='doc-link', include_link_subtype=link_subtype is not None)
-        id_fields_woi = self.get_id_fields(unit_type='edge', convention='doc-link', include_link_subtype=link_subtype is not None or index_group=='elasticsearch')
+        id_fields = self.get_id_fields(unit_type='edge', convention='doc-link', include_link_subtype=include_link_subtype)
         custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
         # print('==========>', "custom_fields ..... ", custom_fields)
 
         # Combine and return according to index group
-        if type(id_fields_wi) is list and type(id_fields_woi) is list and type(custom_fields) is list:
+        if type(id_fields) is list and type(custom_fields) is list:
             if index_group=='indexbuildup':
-                return id_fields_wi + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields + ['to_process', 'row_id']
+                return id_fields + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields + ['to_process', 'row_id']
             elif index_group=='indexrollback':
-                return ['rollback_date'] + id_fields_wi + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields + ['to_process', 'row_id']
+                return ['rollback_date'] + id_fields + self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields + ['to_process', 'row_id']
             elif index_group=='graphsearch':
-                return id_fields_wi + custom_fields + [{'ORG':'degree_score', 'SEM':'semantic_score'}[link_subtype.upper()], 'row_score', 'row_rank', 'row_id']
+                return id_fields + custom_fields + [{'ORG':'degree_score', 'SEM':'semantic_score'}[link_subtype.upper()], 'row_score', 'row_rank', 'row_id']
             elif index_group=='elasticsearch':
-                return id_fields_woi + ['link_rank', 'link_name_en', 'link_name_fr', 'link_short_description_en', 'link_short_description_fr'] + custom_fields + ['row_id']
+                return id_fields + ['link_rank', 'link_name_en', 'link_name_fr', 'link_short_description_en', 'link_short_description_fr'] + custom_fields + ['row_id']
             else:
                 return []
         else:
