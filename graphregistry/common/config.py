@@ -179,10 +179,14 @@ class APIConfig:
             api_config = self._load_raw()
 
         allowed = api_config.get("allowed-types", {})
-        self.allowed_node_types = set(allowed.get("nodes", []))
-        self.allowed_edge_tuples = {
+        # Preserve the config file order for OpenAPI examples, while also
+        # providing sets for O(1) membership checks in validators.
+        self.allowed_node_types_list = list(allowed.get("nodes", []))
+        self.allowed_edge_tuples_list = [
             tuple(triple) for triple in allowed.get("edges", [])
-        }
+        ]
+        self.allowed_node_types = set(self.allowed_node_types_list)
+        self.allowed_edge_tuples = set(self.allowed_edge_tuples_list)
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "APIConfig":
@@ -199,9 +203,9 @@ class APIConfig:
 
     def print(self):
         print('Allowed node types:')
-        rich.print_json(data=sorted(self.allowed_node_types))
+        rich.print_json(data=self.allowed_node_types_list)
         print('Allowed edge tuples:')
-        rich.print_json(data=[list(t) for t in self.allowed_edge_tuples])
+        rich.print_json(data=[list(t) for t in self.allowed_edge_tuples_list])
 
 #===============================#
 # Class definition: IndexConfig #

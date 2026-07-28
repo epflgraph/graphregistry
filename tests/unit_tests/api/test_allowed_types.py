@@ -86,6 +86,41 @@ class TestNodeAllowedTypes:
         assert "not an allowed type" in response.json()["detail"].lower()
 
 
+class TestOpenAPIExamples:
+    """Swagger/OpenAPI examples should reflect the allowed-type configuration."""
+
+    def test_openapi_uses_first_allowed_type_as_example(
+        self, api_client: TestClient
+    ) -> None:
+        response = api_client.get("/openapi.json")
+        assert response.status_code == 200
+        schemas = response.json()["components"]["schemas"]
+
+        # First allowed node type in config_api.json is "Course".
+        assert schemas["NodeSpec"]["properties"]["type"]["example"] == "Course"
+        assert schemas["NodeKeySpec"]["properties"]["type"]["example"] == "Course"
+
+        # First allowed edge tuple in config_api.json is ("Course", "Person", "teacher").
+        assert schemas["EdgeSpec"]["properties"]["from_type"]["example"] == "Course"
+        assert schemas["EdgeSpec"]["properties"]["to_type"]["example"] == "Person"
+        assert schemas["EdgeSpec"]["properties"]["context"]["example"] == "teacher"
+        assert schemas["EdgeKeySpec"]["properties"]["from_type"]["example"] == "Course"
+        assert schemas["EdgeKeySpec"]["properties"]["to_type"]["example"] == "Person"
+        assert schemas["EdgeKeySpec"]["properties"]["context"]["example"] == "teacher"
+
+        # Request-level examples must also use the first allowed values so the
+        # Swagger UI request body preview does not fall back to the field default.
+        node_save_example = schemas["APINodesSaveRequest"]["example"]["node"]
+        assert node_save_example["type"] == "Course"
+        assert node_save_example["title"] == "string"
+        assert node_save_example["custom_fields"][0]["field_name"] == "string"
+        node_save_many_example = schemas["APINodesSaveManyRequest"]["example"]["node_list"][0]
+        assert node_save_many_example["type"] == "Course"
+        assert node_save_many_example["title"] == "string"
+        assert schemas["APIEdgesSaveRequest"]["example"]["edge"]["context"] == "teacher"
+        assert schemas["APIEdgesSaveManyRequest"]["example"]["edge_list"][0]["context"] == "teacher"
+
+
 class TestEdgeAllowedTypes:
     """Validate allowed edge tuples on /api/edges/save and /api/edges/save_many."""
 

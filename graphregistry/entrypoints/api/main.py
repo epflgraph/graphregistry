@@ -6,12 +6,13 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
 from graphregistry.entrypoints.api.router import router
 
 # import global config
-from graphregistry.common.config import GlobalConfig
+from graphregistry.common.config import APIConfig, GlobalConfig
 from graphregistry.common.version import REGISTRY_API_VERSION
 from graphregistry.domain.exceptions import DisallowedTypeError
 
@@ -83,6 +84,7 @@ def create_app() -> FastAPI:
 
     # Load configuration when the app is created, not at import time.
     glbcfg = GlobalConfig()
+    api_cfg = APIConfig()
 
     # Initialize the FastAPI app with metadata and documentation settings
     app = FastAPI(
@@ -239,6 +241,106 @@ def create_app() -> FastAPI:
                 "detail": f"Internal server error: {type(exc).__name__}: {exc}",
             },
         )
+
+    #===============================#
+    # OpenAPI / Swagger customisation #
+    #===============================#
+
+    def custom_openapi() -> dict[str, Any]:
+        """Generate the OpenAPI schema and override object-type examples.
+
+        The default Pydantic examples come from the ObjectType literal, whose
+        first value is "Category". We replace them with the first allowed type
+        from ``config_api.json`` so Swagger shows realistic, permitted values.
+        """
+        if app.openapi_schema is not None:
+            return app.openapi_schema
+
+        openapi_schema = get_openapi(
+            title=app.title,
+            version=app.version,
+            summary=app.summary,
+            description=app.description,
+            routes=app.routes,
+        )
+
+        schemas = openapi_schema.setdefault("components", {}).setdefault("schemas", {})
+
+        # Node examples: first allowed node type.
+        if api_cfg.allowed_node_types_list:
+            example_node_type = api_cfg.allowed_node_types_list[0]
+            for schema_name in ("NodeSpec", "NodeKeySpec"):
+                schema = schemas.get(schema_name)
+                if schema and "type" in schema.get("properties", {}):
+                    schema["properties"]["type"]["example"] = example_node_type
+
+        # Edge examples: first allowed edge tuple (from_type, to_type, context).
+        if api_cfg.allowed_edge_tuples_list:
+            example_edge_tuple = api_cfg.allowed_edge_tuples_list[0]
+            for schema_name in ("EdgeSpec", "EdgeKeySpec"):
+                schema = schemas.get(schema_name)
+                if schema is None:
+                    continue
+                properties = schema.get("properties", {})
+                for field_name, field_value in zip(
+                    ("from_type", "to_type", "context"), example_edge_tuple
+                ):
+                    if field_name in properties:
+                        properties[field_name]["example"] = field_value
+
+        # Swagger UI sometimes prefers a default value over a property-level
+        # example, so also set full request-level examples for the save endpoints.
+        if api_cfg.allowed_node_types_list:
+            example_node = {
+                "type": example_node_type,
+                "subtype": "string",
+                "id": "string",
+                "short_code": "string",
+                "title": "string",
+                "description": "string",
+                "url": "string",
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "string",
+                        "field_value": "string",
+                    }
+                ],
+            }
+            node_save_request = schemas.get("APINodesSaveRequest")
+            if node_save_request is not None:
+                node_save_request["example"] = {"node": example_node}
+            node_save_many_request = schemas.get("APINodesSaveManyRequest")
+            if node_save_many_request is not None:
+                node_save_many_request["example"] = {"node_list": [example_node]}
+
+        if api_cfg.allowed_edge_tuples_list:
+            from_type, to_type, context = example_edge_tuple
+            example_edge = {
+                "from_type": from_type,
+                "from_id": "string",
+                "to_type": to_type,
+                "to_id": "string",
+                "context": context,
+                "custom_fields": [
+                    {
+                        "field_language": "n/a",
+                        "field_name": "string",
+                        "field_value": "string",
+                    }
+                ],
+            }
+            edge_save_request = schemas.get("APIEdgesSaveRequest")
+            if edge_save_request is not None:
+                edge_save_request["example"] = {"edge": example_edge}
+            edge_save_many_request = schemas.get("APIEdgesSaveManyRequest")
+            if edge_save_many_request is not None:
+                edge_save_many_request["example"] = {"edge_list": [example_edge]}
+
+        app.openapi_schema = openapi_schema
+        return app.openapi_schema
+
+    app.openapi = custom_openapi
 
     #==================#
     # Utility routes   #
