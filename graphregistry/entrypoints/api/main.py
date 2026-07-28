@@ -1,6 +1,9 @@
 # graphregistry/entrypoints/api/main.py
 from __future__ import annotations
+import json
 import logging
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
@@ -14,6 +17,66 @@ from graphregistry.domain.exceptions import DisallowedTypeError
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
+
+
+# Fields that carry node/edge object types in the request schemas.
+_OBJECT_TYPE_FIELDS = {"type", "from_type", "to_type"}
+
+
+def _is_object_type_literal_error(error: dict[str, Any]) -> bool:
+    """Detect Pydantic literal errors on object-type fields."""
+    if error.get("type") != "literal_error":
+        return False
+    loc = error.get("loc")
+    return bool(loc) and loc[-1] in _OBJECT_TYPE_FIELDS
+
+
+def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str | list[str] | None:
+    """Convert object-type literal errors into unified 'not an allowed type' messages.
+
+    Returns a single message when there is one invalid type, a list otherwise.
+    Returns ``None`` when the errors are not purely object-type literal errors.
+    """
+    if not errors or not all(_is_object_type_literal_error(e) for e in errors):
+        return None
+
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except Exception:
+        return None
+
+    messages: list[str] = []
+    for error in errors:
+        loc = error.get("loc", ())
+        value = error.get("input")
+        field = loc[-1] if loc else None
+
+        if field == "type":
+            messages.append(f"Node type '{value}' is not an allowed type.")
+        elif field in ("from_type", "to_type"):
+            try:
+                if "edge_list" in loc:
+                    idx = loc[loc.index("edge_list") + 1]
+                    edge = payload["edge_list"][idx]
+                else:
+                    edge = payload["edge"]
+                edge_tuple = (
+                    edge.get("from_type"),
+                    edge.get("to_type"),
+                    edge.get("context", "part of"),
+                )
+                msg = f"Edge type {edge_tuple} is not an allowed type."
+            except Exception:
+                msg = f"Edge type '{value}' is not an allowed type."
+            if msg not in messages:
+                messages.append(msg)
+        else:
+            messages.append(f"Type '{value}' is not an allowed type.")
+
+    if not messages:
+        return None
+    return messages[0] if len(messages) == 1 else messages
+
 
 # Create the FastAPI application
 def create_app() -> FastAPI:
@@ -49,6 +112,22 @@ def create_app() -> FastAPI:
         """
 
         body = await request.body()
+
+        # If the only validation failures are invalid object types, return the
+        # same unified "not an allowed type" message that the allowed-types
+        # validator uses, instead of a Pydantic literal_error payload.
+        type_detail = _build_type_error_detail(body, exc.errors())
+        if type_detail is not None:
+            logger.warning(
+                "Invalid object type in API request: method=%s path=%s detail=%s",
+                request.method,
+                request.url.path,
+                type_detail,
+            )
+            return JSONResponse(
+                status_code=400,
+                content={"detail": type_detail},
+            )
 
         logger.error(
             "Request validation error: method=%s path=%s",

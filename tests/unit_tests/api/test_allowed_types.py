@@ -42,6 +42,23 @@ class TestNodeAllowedTypes:
         assert response.status_code == 400
         assert "not an allowed type" in response.json()["detail"].lower()
 
+    def test_nodes_save_rejects_unknown_type_with_unified_message(
+        self, api_client: TestClient
+    ) -> None:
+        # Lowercase "course" is not a known ObjectType, so Pydantic rejects it
+        # before the allowed-types validator runs. The exception handler now
+        # converts this into the same unified message.
+        payload: dict[str, Any] = {
+            "node": {
+                "type": "course",
+                "id": "cs-433",
+                "title": "Machine Learning",
+            }
+        }
+        response = api_client.post("/api/nodes/save", json=payload)
+        assert response.status_code == 400
+        assert "not an allowed type" in response.json()["detail"].lower()
+
     def test_nodes_save_many_allows_configured_types(self, api_client: TestClient) -> None:
         payload: dict[str, Any] = {
             "node_list": [
@@ -95,6 +112,24 @@ class TestEdgeAllowedTypes:
                 "to_type": "Person",
                 "to_id": "p-1",
                 "context": "taught_by",
+            }
+        }
+        response = api_client.post("/api/edges/save", json=payload)
+        assert response.status_code == 400
+        assert "not an allowed type" in response.json()["detail"].lower()
+
+    def test_edges_save_rejects_unknown_type_with_unified_message(
+        self, api_client: TestClient
+    ) -> None:
+        # Lowercase "course" is not a known ObjectType. The handler should
+        # return the same unified "not an allowed type" message.
+        payload: dict[str, Any] = {
+            "edge": {
+                "from_type": "course",
+                "from_id": "cs-433",
+                "to_type": "Person",
+                "to_id": "p-1",
+                "context": "teacher",
             }
         }
         response = api_client.post("/api/edges/save", json=payload)
