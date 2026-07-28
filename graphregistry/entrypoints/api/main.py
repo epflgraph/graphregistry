@@ -84,7 +84,17 @@ def create_app() -> FastAPI:
 
     # Load configuration when the app is created, not at import time.
     glbcfg = GlobalConfig()
-    api_cfg = APIConfig()
+    try:
+        api_cfg = APIConfig()
+    except FileNotFoundError as exc:
+        logger.critical(
+            "API cannot start: %s\n"
+            "Please create this file with the allowed node/edge types, "
+            "or mount it into the container at %s.",
+            exc,
+            APIConfig.DEFAULT_PATH,
+        )
+        raise
 
     # Initialize the FastAPI app with metadata and documentation settings
     app = FastAPI(

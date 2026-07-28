@@ -6,10 +6,14 @@ These tests use the real ``AllowedTypesValidator`` (loaded from
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+
+from graphregistry.common.config import APIConfig
+from graphregistry.entrypoints.api.main import create_app
 
 
 class TestNodeAllowedTypes:
@@ -222,3 +226,25 @@ class TestEdgeAllowedTypes:
         response = api_client.post("/api/edges/save_many", json=payload)
         assert response.status_code == 400
         assert "not an allowed type" in response.json()["detail"].lower()
+
+
+class TestMissingAPIConfig:
+    """The API must refuse to start when config_api.json is absent."""
+
+    def test_app_fails_when_config_api_json_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Point APIConfig at a non-existing path and reset the router's cached
+        # config so the new app instance attempts to load the missing file.
+        monkeypatch.setattr(
+            APIConfig, "DEFAULT_PATH", Path("/nonexistent/config_api.json")
+        )
+        from graphregistry.entrypoints.api import router as router_module
+
+        router_module._api_config = None  # type: ignore[attr-defined]
+
+        try:
+            with pytest.raises(FileNotFoundError, match="API configuration file not found"):
+                create_app()
+        finally:
+            router_module._api_config = None  # type: ignore[attr-defined]

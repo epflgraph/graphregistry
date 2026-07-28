@@ -174,9 +174,20 @@ class APIConfig:
         ``allowed_node_types`` is exposed as a set of object type names.
         ``allowed_edge_tuples`` is exposed as a set of
         ``(from_type, to_type, context)`` triples.
+
+        The configuration file is required. If it is missing, a clear error is
+        raised explaining where the file should be placed.
         """
         if api_config is None:
-            api_config = self._load_raw()
+            try:
+                api_config = self._load_raw()
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(
+                    f"API configuration file not found: {exc.filename}. "
+                    f"Create this file at {self.DEFAULT_PATH} with the "
+                    "allowed node/edge types, or mount it into the container "
+                    f"at {self.DEFAULT_PATH}."
+                ) from exc
 
         allowed = api_config.get("allowed-types", {})
         # Preserve the config file order for OpenAPI examples, while also

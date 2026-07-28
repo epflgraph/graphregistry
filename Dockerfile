@@ -38,9 +38,12 @@ COPY docker ./docker
 # metadata (including the version) is available to importlib.metadata.
 RUN pip install --no-cache-dir -e .
 
-# Create a directory for configuration files and ensure the entrypoint script is executable
+# Create a directory for configuration files and ensure the entrypoint script is executable.
+# Copy the default API allowed-types config so the app can enforce it out of the box;
+# operators can still override it by mounting a file at /app/config/config_api.json.
 RUN mkdir -p /app/config \
     && chmod +x /app/docker/entrypoint.sh
+COPY config/config_api.json /app/config/config_api.json
 
 # Expose the application port
 EXPOSE 28800
