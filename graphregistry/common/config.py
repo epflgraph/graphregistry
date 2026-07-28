@@ -248,7 +248,7 @@ class IndexConfig:
         edge_selection = index_config.get('object-selection', {}).get('edges', [])
         self.settings['edge_selection'] = [list(triple) for triple in edge_selection]
         self.settings['edge_selection_contexts'] = {
-            f"{a}|{b}": context
+            (a, b): context
             for (a, b, context) in (
                 tuple(sorted([triple[0], triple[1]]) + [triple[2]])
                 for triple in edge_selection
@@ -458,8 +458,19 @@ class IndexConfig:
                 if len(elasticsearch_filters)>0:
                     self.settings['elasticsearch']['filters']['links'][link_type] = elasticsearch_filters
 
-        # Convert defaultdict to normal dict for easier handling
-        self.settings = json.loads(json.dumps(self.settings))
+        # Convert defaultdict to normal dict for easier handling.
+        # We cannot use json.dumps/loads because edge_selection_contexts uses
+        # tuple keys (e.g. ("Person", "Unit")).
+        def _to_dict(obj):
+            if isinstance(obj, defaultdict):
+                obj = dict(obj)
+            if isinstance(obj, dict):
+                return {k: _to_dict(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_to_dict(v) for v in obj]
+            return obj
+
+        self.settings = _to_dict(self.settings)
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "IndexConfig":

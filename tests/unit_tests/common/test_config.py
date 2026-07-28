@@ -16,10 +16,10 @@ def test_index_config_exposes_edge_selection_contexts() -> None:
     assert ["Course", "Person", "teacher"] in cfg.settings["edge_selection"]
     assert ["Lecture", "Course", "part of"] in cfg.settings["edge_selection"]
 
-    # Contexts are keyed by the alphabetically sorted pair (as a "a|b" string)
+    # Contexts are keyed by the alphabetically sorted pair (as a tuple)
     # so both directions resolve to the same canonical context.
     contexts = cfg.settings["edge_selection_contexts"]
-    assert contexts["Category|Concept"] == "ontology tree"
-    assert contexts["Course|Person"] == "teacher"
-    assert contexts["Course|Lecture"] == "part of"
-    assert contexts["Lecture|Widget"] == "part of"
+    assert contexts[("Category", "Concept")] == "ontology tree"
+    assert contexts[("Course", "Person")] == "teacher"
+    assert contexts[("Course", "Lecture")] == "part of"
+    assert contexts[("Lecture", "Widget")] == "part of"
