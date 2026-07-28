@@ -362,7 +362,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Apply typeflags configuration JSON to the Airflow orchestrator.",
                 func = cmd_airflow_config,
                 args = [
-                    dict(flags=('--typeflags',), kwargs=dict(required=True, type=str, default=None, help="Typeflags configuration as a JSON string, or '@path/to/file.json' to load JSON from a file."))
+                    dict(flags=('--typeflags',), kwargs=dict(required=True, type=str, default=None, help="Typeflags configuration as a JSON string, or a path to a JSON file (with or without a leading '@')."))
                 ],
                 common_args = []
             ),

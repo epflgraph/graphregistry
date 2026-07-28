@@ -130,6 +130,7 @@ def cmd_airflow_config(args):
     Handle:
       graphregistry airflow config --typeflags='{json}'
       graphregistry airflow config --typeflags=@path/to/file.json
+      graphregistry airflow config --typeflags=path/to/file.json
     """
 
     # Print headers
@@ -141,14 +142,10 @@ def cmd_airflow_config(args):
     # Resolve the configuration
     tf_arg = args.typeflags
 
-    # Case 1: --typeflags=@path/to/file.json
-    if tf_arg.startswith("@"):
-        path_str = tf_arg[1:]
-        cfg_path = Path(path_str)
-
-        if not cfg_path.exists():
-            raise FileNotFoundError(f"Typeflags config file not found: {cfg_path}")
-
+    # Case 1: --typeflags=@path/to/file.json or --typeflags=path/to/file.json
+    path_str = tf_arg[1:] if tf_arg.startswith("@") else tf_arg
+    cfg_path = Path(path_str)
+    if cfg_path.is_file():
         print(f"Loading typeflags configuration from file: {cfg_path}")
         with cfg_path.open("r") as fp:
             cfg = json.load(fp)
