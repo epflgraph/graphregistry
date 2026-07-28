@@ -22,13 +22,16 @@ for config_file in "${REQUIRED_FILES[@]}"; do
     fi
     exit 1
   fi
+  echo "[graphregistry] Config check OK: ${config_file}"
 done
+echo "[graphregistry] All required config files are present."
 
 if [[ $# -gt 0 ]]; then
   exec "$@"
 fi
 
 ROLE="${GRAPHREGISTRY_ROLE:-api}"
+echo "[graphregistry] ROLE=${ROLE}"
 
 case "${ROLE}" in
   api)
