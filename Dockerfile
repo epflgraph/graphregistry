@@ -42,11 +42,9 @@ COPY docker ./docker
 RUN pip install --no-deps --no-cache-dir -e .
 
 # Create a directory for configuration files and ensure the entrypoint script is executable.
-# Copy the default API allowed-types config so the app can enforce it out of the box;
-# operators can still override it by mounting a file at /app/config/config_api.json.
+# Runtime configs (including config_api.json) are mounted at deploy time, not baked into the image.
 RUN mkdir -p /app/config \
     && chmod +x /app/docker/entrypoint.sh
-COPY config/config_api.json /app/config/config_api.json
 
 # Expose the application port
 EXPOSE 28800
