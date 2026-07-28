@@ -318,3 +318,4 @@ nohup_copy_tables.out
 config/
 scripts/
 logs/
+stop.sh

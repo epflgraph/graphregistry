@@ -7,8 +7,8 @@
 
 # Step 2: Reset and config airflow
 graphregistry airflow reset --options=airflow,traversals,cache
-graphregistry airflow config --typeflags=@airflow_config.json
-graphregistry airflow status
+graphregistry airflow config --typeflags config/config_airflow.json
+# graphregistry airflow status
 
 # Step 3: Sync new data
 # graphregistry airflow sync
