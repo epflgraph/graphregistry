@@ -160,6 +160,49 @@ class GlobalConfig:
         print('mysql_schema_names:')
         rich.print_json(data=self.mysql_schema_names)
 
+#==============================#
+# Class definition: APIConfig  #
+#==============================#
+class APIConfig:
+    """Class to handle API-specific configuration, including allowed types."""
+
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_api.json"
+
+    def __init__(self, api_config: dict | None = None):
+        """Load and parse the API configuration.
+
+        ``allowed_node_types`` is exposed as a set of object type names.
+        ``allowed_edge_tuples`` is exposed as a set of
+        ``(from_type, to_type, context)`` triples.
+        """
+        if api_config is None:
+            api_config = self._load_raw()
+
+        allowed = api_config.get("allowed-types", {})
+        self.allowed_node_types = set(allowed.get("nodes", []))
+        self.allowed_edge_tuples = {
+            tuple(triple) for triple in allowed.get("edges", [])
+        }
+
+    @classmethod
+    def from_file(cls, path: str | Path | None = None) -> "APIConfig":
+        """Create an API configuration instance from a JSON file."""
+        return cls(cls._load_raw(path))
+
+    @classmethod
+    def _load_raw(cls, path: str | Path | None = None) -> dict:
+        if path is None:
+            path = cls.DEFAULT_PATH
+        path = Path(path)
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def print(self):
+        print('Allowed node types:')
+        rich.print_json(data=sorted(self.allowed_node_types))
+        print('Allowed edge tuples:')
+        rich.print_json(data=[list(t) for t in self.allowed_edge_tuples])
+
 #===============================#
 # Class definition: IndexConfig #
 #===============================#

@@ -16,9 +16,12 @@ from __future__ import annotations
 from typing import Any, Iterator
 
 import pytest
+from fastapi.testclient import TestClient
 
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.entrypoints.api.main import create_app
+from graphregistry.entrypoints.api.router import get_edge_ops, get_node_ops
 from graphregistry.domain.models.entities.mdl_base import (
     EdgeKey,
     EdgeKeyList,
@@ -271,3 +274,23 @@ def node_ops(fake_node_repo: FakeNodeRepository) -> NodeOperations:
 def edge_ops(fake_edge_repo: FakeEdgeRepository) -> EdgeOperations:
     """Provide EdgeOperations backed by a fake repository."""
     return EdgeOperations(repo=fake_edge_repo)
+
+
+@pytest.fixture
+def api_client() -> Iterator[TestClient]:
+    """Build a TestClient with fake repositories injected into the router."""
+    node_repo = FakeNodeRepository()
+    edge_repo = FakeEdgeRepository()
+
+    def _node_ops() -> NodeOperations:
+        return NodeOperations(repo=node_repo)
+
+    def _edge_ops() -> EdgeOperations:
+        return EdgeOperations(repo=edge_repo)
+
+    app = create_app()
+    app.dependency_overrides[get_node_ops] = _node_ops
+    app.dependency_overrides[get_edge_ops] = _edge_ops
+
+    yield TestClient(app)
+    app.dependency_overrides.clear()

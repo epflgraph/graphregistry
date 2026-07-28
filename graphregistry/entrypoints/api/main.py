@@ -10,6 +10,7 @@ from graphregistry.entrypoints.api.router import router
 # import global config
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.version import REGISTRY_API_VERSION
+from graphregistry.domain.exceptions import DisallowedTypeError
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
@@ -111,6 +112,30 @@ def create_app() -> FastAPI:
             status_code=400,
             content={
                 "detail": f"Invalid request: {type(exc).__name__}: {exc}",
+            },
+        )
+
+    @app.exception_handler(DisallowedTypeError)
+    async def disallowed_type_exception_handler(request: Request, exc: DisallowedTypeError) -> JSONResponse:
+        """
+        Handle attempts to save nodes or edges that are not in the configured
+        allow-list.
+
+        Returns a clear 400 Bad Request message so callers know the type is
+        disallowed.
+        """
+
+        logger.warning(
+            "Disallowed type in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": str(exc),
             },
         )
 
