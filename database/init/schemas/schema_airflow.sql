@@ -1,16 +1,16 @@
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  from_object_type varchar(32) NOT NULL,
   from_object_id varchar(255) NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  to_object_type varchar(32) NOT NULL,
   to_object_id varchar(255) NOT NULL,
-  context varchar(255) NOT NULL DEFAULT '0',
+  context varchar(32) NOT NULL DEFAULT '0',
   checksum_current char(32) DEFAULT NULL,
   checksum_previous char(32) DEFAULT NULL,
   has_changed tinyint(4) DEFAULT 0,
   last_date_cached date DEFAULT NULL,
   has_expired tinyint(4) DEFAULT 0,
   to_process tinyint(4) NOT NULL DEFAULT 0,
-  row_id int(11) NOT NULL AUTO_INCREMENT,
+  row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
   UNIQUE KEY object_key (from_object_type,from_object_id,to_object_type,to_object_id),
@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_TypeFlags (
-  from_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
-  to_object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  from_object_type varchar(32) NOT NULL,
+  to_object_type varchar(32) NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
   PRIMARY KEY (from_object_type,to_object_type),
   KEY from_object_type (from_object_type),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_TypeFlags (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   checksum_current char(32) DEFAULT NULL,
   checksum_previous char(32) DEFAULT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
   last_date_cached date DEFAULT NULL,
   has_expired tinyint(4) DEFAULT 0,
   to_process tinyint(4) NOT NULL DEFAULT 0,
-  row_id int(11) NOT NULL AUTO_INCREMENT,
+  row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
   UNIQUE KEY object_key (object_type,object_id),
@@ -68,12 +68,12 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ScoresExpired (
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   last_date_cached date DEFAULT NULL,
   has_expired tinyint(4) DEFAULT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
-  row_id int(11) NOT NULL AUTO_INCREMENT,
+  row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
   UNIQUE KEY object_key (object_type,object_id),
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ScoresExpired (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_TypeFlags (
-  object_type enum('Category','Chart','Concept','Course','Curated area','Dashboard','Exercise','External person','Hardware','Historical figure','Lecture','Learning module','MOOC','News','Notebook','Person','Publication','Slide','Specialisation','Startup','Strategic area','StudyPlan','Transcript','Unit','Widget') NOT NULL,
+  object_type varchar(32) NOT NULL,
   flag_type enum('fields','scores') NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
   PRIMARY KEY (object_type,flag_type),
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_TypeFlags (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Lecture_T_ProcessingTokens (
-  object_type enum('Lecture') NOT NULL,
+  object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   video_download_task_id varchar(255) DEFAULT NULL,
   video_token varchar(255) DEFAULT NULL,
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Lecture_T_ProcessingTokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Slide_T_ProcessingTokens (
-  object_type enum('Slide') NOT NULL,
+  object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   video_token varchar(255) DEFAULT NULL,
   image_token varchar(255) DEFAULT NULL,
