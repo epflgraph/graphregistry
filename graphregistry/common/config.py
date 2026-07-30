@@ -80,6 +80,18 @@ class GlobalConfig:
         self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
         self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
 
+        # Path where index patch/rollback SQL files are generated.
+        # Supports the new top-level 'data_paths.patches' key, with a fallback
+        # to the legacy 'mysql.patch_path' key for backwards compatibility.
+        patch_path_setting = (
+            self.settings.get('data_paths', {}).get('patches')
+            or self.settings.get('mysql', {}).get('patch_path')
+            or 'data/index_patches'
+        )
+        self.index_patch_path = Path(patch_path_setting)
+        if not self.index_patch_path.is_absolute():
+            self.index_patch_path = REPO_ROOT / self.index_patch_path
+
         # Safety limits
         self.limit_per_type_max = self.settings.get('limits', {}).get('limit_per_type_max', 1000)
 
