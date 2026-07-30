@@ -589,7 +589,7 @@ class GraphRegistry():
 
             # Apply defaults
             older_than = older_than if older_than!=None else 90
-            limit_per_type = limit_per_type if limit_per_type!=None else 100
+            limit_per_type = limit_per_type if limit_per_type!=None else 9999999999
 
             # Call expire functions for both 'fields changed' and 'scores expired' flag types
             self.fieldschanged.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, count_only=count_only, verbose=verbose)
