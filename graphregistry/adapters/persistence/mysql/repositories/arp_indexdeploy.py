@@ -10,6 +10,7 @@ from graphregistry.domain.repositories.rpo_indexdeploy import (
 )
 from graphregistry.common.dbstruct import resolve_sql_query, sql_queries_paths
 from graphregistry.common.logger import GraphLogger
+import rich
 
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
@@ -42,6 +43,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
         self.glbcfg = glbcfg
         self.msg = GraphLogger()
 
+    def _log(self, emoji: str, color: str, message: str) -> None:
+        """Print a coloured, emoji-prefixed status message."""
+        rich.print(f"[{color}]{emoji} {message}[/{color}]")
+
     # --------------------------
     # High-level orchestration
     # --------------------------
@@ -61,7 +66,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         results: dict[str, dict[str, int]] = {}
         for spec in table_specs:
             table_name = self._table_name(spec)
-            self.msg.info(f"Evaluating patch for {table_name}")
+            self._log("🔍", "cyan", f"Evaluating patch for {table_name}")
             results[table_name] = self.count_table_changes(
                 source_engine, target_engine, spec, schema_overrides
             )
@@ -80,7 +85,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         With actions containing 'commit' it executes replace/insert/delete.
         """
         if "commit" not in actions:
-            self.msg.warning("No 'commit' in actions; patch not applied.")
+            self._log("⚠️", "yellow", "No 'commit' in actions; patch not applied.")
             return
 
         for spec in table_specs:
@@ -108,6 +113,14 @@ class MySQLIndexDeploy(IndexDeployRepository):
         patch_root = self.glbcfg.index_patch_path / timestamp
         patch_dir = patch_root / "patch"
         rollback_dir = patch_root / "rollback"
+
+        self._log("📁", "blue", f"Generating patch files in {patch_root}")
+        self._log("🔧", "blue", f"Source engine: {source_engine}")
+        self._log("🔧", "blue", f"Target engine: {target_engine}")
+        if schema_overrides:
+            for key, value in schema_overrides.items():
+                self._log("🔧", "blue", f"Schema override: {key} -> {value}")
+
         patch_dir.mkdir(parents=True, exist_ok=True)
         rollback_dir.mkdir(parents=True, exist_ok=True)
 
@@ -122,7 +135,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 schema_overrides,
             )
 
-        self.msg.info(f"Patch files written to {patch_root}")
+        self._log("✅", "green", f"Patch files written to {patch_root}")
         return patch_root
 
     # --------------------------
@@ -173,6 +186,12 @@ class MySQLIndexDeploy(IndexDeployRepository):
         # a COUNT(*) wrapper around the replace query.
         counts["replace"] = 0
 
+        self._log(
+            "📊",
+            "cyan",
+            f"{table_name}: insert={counts['insert']}, delete={counts['delete']}, replace={counts['replace']}",
+        )
+
         return counts
 
     def commit_table_changes(
@@ -202,9 +221,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
             changed_condition=self._build_changed_condition(payload_columns),
         )
 
-        self.msg.info(f"Applying patch to {table_name}")
+        self._log("🚀", "magenta", f"Applying patch to {table_name}")
 
         # 1. Replace rows that exist in both but differ
+        self._log("🔁", "magenta", f"{table_name}: replacing changed rows")
         if spec.table_type == "page_profile":
             replace_query_name = "page_profile_replace_rows"
         else:
@@ -217,6 +237,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         )
 
         # 2. Insert rows that exist only in source
+        self._log("➕", "magenta", f"{table_name}: inserting new rows")
         if spec.table_type == "page_profile":
             insert_query_name = "page_profile_insert_rows"
         else:
@@ -229,6 +250,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         )
 
         # 3. Delete rows that exist only in target
+        self._log("➖", "magenta", f"{table_name}: deleting obsolete rows")
         if spec.table_type == "page_profile":
             delete_query_name = "page_profile_delete_rows"
         else:
@@ -239,6 +261,8 @@ class MySQLIndexDeploy(IndexDeployRepository):
         self.db.execute_query_in_shell(
             engine_name=target_engine, query=delete_query
         )
+
+        self._log("✅", "green", f"Finished applying patch to {table_name}")
 
     # --------------------------
     # Patch file generation
@@ -268,24 +292,42 @@ class MySQLIndexDeploy(IndexDeployRepository):
             engine_name=target_engine, schema_name=target_schema, table_name=table_name
         )
         if not source_exists and not target_exists:
-            self.msg.warning(
-                f"Skipping {table_name}: does not exist in source or target."
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping {table_name}: does not exist in source or target.",
             )
             return
         if not source_exists:
-            self.msg.warning(
-                f"Skipping {table_name}: does not exist in source {source_schema}."
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping {table_name}: does not exist in source {source_schema}.",
             )
             return
         if not target_exists:
-            self.msg.warning(
-                f"Skipping {table_name}: does not exist in target {target_schema}."
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping {table_name}: does not exist in target {target_schema}.",
             )
             return
+
+        self._log(
+            "📋",
+            "cyan",
+            f"{table_name}: source={source_schema}, target={target_schema}",
+        )
 
         key_columns = self._key_columns(spec.table_type)
         payload_columns = self._payload_columns(
             source_engine, source_schema, target_engine, target_schema, table_name, key_columns
+        )
+
+        self._log(
+            "🧩",
+            "cyan",
+            f"{table_name}: syncing {len(payload_columns)} common payload columns: {', '.join(payload_columns)}",
         )
 
         base_kwargs = self._base_kwargs(
@@ -302,6 +344,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
             query_name = self._commit_query_name(spec, op)
             query = self._render("commit", query_name, **base_kwargs)
             file_path = patch_dir / f"{table_name}_{op.upper()}.sql"
+            self._log("📝", "green", f"Writing forward patch: {file_path.name}")
             self._write_sql_file(file_path, query)
 
         # Rollback files
@@ -341,6 +384,11 @@ class MySQLIndexDeploy(IndexDeployRepository):
         no_match_source = f"t.{key_columns[0]} IS NULL"
 
         file_path = rollback_dir / f"{table_name}_{op.upper()}.sql"
+        self._log(
+            "🔄",
+            "blue",
+            f"Building rollback for {table_name} [{op.upper()}] -> {file_path.name}",
+        )
 
         if op == "delete":
             # Forward DELETE -> rollback INSERT the deleted rows.
@@ -353,6 +401,11 @@ class MySQLIndexDeploy(IndexDeployRepository):
             """
             rows = self.db.execute_query(
                 engine_name=target_engine, query=query
+            )
+            self._log(
+                "📊",
+                "cyan",
+                f"{table_name} rollback [DELETE]: fetched {len(rows)} deleted rows to restore",
             )
             sql = self._build_insert_sql(
                 target_schema, table_name, key_columns, payload_columns, rows
@@ -372,6 +425,11 @@ class MySQLIndexDeploy(IndexDeployRepository):
             rows = self.db.execute_query(
                 engine_name=source_engine, query=query
             )
+            self._log(
+                "📊",
+                "cyan",
+                f"{table_name} rollback [INSERT]: fetched {len(rows)} inserted keys to remove",
+            )
             sql = self._build_delete_sql(
                 target_schema, table_name, key_columns, rows
             )
@@ -388,6 +446,11 @@ class MySQLIndexDeploy(IndexDeployRepository):
             rows = self.db.execute_query(
                 engine_name=target_engine, query=query
             )
+            self._log(
+                "📊",
+                "cyan",
+                f"{table_name} rollback [REPLACE]: fetched {len(rows)} rows to revert",
+            )
             sql = self._build_update_sql(
                 target_schema, table_name, key_columns, payload_columns, rows
             )
@@ -396,6 +459,11 @@ class MySQLIndexDeploy(IndexDeployRepository):
             raise ValueError(f"Unknown rollback operation: {op}")
 
         self._write_sql_file(file_path, sql)
+        self._log(
+            "📝",
+            "green",
+            f"Wrote rollback file: {file_path.name}",
+        )
 
     def _build_insert_sql(
         self,
