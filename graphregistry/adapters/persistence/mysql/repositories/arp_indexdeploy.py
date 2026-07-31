@@ -2,6 +2,9 @@
 from __future__ import annotations
 from datetime import datetime
 import gzip
+import os
+import shutil
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -93,6 +96,81 @@ class MySQLIndexDeploy(IndexDeployRepository):
             self.commit_table_changes(
                 source_engine, target_engine, spec, actions, schema_overrides
             )
+
+    def apply_patch_files(
+        self,
+        patch_dir: Path,
+        target_engine: str,
+        target_schema: str,
+        table_specs: list[IndexTableSpec],
+        dry_run: bool = False,
+    ) -> None:
+        """
+        Apply generated patch SQL files from patch_dir to the target engine/schema.
+
+        Files are applied in the safe order: REPLACE, then INSERT, then DELETE.
+        Only files that exist are executed (missing files mean no diff for that
+        operation). Rollback files are not touched by this method.
+
+        With dry_run=True, no SQL is executed; the first 256 characters of each
+        file are printed instead.
+        """
+        for spec in table_specs:
+            table_name = self._table_name(spec)
+
+            if not self.db.table_exists(
+                engine_name=target_engine,
+                schema_name=target_schema,
+                table_name=table_name,
+            ):
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping {table_name}: does not exist in target {target_schema}.",
+                )
+                continue
+
+            for op in ("replace", "insert", "delete"):
+                file_path = patch_dir / f"{table_name}_{op.upper()}.sql.gz"
+                if not file_path.exists():
+                    continue
+
+                self._log(
+                    "🚀" if not dry_run else "🧪",
+                    "magenta" if not dry_run else "cyan",
+                    f"{'Applying' if not dry_run else 'Dry-run'} {op.upper()} patch file "
+                    f"for {table_name} to database {target_schema}",
+                )
+                if dry_run:
+                    with gzip.open(file_path, "rt", encoding="utf-8") as gz:
+                        snippet = gz.read(256)
+                    self._log(
+                        "📄",
+                        "cyan",
+                        f"{file_path.name}: {snippet}",
+                    )
+                    continue
+
+                with tempfile.NamedTemporaryFile(
+                    mode="w", encoding="utf-8", suffix=".sql", delete=False
+                ) as tmp:
+                    tmp_path = Path(tmp.name)
+                    with gzip.open(file_path, "rt", encoding="utf-8") as gz:
+                        shutil.copyfileobj(gz, tmp)
+                try:
+                    self.db.execute_query_from_file(
+                        engine_name=target_engine,
+                        file_path=tmp_path,
+                        database=target_schema,
+                        verbose=False,
+                    )
+                finally:
+                    os.unlink(tmp_path)
+                self._log(
+                    "✅",
+                    "green",
+                    f"Applied {op.upper()} patch file for {table_name}",
+                )
 
     def generate_patch_files(
         self,
@@ -208,6 +286,36 @@ class MySQLIndexDeploy(IndexDeployRepository):
             source_engine, target_engine, spec, schema_overrides
         )
         table_name = self._table_name(spec)
+
+        # Skip tables that do not exist in source or target.
+        source_exists = self.db.table_exists(
+            engine_name=source_engine, schema_name=source_schema, table_name=table_name
+        )
+        target_exists = self.db.table_exists(
+            engine_name=target_engine, schema_name=target_schema, table_name=table_name
+        )
+        if not source_exists and not target_exists:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping {table_name}: does not exist in source or target.",
+            )
+            return
+        if not source_exists:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping {table_name}: does not exist in source {source_schema}.",
+            )
+            return
+        if not target_exists:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping {table_name}: does not exist in target {target_schema}.",
+            )
+            return
+
         key_columns = self._key_columns(spec.table_type)
         payload_columns = self._payload_columns(
             source_engine, source_schema, target_engine, target_schema, table_name, key_columns
@@ -696,7 +804,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 for col, val in zip(key_columns, key_values)
             )
             f.write(
-                f"UPDATE {schema_name}.{table_name}\n"
+                f"UPDATE {table_name}\n"
                 f"   SET {set_clause}\n"
                 f" WHERE {where_clause};\n"
             )
@@ -724,7 +832,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         rows_written = len(first_chunk)
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
             f.write(
-                f"INSERT INTO {schema_name}.{table_name} "
+                f"INSERT INTO {table_name} "
                 f"({', '.join(all_columns)})\nVALUES\n"
             )
             first = self._write_value_rows(f, first_chunk, True)
@@ -756,7 +864,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         rows_written = len(first_chunk)
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
             f.write(
-                f"REPLACE INTO {schema_name}.{table_name} "
+                f"REPLACE INTO {table_name} "
                 f"({', '.join(all_columns)})\nVALUES\n"
             )
             first = self._write_value_rows(f, first_chunk, True)
@@ -786,7 +894,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         rows_written = len(first_chunk)
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
             f.write(
-                f"DELETE FROM {schema_name}.{table_name}\n"
+                f"DELETE FROM {table_name}\n"
                 f" WHERE ({', '.join(key_columns)}) IN (\n"
             )
             first = self._write_value_rows(f, first_chunk, True)
