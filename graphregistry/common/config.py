@@ -94,6 +94,7 @@ class GlobalConfig:
 
         # Safety limits
         self.limit_per_type_max = self.settings.get('limits', {}).get('limit_per_type_max', 1000)
+        self.patch_max_rows = self.settings.get('limits', {}).get('patch_max_rows', 50000)
 
         # Object type to schema mapping
         self.object_type_to_schema = {

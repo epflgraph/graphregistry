@@ -1,6 +1,7 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_indexdeploy.py
 from __future__ import annotations
 from datetime import datetime
+import gzip
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -330,22 +331,144 @@ class MySQLIndexDeploy(IndexDeployRepository):
             f"{table_name}: syncing {len(payload_columns)} common payload columns: {', '.join(payload_columns)}",
         )
 
-        base_kwargs = self._base_kwargs(
-            source_schema,
-            target_schema,
-            spec,
-            data_columns=self._build_data_columns(payload_columns),
-            update_set_clause=self._build_update_set_clause(payload_columns),
-            changed_condition=self._build_changed_condition(payload_columns),
-        )
+        keys = ", ".join(key_columns)
+        key_select_source = ", ".join(f"t.{c}" for c in key_columns)
+        key_select_target = ", ".join(f"p.{c}" for c in key_columns)
+        payload_select_source = ", ".join(f"t.{c}" for c in payload_columns)
+        no_match_source = f"t.{key_columns[0]} IS NULL"
+        no_match_target = f"p.{key_columns[0]} IS NULL"
+        changed_condition = self._build_changed_condition(payload_columns)
 
-        # Forward patch files: REPLACE, INSERT, DELETE
-        for op in ("replace", "insert", "delete"):
-            query_name = self._commit_query_name(spec, op)
-            query = self._render("commit", query_name, **base_kwargs)
-            file_path = patch_dir / f"{table_name}_{op.upper()}.sql"
-            self._log("📝", "green", f"Writing forward patch: {file_path.name}")
-            self._write_sql_file(file_path, query)
+        # ---------- Forward DELETE ----------
+        delete_query = f"""
+            SELECT {key_select_target}
+              FROM {target_schema}.{table_name} p
+              LEFT JOIN {source_schema}.{table_name} t
+                USING ({keys})
+             WHERE {no_match_source}
+        """
+        delete_path = patch_dir / f"{table_name}_DELETE.sql.gz"
+        self._log(
+            "🔢",
+            "blue",
+            f"Counting forward DELETE rows for {table_name}",
+        )
+        delete_count = self._count_rows(target_engine, delete_query)
+        if delete_count > self.glbcfg.patch_max_rows:
+            self._log(
+                "🚫",
+                "red",
+                f"Skipping forward DELETE patch for {table_name}: "
+                f"{delete_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+            )
+        elif delete_count:
+            self._stream_delete_from_query(
+                delete_path,
+                target_schema,
+                table_name,
+                key_columns,
+                target_engine,
+                delete_query,
+            )
+            self._log(
+                "📝",
+                "green",
+                f"Wrote forward DELETE patch ({delete_count} rows): {delete_path.name}",
+            )
+        else:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping forward DELETE patch for {table_name}: no rows",
+            )
+
+        # ---------- Forward INSERT ----------
+        insert_query = f"""
+            SELECT {key_select_source}, {payload_select_source}
+              FROM {source_schema}.{table_name} t
+              LEFT JOIN {target_schema}.{table_name} p
+                USING ({keys})
+             WHERE {no_match_target}
+        """
+        insert_path = patch_dir / f"{table_name}_INSERT.sql.gz"
+        self._log(
+            "🔢",
+            "blue",
+            f"Counting forward INSERT rows for {table_name}",
+        )
+        insert_count = self._count_rows(source_engine, insert_query)
+        if insert_count > self.glbcfg.patch_max_rows:
+            self._log(
+                "🚫",
+                "red",
+                f"Skipping forward INSERT patch for {table_name}: "
+                f"{insert_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+            )
+        elif insert_count:
+            self._stream_insert_from_query(
+                insert_path,
+                target_schema,
+                table_name,
+                key_columns,
+                payload_columns,
+                source_engine,
+                insert_query,
+            )
+            self._log(
+                "📝",
+                "green",
+                f"Wrote forward INSERT patch ({insert_count} rows): {insert_path.name}",
+            )
+        else:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping forward INSERT patch for {table_name}: no rows",
+            )
+
+        # ---------- Forward REPLACE ----------
+        replace_query = f"""
+            SELECT {key_select_source}, {payload_select_source}
+              FROM {source_schema}.{table_name} t
+              JOIN {target_schema}.{table_name} p
+                USING ({keys})
+             WHERE {changed_condition}
+        """
+        replace_path = patch_dir / f"{table_name}_REPLACE.sql.gz"
+        self._log(
+            "🔢",
+            "blue",
+            f"Counting forward REPLACE rows for {table_name}",
+        )
+        replace_count = self._count_rows(source_engine, replace_query)
+        if replace_count > self.glbcfg.patch_max_rows:
+            self._log(
+                "🚫",
+                "red",
+                f"Skipping forward REPLACE patch for {table_name}: "
+                f"{replace_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+            )
+        elif replace_count:
+            self._stream_replace_from_query(
+                replace_path,
+                target_schema,
+                table_name,
+                key_columns,
+                payload_columns,
+                source_engine,
+                replace_query,
+            )
+            self._log(
+                "📝",
+                "green",
+                f"Wrote forward REPLACE patch ({replace_count} rows): {replace_path.name}",
+            )
+        else:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping forward REPLACE patch for {table_name}: no rows",
+            )
 
         # Rollback files
         for op in ("replace", "insert", "delete"):
@@ -377,18 +500,21 @@ class MySQLIndexDeploy(IndexDeployRepository):
         rollback_dir: Path,
         schema_overrides: dict[str, str] | None = None,
     ) -> None:
-        """Build and write one rollback SQL file."""
+        """Build and write one rollback SQL file using chunked queries."""
         keys = ", ".join(key_columns)
         key_select = ", ".join(f"p.{c}" for c in key_columns)
         payload_select = ", ".join(f"p.{c}" for c in payload_columns)
         no_match_source = f"t.{key_columns[0]} IS NULL"
 
-        file_path = rollback_dir / f"{table_name}_{op.upper()}.sql"
+        file_path = rollback_dir / f"{table_name}_{op.upper()}.sql.gz"
         self._log(
             "🔄",
             "blue",
             f"Building rollback for {table_name} [{op.upper()}] -> {file_path.name}",
         )
+
+        row_count = 0
+        written = False
 
         if op == "delete":
             # Forward DELETE -> rollback INSERT the deleted rows.
@@ -399,17 +525,30 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     USING ({keys})
                  WHERE {no_match_source}
             """
-            rows = self.db.execute_query(
-                engine_name=target_engine, query=query
-            )
             self._log(
-                "📊",
-                "cyan",
-                f"{table_name} rollback [DELETE]: fetched {len(rows)} deleted rows to restore",
+                "🔢",
+                "blue",
+                f"Counting rollback [DELETE] rows for {table_name}",
             )
-            sql = self._build_insert_sql(
-                target_schema, table_name, key_columns, payload_columns, rows
-            )
+            row_count = self._count_rows(target_engine, query)
+            if row_count > self.glbcfg.patch_max_rows:
+                self._log(
+                    "🚫",
+                    "red",
+                    f"Skipping rollback [DELETE] for {table_name}: "
+                    f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                )
+            elif row_count:
+                self._stream_insert_from_query(
+                    file_path,
+                    target_schema,
+                    table_name,
+                    key_columns,
+                    payload_columns,
+                    target_engine,
+                    query,
+                )
+                written = True
 
         elif op == "insert":
             # Forward INSERT -> rollback DELETE the inserted keys.
@@ -422,17 +561,29 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     USING ({keys})
                  WHERE {no_match_target}
             """
-            rows = self.db.execute_query(
-                engine_name=source_engine, query=query
-            )
             self._log(
-                "📊",
-                "cyan",
-                f"{table_name} rollback [INSERT]: fetched {len(rows)} inserted keys to remove",
+                "🔢",
+                "blue",
+                f"Counting rollback [INSERT] rows for {table_name}",
             )
-            sql = self._build_delete_sql(
-                target_schema, table_name, key_columns, rows
-            )
+            row_count = self._count_rows(source_engine, query)
+            if row_count > self.glbcfg.patch_max_rows:
+                self._log(
+                    "🚫",
+                    "red",
+                    f"Skipping rollback [INSERT] for {table_name}: "
+                    f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                )
+            elif row_count:
+                self._stream_delete_from_query(
+                    file_path,
+                    target_schema,
+                    table_name,
+                    key_columns,
+                    source_engine,
+                    query,
+                )
+                written = True
 
         elif op == "replace":
             # Forward REPLACE -> rollback UPDATE to old values.
@@ -443,84 +594,96 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     USING ({keys})
                  WHERE {self._build_changed_condition(payload_columns)}
             """
-            rows = self.db.execute_query(
-                engine_name=target_engine, query=query
-            )
             self._log(
-                "📊",
-                "cyan",
-                f"{table_name} rollback [REPLACE]: fetched {len(rows)} rows to revert",
+                "🔢",
+                "blue",
+                f"Counting rollback [REPLACE] rows for {table_name}",
             )
-            sql = self._build_update_sql(
-                target_schema, table_name, key_columns, payload_columns, rows
-            )
+            row_count = self._count_rows(target_engine, query)
+            if row_count > self.glbcfg.patch_max_rows:
+                self._log(
+                    "🚫",
+                    "red",
+                    f"Skipping rollback [REPLACE] for {table_name}: "
+                    f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                )
+            elif row_count:
+                self._stream_update_from_query(
+                    file_path,
+                    target_schema,
+                    table_name,
+                    key_columns,
+                    payload_columns,
+                    target_engine,
+                    query,
+                )
+                written = True
 
         else:
             raise ValueError(f"Unknown rollback operation: {op}")
 
-        self._write_sql_file(file_path, sql)
-        self._log(
-            "📝",
-            "green",
-            f"Wrote rollback file: {file_path.name}",
-        )
+        if written:
+            self._log(
+                "📝",
+                "green",
+                f"Wrote rollback file ({row_count} rows): {file_path.name}",
+            )
+        elif row_count == 0:
+            self._log(
+                "⏭️",
+                "yellow",
+                f"Skipping rollback [{op.upper()}] for {table_name}: no rows",
+            )
 
-    def _build_insert_sql(
+    def _fetch_rows_chunked(
         self,
-        schema_name: str,
-        table_name: str,
-        key_columns: list[str],
-        payload_columns: list[str],
+        engine_name: str,
+        query: str,
+        chunk_size: int = 5000,
+    ):
+        """Yield result rows in chunks using LIMIT/OFFSET."""
+        offset = 0
+        while True:
+            chunk_query = f"{query.rstrip()} LIMIT {chunk_size} OFFSET {offset}"
+            rows = self.db.execute_query(engine_name=engine_name, query=chunk_query)
+            if not rows:
+                break
+            yield rows
+            if len(rows) < chunk_size:
+                break
+            offset += chunk_size
+
+    def _count_rows(self, engine_name: str, query: str) -> int:
+        """Return the total row count for a query by wrapping it in a COUNT."""
+        count_query = f"SELECT COUNT(*) FROM ({query.strip()}) AS _patch_count"
+        rows = self.db.execute_query(engine_name=engine_name, query=count_query)
+        return rows[0][0] if rows else 0
+
+    def _write_value_rows(
+        self,
+        f,
         rows: list[tuple],
-    ) -> str:
-        """Build a multi-row INSERT statement from fetched rows."""
-        if not rows:
-            return "-- No rows to restore.\n"
-        all_columns = key_columns + payload_columns
-        values_list = []
+        first: bool,
+    ) -> bool:
+        """Write (v1, v2, ...) value lines for INSERT/REPLACE/DELETE IN."""
         for row in rows:
             values = ", ".join(self._sql_literal(v) for v in row)
-            values_list.append(f"({values})")
-        values_str = ",\n    ".join(values_list)
-        return (
-            f"INSERT INTO {schema_name}.{table_name} "
-            f"({', '.join(all_columns)})\n"
-            f"VALUES\n    {values_str};\n"
-        )
+            prefix = "    " if first else "  , "
+            f.write(f"{prefix}({values})\n")
+            first = False
+        return first
 
-    def _build_delete_sql(
+    def _write_update_rows(
         self,
-        schema_name: str,
-        table_name: str,
-        key_columns: list[str],
-        rows: list[tuple],
-    ) -> str:
-        """Build a DELETE ... WHERE (keys) IN (...) statement."""
-        if not rows:
-            return "-- No rows to remove.\n"
-        tuples = ",\n    ".join(
-            "(" + ", ".join(self._sql_literal(v) for v in row) + ")"
-            for row in rows
-        )
-        return (
-            f"DELETE FROM {schema_name}.{table_name}\n"
-            f" WHERE ({', '.join(key_columns)}) IN (\n"
-            f"    {tuples}\n);\n"
-        )
-
-    def _build_update_sql(
-        self,
+        f,
         schema_name: str,
         table_name: str,
         key_columns: list[str],
         payload_columns: list[str],
         rows: list[tuple],
-    ) -> str:
-        """Build one UPDATE statement per row to revert a REPLACE."""
-        if not rows:
-            return "-- No rows to revert.\n"
+    ) -> int:
+        """Write one UPDATE statement per row."""
         key_len = len(key_columns)
-        statements = []
         for row in rows:
             key_values = row[:key_len]
             payload_values = row[key_len:]
@@ -532,12 +695,135 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 f"{col} = {self._sql_literal(val)}"
                 for col, val in zip(key_columns, key_values)
             )
-            statements.append(
+            f.write(
                 f"UPDATE {schema_name}.{table_name}\n"
                 f"   SET {set_clause}\n"
-                f" WHERE {where_clause};"
+                f" WHERE {where_clause};\n"
             )
-        return "\n".join(statements) + "\n"
+        return len(rows)
+
+    def _stream_insert_from_query(
+        self,
+        file_path: Path,
+        schema_name: str,
+        table_name: str,
+        key_columns: list[str],
+        payload_columns: list[str],
+        engine_name: str,
+        query: str,
+        chunk_size: int = 5000,
+    ) -> int:
+        """Stream a chunked query into a multi-row INSERT gzip file."""
+        all_columns = key_columns + payload_columns
+        chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
+        try:
+            first_chunk = next(chunks)
+        except StopIteration:
+            return 0
+
+        rows_written = len(first_chunk)
+        with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
+            f.write(
+                f"INSERT INTO {schema_name}.{table_name} "
+                f"({', '.join(all_columns)})\nVALUES\n"
+            )
+            first = self._write_value_rows(f, first_chunk, True)
+            for chunk in chunks:
+                first = self._write_value_rows(f, chunk, first)
+                rows_written += len(chunk)
+            f.write(";\n")
+        return rows_written
+
+    def _stream_replace_from_query(
+        self,
+        file_path: Path,
+        schema_name: str,
+        table_name: str,
+        key_columns: list[str],
+        payload_columns: list[str],
+        engine_name: str,
+        query: str,
+        chunk_size: int = 5000,
+    ) -> int:
+        """Stream a chunked query into a multi-row REPLACE gzip file."""
+        all_columns = key_columns + payload_columns
+        chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
+        try:
+            first_chunk = next(chunks)
+        except StopIteration:
+            return 0
+
+        rows_written = len(first_chunk)
+        with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
+            f.write(
+                f"REPLACE INTO {schema_name}.{table_name} "
+                f"({', '.join(all_columns)})\nVALUES\n"
+            )
+            first = self._write_value_rows(f, first_chunk, True)
+            for chunk in chunks:
+                first = self._write_value_rows(f, chunk, first)
+                rows_written += len(chunk)
+            f.write(";\n")
+        return rows_written
+
+    def _stream_delete_from_query(
+        self,
+        file_path: Path,
+        schema_name: str,
+        table_name: str,
+        key_columns: list[str],
+        engine_name: str,
+        query: str,
+        chunk_size: int = 5000,
+    ) -> int:
+        """Stream a chunked query into a DELETE ... IN gzip file."""
+        chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
+        try:
+            first_chunk = next(chunks)
+        except StopIteration:
+            return 0
+
+        rows_written = len(first_chunk)
+        with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
+            f.write(
+                f"DELETE FROM {schema_name}.{table_name}\n"
+                f" WHERE ({', '.join(key_columns)}) IN (\n"
+            )
+            first = self._write_value_rows(f, first_chunk, True)
+            for chunk in chunks:
+                first = self._write_value_rows(f, chunk, first)
+                rows_written += len(chunk)
+            f.write(");\n")
+        return rows_written
+
+    def _stream_update_from_query(
+        self,
+        file_path: Path,
+        schema_name: str,
+        table_name: str,
+        key_columns: list[str],
+        payload_columns: list[str],
+        engine_name: str,
+        query: str,
+        chunk_size: int = 5000,
+    ) -> int:
+        """Stream a chunked query into one-UPDATE-per-row gzip file."""
+        chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
+        try:
+            first_chunk = next(chunks)
+        except StopIteration:
+            return 0
+
+        rows_written = 0
+        with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
+            rows_written += self._write_update_rows(
+                f, schema_name, table_name, key_columns, payload_columns, first_chunk
+            )
+            for chunk in chunks:
+                rows_written += self._write_update_rows(
+                    f, schema_name, table_name, key_columns, payload_columns, chunk
+                )
+        return rows_written
 
     def _sql_literal(self, value) -> str:
         """Escape a Python value for use in a generated SQL statement."""
@@ -548,10 +834,6 @@ class MySQLIndexDeploy(IndexDeployRepository):
         if isinstance(value, (int, float)):
             return str(value)
         return "'" + str(value).replace("'", "''") + "'"
-
-    def _write_sql_file(self, file_path: Path, sql: str) -> None:
-        """Write a SQL string to disk."""
-        file_path.write_text(sql.strip() + "\n", encoding="utf-8")
 
     def _commit_query_name(self, spec: IndexTableSpec, op: str) -> str:
         """Return the commit template name for a table spec and operation."""

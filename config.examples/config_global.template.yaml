@@ -39,6 +39,7 @@ data_paths:
 
 limits:
   limit_per_type_max: 1000
+  patch_max_rows: 50000
 
 elasticsearch:
   test_env:
