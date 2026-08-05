@@ -3392,8 +3392,8 @@ class GraphRegistry():
             formula_type = re.findall(r'(.*)\/formula\..*\.sql$', file_path.replace(f'{SQL_FORMULAS_PATH}/', ''))[0]
 
             # Print status
-            if 'print' in actions or 'eval' in actions or verbose:
-                sysmsg.trace(f"⚙️  Applying formula: '{formula_name}' ...")
+            # if 'print' in actions or 'eval' in actions or verbose:
+            sysmsg.trace(f"⚙️  Applying formula: '{formula_name}' ...")
 
             # Read the SQL formula
             with open(file_path, 'r') as file:
