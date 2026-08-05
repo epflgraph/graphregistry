@@ -463,6 +463,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
         )
 
         keys = ", ".join(key_columns)
+        join_condition = " AND ".join(f"p.{c} = t.{c}" for c in key_columns)
         key_select_source = ", ".join(f"t.{c}" for c in key_columns)
         key_select_target = ", ".join(f"p.{c}" for c in key_columns)
         payload_select_source = ", ".join(f"t.{c}" for c in payload_columns)
@@ -475,7 +476,8 @@ class MySQLIndexDeploy(IndexDeployRepository):
             SELECT {key_select_target}
               FROM {target_schema}.{table_name} p
               LEFT JOIN {source_schema}.{table_name} t
-                USING ({keys})
+                ON {join_condition}
+               AND t.deleted = 0
              WHERE {no_match_source}
         """
         if self.debug:
@@ -551,6 +553,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
               LEFT JOIN {target_schema}.{table_name} p
                 USING ({keys})
              WHERE {no_match_target}
+               AND t.deleted = 0
         """
         if self.debug:
             print_sql(insert_query, title="forward INSERT base")
@@ -627,6 +630,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
               JOIN {target_schema}.{table_name} p
                 USING ({keys})
              WHERE {changed_condition}
+               AND t.deleted = 0
         """
         if self.debug:
             print_sql(replace_query, title="forward REPLACE base")
@@ -736,6 +740,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
     ) -> None:
         """Build and write one rollback SQL file using chunked queries."""
         keys = ", ".join(key_columns)
+        join_condition = " AND ".join(f"p.{c} = t.{c}" for c in key_columns)
         key_select = ", ".join(f"p.{c}" for c in key_columns)
         payload_select = ", ".join(f"p.{c}" for c in payload_columns)
         no_match_source = f"t.{key_columns[0]} IS NULL"
@@ -756,7 +761,8 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 SELECT {key_select}, {payload_select}
                   FROM {target_schema}.{table_name} p
                   LEFT JOIN {source_schema}.{table_name} t
-                    USING ({keys})
+                    ON {join_condition}
+                   AND t.deleted = 0
                  WHERE {no_match_source}
             """
             if self.debug:
@@ -815,6 +821,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
                   LEFT JOIN {target_schema}.{table_name} p
                     USING ({keys})
                  WHERE {no_match_target}
+                   AND t.deleted = 0
             """
             if self.debug:
                 print_sql(query, title=f"rollback {op.upper()} base")
@@ -868,6 +875,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
                   JOIN {source_schema}.{table_name} t
                     USING ({keys})
                  WHERE {self._build_changed_condition(payload_columns)}
+                   AND t.deleted = 0
             """
             if self.debug:
                 print_sql(query, title=f"rollback {op.upper()} base")

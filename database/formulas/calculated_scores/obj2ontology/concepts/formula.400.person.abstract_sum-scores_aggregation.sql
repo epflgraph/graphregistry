@@ -7,10 +7,11 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
              concept_id AS concept_id,
              'abstract sum-scores aggregation' AS calculation_type,
              SUM(score) AS score, to_process
-        FROM [[traversals]].Person_Publication_Concept__ConceptDetection
-       WHERE to_process = 1
-    GROUP BY person_id, concept_id
-      HAVING score >= .1;
+         FROM [[traversals]].Person_Publication_Concept__ConceptDetection
+        WHERE to_process = 1
+          AND deleted = 0
+     GROUP BY person_id, concept_id
+       HAVING score >= .1;
 
 -- ============= Calculate average score for 'abstract sum-scores aggregation'
 SET @avg_score = (

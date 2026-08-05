@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication__Authorship (
             SET to_process = 0
           WHERE to_process = 1;
 
--- ============ TODO: set deleted flags for relevant edges
+-- ============ Soft-delete filtering for source registry rows
 
 -- ============ Graph traversal: Person-Publication authorship edges (REPLACE)
    REPLACE INTO [[traversals]].Person_Publication__Authorship
@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication__Authorship (
      INNER JOIN [[registry]].Edges_N_Object_N_Object_T_ChildToParent a2p
              ON ( tp.from_object_type,  tp.from_object_id,  tp.to_object_type,  tp.to_object_id)
               = (a2p.from_object_type, a2p.from_object_id, a2p.to_object_type, a2p.to_object_id)
+            AND a2p.record_deleted = 0
 
           WHERE a2p.from_object_type = 'Publication'
             AND a2p.to_object_type   = 'Person'

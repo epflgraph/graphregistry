@@ -11,8 +11,10 @@
 --
 -- The adapter should introspect the target table, subtract the key and excluded
 -- columns, and generate both clauses from the remaining columns.
-    UPDATE [[graphsearch_prod_mirror]].Index_D_[[doc_type]] p
-INNER JOIN        [[graphsearch_test]].Index_D_[[doc_type]] t
-     USING (doc_type, doc_id)
-       SET [[update_set_clause]]
-     WHERE [[changed_condition]];
+     UPDATE [[graphsearch_prod_mirror]].Index_D_[[doc_type]] p
+ INNER JOIN        [[graphsearch_test]].Index_D_[[doc_type]] t
+      USING (doc_type, doc_id)
+        SET [[update_set_clause]]
+      WHERE [[changed_condition]]
+        AND t.deleted = 0;
+

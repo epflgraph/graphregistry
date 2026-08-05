@@ -17,6 +17,7 @@ INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
 
      WHERE (e.from_object_type, e.to_object_type, e.context) = ('Course', 'Person', 'teacher')
        AND e.field_name = 'teaching_assignment_year'
+       AND e.record_deleted = 0
        AND tp.to_process = 1
        AND tf.to_process = 1
 

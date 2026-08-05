@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Publication_Concept__ConceptDetection 
              SET to_process = 0
            WHERE to_process = 1;
 
--- ============= TODO: set deleted flags for relevant edges
+-- ============= Soft-delete filtering for source registry rows
 
 -- ============= Graph traversal: Publication-Concept score edges (INSERT)
     REPLACE INTO [[traversals]].Publication_Concept__ConceptDetection
@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Publication_Concept__ConceptDetection 
 
       INNER JOIN [[registry]].Edges_N_Object_N_Concept_T_ConceptDetection a2c
            USING (object_type, object_id)
+           AND a2c.record_deleted = 0
 
            WHERE a2c.object_type = 'Publication'
              AND a2c.score >= 0.1

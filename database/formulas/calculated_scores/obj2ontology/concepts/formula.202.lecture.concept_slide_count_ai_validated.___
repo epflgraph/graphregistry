@@ -7,11 +7,14 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
              'slide count ai validated' AS calculation_type,
              0.5 + 0.5 * (LN(1 + COUNT(DISTINCT slide_id)) / LN(1 + MAX(n_slides))) AS score
         FROM (SELECT p.to_object_id AS lecture_id, v.object_id AS slide_id, concept_id, c.field_value AS n_slides
-                FROM [[lectures]].Edges_N_Object_N_Concept_T_LLMPostValidated v
-          INNER JOIN [[lectures]].Edges_N_Object_N_Object_T_ChildToParent p
-                  ON p.from_object_id = v.object_id
-          INNER JOIN [[lectures]].Data_N_Object_T_CustomFields c
-                  ON (c.object_type, c.object_id) = (p.to_object_type, p.to_object_id)
-               WHERE (v.object_type, p.to_object_type, p.context, c.field_language, c.field_name) = ('Slide', 'Lecture', 'part of', 'n/a', 'n_slides')
-             ) t
+                 FROM [[lectures]].Edges_N_Object_N_Concept_T_LLMPostValidated v
+           INNER JOIN [[lectures]].Edges_N_Object_N_Object_T_ChildToParent p
+                   ON p.from_object_id = v.object_id
+                  AND p.record_deleted = 0
+           INNER JOIN [[lectures]].Data_N_Object_T_CustomFields c
+                   ON (c.object_type, c.object_id) = (p.to_object_type, p.to_object_id)
+                  AND c.record_deleted = 0
+                WHERE (v.object_type, p.to_object_type, p.context, c.field_language, c.field_name) = ('Slide', 'Lecture', 'part of', 'n/a', 'n_slides')
+                  AND v.record_deleted = 0
+              ) t
     GROUP BY lecture_id, concept_id;

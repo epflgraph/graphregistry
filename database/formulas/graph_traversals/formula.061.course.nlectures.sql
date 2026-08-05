@@ -33,8 +33,9 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Course__NLectures (
 -- ========= Graph traversal: Course number of lectures (REPLACE)
 REPLACE INTO [[traversals]].Course__NLectures
              (course_id, n_lectures, to_process)
-      SELECT course_id, COUNT(DISTINCT lecture_id) AS n_lectures,
-             1 AS to_process
+       SELECT course_id, COUNT(DISTINCT lecture_id) AS n_lectures,
+              1 AS to_process
         FROM [[traversals]].Course_Lecture_Slide_Concept__LLMValidated
        WHERE to_process = 1
+         AND deleted = 0
     GROUP BY course_id;

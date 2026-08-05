@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
             SET to_process = 0
           WHERE to_process = 1;
 
--- ============ TODO: set deleted flags for relevant edges
+-- ============ Soft-delete filtering for source registry rows
 
 -- ============ Graph traversal: Unit-Person affiliation edges (REPLACE)
    REPLACE INTO [[traversals]].Unit_Person__Affiliation
@@ -42,10 +42,12 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
      INNER JOIN [[registry]].Edges_N_Object_N_Object_T_ChildToParent p2u
              ON ( tp.from_object_type,  tp.from_object_id,  tp.to_object_type,  tp.to_object_id)
               = (p2u.from_object_type, p2u.from_object_id, p2u.to_object_type, p2u.to_object_id)
+            AND p2u.record_deleted = 0
 
      INNER JOIN [[registry]].Data_N_Object_N_Object_T_CustomFields cf
              ON ( cf.from_object_type,  cf.from_object_id,  cf.to_object_type,  cf.to_object_id)
               = (p2u.from_object_type, p2u.from_object_id, p2u.to_object_type, p2u.to_object_id)
+            AND cf.record_deleted = 0
 
      INNER JOIN [[registry]].Mapping_N_Field_N_Field f1 ON cf.field_value    = f1.from_field_value
      INNER JOIN [[registry]].Mapping_N_Field_N_Field f2 ON f1.to_field_value = f2.from_field_value

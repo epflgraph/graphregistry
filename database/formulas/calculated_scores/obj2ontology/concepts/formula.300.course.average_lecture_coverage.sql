@@ -5,6 +5,7 @@
 SELECT DISTINCT 'Course' AS object_type, course_id AS object_id, concept_id,
                 'average coverage over all lectures (bounded)' AS calculation_type,
                 score, to_process
-           FROM [[traversals]].Course_Concept__CoverageScore
-          WHERE to_process = 1
-            AND score >= 0.1;
+            FROM [[traversals]].Course_Concept__CoverageScore
+           WHERE to_process = 1
+             AND deleted = 0
+             AND score >= 0.1;

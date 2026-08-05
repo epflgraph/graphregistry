@@ -22,6 +22,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
           -- Join traversal
   INNER JOIN [[traversals]].Publication_Concept__ConceptDetection t
           ON se.object_id = t.publication_id
+         AND t.deleted = 0
 
           -- Join ontology
   INNER JOIN [[ontology]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild c

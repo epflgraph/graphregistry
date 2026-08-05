@@ -27,10 +27,11 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Course_Concept__CoverageScore (
 -- ========= Graph traversal: Course-Concept Coverage Scores (REPLACE)
 REPLACE INTO [[traversals]].Course_Concept__CoverageScore
 			(course_id, concept_id, idx_course_id, score, to_process)
-      SELECT course_id, concept_id,
-             LEFT(course_id, 3) AS idx_course_id,
-             COUNT(DISTINCT lecture_id) / MAX(n_lectures) * (1 - EXP(-MAX(n_lectures) / 15.0)) AS score,
-             1 AS to_process
+       SELECT course_id, concept_id,
+              LEFT(course_id, 3) AS idx_course_id,
+              COUNT(DISTINCT lecture_id) / MAX(n_lectures) * (1 - EXP(-MAX(n_lectures) / 15.0)) AS score,
+              1 AS to_process
         FROM [[traversals]].Course_Lecture_Concept__CoverageScore
        WHERE to_process = 1
+         AND deleted = 0
     GROUP BY course_id, concept_id;
