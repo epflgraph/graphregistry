@@ -8,6 +8,9 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from graphdb.models.sqlquery import print_sql
+from pymysql.converters import escape_string
+
 from graphregistry.domain.repositories.rpo_indexdeploy import (
     IndexDeployRepository,
     IndexTableSpec,
@@ -42,10 +45,18 @@ class MySQLIndexDeploy(IndexDeployRepository):
         }
     )
 
-    def __init__(self, db: GraphDB, glbcfg: GlobalConfig) -> None:
+    def __init__(
+        self,
+        db: GraphDB,
+        glbcfg: GlobalConfig,
+        debug: bool = False,
+        use_unhex: bool = False,
+    ) -> None:
         self.db = db
         self.glbcfg = glbcfg
         self.msg = GraphLogger()
+        self.debug = debug
+        self.use_unhex = use_unhex
 
     def _log(self, emoji: str, color: str, message: str) -> None:
         """Print a coloured, emoji-prefixed status message."""
@@ -179,6 +190,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
         table_specs: list[IndexTableSpec],
         actions: tuple[str, ...] = (),
         schema_overrides: dict[str, str] | None = None,
+        replace_batch_size: int = 100,
+        delete_batch_size: int = 100,
+        insert_batch_size: int = 100,
+        skip_count: bool = False,
     ) -> Path:
         """
         Generate forward patch SQL files and corresponding rollback SQL files.
@@ -212,6 +227,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 rollback_dir,
                 actions,
                 schema_overrides,
+                replace_batch_size=replace_batch_size,
+                delete_batch_size=delete_batch_size,
+                insert_batch_size=insert_batch_size,
+                skip_count=skip_count,
             )
 
         self._log("✅", "green", f"Patch files written to {patch_root}")
@@ -386,6 +405,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
         rollback_dir: Path,
         actions: tuple[str, ...],
         schema_overrides: dict[str, str] | None = None,
+        replace_batch_size: int = 100,
+        delete_batch_size: int = 100,
+        insert_batch_size: int = 100,
+        skip_count: bool = False,
     ) -> None:
         """Generate forward and rollback SQL files for a single table."""
         source_schema, target_schema = self._resolve_schemas(
@@ -455,40 +478,71 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 USING ({keys})
              WHERE {no_match_source}
         """
+        if self.debug:
+            print_sql(delete_query, title="forward DELETE base")
         delete_path = patch_dir / f"{table_name}_DELETE.sql.gz"
-        self._log(
-            "🔢",
-            "blue",
-            f"Counting forward DELETE rows for {table_name}",
-        )
-        delete_count = self._count_rows(target_engine, delete_query)
-        if delete_count > self.glbcfg.patch_max_rows:
+        if skip_count:
             self._log(
-                "🚫",
-                "red",
-                f"Skipping forward DELETE patch for {table_name}: "
-                f"{delete_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                "📝",
+                "blue",
+                f"Streaming forward DELETE patch for {table_name}",
             )
-        elif delete_count:
-            self._stream_delete_from_query(
+            delete_written = self._stream_delete_from_query(
                 delete_path,
                 target_schema,
                 table_name,
                 key_columns,
                 target_engine,
                 delete_query,
+                batch_size=delete_batch_size,
             )
-            self._log(
-                "📝",
-                "green",
-                f"Wrote forward DELETE patch ({delete_count} rows): {delete_path.name}",
-            )
+            if delete_written:
+                self._log(
+                    "📝",
+                    "green",
+                    f"Wrote forward DELETE patch ({delete_written} rows): {delete_path.name}",
+                )
+            else:
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping forward DELETE patch for {table_name}: no rows",
+                )
         else:
             self._log(
-                "⏭️",
-                "yellow",
-                f"Skipping forward DELETE patch for {table_name}: no rows",
+                "🔢",
+                "blue",
+                f"Counting forward DELETE rows for {table_name}",
             )
+            delete_count = self._count_rows(target_engine, delete_query)
+            if delete_count > self.glbcfg.patch_max_rows:
+                self._log(
+                    "🚫",
+                    "red",
+                    f"Skipping forward DELETE patch for {table_name}: "
+                    f"{delete_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                )
+            elif delete_count:
+                self._stream_delete_from_query(
+                    delete_path,
+                    target_schema,
+                    table_name,
+                    key_columns,
+                    target_engine,
+                    delete_query,
+                    batch_size=delete_batch_size,
+                )
+                self._log(
+                    "📝",
+                    "green",
+                    f"Wrote forward DELETE patch ({delete_count} rows): {delete_path.name}",
+                )
+            else:
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping forward DELETE patch for {table_name}: no rows",
+                )
 
         # ---------- Forward INSERT ----------
         insert_query = f"""
@@ -498,22 +552,16 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 USING ({keys})
              WHERE {no_match_target}
         """
+        if self.debug:
+            print_sql(insert_query, title="forward INSERT base")
         insert_path = patch_dir / f"{table_name}_INSERT.sql.gz"
-        self._log(
-            "🔢",
-            "blue",
-            f"Counting forward INSERT rows for {table_name}",
-        )
-        insert_count = self._count_rows(source_engine, insert_query)
-        if insert_count > self.glbcfg.patch_max_rows:
+        if skip_count:
             self._log(
-                "🚫",
-                "red",
-                f"Skipping forward INSERT patch for {table_name}: "
-                f"{insert_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                "📝",
+                "blue",
+                f"Streaming forward INSERT patch for {table_name}",
             )
-        elif insert_count:
-            self._stream_insert_from_query(
+            insert_written = self._stream_insert_from_query(
                 insert_path,
                 target_schema,
                 table_name,
@@ -521,18 +569,56 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 payload_columns,
                 source_engine,
                 insert_query,
+                batch_size=insert_batch_size,
             )
-            self._log(
-                "📝",
-                "green",
-                f"Wrote forward INSERT patch ({insert_count} rows): {insert_path.name}",
-            )
+            if insert_written:
+                self._log(
+                    "📝",
+                    "green",
+                    f"Wrote forward INSERT patch ({insert_written} rows): {insert_path.name}",
+                )
+            else:
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping forward INSERT patch for {table_name}: no rows",
+                )
         else:
             self._log(
-                "⏭️",
-                "yellow",
-                f"Skipping forward INSERT patch for {table_name}: no rows",
+                "🔢",
+                "blue",
+                f"Counting forward INSERT rows for {table_name}",
             )
+            insert_count = self._count_rows(source_engine, insert_query)
+            if insert_count > self.glbcfg.patch_max_rows:
+                self._log(
+                    "🚫",
+                    "red",
+                    f"Skipping forward INSERT patch for {table_name}: "
+                    f"{insert_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                )
+            elif insert_count:
+                self._stream_insert_from_query(
+                    insert_path,
+                    target_schema,
+                    table_name,
+                    key_columns,
+                    payload_columns,
+                    source_engine,
+                    insert_query,
+                    batch_size=insert_batch_size,
+                )
+                self._log(
+                    "📝",
+                    "green",
+                    f"Wrote forward INSERT patch ({insert_count} rows): {insert_path.name}",
+                )
+            else:
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping forward INSERT patch for {table_name}: no rows",
+                )
 
         # ---------- Forward REPLACE ----------
         replace_query = f"""
@@ -542,22 +628,16 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 USING ({keys})
              WHERE {changed_condition}
         """
+        if self.debug:
+            print_sql(replace_query, title="forward REPLACE base")
         replace_path = patch_dir / f"{table_name}_REPLACE.sql.gz"
-        self._log(
-            "🔢",
-            "blue",
-            f"Counting forward REPLACE rows for {table_name}",
-        )
-        replace_count = self._count_rows(source_engine, replace_query)
-        if replace_count > self.glbcfg.patch_max_rows:
+        if skip_count:
             self._log(
-                "🚫",
-                "red",
-                f"Skipping forward REPLACE patch for {table_name}: "
-                f"{replace_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                "📝",
+                "blue",
+                f"Streaming forward REPLACE patch for {table_name}",
             )
-        elif replace_count:
-            self._stream_replace_from_query(
+            replace_written = self._stream_replace_from_query(
                 replace_path,
                 target_schema,
                 table_name,
@@ -565,18 +645,56 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 payload_columns,
                 source_engine,
                 replace_query,
+                batch_size=replace_batch_size,
             )
-            self._log(
-                "📝",
-                "green",
-                f"Wrote forward REPLACE patch ({replace_count} rows): {replace_path.name}",
-            )
+            if replace_written:
+                self._log(
+                    "📝",
+                    "green",
+                    f"Wrote forward REPLACE patch ({replace_written} rows): {replace_path.name}",
+                )
+            else:
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping forward REPLACE patch for {table_name}: no rows",
+                )
         else:
             self._log(
-                "⏭️",
-                "yellow",
-                f"Skipping forward REPLACE patch for {table_name}: no rows",
+                "🔢",
+                "blue",
+                f"Counting forward REPLACE rows for {table_name}",
             )
+            replace_count = self._count_rows(source_engine, replace_query)
+            if replace_count > self.glbcfg.patch_max_rows:
+                self._log(
+                    "🚫",
+                    "red",
+                    f"Skipping forward REPLACE patch for {table_name}: "
+                    f"{replace_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                )
+            elif replace_count:
+                self._stream_replace_from_query(
+                    replace_path,
+                    target_schema,
+                    table_name,
+                    key_columns,
+                    payload_columns,
+                    source_engine,
+                    replace_query,
+                    batch_size=replace_batch_size,
+                )
+                self._log(
+                    "📝",
+                    "green",
+                    f"Wrote forward REPLACE patch ({replace_count} rows): {replace_path.name}",
+                )
+            else:
+                self._log(
+                    "⏭️",
+                    "yellow",
+                    f"Skipping forward REPLACE patch for {table_name}: no rows",
+                )
 
         # Rollback files
         for op in ("replace", "insert", "delete"):
@@ -592,6 +710,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
                 payload_columns=payload_columns,
                 rollback_dir=rollback_dir,
                 schema_overrides=schema_overrides,
+                replace_batch_size=replace_batch_size,
+                delete_batch_size=delete_batch_size,
+                insert_batch_size=insert_batch_size,
+                skip_count=skip_count,
             )
 
     def _generate_rollback_file(
@@ -607,6 +729,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
         payload_columns: list[str],
         rollback_dir: Path,
         schema_overrides: dict[str, str] | None = None,
+        replace_batch_size: int = 100,
+        delete_batch_size: int = 100,
+        insert_batch_size: int = 100,
+        skip_count: bool = False,
     ) -> None:
         """Build and write one rollback SQL file using chunked queries."""
         keys = ", ".join(key_columns)
@@ -633,21 +759,15 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     USING ({keys})
                  WHERE {no_match_source}
             """
-            self._log(
-                "🔢",
-                "blue",
-                f"Counting rollback [DELETE] rows for {table_name}",
-            )
-            row_count = self._count_rows(target_engine, query)
-            if row_count > self.glbcfg.patch_max_rows:
+            if self.debug:
+                print_sql(query, title=f"rollback {op.upper()} base")
+            if skip_count:
                 self._log(
-                    "🚫",
-                    "red",
-                    f"Skipping rollback [DELETE] for {table_name}: "
-                    f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                    "📝",
+                    "blue",
+                    f"Streaming rollback [{op.upper()}] for {table_name}",
                 )
-            elif row_count:
-                self._stream_insert_from_query(
+                row_count = self._stream_insert_from_query(
                     file_path,
                     target_schema,
                     table_name,
@@ -655,8 +775,35 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     payload_columns,
                     target_engine,
                     query,
+                    batch_size=insert_batch_size,
                 )
-                written = True
+                written = row_count > 0
+            else:
+                self._log(
+                    "🔢",
+                    "blue",
+                    f"Counting rollback [DELETE] rows for {table_name}",
+                )
+                row_count = self._count_rows(target_engine, query)
+                if row_count > self.glbcfg.patch_max_rows:
+                    self._log(
+                        "🚫",
+                        "red",
+                        f"Skipping rollback [DELETE] for {table_name}: "
+                        f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                    )
+                elif row_count:
+                    self._stream_insert_from_query(
+                        file_path,
+                        target_schema,
+                        table_name,
+                        key_columns,
+                        payload_columns,
+                        target_engine,
+                        query,
+                        batch_size=insert_batch_size,
+                    )
+                    written = True
 
         elif op == "insert":
             # Forward INSERT -> rollback DELETE the inserted keys.
@@ -669,29 +816,49 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     USING ({keys})
                  WHERE {no_match_target}
             """
-            self._log(
-                "🔢",
-                "blue",
-                f"Counting rollback [INSERT] rows for {table_name}",
-            )
-            row_count = self._count_rows(source_engine, query)
-            if row_count > self.glbcfg.patch_max_rows:
+            if self.debug:
+                print_sql(query, title=f"rollback {op.upper()} base")
+            if skip_count:
                 self._log(
-                    "🚫",
-                    "red",
-                    f"Skipping rollback [INSERT] for {table_name}: "
-                    f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                    "📝",
+                    "blue",
+                    f"Streaming rollback [{op.upper()}] for {table_name}",
                 )
-            elif row_count:
-                self._stream_delete_from_query(
+                row_count = self._stream_delete_from_query(
                     file_path,
                     target_schema,
                     table_name,
                     key_columns,
                     source_engine,
                     query,
+                    batch_size=delete_batch_size,
                 )
-                written = True
+                written = row_count > 0
+            else:
+                self._log(
+                    "🔢",
+                    "blue",
+                    f"Counting rollback [INSERT] rows for {table_name}",
+                )
+                row_count = self._count_rows(source_engine, query)
+                if row_count > self.glbcfg.patch_max_rows:
+                    self._log(
+                        "🚫",
+                        "red",
+                        f"Skipping rollback [INSERT] for {table_name}: "
+                        f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                    )
+                elif row_count:
+                    self._stream_delete_from_query(
+                        file_path,
+                        target_schema,
+                        table_name,
+                        key_columns,
+                        source_engine,
+                        query,
+                        batch_size=delete_batch_size,
+                    )
+                    written = True
 
         elif op == "replace":
             # Forward REPLACE -> rollback UPDATE to old values.
@@ -702,21 +869,15 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     USING ({keys})
                  WHERE {self._build_changed_condition(payload_columns)}
             """
-            self._log(
-                "🔢",
-                "blue",
-                f"Counting rollback [REPLACE] rows for {table_name}",
-            )
-            row_count = self._count_rows(target_engine, query)
-            if row_count > self.glbcfg.patch_max_rows:
+            if self.debug:
+                print_sql(query, title=f"rollback {op.upper()} base")
+            if skip_count:
                 self._log(
-                    "🚫",
-                    "red",
-                    f"Skipping rollback [REPLACE] for {table_name}: "
-                    f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                    "📝",
+                    "blue",
+                    f"Streaming rollback [{op.upper()}] for {table_name}",
                 )
-            elif row_count:
-                self._stream_update_from_query(
+                row_count = self._stream_update_from_query(
                     file_path,
                     target_schema,
                     table_name,
@@ -725,7 +886,32 @@ class MySQLIndexDeploy(IndexDeployRepository):
                     target_engine,
                     query,
                 )
-                written = True
+                written = row_count > 0
+            else:
+                self._log(
+                    "🔢",
+                    "blue",
+                    f"Counting rollback [REPLACE] rows for {table_name}",
+                )
+                row_count = self._count_rows(target_engine, query)
+                if row_count > self.glbcfg.patch_max_rows:
+                    self._log(
+                        "🚫",
+                        "red",
+                        f"Skipping rollback [REPLACE] for {table_name}: "
+                        f"{row_count} rows > patch_max_rows ({self.glbcfg.patch_max_rows})",
+                    )
+                elif row_count:
+                    self._stream_update_from_query(
+                        file_path,
+                        target_schema,
+                        table_name,
+                        key_columns,
+                        payload_columns,
+                        target_engine,
+                        query,
+                    )
+                    written = True
 
         else:
             raise ValueError(f"Unknown rollback operation: {op}")
@@ -753,6 +939,8 @@ class MySQLIndexDeploy(IndexDeployRepository):
         offset = 0
         while True:
             chunk_query = f"{query.rstrip()} LIMIT {chunk_size} OFFSET {offset}"
+            if self.debug:
+                print_sql(chunk_query, title=f"patch fetch chunk offset={offset}")
             rows = self.db.execute_query(engine_name=engine_name, query=chunk_query)
             if not rows:
                 break
@@ -764,6 +952,8 @@ class MySQLIndexDeploy(IndexDeployRepository):
     def _count_rows(self, engine_name: str, query: str) -> int:
         """Return the total row count for a query by wrapping it in a COUNT."""
         count_query = f"SELECT COUNT(*) FROM ({query.strip()}) AS _patch_count"
+        if self.debug:
+            print_sql(count_query, title="patch count")
         rows = self.db.execute_query(engine_name=engine_name, query=count_query)
         return rows[0][0] if rows else 0
 
@@ -780,6 +970,54 @@ class MySQLIndexDeploy(IndexDeployRepository):
             f.write(f"{prefix}({values})\n")
             first = False
         return first
+
+    def _batched_rows(
+        self,
+        first_chunk: list[tuple],
+        chunks,
+        batch_size: int,
+    ):
+        """Yield fixed-size batches from a chunked row iterator."""
+        batch: list[tuple] = []
+        for row in first_chunk:
+            batch.append(row)
+            if len(batch) == batch_size:
+                yield batch
+                batch = []
+        for chunk in chunks:
+            for row in chunk:
+                batch.append(row)
+                if len(batch) == batch_size:
+                    yield batch
+                    batch = []
+        if batch:
+            yield batch
+
+    def _write_batched_value_rows(
+        self,
+        f,
+        header: str,
+        first_chunk: list[tuple],
+        chunks,
+        batch_size: int = 100,
+        footer: str = "",
+    ) -> int:
+        """Write multiple INSERT/REPLACE/DELETE IN statements in batches."""
+        rows_written = 0
+        first_statement = True
+        for batch in self._batched_rows(first_chunk, chunks, batch_size):
+            if not first_statement:
+                f.write(header)
+            first = True
+            for row in batch:
+                values = ", ".join(self._sql_literal(v) for v in row)
+                prefix = "    " if first else "  , "
+                f.write(f"{prefix}({values})\n")
+                first = False
+            f.write(f"{footer};\n")
+            first_statement = False
+            rows_written += len(batch)
+        return rows_written
 
     def _write_update_rows(
         self,
@@ -820,26 +1058,26 @@ class MySQLIndexDeploy(IndexDeployRepository):
         engine_name: str,
         query: str,
         chunk_size: int = 5000,
+        batch_size: int = 100,
     ) -> int:
-        """Stream a chunked query into a multi-row INSERT gzip file."""
+        """Stream a chunked query into batched INSERT gzip file."""
         all_columns = key_columns + payload_columns
+        header = (
+            f"INSERT INTO {table_name} "
+            f"({', '.join(all_columns)})\nVALUES\n"
+        )
         chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
         try:
             first_chunk = next(chunks)
         except StopIteration:
             return 0
 
-        rows_written = len(first_chunk)
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
-            f.write(
-                f"INSERT INTO {table_name} "
-                f"({', '.join(all_columns)})\nVALUES\n"
+            f.write("SET NAMES utf8mb4;\n")
+            f.write(header)
+            rows_written = self._write_batched_value_rows(
+                f, header, first_chunk, chunks, batch_size=batch_size
             )
-            first = self._write_value_rows(f, first_chunk, True)
-            for chunk in chunks:
-                first = self._write_value_rows(f, chunk, first)
-                rows_written += len(chunk)
-            f.write(";\n")
         return rows_written
 
     def _stream_replace_from_query(
@@ -852,26 +1090,26 @@ class MySQLIndexDeploy(IndexDeployRepository):
         engine_name: str,
         query: str,
         chunk_size: int = 5000,
+        batch_size: int = 100,
     ) -> int:
-        """Stream a chunked query into a multi-row REPLACE gzip file."""
+        """Stream a chunked query into batched REPLACE gzip file."""
         all_columns = key_columns + payload_columns
+        header = (
+            f"REPLACE INTO {table_name} "
+            f"({', '.join(all_columns)})\nVALUES\n"
+        )
         chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
         try:
             first_chunk = next(chunks)
         except StopIteration:
             return 0
 
-        rows_written = len(first_chunk)
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
-            f.write(
-                f"REPLACE INTO {table_name} "
-                f"({', '.join(all_columns)})\nVALUES\n"
+            f.write("SET NAMES utf8mb4;\n")
+            f.write(header)
+            rows_written = self._write_batched_value_rows(
+                f, header, first_chunk, chunks, batch_size=batch_size
             )
-            first = self._write_value_rows(f, first_chunk, True)
-            for chunk in chunks:
-                first = self._write_value_rows(f, chunk, first)
-                rows_written += len(chunk)
-            f.write(";\n")
         return rows_written
 
     def _stream_delete_from_query(
@@ -883,25 +1121,25 @@ class MySQLIndexDeploy(IndexDeployRepository):
         engine_name: str,
         query: str,
         chunk_size: int = 5000,
+        batch_size: int = 100,
     ) -> int:
-        """Stream a chunked query into a DELETE ... IN gzip file."""
+        """Stream a chunked query into batched DELETE ... IN gzip file."""
+        header = (
+            f"DELETE FROM {table_name}\n"
+            f" WHERE ({', '.join(key_columns)}) IN (\n"
+        )
         chunks = self._fetch_rows_chunked(engine_name, query, chunk_size)
         try:
             first_chunk = next(chunks)
         except StopIteration:
             return 0
 
-        rows_written = len(first_chunk)
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
-            f.write(
-                f"DELETE FROM {table_name}\n"
-                f" WHERE ({', '.join(key_columns)}) IN (\n"
+            f.write("SET NAMES utf8mb4;\n")
+            f.write(header)
+            rows_written = self._write_batched_value_rows(
+                f, header, first_chunk, chunks, batch_size=batch_size, footer=")"
             )
-            first = self._write_value_rows(f, first_chunk, True)
-            for chunk in chunks:
-                first = self._write_value_rows(f, chunk, first)
-                rows_written += len(chunk)
-            f.write(");\n")
         return rows_written
 
     def _stream_update_from_query(
@@ -924,6 +1162,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
 
         rows_written = 0
         with gzip.open(file_path, "wt", encoding="utf-8", compresslevel=9) as f:
+            f.write("SET NAMES utf8mb4;\n")
             rows_written += self._write_update_rows(
                 f, schema_name, table_name, key_columns, payload_columns, first_chunk
             )
@@ -934,14 +1173,33 @@ class MySQLIndexDeploy(IndexDeployRepository):
         return rows_written
 
     def _sql_literal(self, value) -> str:
-        """Escape a Python value for use in a generated SQL statement."""
+        """Escape a Python value for use in a generated SQL statement.
+
+        When ``self.use_unhex`` is True, strings and bytes are encoded as
+        MySQL UNHEX literals. This avoids any escaping issues but makes the
+        generated SQL hard to read.
+
+        When ``self.use_unhex`` is False (the default), strings are rendered
+        as readable, quoted literals with backslash/single-quote escaping.
+        """
         if value is None:
             return "NULL"
         if isinstance(value, bool):
             return "1" if value else "0"
         if isinstance(value, (int, float)):
             return str(value)
-        return "'" + str(value).replace("'", "''") + "'"
+        if isinstance(value, bytes):
+            return f"UNHEX('{value.hex()}')"
+        if self.use_unhex:
+            return f"UNHEX('{value.encode('utf-8').hex()}')"
+        return self._quote_string(value)
+
+    def _quote_string(self, value: str) -> str:
+        """Return a MySQL-safe single-quoted string literal."""
+        # Use pymysql's MySQL-compatible escaping for Unicode, quotes,
+        # backslashes, newlines, etc. The file is UTF-8 and SET NAMES utf8mb4
+        # is set, so emojis and other multi-byte characters are preserved.
+        return f"'{escape_string(value)}'"
 
     def _commit_query_name(self, spec: IndexTableSpec, op: str) -> str:
         """Return the commit template name for a table spec and operation."""

@@ -1504,7 +1504,7 @@ class GraphRegistry():
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND tf.flag_type = 'fields'
                                  AND tf.to_process = 1
-                             GROUP BY cp.object_type
+                            GROUP BY cp.object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='DY3x5PC8')
 

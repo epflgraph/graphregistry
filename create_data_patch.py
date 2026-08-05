@@ -1,3 +1,4 @@
+import argparse
 import re
 
 from graphdb.core.config import GraphDBConfig
@@ -17,6 +18,75 @@ LINK_TABLE_RE = re.compile(
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Generate GraphSearch index patch/rollback SQL files."
+    )
+    parser.add_argument(
+        "--table-name",
+        "--table_name",
+        dest="table_name",
+        default=None,
+        help="Generate patch files for one specific table only, e.g. Index_D_Lecture",
+    )
+    parser.add_argument(
+        "--default-batch-size",
+        "--default_batch_size",
+        "--batch-size",
+        "--batch_size",
+        dest="default_batch_size",
+        type=int,
+        default=100,
+        help="Default number of rows per SQL statement (default: 100). "
+             "Overridden per operation by --replace-batch-size, "
+             "--delete-batch-size, and --insert-batch-size.",
+    )
+    parser.add_argument(
+        "--replace-batch-size",
+        "--replace_batch_size",
+        dest="replace_batch_size",
+        type=int,
+        default=None,
+        help="Rows per REPLACE statement (falls back to --batch-size).",
+    )
+    parser.add_argument(
+        "--delete-batch-size",
+        "--delete_batch_size",
+        dest="delete_batch_size",
+        type=int,
+        default=None,
+        help="Rows per DELETE ... IN statement (falls back to --batch-size).",
+    )
+    parser.add_argument(
+        "--insert-batch-size",
+        "--insert_batch_size",
+        dest="insert_batch_size",
+        type=int,
+        default=None,
+        help="Rows per INSERT statement (falls back to --batch-size).",
+    )
+    parser.add_argument(
+        "--skip-count",
+        "--skip_count",
+        dest="skip_count",
+        action="store_true",
+        help="Skip the slow COUNT(*) pre-checks and stream rows directly. "
+             "No patch_max_rows protection when enabled.",
+    )
+    parser.add_argument(
+        "--debug",
+        dest="debug",
+        action="store_true",
+        help="Print every SQL query used to build the patch via print_sql().",
+    )
+    parser.add_argument(
+        "--use-unhex",
+        "--use_unhex",
+        dest="use_unhex",
+        action="store_true",
+        help="Encode string/bytes values as UNHEX(...) literals instead of readable quoted strings.",
+    )
+    args = parser.parse_args()
+
     # Load configs
     db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
     db = GraphDB(config=db_cfg)
@@ -91,7 +161,23 @@ def main():
     )
 
     # Instantiate adapter and generate patch files
-    deploy = MySQLIndexDeploy(db=db, glbcfg=glbcfg)
+    deploy = MySQLIndexDeploy(
+        db=db,
+        glbcfg=glbcfg,
+        debug=args.debug,
+        use_unhex=args.use_unhex,
+    )
+
+    if args.table_name:
+        specs = [s for s in specs if deploy._table_name(s) == args.table_name]
+        if not specs:
+            raise SystemExit(f"No matching table found: {args.table_name}")
+        print(f"\nFiltering to single table: {args.table_name}")
+
+    replace_batch_size = args.replace_batch_size or args.default_batch_size
+    delete_batch_size = args.delete_batch_size or args.default_batch_size
+    insert_batch_size = args.insert_batch_size or args.default_batch_size
+
     patch_dir = deploy.generate_patch_files(
         source_engine=source_engine,
         target_engine=source_engine,  # prod mirror lives on the same server
@@ -102,6 +188,10 @@ def main():
             "target_graphsearch": "graphsearch_prod_mirror",
             "target_graph_cache": "graph_cache_prod_mirror",
         },
+        replace_batch_size=replace_batch_size,
+        delete_batch_size=delete_batch_size,
+        insert_batch_size=insert_batch_size,
+        skip_count=args.skip_count,
     )
 
     print(f"Patch files written to: {patch_dir}")

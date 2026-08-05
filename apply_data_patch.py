@@ -88,6 +88,13 @@ def main() -> None:
         help="Target schema / database name, e.g. graphsearch_prod_mirror",
     )
     parser.add_argument(
+        "--table-name",
+        "--table_name",
+        dest="table_name",
+        default=None,
+        help="Apply patch files for one specific table only, e.g. Index_D_Lecture",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the first 256 characters of each patch file instead of executing it.",
@@ -104,6 +111,13 @@ def main() -> None:
     specs = discover_specs(db, glbcfg)
 
     deploy = MySQLIndexDeploy(db=db, glbcfg=glbcfg)
+
+    if args.table_name:
+        specs = [s for s in specs if deploy._table_name(s) == args.table_name]
+        if not specs:
+            raise SystemExit(f"No matching table found: {args.table_name}")
+        print(f"\nFiltering to single table: {args.table_name}")
+
     deploy.apply_patch_files(
         patch_dir=args.patch_dir,
         target_engine="xaas_coresrv",
