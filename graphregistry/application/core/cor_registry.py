@@ -4528,6 +4528,94 @@ class GraphRegistry():
                 # Exclude private/internal backup tables that start with an underscore
                 list_of_tables = [t for t in list_of_tables if not t.startswith('_')]
 
+                # graphsearch_test index tables do not have a deleted flag.
+                # The source of truth for whether a node still exists is the
+                # registry/lectures/ontology node tables. Load the valid node
+                # list once into an in-memory Python set and filter the streamed
+                # graphsearch rows locally. This avoids turning the simple edge
+                # scan into a double self-join, which is what caused the order
+                # of magnitude slowdown.
+                sysmsg.trace("Building in-memory valid-node set for Step 1 ...")
+                valid_nodes_rows = db.execute_query(
+                    engine_name=engine_name,
+                    query=f"""
+                        SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Nodes_N_Object WHERE record_deleted = 0
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Category
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Concept;
+                    """,
+                    query_id='vndset'
+                )
+                valid_nodes = {
+                    f"{object_type}\x00{object_id}"
+                    for object_type, object_id in valid_nodes_rows
+                }
+                sysmsg.trace(f"Valid-node set ready: {len(valid_nodes):,} entries.")
+
+                # Local helpers to inspect source schema/tables at runtime.
+                def _table_exists(schema_name, table_name):
+                    out = db.execute_query(
+                        engine_name=engine_name,
+                        query=f"""
+                            SELECT 1 FROM information_schema.TABLES
+                             WHERE TABLE_SCHEMA = '{schema_name}'
+                               AND TABLE_NAME   = '{table_name}'
+                             LIMIT 1
+                        """,
+                        query_id='texchk'
+                    )
+                    return bool(out)
+
+                def _has_record_deleted(schema_name, table_name):
+                    out = db.execute_query(
+                        engine_name=engine_name,
+                        query=f"""
+                            SELECT 1 FROM information_schema.COLUMNS
+                             WHERE TABLE_SCHEMA = '{schema_name}'
+                               AND TABLE_NAME   = '{table_name}'
+                               AND COLUMN_NAME  = 'record_deleted'
+                             LIMIT 1
+                        """,
+                        query_id='colchk'
+                    )
+                    return bool(out)
+
+                # graphsearch_test index tables do not have a deleted flag.
+                # We must also drop edges that have been soft-deleted in the
+                # source edge tables. Build an in-memory set of valid
+                # object-to-object edges from the ChildToParent tables in the
+                # registry/lectures/ontology schemas. Concept/category edges
+                # use different source tables/columns, so they are kept based
+                # on node validity only.
+                sysmsg.trace("Building in-memory valid-edge set for Step 1 ...")
+                edge_table_name = 'Edges_N_Object_N_Object_T_ChildToParent'
+                edge_queries = []
+                for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+                    if _table_exists(schema_name, edge_table_name):
+                        where = " WHERE record_deleted = 0" if _has_record_deleted(schema_name, edge_table_name) else ""
+                        edge_queries.append(
+                            f"SELECT from_object_type, from_object_id, to_object_type, to_object_id "
+                            f"FROM {schema_name}.{edge_table_name}{where}"
+                        )
+
+                if edge_queries:
+                    valid_edges_rows = db.execute_query(
+                        engine_name=engine_name,
+                        query=" UNION ALL ".join(edge_queries),
+                        query_id='vedset'
+                    )
+                else:
+                    valid_edges_rows = []
+
+                valid_edges = {
+                    f"{from_type}\x00{from_id}\x00{to_type}\x00{to_id}"
+                    for from_type, from_id, to_type, to_id in valid_edges_rows
+                }
+                sysmsg.trace(f"Valid-edge set ready: {len(valid_edges):,} entries.")
+
                 # Print list of affected tables
                 print('\n[🐬 GraphSearch DB] [EXTRACT NODES] The following tables will be searched:')
                 for t in list_of_tables:
@@ -4537,20 +4625,21 @@ class GraphRegistry():
                 # Loop over each table in the list of tables, in order to build nodes first
                 for table_name in tqdm(list_of_tables, desc='Extract nodes', unit='table'):
 
-                    # Generate SQL query to extract doc_type, doc_id from the current table
+                    # Generate SQL query to extract doc_type, doc_id from the current table.
+                    # Rows are filtered in Python against the pre-built valid-node set.
                     sql_query_extract = f"""
                         SELECT doc_type, doc_id
-                            FROM {glbcfg.schema_graphsearch_test}.{table_name}
+                          FROM {glbcfg.schema_graphsearch_test}.{table_name}
                     """
 
-                    # Optionally count rows for a progress bar (small overhead, better UX)
+                    # Use the unfiltered table size for the progress bar (cheap).
                     try:
                         count_row = db.execute_query(
                             engine_name=engine_name,
                             query=f"SELECT COUNT(*) FROM {glbcfg.schema_graphsearch_test}.{table_name}",
                             query_id='jkwrt35c'
                         )
-                        total_rows = count_row[0][0] if count_row else 0
+                        total_rows = count_row[0][0] if count_row else None
                     except Exception:
                         total_rows = None
 
@@ -4563,7 +4652,8 @@ class GraphRegistry():
                         leave=False
                     ):
                         doc_type, doc_id = row
-                        _get_node_index((doc_type, doc_id))
+                        if f"{doc_type}\x00{doc_id}" in valid_nodes:
+                            _get_node_index((doc_type, doc_id))
 
                 # Get the list of tables in the schema using the defined regex mapping
                 list_of_tables = db.get_tables_in_schema(
@@ -4584,24 +4674,28 @@ class GraphRegistry():
                 # Loop over each table in the list of tables, in order to build edges next
                 for table_name in tqdm(list_of_tables, desc='Extract edges', unit='table'):
 
-                    # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table
+                    # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table.
+                    # Rows are filtered in Python against the pre-built valid-node set.
                     sql_query_extract = f"""
                         SELECT doc_type, doc_id, link_type, link_id
                           FROM {glbcfg.schema_graphsearch_test}.{table_name}
                     """
 
-                    # Optionally count rows for a progress bar (small overhead, better UX)
+                    # Use the unfiltered table size for the progress bar (cheap).
                     try:
                         count_row = db.execute_query(
                             engine_name=engine_name,
                             query=f"SELECT COUNT(*) FROM {glbcfg.schema_graphsearch_test}.{table_name}",
                             query_id='GGg429c'
                         )
-                        total_rows = count_row[0][0] if count_row else 0
+                        total_rows = count_row[0][0] if count_row else None
                     except Exception:
                         total_rows = None
 
-                    # Stream rows and union endpoints directly
+                    # Stream rows and union endpoints directly.
+                    # Object-to-object edges are also checked against the valid-edge
+                    # set; concept/category edges are kept based on node validity
+                    # only because their source tables use different columns.
                     for row in tqdm(
                         _stream_rows(engine_name=engine_name, query=sql_query_extract, query_id='GGg429'),
                         total=total_rows,
@@ -4610,9 +4704,17 @@ class GraphRegistry():
                         leave=False
                     ):
                         doc_type, doc_id, link_type, link_id = row
-                        from_idx = _get_node_index((doc_type, doc_id))
-                        to_idx = _get_node_index((link_type, link_id))
-                        uf.union(from_idx, to_idx)
+                        if (
+                            f"{doc_type}\x00{doc_id}" in valid_nodes
+                            and f"{link_type}\x00{link_id}" in valid_nodes
+                        ):
+                            if link_type not in ('Concept', 'Category'):
+                                edge_key = f"{doc_type}\x00{doc_id}\x00{link_type}\x00{link_id}"
+                                if edge_key not in valid_edges:
+                                    continue
+                            from_idx = _get_node_index((doc_type, doc_id))
+                            to_idx = _get_node_index((link_type, link_id))
+                            uf.union(from_idx, to_idx)
 
                 # Determine component sizes and find the largest component
                 component_sizes = {}
@@ -4632,37 +4734,12 @@ class GraphRegistry():
                 # Write largest component to the cache table
                 _write_largest_component(largest_component_nodes)
 
-            # Generate SQL query to update loose ends in the Operations_N_Object_T_NoLooseEnds table
-            sql_query_upd_loose_ends = f"""
-            TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT object_type, object_id FROM {glbcfg.schema_registry}.Data_N_Object_T_PageProfile WHERE record_deleted = 0;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Data_N_Object_T_PageProfile WHERE record_deleted = 0;
-               INSERT INTO {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_NoLooseEnds (object_type, object_id)
-                    SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Data_N_Object_T_PageProfile WHERE record_deleted = 0;
-            """
-
-            # Execute SQL query to update loose ends
-            if update_loose_ends:
-                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_upd_loose_ends, verbose='print' in actions, query_id='K42g42')
-
-            # Define regex mapping for each schema to identify relevant tables
-            regex_mapping = {
-                'airflow'     : [r'^Operations_.*'],
-                'graph_cache' : [r'^Data_.*', r'^IndexBuildup_.*', r'^Operations_N_Object_T_Checksums.*', r'^Operations_N_Object_N_Object_T_Checksums.*'],
-                'graphsearch' : False,
-                'es_cache'    : False,
-            }
-
-            # Include scores matrix tables in the graph_cache schema if specified
-            if include_scores_matrix:
-                regex_mapping['graph_cache'] += [r'^Nodes_N_Object_.*', r'^Edges_N_Object_.*']
-
-            # Loop over each schema key to process tables
+            # Step 4: Clean up the final knowledge-graph index tables in
+            # graphsearch_test and elasticsearch_cache. graph_cache and
+            # graph_airflow are intentionally not touched here.
+            # The update_loose_ends and include_scores_matrix parameters are kept
+            # for CLI backward compatibility but are no longer used.
             for schema_key, allowed_nodes_table in [
-                ('airflow'    , 'Operations_N_Object_T_NoLooseEnds'),
-                ('graph_cache', 'Operations_N_Object_T_NoLooseEnds'),
                 ('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'),
                 ('es_cache'   , 'Operations_N_Object_T_LargestConnectedGraph')
             ]:
@@ -4670,11 +4747,12 @@ class GraphRegistry():
                 # Get the schema name from the global configuration
                 schema_name = glbcfg.mysql_schema_names['test'][schema_key]
 
-                # Get the list of tables in the schema using the defined regex mapping
+                # Get the list of tables in the schema.
+                # For graphsearch_test we want all Index_D_* tables, so no regex filter.
                 list_of_tables = db.get_tables_in_schema(
                     engine_name = engine_name,
                     schema_name = schema_name,
-                    use_regex   = regex_mapping[schema_key]
+                    use_regex   = False
                 )
 
                 # Exclude private/internal backup tables that start with an underscore
@@ -4703,6 +4781,11 @@ class GraphRegistry():
                         table_name  = table_name
                     )
 
+                    # Build soft-delete filter fragments only when the table has the column.
+                    has_deleted_col = 'deleted' in list_of_columns
+                    deleted_filter_eval   = "AND t.deleted = 0" if has_deleted_col else ""
+                    deleted_filter_commit = "AND deleted = 0"   if has_deleted_col else ""
+
                     # Define SQL query templates for different table structures (object tables and object-to-object tables)
                     sql_query_obj_template = """
                               {eval_or_commit}
@@ -4711,6 +4794,7 @@ class GraphRegistry():
                            ON t.{col_prefix}_type = n.object_type
                           AND t.{col_prefix}_id   = n.object_id
                         WHERE n.object_id IS NULL
+                              {deleted_filter}
                               {eval_group_by}
                     """
 
@@ -4726,6 +4810,7 @@ class GraphRegistry():
                           AND n_to.object_id   = t.{to_prefix}_id
                         WHERE n_from.object_id IS NULL
                           AND n_to.object_id   IS NULL
+                              {deleted_filter}
                               {eval_group_by}
                     """
 
@@ -4738,6 +4823,7 @@ class GraphRegistry():
                                 WHERE n.object_type = {schema_name}.{table_name}.{col_prefix}_type
                                   AND n.object_id   = {schema_name}.{table_name}.{col_prefix}_id
                          )
+                              {deleted_filter}
                     """
 
                     sql_query_obj2obj_commit_template = """
@@ -4752,6 +4838,7 @@ class GraphRegistry():
                                 WHERE n_to.object_type = {schema_name}.{table_name}.{to_prefix}_type
                                   AND n_to.object_id   = {schema_name}.{table_name}.{to_prefix}_id
                          )
+                              {deleted_filter}
                     """
 
                     # Define SQL query templates for adding unique keys to object and object-to-object tables
@@ -4763,9 +4850,11 @@ class GraphRegistry():
                         # print('edges    : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'from_object', 'to_object'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.from_object_type, t.to_object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.from_object_type, t.to_object_type",
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix,
+                                                                             deleted_filter=deleted_filter_eval)
                         sql_query_commit = sql_query_obj2obj_commit_template.format(
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix,
+                                                                             deleted_filter=deleted_filter_commit)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4774,9 +4863,11 @@ class GraphRegistry():
                         # print('doclinks : ', f"{schema_name}.{table_name}")
                         from_prefix, to_prefix = 'doc', 'link'
                         sql_query_eval   = sql_query_obj2obj_template.format(eval_or_commit="SELECT t.doc_type, t.link_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type, t.link_type",
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix,
+                                                                             deleted_filter=deleted_filter_eval)
                         sql_query_commit = sql_query_obj2obj_commit_template.format(
-                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix)
+                                                                             schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, from_prefix=from_prefix, to_prefix=to_prefix,
+                                                                             deleted_filter=deleted_filter_commit)
                         sql_query_addkey = sql_query_obj2obj_addkey_template.format(
                                                                              schema_name=schema_name, table_name=table_name, from_prefix=from_prefix, to_prefix=to_prefix)
 
@@ -4785,9 +4876,11 @@ class GraphRegistry():
                         # print('nodes    : ', f"{schema_name}.{table_name}")
                         col_prefix = 'object'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.object_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.object_type",
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix,
+                                                                         deleted_filter=deleted_filter_eval)
                         sql_query_commit = sql_query_obj_commit_template.format(
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix,
+                                                                         deleted_filter=deleted_filter_commit)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
@@ -4796,9 +4889,11 @@ class GraphRegistry():
                         # print('docs     : ', f"{schema_name}.{table_name}")
                         col_prefix = 'doc'
                         sql_query_eval   = sql_query_obj_template.format(eval_or_commit="SELECT t.doc_type, COUNT(*) AS n_to_delete", eval_group_by="GROUP BY t.doc_type",
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix,
+                                                                         deleted_filter=deleted_filter_eval)
                         sql_query_commit = sql_query_obj_commit_template.format(
-                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix)
+                                                                         schema_name=schema_name, table_name=table_name, graph_cache_test=glbcfg.schema_graph_cache_test, allowed_nodes_table=allowed_nodes_table, col_prefix=col_prefix,
+                                                                         deleted_filter=deleted_filter_commit)
                         sql_query_addkey = sql_query_obj_addkey_template.format(
                                                                          schema_name=schema_name, table_name=table_name, col_prefix=col_prefix)
 
