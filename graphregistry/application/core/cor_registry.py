@@ -14,7 +14,8 @@ from pathlib import Path
 from decimal import Decimal
 import numpy as np
 import pandas as pd
-import os, re, sys, json, datetime, itertools, gzip, os, glob, rich
+import os, re, sys, json, datetime, itertools, gzip, os, glob, rich, pickle
+from array import array
 
 #------------------------------#
 # Class objects initialisation #
@@ -4454,285 +4455,123 @@ class GraphRegistry():
                 else:
                     print(f"\n[🐬 GraphSearch DB] Graph cache not found or empty; computing and storing in {cache_table_path}.")
 
-                # Union-Find (Disjoint Set Union) structure for connected components.
-                # Far more memory efficient than building a full NetworkX graph.
-                class UnionFind:
-                    __slots__ = ('parent', 'rank')
-                    def __init__(self):
-                        self.parent = []
-                        self.rank = []
+                # Cache the node mapping and edge list as pickle files so that
+                # repeated runs are fast and deterministic.
+                pickle_dir = '/tmp/graphregistry_delete_loose_ends'
+                os.makedirs(pickle_dir, exist_ok=True)
+                nodes_pickle = os.path.join(pickle_dir, 'node_uid_to_row_id.pkl')
+                edges_pickle = os.path.join(pickle_dir, 'graph_edges.pkl')
 
-                    def add(self):
-                        idx = len(self.parent)
-                        self.parent.append(idx)
-                        self.rank.append(0)
-                        return idx
-
-                    def find(self, x):
-                        parent = self.parent
-                        while parent[x] != x:
-                            parent[x] = parent[parent[x]]  # path halving
-                            x = parent[x]
-                        return x
-
-                    def union(self, x, y):
-                        x_root = self.find(x)
-                        y_root = self.find(y)
-                        if x_root == y_root:
-                            return
-                        rank = self.rank
-                        if rank[x_root] < rank[y_root]:
-                            self.parent[x_root] = y_root
-                        elif rank[x_root] > rank[y_root]:
-                            self.parent[y_root] = x_root
-                        else:
-                            self.parent[y_root] = x_root
-                            rank[x_root] += 1
-
-                uf = UnionFind()
-                node_to_index = {}
-                nodes_list = []  # index -> (doc_type, doc_id)
-
-                def _get_node_index(node):
-                    idx = node_to_index.get(node)
-                    if idx is None:
-                        idx = uf.add()
-                        node_to_index[node] = idx
-                        nodes_list.append(node)
-                    return idx
-
-                # Local helper to stream rows from a SELECT without buffering the whole result set in RAM.
-                # Uses SQLAlchemy's stream_results mode with server-side cursors.
-                def _stream_rows(engine_name, query, fetch_size=10000, query_id=None):
-                    engine = db.engine[engine_name]
-                    connection = engine.connect()
-                    try:
-                        exec_conn = connection.execution_options(stream_results=True)
-                        result = exec_conn.execute(text(query))
-                        while True:
-                            chunk = result.fetchmany(fetch_size)
-                            if not chunk:
-                                break
-                            for row in chunk:
-                                yield row
-                    finally:
-                        connection.close()
-
-                # Get the list of tables in the schema using the defined regex mapping
-                list_of_tables = db.get_tables_in_schema(
-                    engine_name = engine_name,
-                    schema_name = glbcfg.schema_graphsearch_test,
-                    use_regex   = [r'^Index_D_[^_]+$']
-                )
-
-                # Exclude private/internal backup tables that start with an underscore
-                list_of_tables = [t for t in list_of_tables if not t.startswith('_')]
-
-                # graphsearch_test index tables do not have a deleted flag.
-                # The source of truth for whether a node still exists is the
-                # registry/lectures/ontology node tables. Load the valid node
-                # list once into an in-memory Python set and filter the streamed
-                # graphsearch rows locally. This avoids turning the simple edge
-                # scan into a double self-join, which is what caused the order
-                # of magnitude slowdown.
-                sysmsg.trace("Building in-memory valid-node set for Step 1 ...")
-                valid_nodes_rows = db.execute_query(
-                    engine_name=engine_name,
-                    query=f"""
-                        SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
-                        UNION ALL
-                        SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Nodes_N_Object WHERE record_deleted = 0
-                        UNION ALL
-                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Category
-                        UNION ALL
-                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Concept;
-                    """,
-                    query_id='vndset'
-                )
-                valid_nodes = {
-                    f"{object_type}\x00{object_id}"
-                    for object_type, object_id in valid_nodes_rows
-                }
-                sysmsg.trace(f"Valid-node set ready: {len(valid_nodes):,} entries.")
-
-                # Local helpers to inspect source schema/tables at runtime.
-                def _table_exists(schema_name, table_name):
-                    out = db.execute_query(
+                if refresh_graph or not os.path.exists(nodes_pickle) or not os.path.exists(edges_pickle):
+                    sysmsg.trace("Building node uid -> row_id mapping from graphsearch_test.Data_N_Object_T_PageProfile ...")
+                    node_uids = db.execute_query(
                         engine_name=engine_name,
-                        query=f"""
-                            SELECT 1 FROM information_schema.TABLES
-                             WHERE TABLE_SCHEMA = '{schema_name}'
-                               AND TABLE_NAME   = '{table_name}'
-                             LIMIT 1
-                        """,
-                        query_id='texchk'
+                        schema_name=glbcfg.schema_graphsearch_test,
+                        query=f"SELECT CONCAT(object_type, '|', object_id) AS uid, row_id FROM {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile;",
+                        query_id='ndmap'
                     )
-                    return bool(out)
+                    node_uid_to_row_id = {uid: row_id for uid, row_id in node_uids}
 
-                def _has_record_deleted(schema_name, table_name):
-                    out = db.execute_query(
+                    with open(nodes_pickle, 'wb') as f:
+                        pickle.dump(node_uid_to_row_id, f)
+
+                    sysmsg.trace(f"Node mapping saved: {len(node_uid_to_row_id):,} entries.")
+
+                    sysmsg.trace("Fetching undirected edges from graphsearch_test doclink tables ...")
+                    list_of_edge_tables = db.get_tables_in_schema(
                         engine_name=engine_name,
-                        query=f"""
-                            SELECT 1 FROM information_schema.COLUMNS
-                             WHERE TABLE_SCHEMA = '{schema_name}'
-                               AND TABLE_NAME   = '{table_name}'
-                               AND COLUMN_NAME  = 'record_deleted'
-                             LIMIT 1
-                        """,
-                        query_id='colchk'
+                        schema_name=glbcfg.schema_graphsearch_test,
+                        use_regex=[r'^Index_D_[^_]*_L_[^_]*']
                     )
-                    return bool(out)
+                    list_of_edge_tables = [t for t in list_of_edge_tables if not t.startswith('_')]
 
-                # graphsearch_test index tables do not have a deleted flag.
-                # We must also drop edges that have been soft-deleted in the
-                # source edge tables. Build an in-memory set of valid
-                # object-to-object edges from the ChildToParent tables in the
-                # registry/lectures/ontology schemas. Concept/category edges
-                # use different source tables/columns, so they are kept based
-                # on node validity only.
-                sysmsg.trace("Building in-memory valid-edge set for Step 1 ...")
-                edge_table_name = 'Edges_N_Object_N_Object_T_ChildToParent'
-                edge_queries = []
-                for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
-                    if _table_exists(schema_name, edge_table_name):
-                        where = " WHERE record_deleted = 0" if _has_record_deleted(schema_name, edge_table_name) else ""
-                        edge_queries.append(
-                            f"SELECT from_object_type, from_object_id, to_object_type, to_object_id "
-                            f"FROM {schema_name}.{edge_table_name}{where}"
+                    # Use unsigned long long in case row_id exceeds 32 bits.
+                    from_ids = array('Q')
+                    to_ids = array('Q')
+
+                    for edge_table_name in tqdm(list_of_edge_tables, desc='Fetch edges', unit='table'):
+                        edge_uids = db.execute_query(
+                            engine_name=engine_name,
+                            schema_name=glbcfg.schema_graphsearch_test,
+                            query=f"""
+                                SELECT LEAST(CONCAT(doc_type, '|', doc_id), CONCAT(link_type, '|', link_id)) AS from_uid,
+                                       GREATEST(CONCAT(doc_type, '|', doc_id), CONCAT(link_type, '|', link_id)) AS to_uid
+                                  FROM {glbcfg.schema_graphsearch_test}.{edge_table_name}
+                                 WHERE row_rank < 99;
+                            """,
+                            query_id='edtbl'
                         )
+                        for from_uid, to_uid in edge_uids:
+                            if from_uid in node_uid_to_row_id and to_uid in node_uid_to_row_id:
+                                from_ids.append(node_uid_to_row_id[from_uid])
+                                to_ids.append(node_uid_to_row_id[to_uid])
 
-                if edge_queries:
-                    valid_edges_rows = db.execute_query(
-                        engine_name=engine_name,
-                        query=" UNION ALL ".join(edge_queries),
-                        query_id='vedset'
-                    )
+                    with open(edges_pickle, 'wb') as f:
+                        pickle.dump((from_ids, to_ids), f)
+
+                    sysmsg.trace(f"Edge list saved: {len(from_ids):,} edges.")
                 else:
-                    valid_edges_rows = []
+                    sysmsg.trace("Loading cached node mapping and edge list from pickle files ...")
+                    with open(nodes_pickle, 'rb') as f:
+                        node_uid_to_row_id = pickle.load(f)
+                    with open(edges_pickle, 'rb') as f:
+                        from_ids, to_ids = pickle.load(f)
+                    sysmsg.trace(f"Loaded {len(node_uid_to_row_id):,} nodes and {len(from_ids):,} edges.")
 
-                valid_edges = {
-                    f"{from_type}\x00{from_id}\x00{to_type}\x00{to_id}"
-                    for from_type, from_id, to_type, to_id in valid_edges_rows
-                }
-                sysmsg.trace(f"Valid-edge set ready: {len(valid_edges):,} entries.")
+                # Union-Find on the cached edge list.
+                sysmsg.trace("Running Union-Find on edge list ...")
+                max_row_id = max(node_uid_to_row_id.values())
+                parent = array('Q', range(max_row_id + 1))
+                rank = array('B', [0]) * len(parent)
 
-                # Print list of affected tables
-                print('\n[🐬 GraphSearch DB] [EXTRACT NODES] The following tables will be searched:')
-                for t in list_of_tables:
-                    print(f" - {glbcfg.schema_graphsearch_test}.{t}")
-                print('')
+                def find(x):
+                    while parent[x] != x:
+                        parent[x] = parent[parent[x]]
+                        x = parent[x]
+                    return x
 
-                # Loop over each table in the list of tables, in order to build nodes first
-                for table_name in tqdm(list_of_tables, desc='Extract nodes', unit='table'):
+                def union(x, y):
+                    x = find(x)
+                    y = find(y)
+                    if x == y:
+                        return
+                    if rank[x] < rank[y]:
+                        parent[x] = y
+                    elif rank[x] > rank[y]:
+                        parent[y] = x
+                    else:
+                        parent[y] = x
+                        rank[x] += 1
 
-                    # Generate SQL query to extract doc_type, doc_id from the current table.
-                    # Rows are filtered in Python against the pre-built valid-node set.
-                    sql_query_extract = f"""
-                        SELECT doc_type, doc_id
-                          FROM {glbcfg.schema_graphsearch_test}.{table_name}
-                    """
+                for u, v in zip(from_ids, to_ids):
+                    union(u, v)
 
-                    # Use the unfiltered table size for the progress bar (cheap).
-                    try:
-                        count_row = db.execute_query(
-                            engine_name=engine_name,
-                            query=f"SELECT COUNT(*) FROM {glbcfg.schema_graphsearch_test}.{table_name}",
-                            query_id='jkwrt35c'
-                        )
-                        total_rows = count_row[0][0] if count_row else None
-                    except Exception:
-                        total_rows = None
-
-                    # Stream rows and register nodes
-                    for row in tqdm(
-                        _stream_rows(engine_name=engine_name, query=sql_query_extract, query_id='jkwrt35'),
-                        total=total_rows,
-                        desc=f'  {table_name}',
-                        unit='row',
-                        leave=False
-                    ):
-                        doc_type, doc_id = row
-                        if f"{doc_type}\x00{doc_id}" in valid_nodes:
-                            _get_node_index((doc_type, doc_id))
-
-                # Get the list of tables in the schema using the defined regex mapping
-                list_of_tables = db.get_tables_in_schema(
-                    engine_name = engine_name,
-                    schema_name = glbcfg.schema_graphsearch_test,
-                    use_regex   = [r'^Index_D_[^_]+_L_.+']
-                )
-
-                # Exclude private/internal backup tables that start with an underscore
-                list_of_tables = [t for t in list_of_tables if not t.startswith('_')]
-
-                # Print list of affected tables
-                print('\n[🐬 GraphSearch DB] [EXTRACT EDGES] The following tables will be searched:')
-                for t in list_of_tables:
-                    print(f" - {glbcfg.schema_graphsearch_test}.{t}")
-                print('')
-
-                # Loop over each table in the list of tables, in order to build edges next
-                for table_name in tqdm(list_of_tables, desc='Extract edges', unit='table'):
-
-                    # Generate SQL query to extract doc_type, doc_id, link_type, and link_id from the current table.
-                    # Rows are filtered in Python against the pre-built valid-node set.
-                    sql_query_extract = f"""
-                        SELECT doc_type, doc_id, link_type, link_id
-                          FROM {glbcfg.schema_graphsearch_test}.{table_name}
-                    """
-
-                    # Use the unfiltered table size for the progress bar (cheap).
-                    try:
-                        count_row = db.execute_query(
-                            engine_name=engine_name,
-                            query=f"SELECT COUNT(*) FROM {glbcfg.schema_graphsearch_test}.{table_name}",
-                            query_id='GGg429c'
-                        )
-                        total_rows = count_row[0][0] if count_row else None
-                    except Exception:
-                        total_rows = None
-
-                    # Stream rows and union endpoints directly.
-                    # Object-to-object edges are also checked against the valid-edge
-                    # set; concept/category edges are kept based on node validity
-                    # only because their source tables use different columns.
-                    for row in tqdm(
-                        _stream_rows(engine_name=engine_name, query=sql_query_extract, query_id='GGg429'),
-                        total=total_rows,
-                        desc=f'  {table_name}',
-                        unit='row',
-                        leave=False
-                    ):
-                        doc_type, doc_id, link_type, link_id = row
-                        if (
-                            f"{doc_type}\x00{doc_id}" in valid_nodes
-                            and f"{link_type}\x00{link_id}" in valid_nodes
-                        ):
-                            if link_type not in ('Concept', 'Category'):
-                                edge_key = f"{doc_type}\x00{doc_id}\x00{link_type}\x00{link_id}"
-                                if edge_key not in valid_edges:
-                                    continue
-                            from_idx = _get_node_index((doc_type, doc_id))
-                            to_idx = _get_node_index((link_type, link_id))
-                            uf.union(from_idx, to_idx)
-
-                # Determine component sizes and find the largest component
+                # Count component sizes.
                 component_sizes = {}
-                for idx in range(len(nodes_list)):
-                    root = uf.find(idx)
+                for node_id in node_uid_to_row_id.values():
+                    root = find(node_id)
                     component_sizes[root] = component_sizes.get(root, 0) + 1
 
-                sorted_components = sorted(component_sizes.items(), key=lambda x: x[1], reverse=True)
-                print(f"\n[🐬 GraphSearch DB] Found {len(sorted_components)} connected components with sizes: {[size for _, size in sorted_components]}")
-
-                largest_root, largest_size = sorted_components[0]
+                largest_root, largest_size = max(component_sizes.items(), key=lambda x: x[1])
+                print(f"\n[🐬 GraphSearch DB] Found {len(component_sizes)} connected components.")
                 print(f"\n[🐬 GraphSearch DB] Largest connected component size: {largest_size}")
 
-                # Extract node types and ids for largest connected component
-                largest_component_nodes = [nodes_list[idx] for idx in range(len(nodes_list)) if uf.find(idx) == largest_root]
+                # Build (object_type, object_id) tuples for the largest component.
+                row_id_to_uid = {row_id: uid for uid, row_id in node_uid_to_row_id.items()}
+                largest_component_nodes = [
+                    tuple(row_id_to_uid[node_id].split('|'))
+                    for node_id in node_uid_to_row_id.values()
+                    if find(node_id) == largest_root
+                ]
 
-                # Write largest component to the cache table
+                sysmsg.trace(f"Writing {len(largest_component_nodes):,} largest-component nodes to {cache_table_path} ...")
                 _write_largest_component(largest_component_nodes)
+                sysmsg.trace("Largest-component cache written.")
+
+            # Step 4 uses the cached largest component directly as the reference
+            # of valid nodes, because it was computed from graphsearch_test page
+            # profiles (so every node in it has a profile).
+            sysmsg.trace("Step 4 will use Operations_N_Object_T_LargestConnectedGraph as the valid-node reference.")
 
             # Step 4: Clean up the final knowledge-graph index tables in
             # graphsearch_test and elasticsearch_cache. graph_cache and
@@ -4746,6 +4585,7 @@ class GraphRegistry():
 
                 # Get the schema name from the global configuration
                 schema_name = glbcfg.mysql_schema_names['test'][schema_key]
+                sysmsg.trace(f"Scanning schema '{schema_name}' for loose ends ...")
 
                 # Get the list of tables in the schema.
                 # For graphsearch_test we want all Index_D_* tables, so no regex filter.
@@ -4760,6 +4600,8 @@ class GraphRegistry():
 
                 # Exclude tables containing the string "ProcessingTokens" and "Checksums"
                 list_of_tables = [t for t in list_of_tables if "ProcessingTokens" not in t and "Checksums" not in t]
+
+                schema_rows_to_delete = 0
 
                 # Print list of affected tables
                 print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
@@ -4798,7 +4640,9 @@ class GraphRegistry():
                               {eval_group_by}
                     """
 
-                    # Define SQL query template for object-to-object tables (edges/doclinks)
+                    # Define SQL query template for object-to-object tables (edges/doclinks).
+                    # A row is a loose end if EITHER endpoint is missing, so the
+                    # predicate is OR, not AND.
                     sql_query_obj2obj_template = """
                               {eval_or_commit}
                          FROM {schema_name}.{table_name} t
@@ -4808,8 +4652,7 @@ class GraphRegistry():
                     LEFT JOIN {graph_cache_test}.{allowed_nodes_table} n_to
                            ON n_to.object_type = t.{to_prefix}_type
                           AND n_to.object_id   = t.{to_prefix}_id
-                        WHERE n_from.object_id IS NULL
-                          AND n_to.object_id   IS NULL
+                        WHERE (n_from.object_id IS NULL OR n_to.object_id IS NULL)
                               {deleted_filter}
                               {eval_group_by}
                     """
@@ -4828,16 +4671,16 @@ class GraphRegistry():
 
                     sql_query_obj2obj_commit_template = """
                         DELETE FROM {schema_name}.{table_name}
-                         WHERE NOT EXISTS (
+                         WHERE (NOT EXISTS (
                                SELECT 1 FROM {graph_cache_test}.{allowed_nodes_table} n_from
                                 WHERE n_from.object_type = {schema_name}.{table_name}.{from_prefix}_type
                                   AND n_from.object_id   = {schema_name}.{table_name}.{from_prefix}_id
                          )
-                           AND NOT EXISTS (
+                            OR NOT EXISTS (
                                SELECT 1 FROM {graph_cache_test}.{allowed_nodes_table} n_to
                                 WHERE n_to.object_type = {schema_name}.{table_name}.{to_prefix}_type
                                   AND n_to.object_id   = {schema_name}.{table_name}.{to_prefix}_id
-                         )
+                         ))
                               {deleted_filter}
                     """
 
@@ -4921,6 +4764,7 @@ class GraphRegistry():
 
                         # Print the DataFrame if it contains any rows and delete loose ends from the current table if 'commit' action is specified
                         if len(df) > 0:
+                            schema_rows_to_delete += int(df['n_to_delete'].sum())
 
                             # Print the DataFrame with a title indicating the evaluation results for the current table
                             print_dataframe(df, title=f'🔍 Evaluation results for table: "{schema_name}.{table_name}"')
@@ -4933,6 +4777,9 @@ class GraphRegistry():
 
                                 # Execute the commit query
                                 db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
+
+                if 'eval' in actions:
+                    sysmsg.trace(f"Schema '{schema_name}' evaluation complete: {schema_rows_to_delete:,} rows to delete.")
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
