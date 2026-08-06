@@ -4781,6 +4781,82 @@ class GraphRegistry():
                 if 'eval' in actions:
                     sysmsg.trace(f"Schema '{schema_name}' evaluation complete: {schema_rows_to_delete:,} rows to delete.")
 
+            #-----------------------------------------#
+            # Step 5: Clean deleted nodes from        #
+            # graphsearch_test.Data_N_Object_T_PageProfile
+            #-----------------------------------------#
+            sysmsg.trace("Step 5: Checking graphsearch_test.Data_N_Object_T_PageProfile for deleted source nodes ...")
+
+            valid_nodes_source_table = f"{glbcfg.schema_graph_cache_test}._tmp_valid_nodes_source_of_truth"
+            db.execute_query_in_shell(
+                engine_name=engine_name,
+                query=f"""
+                    DROP TABLE IF EXISTS {valid_nodes_source_table};
+                    CREATE TABLE {valid_nodes_source_table} (
+                        object_type VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                        object_id   VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                        PRIMARY KEY (object_type, object_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                    INSERT INTO {valid_nodes_source_table} (object_type, object_id)
+                        SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Nodes_N_Object WHERE record_deleted = 0
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Category
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Concept;
+                """,
+                verbose='print' in actions,
+                query_id='vnsrctbl'
+            )
+            sysmsg.trace("Source-of-truth valid-node reference ready.")
+
+            page_profile_table = f"{glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile"
+            page_profile_columns = db.get_column_names(
+                engine_name=engine_name,
+                schema_name=glbcfg.schema_graphsearch_test,
+                table_name='Data_N_Object_T_PageProfile'
+            )
+            has_deleted_col = 'deleted' in page_profile_columns
+
+            sql_query_eval = f"""
+                SELECT t.object_type, COUNT(*) AS n_to_delete
+                  FROM {page_profile_table} t
+             LEFT JOIN {valid_nodes_source_table} n
+                    ON n.object_type = t.object_type
+                   AND n.object_id   = t.object_id
+                 WHERE n.object_id IS NULL
+                       {'AND t.deleted = 0' if has_deleted_col else ''}
+              GROUP BY t.object_type
+            """
+
+            sql_query_commit = f"""
+                DELETE FROM {page_profile_table}
+                 WHERE NOT EXISTS (
+                       SELECT 1 FROM {valid_nodes_source_table} n
+                        WHERE n.object_type = {page_profile_table}.object_type
+                          AND n.object_id   = {page_profile_table}.object_id
+                   )
+                       {'AND deleted = 0' if has_deleted_col else ''}
+            """
+
+            if 'eval' in actions:
+                out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='ppdleval', verbose='print' in actions)
+                df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
+                if len(df) > 0:
+                    print_dataframe(df, title=f'🔍 Evaluation results for table: "{page_profile_table}"')
+
+            if 'commit' in actions:
+                print(f"🔥 Deleting deleted-node rows from table: '{page_profile_table}'.")
+                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='ppdlcommit', verbose='print' in actions)
+
+            db.execute_query_in_shell(
+                engine_name=engine_name,
+                query=f"DROP TABLE IF EXISTS {valid_nodes_source_table};",
+                verbose='print' in actions,
+                query_id='vnsrcdrp'
+            )
+
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
         #-----------------------------------------------------#
