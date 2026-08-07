@@ -4394,8 +4394,101 @@ class GraphRegistry():
                             # Execute the delete query in the database shell with the specified engine name, verbosity, and query ID
                             db.execute_query_in_shell(engine_name=engine_name, query=sql_query_delete, verbose='print' in actions, query_id='rr99del')
 
+            #-----------------------------------------------#
+            # Step 1: Clean deleted nodes from page profile #
+            #-----------------------------------------------#
+
+            # The page profile is the seed for the graph analysis in Step 2, so it
+            # must not contain nodes that have been deleted upstream.
+            sysmsg.trace("Step 1: Checking graphsearch_test.Data_N_Object_T_PageProfile for deleted source nodes ...")
+
+            valid_nodes_source_table = f"{glbcfg.schema_graph_cache_test}._tmp_valid_nodes_source_of_truth"
+            db.execute_query_in_shell(
+                engine_name=engine_name,
+                query=f"""
+                    DROP TABLE IF EXISTS {valid_nodes_source_table};
+                    CREATE TABLE {valid_nodes_source_table} (
+                        object_type VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                        object_id   VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+                        PRIMARY KEY (object_type, object_id)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                    INSERT INTO {valid_nodes_source_table} (object_type, object_id)
+                        SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Nodes_N_Object WHERE record_deleted = 0
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Category
+                        UNION ALL
+                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Concept;
+                """,
+                verbose='print' in actions,
+                query_id='vnsrctbl'
+            )
+            sysmsg.trace("Source-of-truth valid-node reference ready.")
+
+            page_profile_table = f"{glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile"
+            page_profile_columns = db.get_column_names(
+                engine_name=engine_name,
+                schema_name=glbcfg.schema_graphsearch_test,
+                table_name='Data_N_Object_T_PageProfile'
+            )
+            has_deleted_col = 'deleted' in page_profile_columns
+
+            sql_query_eval = f"""
+                SELECT t.object_type, COUNT(*) AS n_to_delete
+                  FROM {page_profile_table} t
+             LEFT JOIN {valid_nodes_source_table} n
+                    ON n.object_type = t.object_type
+                   AND n.object_id   = t.object_id
+                 WHERE n.object_id IS NULL
+                       {'AND t.deleted = 0' if has_deleted_col else ''}
+              GROUP BY t.object_type
+            """
+
+            sql_query_commit = f"""
+                DELETE FROM {page_profile_table}
+                 WHERE NOT EXISTS (
+                       SELECT 1 FROM {valid_nodes_source_table} n
+                        WHERE n.object_type = {page_profile_table}.object_type
+                          AND n.object_id   = {page_profile_table}.object_id
+                   )
+                       {'AND deleted = 0' if has_deleted_col else ''}
+            """
+
+            if 'eval' in actions:
+                out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='ppdleval', verbose='print' in actions)
+                df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
+                if len(df) > 0:
+                    print_dataframe(df, title=f'🔍 Evaluation results for table: "{page_profile_table}"')
+
+            if 'commit' in actions:
+                print(f"🔥 Deleting deleted-node rows from table: '{page_profile_table}'.")
+                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='ppdlcommit', verbose='print' in actions)
+
+            db.execute_query_in_shell(
+                engine_name=engine_name,
+                query=f"DROP TABLE IF EXISTS {valid_nodes_source_table};",
+                verbose='print' in actions,
+                query_id='vnsrcdrp'
+            )
+
+            # Define pickle cache paths here so Step 1 can invalidate them on
+            # commit and Step 2 can use them for graph caching.
+            pickle_dir = '/tmp/graphregistry_delete_loose_ends'
+            os.makedirs(pickle_dir, exist_ok=True)
+            nodes_pickle = os.path.join(pickle_dir, 'node_uid_to_row_id.pkl')
+            edges_pickle = os.path.join(pickle_dir, 'graph_edges.pkl')
+
+            # If we just deleted page-profile rows, the cached node/edge pickles
+            # are stale and must be rebuilt.
+            if 'commit' in actions:
+                sysmsg.trace("Page profile modified; invalidating graph pickle cache.")
+                for p in (nodes_pickle, edges_pickle):
+                    if os.path.exists(p):
+                        os.remove(p)
+
             #-----------------------------------#
-            # Step 1: Calculate connected graph #
+            # Step 2: Calculate connected graph #
             #-----------------------------------#
 
             from sqlalchemy import text
@@ -4454,13 +4547,6 @@ class GraphRegistry():
                     print(f"\n[🐬 GraphSearch DB] Refreshing cached graph in {cache_table_path}.")
                 else:
                     print(f"\n[🐬 GraphSearch DB] Graph cache not found or empty; computing and storing in {cache_table_path}.")
-
-                # Cache the node mapping and edge list as pickle files so that
-                # repeated runs are fast and deterministic.
-                pickle_dir = '/tmp/graphregistry_delete_loose_ends'
-                os.makedirs(pickle_dir, exist_ok=True)
-                nodes_pickle = os.path.join(pickle_dir, 'node_uid_to_row_id.pkl')
-                edges_pickle = os.path.join(pickle_dir, 'graph_edges.pkl')
 
                 if refresh_graph or not os.path.exists(nodes_pickle) or not os.path.exists(edges_pickle):
                     sysmsg.trace("Building node uid -> row_id mapping from graphsearch_test.Data_N_Object_T_PageProfile ...")
@@ -4578,7 +4664,7 @@ class GraphRegistry():
             # graph_airflow are intentionally not touched here.
             # The update_loose_ends and include_scores_matrix parameters are kept
             # for CLI backward compatibility but are no longer used.
-            for schema_key, allowed_nodes_table in [('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'), ('es_cache'   , 'Operations_N_Object_T_LargestConnectedGraph')]:
+            for schema_key, allowed_nodes_table in [('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'), ('es_cache', 'Operations_N_Object_T_LargestConnectedGraph')]:
 
                 # Get the schema name from the global configuration
                 schema_name = glbcfg.mysql_schema_names['test'][schema_key]
@@ -4778,82 +4864,6 @@ class GraphRegistry():
                 if 'eval' in actions:
                     sysmsg.trace(f"Schema '{schema_name}' evaluation complete: {schema_rows_to_delete:,} rows to delete.")
 
-            #-----------------------------------------#
-            # Step 5: Clean deleted nodes from        #
-            # graphsearch_test.Data_N_Object_T_PageProfile
-            #-----------------------------------------#
-            sysmsg.trace("Step 5: Checking graphsearch_test.Data_N_Object_T_PageProfile for deleted source nodes ...")
-
-            valid_nodes_source_table = f"{glbcfg.schema_graph_cache_test}._tmp_valid_nodes_source_of_truth"
-            db.execute_query_in_shell(
-                engine_name=engine_name,
-                query=f"""
-                    DROP TABLE IF EXISTS {valid_nodes_source_table};
-                    CREATE TABLE {valid_nodes_source_table} (
-                        object_type VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                        object_id   VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                        PRIMARY KEY (object_type, object_id)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-                    INSERT INTO {valid_nodes_source_table} (object_type, object_id)
-                        SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
-                        UNION ALL
-                        SELECT object_type, object_id FROM {glbcfg.schema_lectures}.Nodes_N_Object WHERE record_deleted = 0
-                        UNION ALL
-                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Category
-                        UNION ALL
-                        SELECT object_type, object_id FROM {glbcfg.schema_ontology}.Nodes_N_Concept;
-                """,
-                verbose='print' in actions,
-                query_id='vnsrctbl'
-            )
-            sysmsg.trace("Source-of-truth valid-node reference ready.")
-
-            page_profile_table = f"{glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile"
-            page_profile_columns = db.get_column_names(
-                engine_name=engine_name,
-                schema_name=glbcfg.schema_graphsearch_test,
-                table_name='Data_N_Object_T_PageProfile'
-            )
-            has_deleted_col = 'deleted' in page_profile_columns
-
-            sql_query_eval = f"""
-                SELECT t.object_type, COUNT(*) AS n_to_delete
-                  FROM {page_profile_table} t
-             LEFT JOIN {valid_nodes_source_table} n
-                    ON n.object_type = t.object_type
-                   AND n.object_id   = t.object_id
-                 WHERE n.object_id IS NULL
-                       {'AND t.deleted = 0' if has_deleted_col else ''}
-              GROUP BY t.object_type
-            """
-
-            sql_query_commit = f"""
-                DELETE FROM {page_profile_table}
-                 WHERE NOT EXISTS (
-                       SELECT 1 FROM {valid_nodes_source_table} n
-                        WHERE n.object_type = {page_profile_table}.object_type
-                          AND n.object_id   = {page_profile_table}.object_id
-                   )
-                       {'AND deleted = 0' if has_deleted_col else ''}
-            """
-
-            if 'eval' in actions:
-                out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='ppdleval', verbose='print' in actions)
-                df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
-                if len(df) > 0:
-                    print_dataframe(df, title=f'🔍 Evaluation results for table: "{page_profile_table}"')
-
-            if 'commit' in actions:
-                print(f"🔥 Deleting deleted-node rows from table: '{page_profile_table}'.")
-                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='ppdlcommit', verbose='print' in actions)
-
-            db.execute_query_in_shell(
-                engine_name=engine_name,
-                query=f"DROP TABLE IF EXISTS {valid_nodes_source_table};",
-                verbose='print' in actions,
-                query_id='vnsrcdrp'
-            )
-
             #------------------------------------------------------------------------------#
             # Final verification that all nodes have a page profile and an index doc entry #
             #------------------------------------------------------------------------------#
@@ -4865,104 +4875,136 @@ class GraphRegistry():
                 use_regex   = [r'^Index_D_[^_]*$'])
 
             # Get list of edge tables
-            list_of_edge_tables = db.get_tables_in_schema(
-                engine_name = 'xaas_coresrv',
-                schema_name = glbcfg.schema_graphsearch_test,
-                use_regex   = [r'^Index_D_[^_]*_L_[^_]*'])
+            list_of_edge_tables = {
 
-            # Print list of node tables
-            print('\n[🐬 GraphSearch DB] [DIC] Data integrity check. Verify if any orphaned nodes are left.')
-
-            # Loop over node tables (with progress bar)
-            with tqdm(list_of_node_tables, unit='table') as pb:
-                for table_name in pb:
-                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-
-                    # Execute SQL query to count orphaned nodes (nodes without a page profile)
-                    n_orphaned_nodes = db.execute_query(
+                # Tables from MySQL/MariaDB
+                glbcfg.schema_graphsearch_test :
+                    db.get_tables_in_schema(
                         engine_name = 'xaas_coresrv',
                         schema_name = glbcfg.schema_graphsearch_test,
-                        query = f"""
-                            SELECT COUNT(*)
-                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
-                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
-                                ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
-                            WHERE p.object_id IS NULL
-                        """)[0][0]
+                        use_regex   = [r'^Index_D_[^_]*_L_[^_]*']),
 
-                    # If there are orphaned nodes, log a critical message and exit
-                    if n_orphaned_nodes > 0:
-                        sysmsg.critical(f'Table "{table_name}" has {n_orphaned_nodes} orphaned node(s) with no page profile.')
-
-            # Loop over node tables (with progress bar)
-            with tqdm(list_of_edge_tables, unit='table') as pb:
-                for table_name in pb:
-                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-
-                    # Execute SQL query to count orphaned edges (edges without a page profile) - forward direction
-                    n_orphaned_edges_1 = db.execute_query(
+                # Tables from ElasticSearch cache
+                glbcfg.schema_es_cache :
+                    db.get_tables_in_schema(
                         engine_name = 'xaas_coresrv',
-                        schema_name = glbcfg.schema_graphsearch_test,
-                        query = f"""
-                            SELECT COUNT(*)
-                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
-                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
-                                ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
-                            WHERE p.object_id IS NULL
-                        """)[0][0]
+                        schema_name = glbcfg.schema_es_cache,
+                        use_regex   = [r'^Index_D_[^_]*_L_[^_]*'])
+            }
 
-                    # Execute SQL query to count orphaned edges (edges without a page profile) - reverse direction
-                    n_orphaned_edges_2 = db.execute_query(
-                        engine_name = 'xaas_coresrv',
-                        schema_name = glbcfg.schema_graphsearch_test,
-                        query = f"""
-                            SELECT COUNT(*)
-                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
-                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
-                                ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
-                            WHERE p.object_id IS NULL
-                        """)[0][0]
+            # Loop over mysql and elasticsearch schemas
+            for schema_name in [glbcfg.schema_graphsearch_test, glbcfg.schema_es_cache]:
 
-                    # Sum the orphaned edges from both directions
-                    n_orphaned_edges = n_orphaned_edges_1 + n_orphaned_edges_2
+                # Print info
+                if schema_name == glbcfg.schema_graphsearch_test:
+                    print('\n[🐬 GraphSearch DB] [DIC] Data integrity check. Verify if any orphaned nodes are left in MySQL/MariaDB doc tables.')
+                else:
+                    print('\n[⚡️ ElasticSearch] [DIC] Data integrity check. Verify if any orphaned nodes are left in Elasticsearch doc tables.')
 
-                    # If there are orphaned edges, log a critical message and exit
-                    if n_orphaned_edges > 0:
-                        sysmsg.critical(f'Table "{table_name}" has {n_orphaned_edges} orphaned edge(s) with no page profile.')
+                # Loop over node tables (with progress bar)
+                with tqdm(list_of_node_tables, unit='table') as pb:
+                    for table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
-                    # Extract object types from the table name for further verification
-                    doc_type, link_type = re.findall(r'Index_D_([^_]+)_L_([^_]+)', table_name)[0]
+                        # Verify that table exists in the schema
+                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name) is False:
+                            continue
 
-                    # Execute SQL query to verify that all edges have a corresponding doc index entry - forward direction
-                    n_with_no_doc_index_1 = db.execute_query(
-                        engine_name = 'xaas_coresrv',
-                        schema_name = glbcfg.schema_graphsearch_test,
-                        query = f"""
-                            SELECT COUNT(*)
-                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
-                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Index_D_{doc_type} d
-                                ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
-                            WHERE d.doc_id IS NULL
-                        """)[0][0]
+                        # Execute SQL query to count orphaned nodes (nodes without a page profile)
+                        n_orphaned_nodes = db.execute_query(
+                            engine_name = 'xaas_coresrv',
+                            schema_name = schema_name,
+                            query = f"""
+                                  SELECT COUNT(*)
+                                    FROM {schema_name}.{table_name} t
+                               LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
+                                      ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+                                   WHERE p.object_id IS NULL
+                            """)[0][0]
 
-                    # Execute SQL query to verify that all edges have a corresponding doc index entry - reverse direction
-                    n_with_no_doc_index_2 = db.execute_query(
-                        engine_name = 'xaas_coresrv',
-                        schema_name = glbcfg.schema_graphsearch_test,
-                        query = f"""
-                            SELECT COUNT(*)
-                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
-                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Index_D_{link_type} d
-                                ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
-                            WHERE d.doc_id IS NULL
-                        """)[0][0]
+                        # If there are orphaned nodes, log a critical message and exit
+                        if n_orphaned_nodes > 0:
+                            sysmsg.critical(f'Table "{table_name}" has {n_orphaned_nodes} orphaned node(s) with no page profile.')
 
-                    # Sum the counts of edges with no corresponding doc index entry from both directions
-                    n_with_no_doc_index = n_with_no_doc_index_1 + n_with_no_doc_index_2
+                # Print info
+                if schema_name == glbcfg.schema_graphsearch_test:
+                    print('\n[🐬 GraphSearch DB] [DIC] Data integrity check. Verify if any orphaned nodes are left in MySQL/MariaDB doc-link tables.')
+                else:
+                    print('\n[⚡️ ElasticSearch] [DIC] Data integrity check. Verify if any orphaned nodes are left in Elasticsearch doc-link tables.')
 
-                    # If there are edges with no corresponding doc index entry, log a critical message and exit
-                    if n_with_no_doc_index > 0:
-                        sysmsg.critical(f'Table "{table_name}" has {n_with_no_doc_index} edge(s) with no corresponding doc index entry.')
+                # Loop over edge tables (with progress bar)
+                with tqdm(list_of_edge_tables[schema_name], unit='table') as pb:
+                    for table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+
+                        # Verify that table exists in the schema
+                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name) is False:
+                            continue
+
+                        # Execute SQL query to count orphaned edges (edges without a page profile) - forward direction
+                        n_orphaned_edges_1 = db.execute_query(
+                            engine_name = 'xaas_coresrv',
+                            schema_name = schema_name,
+                            query = f"""
+                                  SELECT COUNT(*)
+                                    FROM {schema_name}.{table_name} t
+                               LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
+                                      ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+                                   WHERE p.object_id IS NULL
+                            """)[0][0]
+
+                        # Execute SQL query to count orphaned edges (edges without a page profile) - reverse direction
+                        n_orphaned_edges_2 = db.execute_query(
+                            engine_name = 'xaas_coresrv',
+                            schema_name = schema_name,
+                            query = f"""
+                                  SELECT COUNT(*)
+                                    FROM {schema_name}.{table_name} t
+                               LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
+                                      ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
+                                   WHERE p.object_id IS NULL
+                            """)[0][0]
+
+                        # Sum the orphaned edges from both directions
+                        n_orphaned_edges = n_orphaned_edges_1 + n_orphaned_edges_2
+
+                        # If there are orphaned edges, log a critical message and exit
+                        if n_orphaned_edges > 0:
+                            sysmsg.critical(f'Table "{table_name}" has {n_orphaned_edges} orphaned edge(s) with no page profile.')
+
+                        # Extract object types from the table name for further verification
+                        doc_type, link_type = re.findall(r'Index_D_([^_]+)_L_([^_]+)', table_name)[0]
+
+                        # Execute SQL query to verify that all edges have a corresponding doc index entry - forward direction
+                        n_with_no_doc_index_1 = db.execute_query(
+                            engine_name = 'xaas_coresrv',
+                            schema_name = schema_name,
+                            query = f"""
+                                  SELECT COUNT(*)
+                                    FROM {schema_name}.{table_name} t
+                               LEFT JOIN {schema_name}.Index_D_{doc_type} d
+                                      ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
+                                   WHERE d.doc_id IS NULL
+                            """)[0][0]
+
+                        # Execute SQL query to verify that all edges have a corresponding doc index entry - reverse direction
+                        n_with_no_doc_index_2 = db.execute_query(
+                            engine_name = 'xaas_coresrv',
+                            schema_name = schema_name,
+                            query = f"""
+                                  SELECT COUNT(*)
+                                    FROM {schema_name}.{table_name} t
+                               LEFT JOIN {schema_name}.Index_D_{link_type} d
+                                      ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
+                                   WHERE d.doc_id IS NULL
+                            """)[0][0]
+
+                        # Sum the counts of edges with no corresponding doc index entry from both directions
+                        n_with_no_doc_index = n_with_no_doc_index_1 + n_with_no_doc_index_2
+
+                        # If there are edges with no corresponding doc index entry, log a critical message and exit
+                        if n_with_no_doc_index > 0:
+                            sysmsg.critical(f'Table "{table_name}" has {n_with_no_doc_index} edge(s) with no corresponding doc index entry.')
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
