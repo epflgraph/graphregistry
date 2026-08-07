@@ -49,10 +49,11 @@ class GlobalConfig:
                 'registry'    : self.settings['mysql']['db_schema_names']['registry'],
                 'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
                 'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
-                'traversals'  : self.settings['mysql']['db_schema_names'].get('traversals', 'graph_traversals'),
+                'traversals'  : self.settings['mysql']['db_schema_names']['traversals'],
                 'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
-                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
+                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test'],
+                'prod_mirror' : self.settings['mysql']['db_schema_names']['graphsearch_prod_mirror']
             },
             'prod' : {
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
@@ -79,6 +80,7 @@ class GlobalConfig:
         self.schema_graph_cache_prod = self.mysql_schema_names['prod']['graph_cache']
         self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
         self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
+        self.schema_graphsearch_prod_mirror = self.mysql_schema_names['test']['prod_mirror']
 
         # Path where index patch/rollback SQL files are generated.
         # Supports the new top-level 'data_paths.patches' key, with a fallback
