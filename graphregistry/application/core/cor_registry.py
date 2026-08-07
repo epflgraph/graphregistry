@@ -4348,10 +4348,10 @@ class GraphRegistry():
             index_tables = [t for t in index_tables if not t.startswith('_')]
 
             # Print list of affected tables
-            print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
-            for t in index_tables:
-                print(f" - {glbcfg.schema_graphsearch_test}.{t}")
-            print('')
+            # print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
+            # for t in index_tables:
+            #     print(f" - {glbcfg.schema_graphsearch_test}.{t}")
+            # print('')
 
             # Loop over index tables and check for orphaned row_rank=99 rows
             for table_name in index_tables:
@@ -4578,10 +4578,7 @@ class GraphRegistry():
             # graph_airflow are intentionally not touched here.
             # The update_loose_ends and include_scores_matrix parameters are kept
             # for CLI backward compatibility but are no longer used.
-            for schema_key, allowed_nodes_table in [
-                ('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'),
-                ('es_cache'   , 'Operations_N_Object_T_LargestConnectedGraph')
-            ]:
+            for schema_key, allowed_nodes_table in [('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'), ('es_cache'   , 'Operations_N_Object_T_LargestConnectedGraph')]:
 
                 # Get the schema name from the global configuration
                 schema_name = glbcfg.mysql_schema_names['test'][schema_key]
@@ -4603,11 +4600,11 @@ class GraphRegistry():
 
                 schema_rows_to_delete = 0
 
-                # Print list of affected tables
-                print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
-                for t in list_of_tables:
-                    print(f" - {schema_name}.{t}")
-                print('')
+                # # Print list of affected tables
+                # print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
+                # for t in list_of_tables:
+                #     print(f" - {schema_name}.{t}")
+                # print('')
 
                 # Loop over each table in the list of tables
                 for table_name in list_of_tables:
@@ -4856,6 +4853,116 @@ class GraphRegistry():
                 verbose='print' in actions,
                 query_id='vnsrcdrp'
             )
+
+            #------------------------------------------------------------------------------#
+            # Final verification that all nodes have a page profile and an index doc entry #
+            #------------------------------------------------------------------------------#
+
+            # Get list of node tables
+            list_of_node_tables = db.get_tables_in_schema(
+                engine_name = 'xaas_coresrv',
+                schema_name = glbcfg.schema_graphsearch_test,
+                use_regex   = [r'^Index_D_[^_]*$'])
+
+            # Get list of edge tables
+            list_of_edge_tables = db.get_tables_in_schema(
+                engine_name = 'xaas_coresrv',
+                schema_name = glbcfg.schema_graphsearch_test,
+                use_regex   = [r'^Index_D_[^_]*_L_[^_]*'])
+
+            # Print list of node tables
+            print('\n[🐬 GraphSearch DB] [DIC] Data integrity check. Verify if any orphaned nodes are left.')
+
+            # Loop over node tables (with progress bar)
+            with tqdm(list_of_node_tables, unit='table') as pb:
+                for table_name in pb:
+                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Execute SQL query to count orphaned nodes (nodes without a page profile)
+                    n_orphaned_nodes = db.execute_query(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graphsearch_test,
+                        query = f"""
+                            SELECT COUNT(*)
+                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
+                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
+                                ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+                            WHERE p.object_id IS NULL
+                        """)[0][0]
+
+                    # If there are orphaned nodes, log a critical message and exit
+                    if n_orphaned_nodes > 0:
+                        sysmsg.critical(f'Table "{table_name}" has {n_orphaned_nodes} orphaned node(s) with no page profile.')
+
+            # Loop over node tables (with progress bar)
+            with tqdm(list_of_edge_tables, unit='table') as pb:
+                for table_name in pb:
+                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+
+                    # Execute SQL query to count orphaned edges (edges without a page profile) - forward direction
+                    n_orphaned_edges_1 = db.execute_query(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graphsearch_test,
+                        query = f"""
+                            SELECT COUNT(*)
+                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
+                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
+                                ON (t.doc_type, t.doc_id) = (p.object_type, p.object_id)
+                            WHERE p.object_id IS NULL
+                        """)[0][0]
+
+                    # Execute SQL query to count orphaned edges (edges without a page profile) - reverse direction
+                    n_orphaned_edges_2 = db.execute_query(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graphsearch_test,
+                        query = f"""
+                            SELECT COUNT(*)
+                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
+                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Data_N_Object_T_PageProfile p
+                                ON (t.link_type, t.link_id) = (p.object_type, p.object_id)
+                            WHERE p.object_id IS NULL
+                        """)[0][0]
+
+                    # Sum the orphaned edges from both directions
+                    n_orphaned_edges = n_orphaned_edges_1 + n_orphaned_edges_2
+
+                    # If there are orphaned edges, log a critical message and exit
+                    if n_orphaned_edges > 0:
+                        sysmsg.critical(f'Table "{table_name}" has {n_orphaned_edges} orphaned edge(s) with no page profile.')
+
+                    # Extract object types from the table name for further verification
+                    doc_type, link_type = re.findall(r'Index_D_([^_]+)_L_([^_]+)', table_name)[0]
+
+                    # Execute SQL query to verify that all edges have a corresponding doc index entry - forward direction
+                    n_with_no_doc_index_1 = db.execute_query(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graphsearch_test,
+                        query = f"""
+                            SELECT COUNT(*)
+                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
+                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Index_D_{doc_type} d
+                                ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
+                            WHERE d.doc_id IS NULL
+                        """)[0][0]
+
+                    # Execute SQL query to verify that all edges have a corresponding doc index entry - reverse direction
+                    n_with_no_doc_index_2 = db.execute_query(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graphsearch_test,
+                        query = f"""
+                            SELECT COUNT(*)
+                                FROM {glbcfg.schema_graphsearch_test}.{table_name} t
+                        LEFT JOIN {glbcfg.schema_graphsearch_test}.Index_D_{link_type} d
+                                ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
+                            WHERE d.doc_id IS NULL
+                        """)[0][0]
+
+                    # Sum the counts of edges with no corresponding doc index entry from both directions
+                    n_with_no_doc_index = n_with_no_doc_index_1 + n_with_no_doc_index_2
+
+                    # If there are edges with no corresponding doc index entry, log a critical message and exit
+                    if n_with_no_doc_index > 0:
+                        sysmsg.critical(f'Table "{table_name}" has {n_with_no_doc_index} edge(s) with no corresponding doc index entry.')
 
         #-----------------------------------------------------#
         # Sub-subclass definition: Index Cache Buildup Tables #
