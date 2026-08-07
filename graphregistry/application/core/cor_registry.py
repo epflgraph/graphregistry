@@ -4455,14 +4455,17 @@ class GraphRegistry():
                        {'AND deleted = 0' if has_deleted_col else ''}
             """
 
-            if 'eval' in actions:
-                out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='ppdleval', verbose='print' in actions)
-                df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
-                if len(df) > 0:
-                    print_dataframe(df, title=f'🔍 Evaluation results for table: "{page_profile_table}"')
+            # Always run the count so we can skip commit/invalidation when there
+            # is nothing to delete.
+            out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='ppdleval', verbose='print' in actions)
+            df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
+            page_profile_rows_to_delete = int(df['n_to_delete'].sum()) if len(df) > 0 else 0
 
-            if 'commit' in actions:
-                print(f"🔥 Deleting deleted-node rows from table: '{page_profile_table}'.")
+            if 'eval' in actions and page_profile_rows_to_delete > 0:
+                print_dataframe(df, title=f'🔍 Evaluation results for table: "{page_profile_table}"')
+
+            if 'commit' in actions and page_profile_rows_to_delete > 0:
+                print(f"🔥 Deleting {page_profile_rows_to_delete:,} deleted-node rows from table: '{page_profile_table}'.")
                 db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='ppdlcommit', verbose='print' in actions)
 
             db.execute_query_in_shell(
@@ -4479,32 +4482,27 @@ class GraphRegistry():
             nodes_pickle = os.path.join(pickle_dir, 'node_uid_to_row_id.pkl')
             edges_pickle = os.path.join(pickle_dir, 'graph_edges.pkl')
 
-            # If we just deleted page-profile rows, the cached node/edge pickles
-            # are stale and must be rebuilt.
-            if 'commit' in actions:
-                sysmsg.trace("Page profile modified; invalidating graph pickle cache.")
+            cache_table_path = f"{glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph"
+
+            # Only invalidate the graph caches if page-profile rows were actually
+            # deleted. Otherwise a no-op commit would still force a full rebuild.
+            if page_profile_rows_to_delete > 0:
+                sysmsg.trace(f"Page profile modified ({page_profile_rows_to_delete:,} rows); invalidating graph caches.")
                 for p in (nodes_pickle, edges_pickle):
                     if os.path.exists(p):
                         os.remove(p)
-
-            #-----------------------------------#
-            # Step 2: Calculate connected graph #
-            #-----------------------------------#
-
-            from sqlalchemy import text
-
-            cache_table_path = f"{glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph"
-
-            # If we just deleted page-profile rows, the SQL largest-component
-            # cache is also stale and must be recomputed.
-            if 'commit' in actions:
-                sysmsg.trace("Page profile modified; invalidating SQL largest-component cache.")
                 db.execute_query_in_shell(
                     engine_name=engine_name,
                     query=f"TRUNCATE TABLE {cache_table_path};",
                     verbose='print' in actions,
                     query_id='lccinv'
                 )
+
+            #-----------------------------------#
+            # Step 2: Calculate connected graph #
+            #-----------------------------------#
+
+            from sqlalchemy import text
 
             # Local helper to escape a SQL string literal by doubling single quotes.
             def _sql_string(value):
@@ -4551,15 +4549,29 @@ class GraphRegistry():
                     verbose='print' in actions
                 )
 
+            sysmsg.trace(f"Checking SQL graph cache '{cache_table_path}' (refresh_graph={refresh_graph}) ...")
+
             if not refresh_graph and _graph_cache_exists():
+                sysmsg.trace(f"SQL graph cache exists and is non-empty; using it.")
                 print(f"\n[🐬 GraphSearch DB] Using cached graph from {cache_table_path}.")
             else:
                 if refresh_graph:
+                    sysmsg.trace("refresh_graph is True; rebuilding SQL graph cache.")
                     print(f"\n[🐬 GraphSearch DB] Refreshing cached graph in {cache_table_path}.")
                 else:
+                    sysmsg.trace("SQL graph cache missing or empty; will compute from page profile.")
                     print(f"\n[🐬 GraphSearch DB] Graph cache not found or empty; computing and storing in {cache_table_path}.")
 
-                if refresh_graph or not os.path.exists(nodes_pickle) or not os.path.exists(edges_pickle):
+                sysmsg.trace(f"Checking pickle files: nodes={nodes_pickle}, edges={edges_pickle}")
+                nodes_pickle_exists = os.path.exists(nodes_pickle)
+                edges_pickle_exists = os.path.exists(edges_pickle)
+                sysmsg.trace(f"Pickle file existence: nodes={nodes_pickle_exists}, edges={edges_pickle_exists}")
+
+                if refresh_graph or not nodes_pickle_exists or not edges_pickle_exists:
+                    if refresh_graph:
+                        sysmsg.trace("Rebuilding node mapping and edge list (refresh_graph requested).")
+                    else:
+                        sysmsg.trace("One or both pickle files missing; rebuilding node mapping and edge list.")
                     sysmsg.trace("Building node uid -> row_id mapping from graphsearch_test.Data_N_Object_T_PageProfile ...")
                     node_uids = db.execute_query(
                         engine_name=engine_name,
@@ -4608,13 +4620,13 @@ class GraphRegistry():
 
                     sysmsg.trace(f"Edge list saved: {len(from_ids):,} edges.")
                 else:
+                    sysmsg.trace("Both pickle files exist; loading node mapping and edge list from disk.")
                     print(f"\n[🐬 GraphSearch DB] Loading cached node mapping and edge list from pickle files.")
-                    sysmsg.trace("Loading cached node mapping and edge list from pickle files ...")
                     with open(nodes_pickle, 'rb') as f:
                         node_uid_to_row_id = pickle.load(f)
                     with open(edges_pickle, 'rb') as f:
                         from_ids, to_ids = pickle.load(f)
-                    sysmsg.trace(f"Loaded {len(node_uid_to_row_id):,} nodes and {len(from_ids):,} edges.")
+                    sysmsg.trace(f"Loaded {len(node_uid_to_row_id):,} nodes and {len(from_ids):,} edges from pickles.")
 
                 # Union-Find on the cached edge list.
                 sysmsg.trace("Running Union-Find on edge list ...")
@@ -4875,6 +4887,90 @@ class GraphRegistry():
 
                 if 'eval' in actions:
                     sysmsg.trace(f"Schema '{schema_name}' evaluation complete: {schema_rows_to_delete:,} rows to delete.")
+
+            #-----------------------------------------------------#
+            # Step 5: Delete doclink edges whose endpoints are    #
+            # missing from the corresponding doc index tables.    #
+            #-----------------------------------------------------#
+            sysmsg.trace("Step 5: Checking doclink tables for edges with missing doc index entries ...")
+
+            for schema_key in ['graphsearch', 'es_cache']:
+                schema_name = glbcfg.mysql_schema_names['test'][schema_key]
+
+                doclink_tables = db.get_tables_in_schema(
+                    engine_name=engine_name,
+                    schema_name=schema_name,
+                    use_regex=[r'^Index_D_[^_]+_L_[^_]+']
+                )
+                doclink_tables = [t for t in doclink_tables if not t.startswith('_')]
+
+                index_tables = set(db.get_tables_in_schema(
+                    engine_name=engine_name,
+                    schema_name=schema_name,
+                    use_regex=[r'^Index_D_[^_]*$']
+                ))
+
+                schema_rows_to_delete = 0
+
+                for table_name in tqdm(doclink_tables, desc=f'Check doc-index refs ({schema_key})', unit='table'):
+
+                    match = re.search(r'Index_D_([^_]+)_L_([^_]+)', table_name)
+                    if not match:
+                        continue
+                    doc_type, link_type = match.groups()
+
+                    doc_index_table = f"Index_D_{doc_type}"
+                    link_index_table = f"Index_D_{link_type}"
+
+                    if doc_index_table not in index_tables or link_index_table not in index_tables:
+                        continue
+
+                    sql_query_eval = f"""
+                        SELECT COUNT(*) AS n_to_delete
+                          FROM {schema_name}.{table_name} t
+                     LEFT JOIN {schema_name}.{doc_index_table} d
+                            ON d.doc_type = t.doc_type
+                           AND d.doc_id   = t.doc_id
+                     LEFT JOIN {schema_name}.{link_index_table} l
+                            ON l.doc_type = t.link_type
+                           AND l.doc_id   = t.link_id
+                         WHERE d.doc_id IS NULL OR l.doc_id IS NULL
+                    """
+
+                    sql_query_commit = f"""
+                        DELETE FROM {schema_name}.{table_name}
+                         WHERE NOT EXISTS (
+                               SELECT 1 FROM {schema_name}.{doc_index_table} d
+                                WHERE d.doc_type = {schema_name}.{table_name}.doc_type
+                                  AND d.doc_id   = {schema_name}.{table_name}.doc_id
+                           )
+                            OR NOT EXISTS (
+                               SELECT 1 FROM {schema_name}.{link_index_table} l
+                                WHERE l.doc_type = {schema_name}.{table_name}.link_type
+                                  AND l.doc_id   = {schema_name}.{table_name}.link_id
+                           )
+                    """
+
+                    if 'eval' in actions:
+                        out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='dicidxeval')
+                        n = out[0][0] if out else 0
+                        if n > 0:
+                            print_dataframe(
+                                pd.DataFrame([(table_name, n)], columns=['table_name', 'n_to_delete']),
+                                title=f'🔍 Missing doc-index refs in: "{schema_name}.{table_name}"'
+                            )
+                            schema_rows_to_delete += n
+
+                    if 'commit' in actions:
+                        db.execute_query_in_shell(
+                            engine_name=engine_name,
+                            query=sql_query_commit,
+                            query_id='dicidxcommit',
+                            verbose='print' in actions
+                        )
+
+                if 'eval' in actions:
+                    sysmsg.trace(f"Schema '{schema_name}' doc-index ref check complete: {schema_rows_to_delete:,} rows to delete.")
 
             #------------------------------------------------------------------------------#
             # Final verification that all nodes have a page profile and an index doc entry #
