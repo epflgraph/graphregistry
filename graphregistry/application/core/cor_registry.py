@@ -4495,6 +4495,17 @@ class GraphRegistry():
 
             cache_table_path = f"{glbcfg.schema_graph_cache_test}.Operations_N_Object_T_LargestConnectedGraph"
 
+            # If we just deleted page-profile rows, the SQL largest-component
+            # cache is also stale and must be recomputed.
+            if 'commit' in actions:
+                sysmsg.trace("Page profile modified; invalidating SQL largest-component cache.")
+                db.execute_query_in_shell(
+                    engine_name=engine_name,
+                    query=f"TRUNCATE TABLE {cache_table_path};",
+                    verbose='print' in actions,
+                    query_id='lccinv'
+                )
+
             # Local helper to escape a SQL string literal by doubling single quotes.
             def _sql_string(value):
                 return str(value).replace("'", "''")
@@ -4597,6 +4608,7 @@ class GraphRegistry():
 
                     sysmsg.trace(f"Edge list saved: {len(from_ids):,} edges.")
                 else:
+                    print(f"\n[🐬 GraphSearch DB] Loading cached node mapping and edge list from pickle files.")
                     sysmsg.trace("Loading cached node mapping and edge list from pickle files ...")
                     with open(nodes_pickle, 'rb') as f:
                         node_uid_to_row_id = pickle.load(f)
