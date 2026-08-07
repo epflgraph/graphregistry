@@ -4332,7 +4332,7 @@ class GraphRegistry():
             return
 
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
-        def delete_loose_ends(self, engine_name='xaas_coresrv', update_loose_ends=False, include_scores_matrix=False, refresh_graph=False, actions=()):
+        def delete_loose_ends(self, engine_name='xaas_coresrv', refresh_graph=False, actions=()):
 
             #---------------------------------------------------------#
             # Step 0: Remove orphaned row_rank = 99 placeholder rows  #
@@ -4686,8 +4686,6 @@ class GraphRegistry():
             # Step 4: Clean up the final knowledge-graph index tables in
             # graphsearch_test and elasticsearch_cache. graph_cache and
             # graph_airflow are intentionally not touched here.
-            # The update_loose_ends and include_scores_matrix parameters are kept
-            # for CLI backward compatibility but are no longer used.
             for schema_key, allowed_nodes_table in [('graphsearch', 'Operations_N_Object_T_LargestConnectedGraph'), ('es_cache', 'Operations_N_Object_T_LargestConnectedGraph')]:
 
                 # Get the schema name from the global configuration
