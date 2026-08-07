@@ -502,16 +502,13 @@ def cmd_data_delete_loose_ends(args):
     registry = args.ctx.registry
 
     # Get input options
-    update_loose_ends   = args.update_loose_ends
-    include_scores_matrix = args.include_scores_matrix
-    refresh_graph       = args.refresh_graph
-    actions             = tuple(args.actions.split(',')) if args.actions else ()
+    use_cache = args.use_cache
+    actions   = tuple(args.actions.split(',')) if args.actions else ()
 
     # Execute loose ends cleanup
+    # Default behaviour is to recalculate the graph cache; --use_cache/-c keeps it.
     registry.indexdb.delete_loose_ends(
-        update_loose_ends=update_loose_ends,
-        include_scores_matrix=include_scores_matrix,
-        refresh_graph=refresh_graph,
+        refresh_graph=not use_cache,
         actions=actions,
     )
 
