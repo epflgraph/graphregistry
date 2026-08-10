@@ -1,7 +1,7 @@
 # tests/unit_tests/api/test_allowed_types.py
 """Tests for the config-based allowed-type validation on save endpoints.
 
-These tests use the real ``AllowedTypesValidator`` (loaded from
+These tests use the real ``GraphUnitsValidator`` (loaded from
 ``config/config_api.json``) and fake repositories so no database is required.
 """
 from __future__ import annotations

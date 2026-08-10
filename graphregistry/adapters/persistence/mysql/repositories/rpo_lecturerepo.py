@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/repositories/arp_lecturerepo.py
+# graphregistry/adapters/persistence/mysql/repositories/rpo_lecturerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.adapters.persistence.mysql.mappers.map_lecture import MySQLLectureEnrichmentTaskMapper

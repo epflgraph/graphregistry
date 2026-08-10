@@ -1,4 +1,4 @@
-# tests/unit_tests/adapters/persistence/mysql/mappers/test_amp_edge.py
+# tests/unit_tests/adapters/persistence/mysql/mappers/test_map_edge.py
 """Unit tests for the MySQL edge mapper using synthetic row data."""
 from __future__ import annotations
 

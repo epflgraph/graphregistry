@@ -1,4 +1,4 @@
-# graphregistry/domain/repositories/rpo_lecture_processing.py
+# graphregistry/application/ports/repositories/prt_lecture_processing.py
 from __future__ import annotations
 from typing import Protocol, runtime_checkable
 

@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/mappers/amp_edge.py
+# graphregistry/adapters/persistence/mysql/mappers/map_edge.py
 from __future__ import annotations
 from typing import Any
 from graphregistry.domain.models.entities.mdl_base import EdgeFieldKey, EdgeKey

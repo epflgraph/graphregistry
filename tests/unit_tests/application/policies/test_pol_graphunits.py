@@ -1,5 +1,5 @@
-# tests/unit_tests/application/validation/test_allowed_types.py
-"""Unit tests for the allowed-types application policy."""
+# tests/unit_tests/application/policies/test_pol_graphunits.py
+"""Unit tests for the graph-units application policy."""
 from __future__ import annotations
 
 import pytest
@@ -9,7 +9,7 @@ from graphregistry.domain.exceptions import DisallowedTypeError
 from tests.conftest import make_edge, make_node
 
 
-class TestAllowedTypesValidator:
+class TestGraphUnitsValidator:
     @pytest.fixture
     def validator(self) -> GraphUnitsValidator:
         return GraphUnitsValidator(

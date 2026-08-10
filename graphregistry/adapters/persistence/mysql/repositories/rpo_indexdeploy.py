@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/repositories/arp_indexdeploy.py
+# graphregistry/adapters/persistence/mysql/repositories/rpo_indexdeploy.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast, get_args
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList

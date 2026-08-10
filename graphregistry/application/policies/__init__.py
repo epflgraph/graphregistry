@@ -1,2 +1,2 @@
-# graphregistry/application/validation/__init__.py
-"""Application-level validation services and policies."""
+# graphregistry/application/policies/__init__.py
+"""Application-level policies."""

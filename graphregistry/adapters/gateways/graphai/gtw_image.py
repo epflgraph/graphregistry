@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_image.py
+# graphregistry/adapters/gateways/graphai/gtw_image.py
 from __future__ import annotations
 
 from graphregistry.adapters.gateways.graphai.gtw_base import GraphAIBaseGateway

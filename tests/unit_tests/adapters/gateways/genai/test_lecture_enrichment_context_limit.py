@@ -47,7 +47,7 @@ def test_oversized_prompt_is_skipped_before_request(tmp_path: Path) -> None:
     # which is above the 1_024 context limit.
     task = _make_task(ocr_content="x" * 10_000)
 
-    with patch("graphregistry.adapters.gateways.genai.agt_lectureenrich.send_llm_request") as mock_send:
+    with patch("graphregistry.adapters.gateways.genai.gtw_lectureenrich.send_llm_request") as mock_send:
         result = gateway.enrich(task)
 
     assert result is None
@@ -78,7 +78,7 @@ def test_fitting_prompt_is_sent_normally(tmp_path: Path) -> None:
         keyframes=[],
     )
 
-    with patch("graphregistry.adapters.gateways.genai.agt_lectureenrich.send_llm_request") as mock_send:
+    with patch("graphregistry.adapters.gateways.genai.gtw_lectureenrich.send_llm_request") as mock_send:
         mock_send.return_value = fake_result
         result = gateway.enrich(task)
 

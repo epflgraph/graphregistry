@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_embedding.py
+# graphregistry/adapters/gateways/graphai/gtw_embedding.py
 from __future__ import annotations
 
 from json import JSONDecodeError, loads

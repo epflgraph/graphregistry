@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/gateways/gtw_conceptdet.py
+# graphregistry/application/ports/gateways/prt_conceptdet.py
 from __future__ import annotations
 from typing import Protocol, Any
 from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList

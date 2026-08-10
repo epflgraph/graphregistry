@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/repositories/arp_indexdeploy.py
+# graphregistry/adapters/persistence/mysql/repositories/rpo_indexdeploy_.py
 from __future__ import annotations
 from datetime import datetime
 import gzip

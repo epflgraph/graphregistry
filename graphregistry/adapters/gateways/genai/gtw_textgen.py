@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/genai/agt_textgen.py
+# graphregistry/adapters/gateways/genai/gtw_textgen.py
 from __future__ import annotations
 from graphregistry.application.ports.gateways.prt_textgen import TextGenerationGateway
 from graphregistry.domain.models.entities.mdl_text import GeneratedText, LanguageCode

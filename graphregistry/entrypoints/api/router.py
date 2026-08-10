@@ -298,7 +298,7 @@ def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOpera
 def nodes_save(
     request: apispecs.APINodesSaveRequest,
     node_ops: NodeOperations = Depends(get_node_ops),
-    validator: AllowedTypesValidator = Depends(get_allowed_types_validator),
+    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
 ) -> apispecs.APINodesSaveResponse:
     """
     Save one node.
@@ -328,7 +328,7 @@ def nodes_save(
 def nodes_save_many(
     request: apispecs.APINodesSaveManyRequest,
     node_ops: NodeOperations = Depends(get_node_ops),
-    validator: AllowedTypesValidator = Depends(get_allowed_types_validator),
+    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
 ) -> apispecs.APINodesSaveManyResponse:
     """
     Save a list of nodes.
@@ -502,7 +502,7 @@ def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOpera
 def edges_save(
     request: apispecs.APIEdgesSaveRequest,
     edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: AllowedTypesValidator = Depends(get_allowed_types_validator),
+    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
 ) -> apispecs.APIEdgesSaveResponse:
     """
     Save one edge.
@@ -532,7 +532,7 @@ def edges_save(
 def edges_save_many(
     request: apispecs.APIEdgesSaveManyRequest,
     edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: AllowedTypesValidator = Depends(get_allowed_types_validator),
+    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
 ) -> apispecs.APIEdgesSaveManyResponse:
     """
     Save a list of edges.

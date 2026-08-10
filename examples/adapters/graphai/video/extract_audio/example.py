@@ -2,7 +2,7 @@
 """Example: extract audio from a video and fingerprint it."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
+from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
 
 
 def main() -> None:

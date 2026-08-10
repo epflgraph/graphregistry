@@ -2,7 +2,7 @@
 """Example: compute embedding vectors for a list of strings."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_embedding import GraphAIEmbeddingGateway
+from graphregistry.adapters.gateways.graphai.gtw_embedding import GraphAIEmbeddingGateway
 
 
 def main() -> None:

@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_base.py
+# graphregistry/adapters/gateways/graphai/gtw_base.py
 from __future__ import annotations
 
 from datetime import datetime, timedelta

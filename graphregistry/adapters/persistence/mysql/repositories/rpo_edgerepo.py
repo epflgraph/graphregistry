@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/repositories/arp_edgerepo.py
+# graphregistry/adapters/persistence/mysql/repositories/rpo_edgerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList

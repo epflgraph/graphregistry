@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/mappers/amp_subgraph.py
+# graphregistry/adapters/persistence/mysql/mappers/map_subgraph.py
 from __future__ import annotations
 from typing import Any
 from graphregistry.adapters.persistence.mysql.mappers.map_edge import MySQLEdgeMapper

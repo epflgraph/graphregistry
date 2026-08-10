@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/gateways/__init__.py
+# graphregistry/application/ports/gateways/__init__.py
 from graphregistry.application.ports.gateways.prt_conceptdet import (
     ConceptDetectionGateway,
 )

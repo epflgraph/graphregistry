@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/services/srv_schema.py
+# graphregistry/application/ports/repositories/resolvers.py
 from __future__ import annotations
 from typing import Protocol, TypeAlias
 from graphregistry.domain.models.entities.mdl_node import NodeKey

@@ -1,4 +1,4 @@
-# graphregistry/adapters/services/schema/asv_schema_default.py
+# graphregistry/adapters/persistence/mysql/repositories/resolvers.py
 from __future__ import annotations
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver, EngineSchema
 from graphregistry.domain.models.entities.mdl_node import NodeKey

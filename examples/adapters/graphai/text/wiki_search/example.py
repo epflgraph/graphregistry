@@ -2,7 +2,7 @@
 """Example: search Wikipedia concepts by name."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
 
 
 def main() -> None:

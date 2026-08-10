@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/mappers/amp_conceptmap.py
+# graphregistry/adapters/persistence/mysql/mappers/map_conceptmap.py
 from __future__ import annotations
 from typing import Any
 from graphregistry.domain.models.entities.mdl_base import NodeKey

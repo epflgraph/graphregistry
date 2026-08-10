@@ -1,4 +1,4 @@
-# graphregistry/application/gateways/gtw_voice.py
+# graphregistry/application/ports/gateways/prt_voice.py
 from __future__ import annotations
 from typing import Any, Protocol
 

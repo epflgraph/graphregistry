@@ -2,8 +2,8 @@
 """Example: transcribe audio and optionally translate subtitles."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_translation import GraphAITextTranslationGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.adapters.gateways.graphai.gtw_translation import GraphAITextTranslationGateway
+from graphregistry.adapters.gateways.graphai.gtw_voice import GraphAIVoiceGateway
 
 
 def main() -> None:

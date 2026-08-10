@@ -1,4 +1,4 @@
-# tests/unit_tests/adapters/persistence/mysql/mappers/test_amp_pageprofile.py
+# tests/unit_tests/adapters/persistence/mysql/mappers/test_map_pageprofile.py
 """Unit tests for the MySQL page profile mapper using synthetic row data."""
 from __future__ import annotations
 

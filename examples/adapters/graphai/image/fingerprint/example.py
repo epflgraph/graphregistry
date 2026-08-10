@@ -2,7 +2,7 @@
 """Example: calculate a fingerprint for a slide/image token."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_image import GraphAIImageGateway
+from graphregistry.adapters.gateways.graphai.gtw_image import GraphAIImageGateway
 
 
 def main() -> None:

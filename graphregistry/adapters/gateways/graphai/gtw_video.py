@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_video.py
+# graphregistry/adapters/gateways/graphai/gtw_video.py
 from __future__ import annotations
 
 from pathlib import Path

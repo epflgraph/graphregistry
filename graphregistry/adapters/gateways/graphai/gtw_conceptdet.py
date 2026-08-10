@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_conceptdet.py
+# graphregistry/adapters/gateways/graphai/gtw_conceptdet.py
 from __future__ import annotations
 
 from typing import Any

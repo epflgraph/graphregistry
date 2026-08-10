@@ -2,7 +2,7 @@
 """Example: translate a MultilingualText object into several languages."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_translation import GraphAITextTranslationGateway
+from graphregistry.adapters.gateways.graphai.gtw_translation import GraphAITextTranslationGateway
 from graphregistry.domain.models.entities.mdl_text import MultilingualText
 
 

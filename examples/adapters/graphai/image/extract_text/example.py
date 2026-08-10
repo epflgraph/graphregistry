@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from graphregistry.adapters.gateways.graphai.agt_image import GraphAIImageGateway
+from graphregistry.adapters.gateways.graphai.gtw_image import GraphAIImageGateway
 
 
 def _load_google_api_key() -> str | None:

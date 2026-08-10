@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_voice.py
+# graphregistry/adapters/gateways/graphai/gtw_voice.py
 from __future__ import annotations
 from typing import Any
 from graphregistry.domain.models.entities.mdl_lecture import TranscriptSegment, Voice, Transcript

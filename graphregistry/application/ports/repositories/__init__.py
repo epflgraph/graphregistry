@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/repositories/__init__.py
+# graphregistry/application/ports/repositories/__init__.py
 from graphregistry.application.ports.repositories.prt_edge import (
     EdgeRepository,
 )

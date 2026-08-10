@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/mappers/amp_pageprofile.py
+# graphregistry/adapters/persistence/mysql/mappers/map_pageprofile.py
 from __future__ import annotations
 
 from typing import Any

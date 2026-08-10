@@ -61,7 +61,7 @@ def test_download_file_uses_fresh_session(gateway: GraphAIVideoGateway) -> None:
     mock_session = _mock_session_with_response(fake_response)
 
     with (
-        patch("graphregistry.adapters.gateways.graphai.agt_video.Session", return_value=mock_session),
+        patch("graphregistry.adapters.gateways.graphai.gtw_video.Session", return_value=mock_session),
         TemporaryDirectory() as tmp_dir,
     ):
         output_path = Path(tmp_dir) / "downloaded.mp4"
@@ -79,7 +79,7 @@ def test_download_file_streams_to_disk(gateway: GraphAIVideoGateway) -> None:
     mock_session = _mock_session_with_response(fake_response)
 
     with (
-        patch("graphregistry.adapters.gateways.graphai.agt_video.Session", return_value=mock_session),
+        patch("graphregistry.adapters.gateways.graphai.gtw_video.Session", return_value=mock_session),
         TemporaryDirectory() as tmp_dir,
     ):
         output_path = Path(tmp_dir) / "downloaded.mp4"
@@ -107,7 +107,7 @@ def test_download_file_returns_none_on_404(gateway: GraphAIVideoGateway) -> None
     mock_session = _mock_session_with_response(fake_response)
 
     with (
-        patch("graphregistry.adapters.gateways.graphai.agt_video.Session", return_value=mock_session),
+        patch("graphregistry.adapters.gateways.graphai.gtw_video.Session", return_value=mock_session),
         TemporaryDirectory() as tmp_dir,
     ):
         output_path = Path(tmp_dir) / "missing.mp4"
@@ -125,7 +125,7 @@ def test_download_file_creates_parent_directories(gateway: GraphAIVideoGateway) 
     mock_session = _mock_session_with_response(fake_response)
 
     with (
-        patch("graphregistry.adapters.gateways.graphai.agt_video.Session", return_value=mock_session),
+        patch("graphregistry.adapters.gateways.graphai.gtw_video.Session", return_value=mock_session),
         TemporaryDirectory() as tmp_dir,
     ):
         output_path = Path(tmp_dir) / "nested" / "dir" / "file.mp4"
@@ -140,7 +140,7 @@ def test_download_file_closes_session_on_error(gateway: GraphAIVideoGateway) -> 
     mock_session.request.side_effect = RuntimeError("network down")
 
     with (
-        patch("graphregistry.adapters.gateways.graphai.agt_video.Session", return_value=mock_session),
+        patch("graphregistry.adapters.gateways.graphai.gtw_video.Session", return_value=mock_session),
         TemporaryDirectory() as tmp_dir,
     ):
         output_path = Path(tmp_dir) / "fail.mp4"

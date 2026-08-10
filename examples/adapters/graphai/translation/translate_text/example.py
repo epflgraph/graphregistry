@@ -2,7 +2,7 @@
 """Example: translate a single string between two languages."""
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_translation import GraphAITextTranslationGateway
+from graphregistry.adapters.gateways.graphai.gtw_translation import GraphAITextTranslationGateway
 
 
 def main() -> None:

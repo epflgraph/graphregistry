@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/graphai/agt_translation.py
+# graphregistry/adapters/gateways/graphai/gtw_translation.py
 from __future__ import annotations
 from datetime import datetime, timedelta
 from json import load as load_json

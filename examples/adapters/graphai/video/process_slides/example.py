@@ -9,8 +9,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from graphregistry.adapters.gateways.graphai.agt_translation import GraphAITextTranslationGateway
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
+from graphregistry.adapters.gateways.graphai.gtw_translation import GraphAITextTranslationGateway
+from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
 
 
 def _load_google_api_key() -> str | None:

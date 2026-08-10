@@ -1,4 +1,4 @@
-# graphregistry/domain/repositories/rpo_node.py
+# graphregistry/application/ports/repositories/prt_node.py
 from __future__ import annotations
 from typing import Protocol, runtime_checkable
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList

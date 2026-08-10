@@ -1,4 +1,4 @@
-# tests/unit_tests/adapters/persistence/mysql/mappers/test_amp_node.py
+# tests/unit_tests/adapters/persistence/mysql/mappers/test_map_node.py
 """Unit tests for the MySQL node mapper using synthetic row data."""
 from __future__ import annotations
 

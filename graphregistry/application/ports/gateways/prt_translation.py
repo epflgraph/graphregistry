@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/gateways/gtw_translation.py
+# graphregistry/application/ports/gateways/prt_translation.py
 from __future__ import annotations
 from typing import Protocol
 from graphregistry.domain.types import DEFAULT_LANGUAGE_CODES

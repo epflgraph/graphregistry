@@ -1,4 +1,4 @@
-# graphregistry/application/gateways/gtw_video.py
+# graphregistry/application/ports/gateways/prt_video.py
 from __future__ import annotations
 from typing import Any, Protocol
 

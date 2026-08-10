@@ -1,4 +1,4 @@
-# graphregistry/application/gateways/gtw_image.py
+# graphregistry/application/ports/gateways/prt_image.py
 from __future__ import annotations
 from typing import Protocol
 

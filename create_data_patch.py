@@ -7,8 +7,8 @@ from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.paths import CONFIG_DB_PATH
 from graphregistry.common.dbstruct import DynamicSQL
-from graphregistry.adapters.persistence.mysql.repositories.arp_indexdeploy import MySQLIndexDeploy
-from graphregistry.domain.repositories.rpo_indexdeploy import IndexTableSpec
+from graphregistry.adapters.persistence.mysql.repositories.rpo_indexdeploy import MySQLIndexDeploy
+from graphregistry.application.ports.repositories.prt_indexdeploy import IndexTableSpec
 
 
 # Matches Index_D_<doc>_L_<link>_T_<subtype> with optional _Search / _COPY suffix.

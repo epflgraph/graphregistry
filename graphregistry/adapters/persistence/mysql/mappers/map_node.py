@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/mappers/amp_node.py
+# graphregistry/adapters/persistence/mysql/mappers/map_node.py
 from __future__ import annotations
 from typing import Any
 from graphregistry.adapters.persistence.mysql.mappers.map_conceptmap import MySQLConceptMapper

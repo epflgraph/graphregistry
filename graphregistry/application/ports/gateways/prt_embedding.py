@@ -1,4 +1,4 @@
-# graphregistry/application/gateways/gtw_embedding.py
+# graphregistry/application/ports/gateways/prt_embedding.py
 from __future__ import annotations
 from typing import Protocol
 

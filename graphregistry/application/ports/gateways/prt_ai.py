@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/gateways/gtw_ai.py
+# graphregistry/application/ports/gateways/prt_ai.py
 from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.ports.gateways.prt_embedding import TextEmbeddingGateway
 from graphregistry.application.ports.gateways.prt_image import ImageProcessingGateway

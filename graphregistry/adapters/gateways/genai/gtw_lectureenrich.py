@@ -1,4 +1,4 @@
-# graphregistry/adapters/gateways/genai/agt_lectureenrich.py
+# graphregistry/adapters/gateways/genai/gtw_lectureenrich.py
 from __future__ import annotations
 
 import json

@@ -1,4 +1,4 @@
-# graphregistry/domain/interfaces/gateways/types.py
+# graphregistry/application/ports/gateways/types.py
 from __future__ import annotations
 from typing import TypeAlias, TypedDict
 from graphregistry.application.ports.gateways.prt_conceptdet    import ConceptDetectionGateway

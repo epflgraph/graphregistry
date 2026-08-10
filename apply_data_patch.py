@@ -11,10 +11,10 @@ from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.paths import CONFIG_DB_PATH
 from graphregistry.common.dbstruct import DynamicSQL
-from graphregistry.adapters.persistence.mysql.repositories.arp_indexdeploy import (
+from graphregistry.adapters.persistence.mysql.repositories.rpo_indexdeploy import (
     MySQLIndexDeploy,
 )
-from graphregistry.domain.repositories.rpo_indexdeploy import IndexTableSpec
+from graphregistry.application.ports.repositories.prt_indexdeploy import IndexTableSpec
 
 
 LINK_TABLE_RE = re.compile(
