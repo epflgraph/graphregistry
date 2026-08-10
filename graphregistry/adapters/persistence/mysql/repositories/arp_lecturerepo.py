@@ -20,12 +20,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
 
     # Method: Initialize the lecture repository with database connection,
     # schema resolver, and a node repository for node-level persistence.
-    def __init__(
-        self,
-        db: "GraphDB",
-        schema_resolver: "SchemaResolver",
-        node_repo: NodeRepository,
-    ) -> None:
+    def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver", node_repo: NodeRepository) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.node_repo = node_repo
@@ -386,7 +381,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     #------------------------------------------#
     # METHOD GROUP: Slide detection operations #
     #------------------------------------------#
-    
+
     # Method: Get list of lectures for which slides have not yet been detected, returning a list of NodeKey objects for the lectures with undetected slides
     def get_with_undetected_slides(self, limit: int | None = 16) -> NodeKeyList:
     
@@ -545,7 +540,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
 
         # Return node for chaining
         return lecture_key
-    
+
     # Method: Get the slide tokens for a lecture (this can be used to retrieve the detected slides or check if the slides have been processed)
     def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:
         
@@ -571,8 +566,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         (slide_tokens_str,) = slide_tokens_result[0]
         slide_tokens = slide_tokens_str.split(",") if slide_tokens_str else []
         return slide_tokens
-        
-    
+
     #=====================================#
     # Lecture field enrichment operations #
     #=====================================#

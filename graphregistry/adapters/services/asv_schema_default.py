@@ -43,3 +43,18 @@ class DefaultSchemaResolver(SchemaResolver):
             return (self.engine_name, schema)
         else:
             raise ValueError(f"Invalid object_type: {object_type}")
+
+    # Class method: Get engine identifier and schema name for graph cache
+    def for_graph_cache(self) -> EngineSchema:
+        schema = self.glbcfg.schema_graph_cache_test
+        return (self.engine_name, schema)
+
+    # Class method: Get engine identifier and schema name for graph search (test)
+    def for_graphsearch_test(self) -> EngineSchema:
+        schema = self.glbcfg.schema_graphsearch_test
+        return (self.engine_name, schema)
+
+    # Class method: Get engine identifier and schema name for graph search (prod mirror)
+    def for_graphsearch_prod_mirror(self) -> EngineSchema:
+        schema = self.glbcfg.schema_graphsearch_prod_mirror
+        return (self.engine_name, schema)

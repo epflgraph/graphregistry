@@ -319,3 +319,7 @@ config/
 scripts/
 logs/
 stop.sh
+database/patches/yves_courses_mismatches.sql
+graphregistry/adapters/persistence/mysql/repositories/arp_lecture
+database/patches/table_fix_graphsearch.sql
+a.txt
