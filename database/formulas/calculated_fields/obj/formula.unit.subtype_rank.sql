@@ -13,6 +13,7 @@ INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
      USING (object_type)
 
      WHERE e.object_type = 'Unit'
+       AND e.record_deleted = 0
        AND (m1.from_object_type, m1.to_object_type, m1.context) = ('Unit', 'Unit', 'subtype ranking')
 
        AND tp.to_process = 1

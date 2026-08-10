@@ -3,7 +3,8 @@
 -- ========= Formula: 'top concepts ai validated'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
             (object_type, object_id, concept_id, calculation_type, score)
-      SELECT object_type, object_id, concept_id,
-             'top concepts ai validated' AS calculation_type, score
+       SELECT object_type, object_id, concept_id,
+              'top concepts ai validated' AS calculation_type, score
         FROM [[lectures]].Edges_N_Object_N_Concept_T_LLMPostValidated
-       WHERE object_type = 'Lecture';
+       WHERE object_type = 'Lecture'
+         AND record_deleted = 0;

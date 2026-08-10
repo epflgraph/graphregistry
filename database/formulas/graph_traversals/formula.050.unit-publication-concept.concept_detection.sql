@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Publication_Concept__ConceptDetec
              SET to_process = 0
            WHERE to_process = 1;
 
--- ============= TODO: set deleted flags for relevant edges
+-- ============= Soft-delete filtering for source traversal rows
 
 -- ============= Graph traversal: Unit-Publication-Concept score edges (REPLACE)
     REPLACE INTO [[traversals]].Unit_Publication_Concept__ConceptDetection
@@ -45,9 +45,12 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Publication_Concept__ConceptDetec
               -- Link to: Person-Publication authorship edges
       INNER JOIN [[traversals]].Person_Publication__Authorship p2a
            USING (person_id)
+           AND p2a.deleted = 0
 
               -- Link to: Publication-Concept detection scores
       INNER JOIN [[traversals]].Publication_Concept__ConceptDetection a2c
            USING (publication_id)
+           AND a2c.deleted = 0
 
-           WHERE u2p.to_process = 1;
+           WHERE u2p.to_process = 1
+             AND u2p.deleted = 0;

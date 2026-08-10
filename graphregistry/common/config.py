@@ -49,10 +49,11 @@ class GlobalConfig:
                 'registry'    : self.settings['mysql']['db_schema_names']['registry'],
                 'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
                 'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
-                'traversals'  : self.settings['mysql']['db_schema_names'].get('traversals', 'graph_traversals'),
+                'traversals'  : self.settings['mysql']['db_schema_names']['traversals'],
                 'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
-                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
+                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test'],
+                'prod_mirror' : self.settings['mysql']['db_schema_names']['graphsearch_prod_mirror']
             },
             'prod' : {
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
@@ -79,9 +80,23 @@ class GlobalConfig:
         self.schema_graph_cache_prod = self.mysql_schema_names['prod']['graph_cache']
         self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
         self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
+        self.schema_graphsearch_prod_mirror = self.mysql_schema_names['test']['prod_mirror']
+
+        # Path where index patch/rollback SQL files are generated.
+        # Supports the new top-level 'data_paths.patches' key, with a fallback
+        # to the legacy 'mysql.patch_path' key for backwards compatibility.
+        patch_path_setting = (
+            self.settings.get('data_paths', {}).get('patches')
+            or self.settings.get('mysql', {}).get('patch_path')
+            or 'data/index_patches'
+        )
+        self.index_patch_path = Path(patch_path_setting)
+        if not self.index_patch_path.is_absolute():
+            self.index_patch_path = REPO_ROOT / self.index_patch_path
 
         # Safety limits
         self.limit_per_type_max = self.settings.get('limits', {}).get('limit_per_type_max', 1000)
+        self.patch_max_rows = self.settings.get('limits', {}).get('patch_max_rows', 50000)
 
         # Object type to schema mapping
         self.object_type_to_schema = {

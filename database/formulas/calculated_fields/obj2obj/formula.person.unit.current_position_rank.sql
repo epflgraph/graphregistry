@@ -37,8 +37,10 @@ INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
        AND cf1.to_object_type   = 'Unit'
        AND cf1.context          = 'accreditation'
        AND cf1.field_name       = 'last_position_name'
+       AND cf1.record_deleted   = 0
        AND cf2.context          = 'accreditation'
        AND cf2.field_name       = 'end_datetime'
+       AND cf2.record_deleted   = 0
        AND m1.context           = 'position grouping'
        AND m2.context           = 'position group ranking'
        AND m1.from_field_name   = 'position_name'

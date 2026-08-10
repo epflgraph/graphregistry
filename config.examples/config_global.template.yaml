@@ -18,9 +18,10 @@ mysql:
     password: PASSWORD
     host_address: HOST_ADDRESS
     port: PORT
-  data_path:
-    formula: database/formulas/mysql
-    export: data/mysql_data_dumps
+data_paths:
+  formulas: database/formulas/mysql
+  exports: data/mysql_data_dumps
+  patches: data/index_patches
   db_schema_names:
     ontology: graph_ontology_light # Which one to use in knowledge graph construction
     ontology_light: graph_ontology_light
@@ -38,6 +39,7 @@ mysql:
 
 limits:
   limit_per_type_max: 1000
+  patch_max_rows: 50000
 
 elasticsearch:
   test_env:

@@ -234,9 +234,10 @@ def cmd_airflow_expire(args):
     c = args.count
     v = args.verbose
 
-    # Validate safety limits
-    if not _validate_limit_per_type(args.limit_per_type, glbcfg.limit_per_type_max):
-        return
+    # # Validate safety limits
+    # if not _validate_limit_per_type(args.limit_per_type, glbcfg.limit_per_type_max):
+    #     return
+    # No need to validate here
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")

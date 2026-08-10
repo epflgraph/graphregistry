@@ -151,7 +151,7 @@ def cmd_cache_debug(args):
 
     # registry.indexdb.idoclinks['Publication']['Person']['ORG'].vertical_patch_parentchild(actions=('print', 'commit'))
 
-    registry.indexdb.delete_loose_ends(include_scores_matrix=True, actions=('print', 'eval'))
+    registry.indexdb.delete_loose_ends(actions=('print', 'eval'))
 
 
     # Print footers

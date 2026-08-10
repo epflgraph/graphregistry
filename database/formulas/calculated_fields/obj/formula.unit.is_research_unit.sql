@@ -12,6 +12,7 @@ INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
      USING (object_type)
 
      WHERE p.object_type = 'Unit'
+       AND p.record_deleted = 0
 
        AND tp.to_process = 1
        AND tf.to_process = 1

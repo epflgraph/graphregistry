@@ -23,6 +23,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
   INNER JOIN [[registry]].Edges_N_Object_N_Concept_T_ConceptDetection t
           ON se.object_type = t.object_type
          AND se.object_id = t.object_id
+         AND t.record_deleted = 0
 
           -- Join ontology
   INNER JOIN [[ontology]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild c
