@@ -11,9 +11,9 @@ from typing import Any, cast
 import pytest
 from graphdb.core.graphdb import GraphDB
 
-from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.application.services.srv_schema import SchemaResolver
+from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeMapper
+from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
+from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import NodeKey
 from tests.helpers.db_checks import field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture

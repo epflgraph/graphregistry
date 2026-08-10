@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from graphdb.models.sqlquery import print_sql
 from pymysql.converters import escape_string
 
-from graphregistry.domain.repositories.rpo_indexdeploy import (
+from graphregistry.application.ports.repositories.prt_indexdeploy import (
     IndexDeployRepository,
     IndexTableSpec,
 )

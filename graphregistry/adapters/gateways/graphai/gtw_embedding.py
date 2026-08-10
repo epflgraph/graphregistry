@@ -5,7 +5,7 @@ from json import JSONDecodeError, loads
 from math import sqrt
 from typing import Any, cast
 
-from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
+from graphregistry.adapters.gateways.graphai.gtw_base import GraphAIBaseGateway
 
 MIN_TEXT_LENGTH = 128
 DEFAULT_MAX_TEXT_LENGTH_IF_TEXT_TOO_LONG = 600

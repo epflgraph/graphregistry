@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
+from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
 from graphregistry.domain.models.entities.mdl_lecture import SlideList
 
 

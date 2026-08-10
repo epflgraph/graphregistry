@@ -1,7 +1,7 @@
 # graphregistry/adapters/gateways/graphai/agt_image.py
 from __future__ import annotations
 
-from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
+from graphregistry.adapters.gateways.graphai.gtw_base import GraphAIBaseGateway
 
 
 class GraphAIImageGateway(GraphAIBaseGateway):

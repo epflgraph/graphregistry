@@ -2,7 +2,7 @@
 """Unit tests for the MySQL page profile mapper using synthetic row data."""
 from __future__ import annotations
 
-from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MySQLPageProfileMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_pageprofile import MySQLPageProfileMapper
 from graphregistry.domain.models.entities.mdl_base import NodeKey
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 

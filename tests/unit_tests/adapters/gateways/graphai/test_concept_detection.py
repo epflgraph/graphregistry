@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
 
 
 @pytest.fixture

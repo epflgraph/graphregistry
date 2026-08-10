@@ -2,7 +2,7 @@
 """Unit tests for the MySQL edge mapper using synthetic row data."""
 from __future__ import annotations
 
-from graphregistry.adapters.persistence.mysql.mappers.amp_edge import MySQLEdgeFieldMapper, MySQLEdgeMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_edge import MySQLEdgeFieldMapper, MySQLEdgeMapper
 from graphregistry.domain.models.entities.mdl_base import EdgeFieldKey, EdgeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldList, EdgeList
 

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from graphregistry.adapters.gateways.genai.agt_lectureenrich import (
+from graphregistry.adapters.gateways.genai.gtw_lectureenrich import (
     GenAILectureEnrichmentGateway,
 )
 from graphregistry.domain.models.tasks.mdl_lectureenrich import (

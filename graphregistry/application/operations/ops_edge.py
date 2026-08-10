@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.repositories.rpo_edge import EdgeRepository
+from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 

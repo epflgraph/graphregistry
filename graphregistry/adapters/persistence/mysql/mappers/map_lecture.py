@@ -1,13 +1,13 @@
 # graphregistry/adapters/persistence/mysql/mappers/amp_lecture.py
 from __future__ import annotations
 from typing import Any
-from graphregistry.adapters.persistence.mysql.mappers.amp_conceptmap import MySQLConceptMapper
-from graphregistry.adapters.persistence.mysql.mappers.amp_pageprofile import MySQLPageProfileMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_conceptmap import MySQLConceptMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_pageprofile import MySQLPageProfileMapper
 from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.entities.mdl_node import NodeField, NodeFieldList, Node
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureKeyframeOCTandConcepts, LectureConceptTitleList
-from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeFieldMapper, MySQLNodeMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeFieldMapper, MySQLNodeMapper
 
 # Class definition
 class MySQLLectureMapper(MySQLNodeMapper):

@@ -1,7 +1,7 @@
 # graphregistry/application/operations/ops_text.py
 from __future__ import annotations
-from graphregistry.application.gateways.gtw_textgen import TextGenerationGateway
-from graphregistry.application.gateways.gtw_translation import TextTranslationGateway
+from graphregistry.application.ports.gateways.prt_textgen import TextGenerationGateway
+from graphregistry.application.ports.gateways.prt_translation import TextTranslationGateway
 from graphregistry.domain.models.entities.mdl_text import (
     DEFAULT_LANGUAGE_CODES,
     GeneratedText,

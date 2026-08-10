@@ -5,17 +5,17 @@ from dataclasses import dataclass
 from fastapi import APIRouter, Depends
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
-from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
+from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
+from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
-from graphregistry.application.validation.allowed_types import AllowedTypesValidator
+from graphregistry.application.policies.pol_graphunits import GraphUnitsValidator
 from graphregistry.common.config import APIConfig, GlobalConfig
-from graphregistry.domain.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.repositories.rpo_node import NodeRepository
+from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
+from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.entrypoints.mappers import SpecMapper
 import graphregistry.entrypoints.api.schemas as apispecs
@@ -108,10 +108,10 @@ def _get_api_config() -> APIConfig:
     return _api_config
 
 
-def get_allowed_types_validator() -> AllowedTypesValidator:
-    """Build the allowed-types validator from the API configuration."""
+def get_graph_units_validator() -> GraphUnitsValidator:
+    """Build the graph-units validator from the API configuration."""
     cfg = _get_api_config()
-    return AllowedTypesValidator(
+    return GraphUnitsValidator(
         allowed_node_types=cfg.allowed_node_types,
         allowed_edge_tuples=cfg.allowed_edge_tuples,
     )

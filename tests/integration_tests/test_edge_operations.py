@@ -11,8 +11,8 @@ from typing import Any, cast
 import pytest
 from graphdb.core.graphdb import GraphDB
 
-from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from graphregistry.application.services.srv_schema import SchemaResolver
+from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
+from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import EdgeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
 from tests.helpers.db_checks import db_field_map, field_map

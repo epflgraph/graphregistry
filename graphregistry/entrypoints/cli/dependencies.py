@@ -10,14 +10,14 @@ from __future__ import annotations
 
 from graphdb.core.graphdb import GraphDB
 
-from graphregistry.adapters.gateways.genai.agt_lectureenrich import GenAILectureEnrichmentGateway
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from graphregistry.adapters.persistence.mysql.repositories.arp_lecturerepo import MySQLLectureRepository
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
-from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.adapters.gateways.genai.gtw_lectureenrich import GenAILectureEnrichmentGateway
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
+from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
+from graphregistry.adapters.persistence.mysql.repositories.rpo_lecturerepo import MySQLLectureRepository
+from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
+from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_lecture import LectureOperations
 from graphregistry.application.operations.ops_node import NodeOperations

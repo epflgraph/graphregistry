@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from graphregistry.adapters.gateways.graphai.agt_embedding import GraphAIEmbeddingGateway
+from graphregistry.adapters.gateways.graphai.gtw_embedding import GraphAIEmbeddingGateway
 
 
 @pytest.fixture

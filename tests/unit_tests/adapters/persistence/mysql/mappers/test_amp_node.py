@@ -2,7 +2,7 @@
 """Unit tests for the MySQL node mapper using synthetic row data."""
 from __future__ import annotations
 
-from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeFieldMapper, MySQLNodeMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeFieldMapper, MySQLNodeMapper
 from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeConceptList, NodeField, NodeFieldList

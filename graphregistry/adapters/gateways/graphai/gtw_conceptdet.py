@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import urlencode
 
-from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
-from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.gtw_base import GraphAIBaseGateway
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 from graphregistry.domain.models.tasks.mdl_conceptdet import ConceptDetectionTask
 

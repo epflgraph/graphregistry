@@ -1,11 +1,11 @@
-# graphregistry/application/validation/allowed_types.py
-"""Allowed-type validation policy for API node/edge saves.
+# graphregistry/application/policies/pol_graphunits.py
+"""Graph-units validation policy for API node/edge saves.
 
 This module implements an application-level policy that enforces the
 ``allowed-types`` section of ``config/config_api.json``. It is intentionally
 kept free of framework and persistence details: it receives plain sets of
 allowed values and domain model objects, and raises a domain exception when a
-type is not permitted.
+node or edge type is not permitted.
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 
 
-class AllowedTypesValidator:
+class GraphUnitsValidator:
     """Validate node object types and edge (from, to, context) tuples.
 
     The validator is configured with the allow-lists coming from the external

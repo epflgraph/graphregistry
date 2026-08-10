@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING, Any, cast, get_args
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import NodeKey, Node, NodeList
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.repositories.rpo_node import NodeRepository
-from graphregistry.application.services.srv_schema import SchemaResolver
-from graphregistry.adapters.persistence.mysql.mappers.amp_node import MySQLNodeMapper
-from graphregistry.adapters.persistence.mysql.schemas.asc_pageprofile import PAGE_PROFILE_COLUMNS
+from graphregistry.application.ports.repositories.prt_node import NodeRepository
+from graphregistry.application.ports.repositories.resolvers import SchemaResolver
+from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeMapper
+from graphregistry.adapters.persistence.mysql.repositories.schemas import PAGE_PROFILE_COLUMNS
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.types import ObjectType

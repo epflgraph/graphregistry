@@ -6,7 +6,7 @@ from typing import Any
 
 from requests import Session
 
-from graphregistry.adapters.gateways.graphai.agt_base import GraphAIBaseGateway
+from graphregistry.adapters.gateways.graphai.gtw_base import GraphAIBaseGateway
 from graphregistry.domain.models.entities.mdl_lecture import Slide, SlideList, Video, Voice
 
 
@@ -29,7 +29,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     def _get_voice_gateway(self) -> Any:
         """Lazy getter for the voice gateway used to fingerprint audio tokens."""
         if self._voice_gateway is None:
-            from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+            from graphregistry.adapters.gateways.graphai.gtw_voice import GraphAIVoiceGateway
             self._voice_gateway = GraphAIVoiceGateway(
                 graph_api_json=self.graph_api_json,
                 login_info=self._login_info,
@@ -40,7 +40,7 @@ class GraphAIVideoGateway(GraphAIBaseGateway):
     def _get_image_gateway(self) -> Any:
         """Lazy getter for the image gateway used to process slides."""
         if self._image_gateway is None:
-            from graphregistry.adapters.gateways.graphai.agt_image import GraphAIImageGateway
+            from graphregistry.adapters.gateways.graphai.gtw_image import GraphAIImageGateway
             self._image_gateway = GraphAIImageGateway(
                 graph_api_json=self.graph_api_json,
                 login_info=self._login_info,

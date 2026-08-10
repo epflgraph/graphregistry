@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIVoiceGateway
+from graphregistry.adapters.gateways.graphai.gtw_voice import GraphAIVoiceGateway
 
 
 @pytest.fixture

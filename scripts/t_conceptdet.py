@@ -1,4 +1,4 @@
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptGateway
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptGateway
 from graphregistry.domain.models.entities.mdl_base import NodeKey
 from graphregistry.domain.models.entities.mdl_node import Node
 from graphregistry.workflows.factories.fct_node import NodeFactory

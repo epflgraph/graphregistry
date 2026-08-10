@@ -32,8 +32,8 @@ from graphregistry.domain.models.entities.mdl_base import (
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList, EdgeList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeField, NodeFieldList, NodeList
 from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
-from graphregistry.domain.repositories.rpo_edge import EdgeRepository
-from graphregistry.domain.repositories.rpo_node import NodeRepository
+from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
+from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.domain.types import ActionSet
 
 

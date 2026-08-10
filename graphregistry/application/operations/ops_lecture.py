@@ -1,17 +1,17 @@
 # graphregistry/application/operations/ops_lecture.py
 from __future__ import annotations
 from typing import Any
-from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
-from graphregistry.application.gateways.gtw_lectureenrich import LectureEnrichmentGateway
-from graphregistry.application.gateways.gtw_video import VideoProcessingGateway
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
+from graphregistry.application.ports.gateways.prt_lectureenrich import LectureEnrichmentGateway
+from graphregistry.application.ports.gateways.prt_video import VideoProcessingGateway
 from graphregistry.common.auxfcn import normalized_levenshtein
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList, Video, Voice
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureEnrichmentResult
-from graphregistry.domain.repositories.rpo_lecture import LectureRepository
-from graphregistry.domain.repositories.rpo_lecture_processing import LectureProcessingStatePort
+from graphregistry.application.ports.repositories.prt_lecture import LectureRepository
+from graphregistry.application.ports.repositories.prt_lecture_processing import LectureProcessingStatePort
 from graphregistry.domain.types import ActionSet
 from loguru import logger as sysmsg
 

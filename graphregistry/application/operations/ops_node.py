@@ -2,11 +2,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.domain.repositories.rpo_node import NodeRepository
+from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
-from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.types import ConceptMapType
 

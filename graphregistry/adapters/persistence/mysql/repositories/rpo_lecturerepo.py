@@ -1,19 +1,19 @@
 # graphregistry/adapters/persistence/mysql/repositories/arp_lecturerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
-from graphregistry.adapters.persistence.mysql.mappers.amp_lecture import MySQLLectureEnrichmentTaskMapper
+from graphregistry.adapters.persistence.mysql.mappers.map_lecture import MySQLLectureEnrichmentTaskMapper
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
-from graphregistry.domain.repositories.rpo_lecture import LectureRepository
-from graphregistry.domain.repositories.rpo_lecture_processing import LectureProcessingStatePort
-from graphregistry.domain.repositories.rpo_node import NodeRepository
+from graphregistry.application.ports.repositories.prt_lecture import LectureRepository
+from graphregistry.application.ports.repositories.prt_lecture_processing import LectureProcessingStatePort
+from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.domain.types import ActionSet
 
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
-    from graphregistry.application.services.srv_schema import SchemaResolver
+    from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 
 # Class definition
 class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
