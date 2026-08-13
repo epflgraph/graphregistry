@@ -42,11 +42,10 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Publication_Concept__ConceptDetection 
            USING (object_type)
 
       INNER JOIN [[registry]].Edges_N_Object_N_Concept_T_ConceptDetection a2c
-           USING (object_type, object_id)
-           AND a2c.record_deleted = 0
+           ON (tp.object_type, tp.object_id) = (a2c.object_type, a2c.object_id)
+          AND a2c.record_deleted = 0
 
            WHERE a2c.object_type = 'Publication'
              AND a2c.score >= 0.1
-
              AND tp.to_process = 1
              AND tf.to_process = 1;
