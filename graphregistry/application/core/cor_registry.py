@@ -2792,6 +2792,20 @@ class GraphRegistry():
             pass
             # db = GraphDB()
 
+        # Helper: determine the soft-delete column for a schema/table.
+        # Registry/lectures tables use 'record_deleted'; cache tables use 'deleted'.
+        @staticmethod
+        def _soft_delete_column(schema_name, table_name):
+            for col in ('record_deleted', 'deleted'):
+                if db.column_exists(
+                    engine_name='xaas_coresrv',
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    column_name=col,
+                ):
+                    return col
+            return None
+
         # Commit for all views [calls 'cache_update_from_view']
         def materialize_views(self, actions=()):
 
@@ -2979,6 +2993,8 @@ class GraphRegistry():
                 sql_query_stack = []
 
                 # Query template
+                # The deleted-column placeholder (%s) is 'record_deleted' for registry CustomFields
+                # tables and 'deleted' for the cache CalculatedFields table.
                 sql_query_template = """
                     SELECT cf.from_object_type,
                            cf.from_object_id,
@@ -2994,7 +3010,7 @@ class GraphRegistry():
                      USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
                        AND tf.to_process = 1
-                       AND cf.record_deleted = 0
+                       AND cf.%s = 0
                        AND cf.from_object_type NOT IN ('Slide')
                        AND   cf.to_object_type NOT IN ('Slide')
 
@@ -3014,30 +3030,39 @@ class GraphRegistry():
                      USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
                        AND tf.to_process = 1
-                       AND cf.record_deleted = 0
+                       AND cf.%s = 0
                        AND cf.from_object_type NOT IN ('Slide')
                        AND   cf.to_object_type NOT IN ('Slide')
                 """
 
                 # Append queries for custom fields
                 for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+                    deleted_col = self._soft_delete_column(schema_name, 'Data_N_Object_N_Object_T_CustomFields')
+                    if deleted_col is None:
+                        continue
                     sql_query_stack += [sql_query_template % (
                         glbcfg.schema_airflow,
                         schema_name, 'CustomFields',
                         glbcfg.schema_airflow,
+                        deleted_col,
                         glbcfg.schema_airflow,
                         schema_name, 'CustomFields',
-                        glbcfg.schema_airflow
+                        glbcfg.schema_airflow,
+                        deleted_col
                     )]
 
                 # Append query for cached calculated fields
-                sql_query_stack += [sql_query_template % (
-                    glbcfg.schema_airflow,
-                    glbcfg.schema_graph_cache_test, 'CalculatedFields',
-                    glbcfg.schema_airflow,
-                    glbcfg.schema_airflow,
-                    glbcfg.schema_graph_cache_test, 'CalculatedFields',
-                    glbcfg.schema_airflow)]
+                deleted_col = self._soft_delete_column(glbcfg.schema_graph_cache_test, 'Data_N_Object_N_Object_T_CalculatedFields')
+                if deleted_col is not None:
+                    sql_query_stack += [sql_query_template % (
+                        glbcfg.schema_airflow,
+                        glbcfg.schema_graph_cache_test, 'CalculatedFields',
+                        glbcfg.schema_airflow,
+                        deleted_col,
+                        glbcfg.schema_airflow,
+                        glbcfg.schema_graph_cache_test, 'CalculatedFields',
+                        glbcfg.schema_airflow,
+                        deleted_col)]
 
                 # Build query (base)
                 sql_query = '\n\t\tUNION ALL\n'.join(sql_query_stack)
@@ -3055,13 +3080,18 @@ class GraphRegistry():
 
                 # Initialise query stack
                 sql_query_stack = []
-
                 # Loop over schemas
                 for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
 
+                    # Page profile tables use record_deleted in registry/lectures and deleted elsewhere.
+                    deleted_col = self._soft_delete_column(schema_name, 'Data_N_Object_T_PageProfile')
+                    if deleted_col is None:
+                        continue
+
                     # Append query
                     sql_query_stack += [f"""
-                        SELECT pp.object_type, pp.object_id, pp.numeric_id_en, pp.numeric_id_fr, pp.numeric_id_de, pp.numeric_id_it, pp.short_code, pp.subtype_en, pp.subtype_fr, pp.subtype_de, pp.subtype_it, pp.name_en_is_auto_generated, pp.name_en_is_auto_corrected, pp.name_en_is_auto_translated, pp.name_en_translated_from, pp.name_en_value, pp.name_fr_is_auto_generated, pp.name_fr_is_auto_corrected, pp.name_fr_is_auto_translated, pp.name_fr_translated_from, pp.name_fr_value, pp.name_de_is_auto_generated, pp.name_de_is_auto_corrected, pp.name_de_is_auto_translated, pp.name_de_translated_from, pp.name_de_value, pp.name_it_is_auto_generated, pp.name_it_is_auto_corrected, pp.name_it_is_auto_translated, pp.name_it_translated_from, pp.name_it_value, pp.description_short_en_is_auto_generated, pp.description_short_en_is_auto_corrected, pp.description_short_en_is_auto_translated, pp.description_short_en_translated_from, pp.description_short_en_value, pp.description_short_fr_is_auto_generated, pp.description_short_fr_is_auto_corrected, pp.description_short_fr_is_auto_translated, pp.description_short_fr_translated_from, pp.description_short_fr_value, pp.description_short_de_is_auto_generated, pp.description_short_de_is_auto_corrected, pp.description_short_de_is_auto_translated, pp.description_short_de_translated_from, pp.description_short_de_value, pp.description_short_it_is_auto_generated, pp.description_short_it_is_auto_corrected, pp.description_short_it_is_auto_translated, pp.description_short_it_translated_from, pp.description_short_it_value, pp.description_medium_en_is_auto_generated, pp.description_medium_en_is_auto_corrected, pp.description_medium_en_is_auto_translated, pp.description_medium_en_translated_from, pp.description_medium_en_value, pp.description_medium_fr_is_auto_generated, pp.description_medium_fr_is_auto_corrected, pp.description_medium_fr_is_auto_translated, pp.description_medium_fr_translated_from, pp.description_medium_fr_value, pp.description_medium_de_is_auto_generated, pp.description_medium_de_is_auto_corrected, pp.description_medium_de_is_auto_translated, pp.description_medium_de_translated_from, pp.description_medium_de_value, pp.description_medium_it_is_auto_generated, pp.description_medium_it_is_auto_corrected, pp.description_medium_it_is_auto_translated, pp.description_medium_it_translated_from, pp.description_medium_it_value, pp.description_long_en_is_auto_generated, pp.description_long_en_is_auto_corrected, pp.description_long_en_is_auto_translated, pp.description_long_en_translated_from, pp.description_long_en_value, pp.description_long_fr_is_auto_generated, pp.description_long_fr_is_auto_corrected, pp.description_long_fr_is_auto_translated, pp.description_long_fr_translated_from, pp.description_long_fr_value, pp.description_long_de_is_auto_generated, pp.description_long_de_is_auto_corrected, pp.description_long_de_is_auto_translated, pp.description_long_de_translated_from, pp.description_long_de_value, pp.description_long_it_is_auto_generated, pp.description_long_it_is_auto_corrected, pp.description_long_it_is_auto_translated, pp.description_long_it_translated_from, pp.description_long_it_value, pp.external_key_en, pp.external_key_fr, pp.external_key_de, pp.external_key_it, pp.external_url_en, pp.external_url_fr, pp.external_url_de, pp.external_url_it, pp.is_visible, 1 AS to_process, 0 AS deleted
+                        SELECT pp.object_type, pp.object_id, pp.numeric_id_en, pp.numeric_id_fr, pp.numeric_id_de, pp.numeric_id_it, pp.short_code, pp.subtype_en, pp.subtype_fr, pp.subtype_de, pp.subtype_it, pp.name_en_is_auto_generated, pp.name_en_is_auto_corrected, pp.name_en_is_auto_translated, pp.name_en_translated_from, pp.name_en_value, pp.name_fr_is_auto_generated, pp.name_fr_is_auto_corrected, pp.name_fr_is_auto_translated, pp.name_fr_translated_from, pp.name_fr_value, pp.name_de_is_auto_generated, pp.name_de_is_auto_corrected, pp.name_de_is_auto_translated, pp.name_de_translated_from, pp.name_de_value, pp.name_it_is_auto_generated, pp.name_it_is_auto_corrected, pp.name_it_is_auto_translated, pp.name_it_translated_from, pp.name_it_value, pp.description_short_en_is_auto_generated, pp.description_short_en_is_auto_corrected, pp.description_short_en_is_auto_translated, pp.description_short_en_translated_from, pp.description_short_en_value, pp.description_short_fr_is_auto_generated, pp.description_short_fr_is_auto_corrected, pp.description_short_fr_is_auto_translated, pp.description_short_fr_translated_from, pp.description_short_fr_value, pp.description_short_de_is_auto_generated, pp.description_short_de_is_auto_corrected, pp.description_short_de_is_auto_translated, pp.description_short_de_translated_from, pp.description_short_de_value, pp.description_short_it_is_auto_generated, pp.description_short_it_is_auto_corrected, pp.description_short_it_is_auto_translated, pp.description_short_it_translated_from, pp.description_short_it_value, pp.description_medium_en_is_auto_generated, pp.description_medium_en_is_auto_corrected, pp.description_medium_en_is_auto_translated, pp.description_medium_en_translated_from, pp.description_medium_en_value, pp.description_medium_fr_is_auto_generated, pp.description_medium_fr_is_auto_corrected, pp.description_medium_fr_is_auto_translated, pp.description_medium_fr_translated_from, pp.description_medium_fr_value, pp.description_medium_de_is_auto_generated, pp.description_medium_de_is_auto_corrected, pp.description_medium_de_is_auto_translated, pp.description_medium_de_translated_from, pp.description_medium_de_value, pp.description_medium_it_is_auto_generated, pp.description_medium_it_is_auto_corrected, pp.description_medium_it_is_auto_translated, pp.description_medium_it_translated_from, pp.description_medium_it_value, pp.description_long_en_is_auto_generated, pp.description_long_en_is_auto_corrected, pp.description_long_en_is_auto_translated, pp.description_long_en_translated_from, pp.description_long_en_value, pp.description_long_fr_is_auto_generated, pp.description_long_fr_is_auto_corrected, pp.description_long_fr_is_auto_translated, pp.description_long_fr_translated_from, pp.description_long_fr_value, pp.description_long_de_is_auto_generated, pp.description_long_de_is_auto_corrected, pp.description_long_de_is_auto_translated, pp.description_long_de_translated_from, pp.description_long_de_value, pp.description_long_it_is_auto_generated, pp.description_long_it_is_auto_corrected, pp.description_long_it_is_auto_translated, pp.description_long_it_translated_from, pp.description_long_it_value, pp.external_key_en, pp.external_key_fr, pp.external_key_de, pp.external_key_it, pp.external_url_en, pp.external_url_fr, pp.external_url_de, pp.external_url_it, pp.is_visible,
+                           1 AS to_process, 0 AS deleted
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Data_N_Object_T_PageProfile pp
                          USING (object_type, object_id)
@@ -3070,7 +3100,7 @@ class GraphRegistry():
                           WHERE tp.to_process = 1
                             AND tf.flag_type = 'fields'
                             AND tf.to_process = 1
-                            AND pp.record_deleted = 0
+                            AND pp.{deleted_col} = 0
                      """]
 
                 # Build query (base)
@@ -3103,23 +3133,30 @@ class GraphRegistry():
                      WHERE tp.to_process = 1
                        AND tf.flag_type = 'fields'
                        AND tf.to_process = 1
-                       AND cf.record_deleted = 0
+                       AND cf.%s = 0
                        AND cf.object_type NOT IN ('Slide')
                 """
 
                 # Append queries for custom fields
                 for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
+                    deleted_col = self._soft_delete_column(schema_name, 'Data_N_Object_T_CustomFields')
+                    if deleted_col is None:
+                        continue
                     sql_query_stack += [sql_query_template % (
                         glbcfg.schema_airflow,
                         schema_name, 'CustomFields',
-                        glbcfg.schema_airflow
+                        glbcfg.schema_airflow,
+                        deleted_col
                     )]
 
                 # Append query for cached calculated fields
-                sql_query_stack += [sql_query_template % (
-                    glbcfg.schema_airflow,
-                    glbcfg.schema_graph_cache_test, 'CalculatedFields',
-                    glbcfg.schema_airflow)]
+                deleted_col = self._soft_delete_column(glbcfg.schema_graph_cache_test, 'Data_N_Object_T_CalculatedFields')
+                if deleted_col is not None:
+                    sql_query_stack += [sql_query_template % (
+                        glbcfg.schema_airflow,
+                        glbcfg.schema_graph_cache_test, 'CalculatedFields',
+                        glbcfg.schema_airflow,
+                        deleted_col)]
 
                 # Build query (base)
                 sql_query = '\n\t\tUNION ALL\n'.join(sql_query_stack)
@@ -3141,6 +3178,12 @@ class GraphRegistry():
                 # Loop over schemas
                 for schema_name in [glbcfg.schema_registry, glbcfg.schema_lectures, glbcfg.schema_ontology]:
 
+                    # Edges_N_Object_N_Object_T_ChildToParent uses record_deleted in registry/lectures
+                    # and deleted in the ontology/cache schemas. Skip schemas without a soft-delete column.
+                    deleted_col = self._soft_delete_column(schema_name, 'Edges_N_Object_N_Object_T_ChildToParent')
+                    if deleted_col is None:
+                        continue
+
                     # Append query
                     sql_query_stack += [f"""
                         SELECT 'Child-to-Parent' AS edge_type,
@@ -3157,7 +3200,7 @@ class GraphRegistry():
                          USING (from_object_type, to_object_type)
                           WHERE tp.to_process = 1
                             AND tf.to_process = 1
-                            AND c2p.record_deleted = 0
+                            AND c2p.{deleted_col} = 0
 
                      UNION ALL
 
@@ -3175,7 +3218,7 @@ class GraphRegistry():
                          USING (from_object_type, to_object_type)
                           WHERE tp.to_process = 1
                             AND tf.to_process = 1
-                            AND c2p.record_deleted = 0
+                            AND c2p.{deleted_col} = 0
                     """]
 
                 # Build query (base)
