@@ -6592,22 +6592,6 @@ class GraphRegistry():
                 # Cross-engine collate correction
                 colate_correct = 'COLLATE utf8mb4_unicode_ci' if self.engine_name=='prod' else ''
 
-                # Resolve the canonical context for this edge pair from config_index.json.
-                edge_pair_key = tuple(sorted([self.doc_type, self.link_type]))
-                edge_context = idxcfg.settings['edge_selection_contexts'].get(edge_pair_key)
-                sysmsg.trace(
-                    "horizontal_patch_parentchild: doc_type='{}' link_type='{}' edge_pair_key={} context='{}'",
-                    self.doc_type,
-                    self.link_type,
-                    edge_pair_key,
-                    edge_context,
-                )
-                if edge_context is None:
-                    sysmsg.warning(
-                        f"No edge context configured for '{self.doc_type}' <-> '{self.link_type}' "
-                        "in config_index.json object-selection.edges. Skipping."
-                    )
-                    return
                 #--------------------------#
                 # Build commit SQL queries #
                 #--------------------------#
@@ -6617,6 +6601,23 @@ class GraphRegistry():
 
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
+
+                    # Resolve the canonical context for this edge pair from config_index.json.
+                    edge_pair_key = tuple(sorted([self.doc_type, self.link_type]))
+                    edge_context = idxcfg.settings['edge_selection_contexts'].get(edge_pair_key)
+                    sysmsg.trace(
+                        "horizontal_patch_parentchild: doc_type='{}' link_type='{}' edge_pair_key={} context='{}'",
+                        self.doc_type,
+                        self.link_type,
+                        edge_pair_key,
+                        edge_context,
+                    )
+                    if edge_context is None:
+                        sysmsg.warning(
+                            f"No edge context configured for '{self.doc_type}' <-> '{self.link_type}' "
+                            "in config_index.json object-selection.edges. Skipping."
+                        )
+                        return
 
                     # Modify row rank threshold to infinite
                     row_rank_thr = 9999999
