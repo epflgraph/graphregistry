@@ -7,8 +7,6 @@
 
         -- Start with all Unit objects
       FROM [[registry]].Nodes_N_Object n
-     WHERE n.object_type = 'Unit'
-       AND n.record_deleted = 0
 
         -- Append 'established' and 'terminated' dates
  LEFT JOIN [[registry]].Data_N_Object_T_CustomFields e1
@@ -28,6 +26,8 @@ INNER JOIN [[airflow]].Operations_N_Object_T_FieldsChanged tp
 INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
         ON (n.object_type) = (tf.object_type)
 
+     WHERE n.object_type = 'Unit'
+       AND n.record_deleted = 0
        AND tp.to_process = 1
        AND tf.to_process = 1
        AND tf.flag_type = 'fields'
