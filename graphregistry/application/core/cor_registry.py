@@ -5434,8 +5434,8 @@ class GraphRegistry():
                     schema_name = glbcfg.mysql_schema_names[self.engine_name]['graph_cache'],
                     table_name  = self.table_name
                 )
-                self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process']]
-                # Ensure 'deleted' is part of the update set so that re-saved rows are resurrected (deleted=0).
+                self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process', 'deleted']]
+                # Exclude 'deleted': the target graphsearch table uses record_deleted, not deleted.
 
             # ...
             def info(self):
@@ -5527,7 +5527,7 @@ class GraphRegistry():
 
                 # Generate SQL query
                 sql_query = f"""
-                    \t\t     SELECT {', '.join([f'p.{k}' for k in self.key_column_names])}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}, 0 AS deleted
+                    \t\t     SELECT {', '.join([f'p.{k}' for k in self.key_column_names])}{', ' if len(self.upd_column_names)>0 else ''}{', '.join(self.upd_column_names)}
                     \t\t       FROM {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{self.table_name} p
                     \t\t INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                     \t\t      USING (object_type, object_id)
