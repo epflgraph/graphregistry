@@ -26,6 +26,7 @@
                            THEN score END AS score_2,
 
                       CASE WHEN (object_type = 'Course'      AND calculation_type = 'concept detection on user input')
+                             OR (object_type = 'Lecture'     AND calculation_type = 'slide sum-scores aggregation (bounded)')
                              OR (object_type = 'Unit'        AND calculation_type = 'abstract sum-scores aggregation (bounded)')
                            THEN score END AS score_3,
 

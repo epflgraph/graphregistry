@@ -14,6 +14,7 @@
                              AND (    (s.object_type, s.calculation_type) = ('Course'  , 'average coverage over all lectures (bounded)')
                                    OR (s.object_type, s.calculation_type) = ('Lecture' ,     'percentage coverage in lecture (bounded)')
                                    OR (s.object_type, s.calculation_type) = ('Lecture' ,             'LLM keyword extraction (bounded)')
+                                   OR (s.object_type, s.calculation_type) = ('Lecture' ,       'slide sum-scores aggregation (bounded)')
                                    OR (s.object_type, s.calculation_type) = ('MOOC'    ,       'slide sum-scores aggregation (bounded)')
                                    OR (s.object_type, s.calculation_type) = ('MOOC'    ,      'people sum-scores aggregation (bounded)')
                                    OR (s.object_type, s.calculation_type) = ('Person'  ,    'abstract sum-scores aggregation (bounded)')
