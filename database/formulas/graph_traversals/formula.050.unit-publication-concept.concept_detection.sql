@@ -44,13 +44,13 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Publication_Concept__ConceptDetec
 
               -- Link to: Person-Publication authorship edges
       INNER JOIN [[traversals]].Person_Publication__Authorship p2a
-           USING (person_id)
-           AND p2a.deleted = 0
+           ON u2p.person_id = p2a.person_id
+          AND p2a.deleted = 0
 
               -- Link to: Publication-Concept detection scores
       INNER JOIN [[traversals]].Publication_Concept__ConceptDetection a2c
-           USING (publication_id)
-           AND a2c.deleted = 0
+           ON p2a.publication_id = a2c.publication_id
+          AND a2c.deleted = 0
 
            WHERE u2p.to_process = 1
              AND u2p.deleted = 0;
