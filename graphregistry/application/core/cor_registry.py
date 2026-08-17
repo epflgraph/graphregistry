@@ -6682,9 +6682,9 @@ class GraphRegistry():
                            LEFT JOIN {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type if buildup_table_exists_direct else self.link_type}_{self.link_type if buildup_table_exists_direct else self.doc_type} bl
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                  AND p.context        {colate_correct} = '{edge_context}'
-                                  AND p.to_process = 1
+                                 AND p.to_object_type   {colate_correct} = '{self.link_type}'
+                                 AND p.context          {colate_correct} = '{edge_context}'
+                                 AND p.to_process = 1
                          """
 
                     # No buildup table
