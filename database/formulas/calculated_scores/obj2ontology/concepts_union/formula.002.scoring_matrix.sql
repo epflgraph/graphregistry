@@ -30,9 +30,10 @@
                              OR (object_type = 'Unit'        AND calculation_type = 'abstract sum-scores aggregation (bounded)')
                            THEN score END AS score_3,
 
-                                to_process
+                                1 AS to_process
                            FROM [[graph_cache]].Edges_N_Object_N_Concept_T_UnionAllScores
-                          WHERE to_process = 1
+                          WHERE deleted = 0
+                            AND to_process = 1
                         ) AS new
 ON DUPLICATE KEY UPDATE score_1    = new.score_1,
                         score_2    = new.score_2,
