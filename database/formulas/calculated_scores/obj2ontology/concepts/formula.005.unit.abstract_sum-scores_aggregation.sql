@@ -6,7 +6,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
              unit_id    AS object_id,
              concept_id AS concept_id,
              'abstract sum-scores aggregation' AS calculation_type,
-             SUM(score) AS score, to_process
+             SUM(score) AS score, 1 AS to_process
          FROM [[traversals]].Unit_Publication_Concept__ConceptDetection
         WHERE to_process = 1
           AND deleted = 0
