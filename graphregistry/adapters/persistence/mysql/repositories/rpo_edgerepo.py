@@ -9,6 +9,7 @@ from graphregistry.application.ports.repositories.resolvers import SchemaResolve
 from graphregistry.adapters.persistence.mysql.mappers.map_edge import MySQLEdgeMapper
 from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
+from graphregistry.adapters.persistence.mysql.repositories.schemas import UPSERT_RETRIES, UPSERT_RETRY_DELAY
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
@@ -154,6 +155,8 @@ class MySQLEdgeRepository(EdgeRepository):
             upd_column_names  = list(basic_row.keys()),
             upd_column_values = list(basic_row.values()),
             actions           = actions,
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         #----------------------#
@@ -201,6 +204,8 @@ class MySQLEdgeRepository(EdgeRepository):
                 upd_column_names  = ["field_value", "record_deleted"],
                 upd_column_values = [row["field_value"], 0],
                 actions           = actions,
+                max_retries       = UPSERT_RETRIES,
+                retry_delay       = UPSERT_RETRY_DELAY,
             )
 
         # Print status message

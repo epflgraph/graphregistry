@@ -12,7 +12,7 @@ from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.types import ObjectType
 from graphregistry.domain.models.entities.types import ConceptMapType
-import rich
+from graphregistry.adapters.persistence.mysql.repositories.schemas import UPSERT_RETRIES, UPSERT_RETRY_DELAY
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
@@ -220,6 +220,8 @@ class MySQLNodeRepository(NodeRepository):
             upd_column_names  = list(basic_row.keys()),
             upd_column_values = list(basic_row.values()),
             actions           = actions,
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         #----------------------#
@@ -252,6 +254,8 @@ class MySQLNodeRepository(NodeRepository):
                 upd_column_names  = ["field_value", "record_deleted"],
                 upd_column_values = [row["field_value"], 0],
                 actions           = actions,
+                max_retries       = UPSERT_RETRIES,
+                retry_delay       = UPSERT_RETRY_DELAY,
             )
 
         #---------------------#
@@ -271,6 +275,8 @@ class MySQLNodeRepository(NodeRepository):
             upd_column_names  = list(page_profile_row.keys()),
             upd_column_values = list(page_profile_row.values()),
             actions           = actions,
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         #--------------------------#
@@ -309,6 +315,8 @@ class MySQLNodeRepository(NodeRepository):
                     upd_column_names  = ["score", "record_deleted"],
                     upd_column_values = [row["score"], 0],
                     actions           = actions,
+                    max_retries       = UPSERT_RETRIES,
+                    retry_delay       = UPSERT_RETRY_DELAY,
                 )
 
         #---------------------#

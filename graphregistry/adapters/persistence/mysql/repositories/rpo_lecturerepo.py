@@ -10,7 +10,9 @@ from graphregistry.application.ports.repositories.prt_lecture import LectureRepo
 from graphregistry.application.ports.repositories.prt_lecture_processing import LectureProcessingStatePort
 from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.domain.types import ActionSet
+from graphregistry.adapters.persistence.mysql.repositories.schemas import UPSERT_RETRIES, UPSERT_RETRY_DELAY
 
+# If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
     from graphregistry.application.ports.repositories.resolvers import SchemaResolver
@@ -104,7 +106,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['video_download_task_id'],
             upd_column_values = [task_id],
-            actions           = ('commit',)
+            actions           = ('commit',),
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         # Print status message
@@ -182,7 +186,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['video_token'],
             upd_column_values = [video_token],
-            actions           = ('commit',)
+            actions           = ('commit',),
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         # Print status message
@@ -264,7 +270,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['audio_extraction_task_id'],
             upd_column_values = [task_id],
-            actions           = ('commit',)
+            actions           = ('commit',),
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         # Print status message
@@ -342,7 +350,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['audio_token'],
             upd_column_values = [audio_token],
-            actions           = ('commit',)
+            actions           = ('commit',),
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         # Print status message
@@ -424,7 +434,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['slide_detection_task_id'],
             upd_column_values = [task_id],
-            actions           = ('commit',)
+            actions           = ('commit',),
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         # Print status message
@@ -517,7 +529,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
                 key_column_values = [slide_key.object_type, slide_key.object_id],
                 upd_column_names  = ['video_token', 'image_token'],
                 upd_column_values = [video_token, slide_token],
-                actions           = ('commit',)
+                actions           = ('commit',),
+                max_retries       = UPSERT_RETRIES,
+                retry_delay       = UPSERT_RETRY_DELAY,
             )
 
             # Print status message
@@ -532,7 +546,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             key_column_values = [lecture_key.object_type, lecture_key.object_id],
             upd_column_names  = ['slides_detected'],
             upd_column_values = [True],
-            actions           = ('commit',)
+            actions           = ('commit',),
+            max_retries       = UPSERT_RETRIES,
+            retry_delay       = UPSERT_RETRY_DELAY,
         )
 
         # Print status message
