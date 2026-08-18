@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication_Concept__ConceptDet
 
               -- Link to: Publication-Concept detection scores
       INNER JOIN [[traversals]].Publication_Concept__ConceptDetection t2
-           ON t1.publication_id = t2.publication_id
-          AND t2.deleted = 0
+              ON t1.publication_id = t2.publication_id
+             AND t2.deleted = 0
 
            WHERE t1.to_process = 1
              AND t1.deleted = 0;
