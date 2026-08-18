@@ -3198,9 +3198,9 @@ class GraphRegistry():
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                          USING (from_object_type, to_object_type)
-                          WHERE tp.to_process = 1
-                            AND tf.to_process = 1
-                            AND c2p.{deleted_col} = 0
+                         WHERE tp.to_process = 1
+                           AND tf.to_process = 1
+                           AND c2p.{deleted_col} = 0
 
                      UNION ALL
 
@@ -3216,9 +3216,9 @@ class GraphRegistry():
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                          USING (from_object_type, to_object_type)
-                          WHERE tp.to_process = 1
-                            AND tf.to_process = 1
-                            AND c2p.{deleted_col} = 0
+                         WHERE tp.to_process = 1
+                           AND tf.to_process = 1
+                           AND c2p.{deleted_col} = 0
                     """]
 
                 # Build query (base)
