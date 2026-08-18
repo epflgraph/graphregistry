@@ -53,7 +53,7 @@
 - 👉 make distinction between typeflags and airflow in reset cache operation
 - 👉 implement soft delete throughout cache updates
 
-## August
+### August
 - 👉 create nodes patching table on registry, to apply on every update cycle. Start with C***a L***t request
 - 👉 investigate startups not showing in ES search
 - 👉 check Execises out-of-date data
