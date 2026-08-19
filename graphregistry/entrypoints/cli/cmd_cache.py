@@ -26,6 +26,8 @@ def cmd_cache_update(args):
     # -----------------#
     if formula_path:
         registry.cachemanager.apply_formula_by_path(formula_path=formula_path, actions=actions)
+    if 'reset' in formulas and 'commit' in actions:
+        registry.cachemanager.apply_data_reset_formulas(verbose='print' in actions, actions=actions)
     if 'fields' in formulas and 'commit' in actions:
         registry.cachemanager.apply_calculated_field_formulas(verbose='print' in actions, actions=actions)
     if 'views' in formulas:
