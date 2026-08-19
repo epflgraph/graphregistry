@@ -6771,68 +6771,87 @@ class GraphRegistry():
                     # Modify row rank threshold to infinite
                     row_rank_thr = 9999999
 
+                    # Affected doc ids
+                    doc_id_subquery = f"""
+                        SELECT DISTINCT IF(from_object_type='{self.doc_type}', from_object_id, to_object_id) AS doc_id
+                          FROM {parentchild_table_path}
+                         WHERE from_object_type {colate_correct} = '{self.doc_type}'
+                           AND to_object_type   {colate_correct} = '{self.link_type}'
+                           AND context          {colate_correct} = '{edge_context}'
+                           AND to_process = 1
+                    """
+
+                    # Delete existing rows for affected doc ids
+                    SQLQuery_Delete = f"""
+                    DELETE FROM {target_table_path}
+                     WHERE doc_id IN ({doc_id_subquery})
+                    """
+
                     # Buildup table exists?
                     if buildup_table_exists:
 
-                        # Generate SQL query 1
-                        SQLQuery1 = f"""
-                        REPLACE INTO {target_table_path}
+                        # Insert freshly ranked rows from the source
+                        SQLQuery_Insert_Forward = f"""
+                        INSERT INTO {target_table_path}
                                      (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
+                        WITH affected_docs AS (
+                            {doc_id_subquery}
+                        ),
+                        ranked AS (
                               SELECT p.from_object_type AS  doc_type, p.from_object_id AS doc_id,
                                        p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
                                      {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join([f'bl.{c}' for c in self.graphsearch_obj2obj_fields])}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''}
-                                     bd.degree_score, 0 AS row_score, 99 AS row_rank
+                                     bd.degree_score,
+                                     1/2 + 1/(1+row_number() OVER (PARTITION BY p.from_object_id ORDER BY {order_by})) AS row_score,
+                                                row_number() OVER (PARTITION BY p.from_object_id ORDER BY {order_by})  AS row_rank
                                 FROM {parentchild_table_path} p
                           INNER JOIN {buildup_link_table_path} bd
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                            LEFT JOIN {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type if buildup_table_exists_direct else self.link_type}_{self.link_type if buildup_table_exists_direct else self.doc_type} bl
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
+                          INNER JOIN affected_docs ad
+                                  ON p.from_object_id {colate_correct} = ad.doc_id
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
                                  AND p.context          {colate_correct} = '{edge_context}'
-                                 AND p.to_process = 1
-                         """
+                        )
+                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
+                          FROM ranked
+                         WHERE degree_score >= 0.1
+                           AND row_rank <= {row_rank_thr}
+                        """
 
                     # No buildup table
                     else:
 
-                        # Generate SQL query 1
-                        SQLQuery1 = f"""
-                        REPLACE INTO {target_table_path}
+                        # Insert freshly ranked rows from the source
+                        SQLQuery_Insert_Forward = f"""
+                        INSERT INTO {target_table_path}
                                      (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank)
+                        WITH affected_docs AS (
+                            {doc_id_subquery}
+                        ),
+                        ranked AS (
                               SELECT p.from_object_type AS  doc_type, p.from_object_id AS doc_id,
                                        p.to_object_type AS link_type, p.edge_type AS link_subtype, p.to_object_id AS link_id,
                                      {', '.join([f'bd.{c}' for c in self.graphsearch_obj_fields])}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}
-                                     bd.degree_score, 0 AS row_score, 99 AS row_rank
+                                     bd.degree_score,
+                                     1/2 + 1/(1+row_number() OVER (PARTITION BY p.from_object_id ORDER BY {order_by})) AS row_score,
+                                                row_number() OVER (PARTITION BY p.from_object_id ORDER BY {order_by})  AS row_rank
                                 FROM {parentchild_table_path} p
                            LEFT JOIN {buildup_link_table_path} bd
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
+                          INNER JOIN affected_docs ad
+                                  ON p.from_object_id {colate_correct} = ad.doc_id
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                  AND p.context        {colate_correct} = '{edge_context}'
-                                  AND p.to_process = 1
-                         """
-
-                    # Generate SQL query 3
-                    SQLQuery3 = f"""
-                    REPLACE INTO {target_table_path}
-                                        (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank)
-                          SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
-                            FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score,
-                                         1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS row_score,
-                                                    row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})  AS row_rank
-                                    FROM {target_table_path}
-                              INNER JOIN (SELECT DISTINCT IF(from_object_type='{self.doc_type}', from_object_id, to_object_id) AS doc_id
-                                                     FROM {parentchild_table_path}
-                                                     WHERE from_object_type {colate_correct} = '{self.doc_type}'
-                                                       AND to_object_type   {colate_correct} = '{self.link_type}'
-                                                       AND context          {colate_correct} = '{edge_context}'
-                                                       AND to_process = 1) t
-                                   USING (doc_id)
-                                 ) tt
-                           WHERE {score_type} >= 0.1
-                             AND row_rank <= {row_rank_thr}
-                    """
+                                 AND p.to_object_type   {colate_correct} = '{self.link_type}'
+                                 AND p.context        {colate_correct} = '{edge_context}'
+                        )
+                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
+                          FROM ranked
+                         WHERE degree_score >= 0.1
+                           AND row_rank <= {row_rank_thr}
+                        """
 
                 # Semantic table?
                 elif self.link_subtype.upper() == 'SEM':
@@ -6846,47 +6865,11 @@ class GraphRegistry():
                         # For ontology-object edges there are two index tables
                         # (e.g. Category->Exercise and Exercise->Category). Each table should only
                         # store its named forward direction to avoid duplicating the reverse rows
-                        # in both tables. The forward direction is:
-                        #   - SQLQuery1 when this table's doc_type is the ontology side
-                        #   - SQLQuery2 when this table's doc_type is the object side
-                        # Both queries use the link_type's buildup table and field set.
+                        # in both tables.
                         if self.link_type == object_type:
                             link_join_condition = f"(fs.object_type, fs.object_id) = ('{object_type}', i.doc_id)"
                         else:
                             link_join_condition = f"fs.{ontology_id_col} = i.doc_id"
-
-                        if self.doc_type == ontology_type:
-                            # Forward: ontology as doc, object as link
-                            SQLQuery1 = f"""
-                            REPLACE INTO {target_table_path}
-                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                                  SELECT '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
-                                         fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
-                                         {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                         fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                                    FROM {final_scores_table} fs
-                              INNER JOIN {buildup_link_table_path} i
-                                      ON {link_join_condition}
-                                   WHERE fs.object_type = '{object_type}'
-                                     AND fs.to_process = 1
-                            """
-                            SQLQuery2 = None
-                        else:
-                            # Forward: object as doc, ontology as link
-                            SQLQuery1 = None
-                            SQLQuery2 = f"""
-                            REPLACE INTO {target_table_path}
-                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                                  SELECT fs.object_type AS doc_type, fs.object_id AS doc_id,
-                                         '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
-                                         {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                         fs.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                                    FROM {final_scores_table} fs
-                              INNER JOIN {buildup_link_table_path} i
-                                      ON {link_join_condition}
-                                   WHERE fs.object_type = '{object_type}'
-                                     AND fs.to_process = 1
-                            """
 
                         # Doc ids to re-rank depend on which side is the doc
                         if self.doc_type in ('Concept', 'Category'):
@@ -6903,6 +6886,67 @@ class GraphRegistry():
                                  WHERE object_type = '{object_type}'
                                    AND to_process = 1
                              """
+
+                        # Delete existing rows for affected doc ids
+                        SQLQuery_Delete = f"""
+                        DELETE FROM {target_table_path}
+                         WHERE doc_id IN ({doc_id_subquery})
+                        """
+
+                        if self.doc_type == ontology_type:
+                            # Forward: ontology as doc, object as link
+                            SQLQuery_Insert_Forward = f"""
+                            INSERT INTO {target_table_path}
+                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                            WITH affected_docs AS (
+                                {doc_id_subquery}
+                            ),
+                            ranked AS (
+                                  SELECT '{ontology_type}' AS doc_type, fs.{ontology_id_col} AS doc_id,
+                                         fs.object_type AS link_type, 'Semantic' AS link_subtype, fs.object_id AS link_id,
+                                         {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                         fs.score AS semantic_score,
+                                         1/2 + 1/(1+row_number() OVER (PARTITION BY fs.{ontology_id_col} ORDER BY {order_by})) AS row_score,
+                                                    row_number() OVER (PARTITION BY fs.{ontology_id_col} ORDER BY {order_by})  AS row_rank
+                                    FROM {final_scores_table} fs
+                              INNER JOIN {buildup_link_table_path} i
+                                      ON {link_join_condition}
+                              INNER JOIN affected_docs ad
+                                      ON fs.{ontology_id_col} = ad.doc_id
+                                   WHERE fs.object_type = '{object_type}'
+                            )
+                            SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                              FROM ranked
+                             WHERE semantic_score >= 0.1
+                               AND row_rank <= {row_rank_thr}
+                            """
+                        else:
+                            # Forward: object as doc, ontology as link
+                            SQLQuery_Insert_Forward = f"""
+                            INSERT INTO {target_table_path}
+                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                            WITH affected_docs AS (
+                                {doc_id_subquery}
+                            ),
+                            ranked AS (
+                                  SELECT fs.object_type AS doc_type, fs.object_id AS doc_id,
+                                         '{ontology_type}' AS link_type, 'Semantic' AS link_subtype, fs.{ontology_id_col} AS link_id,
+                                         {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                         fs.score AS semantic_score,
+                                         1/2 + 1/(1+row_number() OVER (PARTITION BY fs.object_id ORDER BY {order_by})) AS row_score,
+                                                    row_number() OVER (PARTITION BY fs.object_id ORDER BY {order_by})  AS row_rank
+                                    FROM {final_scores_table} fs
+                              INNER JOIN {buildup_link_table_path} i
+                                      ON {link_join_condition}
+                              INNER JOIN affected_docs ad
+                                      ON fs.object_id = ad.doc_id
+                                   WHERE fs.object_type = '{object_type}'
+                            )
+                            SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                              FROM ranked
+                             WHERE semantic_score >= 0.1
+                               AND row_rank <= {row_rank_thr}
+                            """
 
                     else:
 
@@ -7005,23 +7049,6 @@ class GraphRegistry():
                          WHERE semantic_score >= 0.1
                            AND row_rank <= {row_rank_thr}
                         """
-
-                    # Generate SQL query 3 (re-rank) - only used for ontology-object SEM edges
-                    if self._is_ontology_object_edge():
-                        SQLQuery3 = f"""
-                        REPLACE INTO {target_table_path}
-                                        (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                          SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                            FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
-                                         1/2 + 1/(1+row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})) AS row_score,
-                                                    row_number() OVER (PARTITION BY doc_id ORDER BY {order_by})  AS row_rank
-                                    FROM {target_table_path}
-                              INNER JOIN ({doc_id_subquery}) t
-                                   USING (doc_id)
-                                 ) tt
-                           WHERE {score_type} >= 0.1
-                             AND row_rank <= {row_rank_thr}
-                         """
 
                 #------------------------------#
                 # Evaluate the patch operation #
