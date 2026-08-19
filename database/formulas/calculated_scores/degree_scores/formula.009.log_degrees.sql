@@ -13,7 +13,8 @@ DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees;
 
 -- ================= Calculate normalised log scores
         REPLACE INTO [[graph_cache]].Edges_N_Object_N_Object_T_NormLogDegrees
-              SELECT d.from_object_type, d.from_object_id, d.to_object_type, d.degree, d.log_degree, (d.log_degree / t.max_log_degree) AS norm_log_degree
+                     (from_object_type, from_object_id, to_object_type, degree, log_degree, norm_log_degree, deleted)
+              SELECT d.from_object_type, d.from_object_id, d.to_object_type, d.degree, d.log_degree, (d.log_degree / t.max_log_degree) AS norm_log_degree, 0 AS deleted
                 FROM [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations d
           INNER JOIN [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees t
                USING (from_object_type, to_object_type)

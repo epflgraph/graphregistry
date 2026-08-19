@@ -1,14 +1,15 @@
 
 -- ================= Calculate final degree scores
         REPLACE INTO [[graph_cache]].Nodes_N_Object_T_DegreeScores
-                     (object_type, object_id, avg_degree, avg_log_degree, avg_norm_log_degree, to_process)
+                     (object_type, object_id, avg_degree, avg_log_degree, avg_norm_log_degree, to_process, deleted)
 
               SELECT d.from_object_type     AS object_type,
                      d.from_object_id       AS object_id,
                      AVG(d.degree)          AS avg_degree,
                      AVG(d.log_degree)      AS avg_log_degree,
                      AVG(d.norm_log_degree) AS avg_norm_log_degree,
-                     1                      AS to_process
+                     1                      AS to_process,
+                     0                      AS deleted
 
                 FROM [[graph_cache]].Edges_N_Object_N_Object_T_NormLogDegrees d
 
