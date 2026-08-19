@@ -402,6 +402,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ParentChildSymmetric (
   to_object_id varchar(255) NOT NULL,
   context varchar(32) NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   UNIQUE KEY row_id (row_id),
   UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,context),
@@ -411,6 +412,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ParentChildSymmetric (
   KEY to_object_id (to_object_id),
   KEY context (context),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY object_type_and_id (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY object_type_process_id (from_object_type,to_object_type,to_process,from_object_id,to_object_id),
   KEY object_type_id_process (from_object_type,to_object_type,from_object_id,to_object_id,to_process)
