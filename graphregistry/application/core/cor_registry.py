@@ -6779,6 +6779,7 @@ class GraphRegistry():
                            AND to_object_type   {colate_correct} = '{self.link_type}'
                            AND context          {colate_correct} = '{edge_context}'
                            AND to_process = 1
+                           AND deleted = 0
                     """
 
                     # Delete existing rows for affected doc ids
@@ -6814,6 +6815,7 @@ class GraphRegistry():
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
                                  AND p.context          {colate_correct} = '{edge_context}'
+                                 AND p.deleted = 0
                         )
                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
                           FROM ranked
@@ -6846,6 +6848,7 @@ class GraphRegistry():
                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
                                  AND p.context        {colate_correct} = '{edge_context}'
+                                 AND p.deleted = 0
                         )
                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
                           FROM ranked
@@ -6878,6 +6881,7 @@ class GraphRegistry():
                                   FROM {final_scores_table}
                                  WHERE object_type = '{object_type}'
                                    AND to_process = 1
+                                   AND deleted = 0
                             """
                         else:
                             doc_id_subquery = f"""
@@ -6885,6 +6889,7 @@ class GraphRegistry():
                                   FROM {final_scores_table}
                                  WHERE object_type = '{object_type}'
                                    AND to_process = 1
+                                   AND deleted = 0
                              """
 
                         # Delete existing rows for affected doc ids [locator: #sem-onto-del]
@@ -6914,6 +6919,7 @@ class GraphRegistry():
                               INNER JOIN affected_docs ad
                                       ON fs.{ontology_id_col} {colate_correct} = ad.doc_id
                                    WHERE fs.object_type = '{object_type}'
+                                     AND fs.deleted = 0
                             )
                             SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
                               FROM ranked
@@ -6941,6 +6947,7 @@ class GraphRegistry():
                               INNER JOIN affected_docs ad
                                       ON fs.object_id {colate_correct} = ad.doc_id
                                    WHERE fs.object_type = '{object_type}'
+                                     AND fs.deleted = 0
                             )
                             SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
                               FROM ranked
@@ -6969,9 +6976,10 @@ class GraphRegistry():
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
                                                                 )
                                                           )
-                                                      AND to_process = 1
+                                                       AND to_process = 1
+                                                       AND deleted = 0
 
-                                                    UNION
+                                                     UNION
 
                                           SELECT DISTINCT IF(to_object_type="{self.doc_type}", to_object_id, from_object_id) AS doc_id
                                                      FROM {scoresmatrix_table_path}
@@ -6985,7 +6993,8 @@ class GraphRegistry():
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
                                                                 )
                                                           )
-                                                       AND to_process = 1
+                                                        AND to_process = 1
+                                                        AND deleted = 0
                         """
 
                         # Delete existing rows for affected doc ids
@@ -7015,6 +7024,7 @@ class GraphRegistry():
                                   ON s.from_object_id {colate_correct} = ad.doc_id
                                WHERE s.from_object_type {colate_correct} = "{self.doc_type}"
                                  AND s.to_object_type   {colate_correct} = "{self.link_type}"
+                                 AND s.deleted = 0
                         )
                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
                           FROM ranked
@@ -7043,6 +7053,7 @@ class GraphRegistry():
                                   ON s.to_object_id {colate_correct} = ad.doc_id
                                WHERE s.to_object_type   {colate_correct} = "{self.doc_type}"
                                  AND s.from_object_type {colate_correct} = "{self.link_type}"
+                                 AND s.deleted = 0
                         )
                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
                           FROM ranked
