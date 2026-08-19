@@ -2880,6 +2880,10 @@ class GraphRegistry():
             # Print status
             sysmsg.success(f"🚀 ✅ Done applying formulas and committing updated data to '{glbcfg.schema_graph_cache_test}'.\n")
 
+        # Batch apply formulas: traversal and scoring
+        def apply_data_reset_formulas(self, verbose=False, actions=None):
+            self.apply_formulas_from_folder(local_path='data_reset', verbose=verbose, actions=actions)
+
         # Batch apply formulas: calculated fields only
         def apply_calculated_field_formulas(self, verbose=False, actions=None):
             for local_path in [
@@ -3192,7 +3196,8 @@ class GraphRegistry():
                                c2p.to_object_type,
                                c2p.to_object_id,
                                c2p.context,
-                               1 AS to_process
+                               1 AS to_process,
+                               0 AS deleted
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
@@ -3210,7 +3215,8 @@ class GraphRegistry():
                                c2p.from_object_type    AS to_object_type,
                                c2p.from_object_id      AS to_object_id,
                                c2p.context             AS context,
-                               1 AS to_process
+                               1 AS to_process,
+                               0 AS deleted
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged tp
                     INNER JOIN {schema_name}.Edges_N_Object_N_Object_T_ChildToParent c2p
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
@@ -3408,6 +3414,9 @@ class GraphRegistry():
             if local_path == 'calculated_scores/degree_scores':
                 # Degree scores are global score computations. Run them whenever any
                 # node is active for scores (there is no per-edge scores flag).
+                return ('any_scores', None)
+
+            if local_path == 'data_reset':
                 return ('any_scores', None)
 
             return None
