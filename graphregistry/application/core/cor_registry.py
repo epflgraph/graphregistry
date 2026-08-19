@@ -6744,6 +6744,9 @@ class GraphRegistry():
 
                 # Initialise the SQL queries
                 SQLQuery1, SQLQuery2, SQLQuery3 = None, None, None
+                SQLQuery_Delete = None
+                SQLQuery_Insert_Forward = None
+                SQLQuery_Insert_Flipped = None
 
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
@@ -6908,34 +6911,7 @@ class GraphRegistry():
                         scores_matrix_table_name_as = get_scores_matrix_table_name(self.doc_type, self.link_type, gbc_or_as='AS')
                         scoresmatrix_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{scores_matrix_table_name_as}"
 
-                        # Generate SQL query 1
-                        SQLQuery1 = f"""
-                        REPLACE INTO {target_table_path}
-                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                              SELECT s.from_object_type AS  doc_type, s.from_object_id AS doc_id,
-                                       s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
-                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                     s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                                FROM {scoresmatrix_table_path} s
-                          INNER JOIN {buildup_link_table_path} i
-                                  ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                               WHERE s.to_process = 1
-                        """
-
-                        # Generate SQL query 2 (same as SQL query 1 but flipped)
-                        SQLQuery2 = f"""
-                        REPLACE INTO {target_table_path}
-                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
-                              SELECT   s.to_object_type AS  doc_type, s.to_object_id AS doc_id,
-                                     s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
-                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
-                                     s.score AS semantic_score, 0 AS row_score, 99 AS row_rank
-                                FROM {scoresmatrix_table_path} s
-                          INNER JOIN {buildup_link_table_path} i
-                                  ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
-                               WHERE s.to_process = 1
-                        """
-
+                        # Affected doc ids (both directions)
                         doc_id_subquery = f"""
                                           SELECT DISTINCT IF(from_object_type="{self.doc_type}", from_object_id, to_object_id) AS doc_id
                                                      FROM {scoresmatrix_table_path}
@@ -6965,12 +6941,75 @@ class GraphRegistry():
                                                                     AND from_object_type {colate_correct} = "{self.link_type}"
                                                                 )
                                                           )
-                                                      AND to_process = 1
+                                                       AND to_process = 1
                         """
 
-                    # Generate SQL query 3 (re-rank)
-                    SQLQuery3 = f"""
-                    REPLACE INTO {target_table_path}
+                        # Delete existing rows for affected doc ids
+                        SQLQuery_Delete = f"""
+                        DELETE FROM {target_table_path}
+                         WHERE doc_id IN ({doc_id_subquery})
+                        """
+
+                        # Insert freshly ranked forward rows from the source
+                        SQLQuery_Insert_Forward = f"""
+                        INSERT INTO {target_table_path}
+                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                        WITH affected_docs AS (
+                            {doc_id_subquery}
+                        ),
+                        ranked AS (
+                              SELECT s.from_object_type AS  doc_type, s.from_object_id AS doc_id,
+                                       s.to_object_type AS link_type, 'Semantic' AS link_subtype, s.to_object_id AS link_id,
+                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                     s.score AS semantic_score,
+                                     1/2 + 1/(1+row_number() OVER (PARTITION BY s.from_object_id ORDER BY {order_by})) AS row_score,
+                                                row_number() OVER (PARTITION BY s.from_object_id ORDER BY {order_by})  AS row_rank
+                                FROM {scoresmatrix_table_path} s
+                          INNER JOIN {buildup_link_table_path} i
+                                  ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
+                          INNER JOIN affected_docs ad
+                                  ON s.from_object_id = ad.doc_id
+                               WHERE s.from_object_type {colate_correct} = "{self.doc_type}"
+                                 AND s.to_object_type   {colate_correct} = "{self.link_type}"
+                        )
+                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                          FROM ranked
+                         WHERE semantic_score >= 0.1
+                           AND row_rank <= {row_rank_thr}
+                        """
+
+                        # Insert freshly ranked flipped rows from the source
+                        SQLQuery_Insert_Flipped = f"""
+                        INSERT INTO {target_table_path}
+                                     (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
+                        WITH affected_docs AS (
+                            {doc_id_subquery}
+                        ),
+                        ranked AS (
+                              SELECT   s.to_object_type AS  doc_type, s.to_object_id AS doc_id,
+                                     s.from_object_type AS link_type, 'Semantic' AS link_subtype, s.from_object_id AS link_id,
+                                     {', '.join([f'i.{c}' for c in self.graphsearch_obj_fields])}{',' if len(self.graphsearch_obj_fields)>0 else ''}
+                                     s.score AS semantic_score,
+                                     1/2 + 1/(1+row_number() OVER (PARTITION BY s.to_object_id ORDER BY {order_by})) AS row_score,
+                                                row_number() OVER (PARTITION BY s.to_object_id ORDER BY {order_by})  AS row_rank
+                                FROM {scoresmatrix_table_path} s
+                          INNER JOIN {buildup_link_table_path} i
+                                  ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
+                          INNER JOIN affected_docs ad
+                                  ON s.to_object_id = ad.doc_id
+                               WHERE s.to_object_type   {colate_correct} = "{self.doc_type}"
+                                 AND s.from_object_type {colate_correct} = "{self.link_type}"
+                        )
+                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                          FROM ranked
+                         WHERE semantic_score >= 0.1
+                           AND row_rank <= {row_rank_thr}
+                        """
+
+                    # Generate SQL query 3 (re-rank) - only used for ontology-object SEM edges
+                    if self._is_ontology_object_edge():
+                        SQLQuery3 = f"""
+                        REPLACE INTO {target_table_path}
                                         (doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank)
                           SELECT         doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
                             FROM (SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score,
@@ -6982,7 +7021,7 @@ class GraphRegistry():
                                  ) tt
                            WHERE {score_type} >= 0.1
                              AND row_rank <= {row_rank_thr}
-                    """
+                         """
 
                 #------------------------------#
                 # Evaluate the patch operation #
@@ -6991,9 +7030,15 @@ class GraphRegistry():
 
                     # Generate evaluation query (#1)
                     if SQLQuery1 is not None:
-                        sql_query_no_replace_1 = re.sub(r'REPLACE INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
+                        sql_query_no_replace_1 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
                         sql_query_eval_1 = f"""
                             SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                            FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                        """
+                    elif SQLQuery_Insert_Forward is not None:
+                        sql_query_no_replace_1 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery_Insert_Forward)
+                        sql_query_eval_1 = f"""
+                            SELECT COUNT(*) AS rows_to_insert, COALESCE(SUM(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'} IS NOT NULL AND ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
                             FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
                         """
                     else:
@@ -7003,9 +7048,15 @@ class GraphRegistry():
 
                     # Generate evaluation query (#2)
                     if SQLQuery2 is not None:
-                        sql_query_no_replace_2 = re.sub(r'REPLACE INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery2)
+                        sql_query_no_replace_2 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery2)
                         sql_query_eval_2 = f"""
                             SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                            FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                        """
+                    elif SQLQuery_Insert_Flipped is not None:
+                        sql_query_no_replace_2 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery_Insert_Flipped)
+                        sql_query_eval_2 = f"""
+                            SELECT COUNT(*) AS rows_to_insert, COALESCE(SUM(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'} IS NOT NULL AND ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
                             FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
                         """
                     else:
@@ -7041,10 +7092,17 @@ class GraphRegistry():
 
                 # Execute SQL query
                 if 'commit' in actions and not ('eval' in actions and np.sum(out)==0):
+                    # Delete must run before any insert for the same doc_id slice
+                    if SQLQuery_Delete:
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Delete, verbose='print' in actions, query_id='Del6hv6h')
                     if SQLQuery1:
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery1, verbose='print' in actions, query_id='8BV6hv6h')
                     if SQLQuery2:
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery2, verbose='print' in actions, query_id='XG1EvKuT')
+                    if SQLQuery_Insert_Forward:
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Insert_Forward, verbose='print' in actions, query_id='InsFwdKuT')
+                    if SQLQuery_Insert_Flipped:
+                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Insert_Flipped, verbose='print' in actions, query_id='InsFlippedT1B')
                     if SQLQuery3:
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions, query_id='uh3n6T1B')
 
