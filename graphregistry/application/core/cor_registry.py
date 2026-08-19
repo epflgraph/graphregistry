@@ -6784,7 +6784,7 @@ class GraphRegistry():
                     # Delete existing rows for affected doc ids
                     SQLQuery_Delete = f"""
                     DELETE FROM {target_table_path}
-                     WHERE doc_id IN ({doc_id_subquery})
+                     WHERE doc_id {colate_correct} IN ({doc_id_subquery})
                     """
 
                     # Buildup table exists?
@@ -6890,7 +6890,7 @@ class GraphRegistry():
                         # Delete existing rows for affected doc ids [locator: #sem-onto-del]
                         SQLQuery_Delete = f"""
                         DELETE FROM {target_table_path}
-                         WHERE doc_id IN ({doc_id_subquery})
+                         WHERE doc_id {colate_correct} IN ({doc_id_subquery})
                         """
 
                         if self.doc_type == ontology_type:
@@ -6991,7 +6991,7 @@ class GraphRegistry():
                         # Delete existing rows for affected doc ids
                         SQLQuery_Delete = f"""
                         DELETE FROM {target_table_path}
-                         WHERE doc_id IN ({doc_id_subquery})
+                         WHERE doc_id {colate_correct} IN ({doc_id_subquery})
                         """
 
                         # Insert freshly ranked forward rows from the source
