@@ -11,4 +11,5 @@
                             AND to_process = 1
                         ) AS new
 ON DUPLICATE KEY UPDATE score      = new.score,
-                        to_process = new.to_process;
+                        to_process = new.to_process,
+                        deleted    = new.deleted;

@@ -20,7 +20,8 @@
                             AND s.score >= 0.1
                         ) AS new
 ON DUPLICATE KEY UPDATE score      = new.score,
-                        to_process = new.to_process;
+                        to_process = new.to_process,
+                        deleted    = new.deleted;
 
 -- ==================== Re-create cache table with union of all scores (from concept detection)
             INSERT INTO [[graph_cache]].Edges_N_Object_N_Concept_T_UnionAllScores
@@ -40,7 +41,8 @@ ON DUPLICATE KEY UPDATE score      = new.score,
                             AND s.score >= 0.1
                         ) AS new
 ON DUPLICATE KEY UPDATE score      = new.score,
-                        to_process = new.to_process;
+                        to_process = new.to_process,
+                        deleted    = new.deleted;
 
 -- ==================== Re-create cache table with union of all scores (from manual mapping)
             INSERT INTO [[graph_cache]].Edges_N_Object_N_Concept_T_UnionAllScores
@@ -59,4 +61,5 @@ ON DUPLICATE KEY UPDATE score      = new.score,
                             AND tf.to_process = 1
                         ) AS new
 ON DUPLICATE KEY UPDATE score      = new.score,
-                        to_process = new.to_process;
+                        to_process = new.to_process,
+                        deleted    = new.deleted;

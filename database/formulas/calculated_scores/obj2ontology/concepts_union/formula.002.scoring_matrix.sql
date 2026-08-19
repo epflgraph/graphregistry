@@ -39,4 +39,5 @@
 ON DUPLICATE KEY UPDATE score_1    = new.score_1,
                         score_2    = new.score_2,
                         score_3    = new.score_3,
-                        to_process = new.to_process;
+                        to_process = new.to_process,
+                        deleted    = new.deleted;
