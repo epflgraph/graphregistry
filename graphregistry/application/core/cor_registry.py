@@ -6912,7 +6912,7 @@ class GraphRegistry():
                               INNER JOIN {buildup_link_table_path} i
                                       ON {link_join_condition}
                               INNER JOIN affected_docs ad
-                                      ON fs.{ontology_id_col} = ad.doc_id
+                                      ON fs.{ontology_id_col} {colate_correct} = ad.doc_id
                                    WHERE fs.object_type = '{object_type}'
                             )
                             SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
@@ -6939,7 +6939,7 @@ class GraphRegistry():
                               INNER JOIN {buildup_link_table_path} i
                                       ON {link_join_condition}
                               INNER JOIN affected_docs ad
-                                      ON fs.object_id = ad.doc_id
+                                      ON fs.object_id {colate_correct} = ad.doc_id
                                    WHERE fs.object_type = '{object_type}'
                             )
                             SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
@@ -7012,7 +7012,7 @@ class GraphRegistry():
                           INNER JOIN {buildup_link_table_path} i
                                   ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                           INNER JOIN affected_docs ad
-                                  ON s.from_object_id = ad.doc_id
+                                  ON s.from_object_id {colate_correct} = ad.doc_id
                                WHERE s.from_object_type {colate_correct} = "{self.doc_type}"
                                  AND s.to_object_type   {colate_correct} = "{self.link_type}"
                         )
@@ -7040,7 +7040,7 @@ class GraphRegistry():
                           INNER JOIN {buildup_link_table_path} i
                                   ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                           INNER JOIN affected_docs ad
-                                  ON s.to_object_id = ad.doc_id
+                                  ON s.to_object_id {colate_correct} = ad.doc_id
                                WHERE s.to_object_type   {colate_correct} = "{self.doc_type}"
                                  AND s.from_object_type {colate_correct} = "{self.link_type}"
                         )
