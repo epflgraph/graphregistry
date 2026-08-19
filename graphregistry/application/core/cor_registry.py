@@ -3725,35 +3725,35 @@ class GraphRegistry():
                 # Generate commit SQL query
                 sql_commit_query = f"""
                      REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc}
-                                  (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
+                                  (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process, deleted)
 
                            SELECT e1.object_type     AS from_object_type,
                                   e1.object_id       AS from_object_id,
                                   e2.object_type     AS to_object_type,
                                   e2.object_id       AS to_object_id,
-                                  SUM(e1.score*e2.score) AS score, 1 AS to_process
+                                  SUM(e1.score*e2.score) AS score, 1 AS to_process, 0 AS deleted
 
                              FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Concept_T_FinalScores e1
                        INNER JOIN {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Concept_T_FinalScores e2
                       FORCE INDEX (idx_concept_type_proc_score)
-                            USING (concept_id)
+                             USING (concept_id)
 
-                            WHERE e1.object_type = "{from_object_type}"
-                              AND e2.object_type = "{  to_object_type}"
+                             WHERE e1.object_type = "{from_object_type}"
+                               AND e2.object_type = "{  to_object_type}"
 
-                              AND e1.to_process = 1
-                              AND e2.to_process = 1
+                               AND e1.to_process = 1
+                               AND e2.to_process = 1
 
-                              AND e1.score >= 0.1
-                              AND e2.score >= 0.1
+                               AND e1.score >= 0.1
+                               AND e2.score >= 0.1
 
-                              AND ((e1.object_type = e2.object_type AND e1.object_id < e2.object_id) OR (e1.object_type != e2.object_type))
+                               AND ((e1.object_type = e2.object_type AND e1.object_id < e2.object_id) OR (e1.object_type != e2.object_type))
 
-                         GROUP BY e1.object_type, e1.object_id,
-                                  e2.object_type, e2.object_id
+                          GROUP BY e1.object_type, e1.object_id,
+                                   e2.object_type, e2.object_id
 
-                           HAVING COUNT(DISTINCT e1.concept_id) >= 4
-                              AND SUM(e1.score*e2.score) >= 0.1
+                            HAVING COUNT(DISTINCT e1.concept_id) >= 4
+                               AND SUM(e1.score*e2.score) >= 0.1
                     """
 
             # Evaluate query
@@ -3810,12 +3810,12 @@ class GraphRegistry():
                 # Generate SQL query
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
+                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process, deleted)
                           SELECT object_type    AS from_object_type,
                                  object_id      AS from_object_id,
                                  '{ontology_type}' AS to_object_type,
                                  {ontology_type.lower().replace(' ','_')}_id AS to_object_id,
-                                 score, to_process
+                                 score, to_process, 0 AS deleted
                             FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_{ontology_type.title().replace(' ','')}_T_FinalScores
                            WHERE to_process = 1
                              AND score >= {score_thr}
@@ -3827,13 +3827,14 @@ class GraphRegistry():
                 # Generate SQL query
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
+                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process, deleted)
                           SELECT 'Concept'        AS from_object_type,
                                  from_id          AS from_object_id,
                                  'Concept'        AS to_object_type,
                                  to_id            AS to_object_id,
                                  normalised_score AS score,
-                                 s1.to_process OR s2.to_process AS to_process
+                                 s1.to_process OR s2.to_process AS to_process,
+                                 0 AS deleted
                             FROM {glbcfg.schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected c
 
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s1
@@ -3890,20 +3891,20 @@ class GraphRegistry():
                 # Generate SQL query for adjusted scores calculation
                 sql_query = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_as}
-                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process)
-                          SELECT t.from_object_type, t.from_object_id, t.to_object_type, t.to_object_id, t.score, t.to_process
+                                 (from_object_type, from_object_id, to_object_type, to_object_id, score, to_process, deleted)
+                          SELECT t.from_object_type, t.from_object_id, t.to_object_type, t.to_object_id, t.score, t.to_process, 0 AS deleted
                             FROM (SELECT gb.from_object_type, gb.from_object_id,
-                                           gb.to_object_type,   gb.to_object_id,
-                                         (2/(1 + EXP(-gb.score/(4 * av.avg_score))) - 1) AS score, gb.to_process
-                                    FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc} gb
-                              INNER JOIN {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG av
-                                      ON gb.from_object_type = av.from_object_type
-                                     AND   gb.to_object_type = av.to_object_type
-                                   WHERE gb.to_process = 1
-                                     AND gb.from_object_type = '{from_object_type}'
-                                     AND gb.to_object_type   = '{to_object_type}'
-                                 ) t
-                           WHERE t.score >= {score_thr}
+                                            gb.to_object_type,   gb.to_object_id,
+                                          (2/(1 + EXP(-gb.score/(4 * av.avg_score))) - 1) AS score, gb.to_process
+                                     FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc} gb
+                               INNER JOIN {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG av
+                                       ON gb.from_object_type = av.from_object_type
+                                      AND   gb.to_object_type = av.to_object_type
+                                    WHERE gb.to_process = 1
+                                      AND gb.from_object_type = '{from_object_type}'
+                                      AND gb.to_object_type   = '{to_object_type}'
+                                  ) t
+                            WHERE t.score >= {score_thr}
                 """
 
             # If commit action is requested, execute the query
