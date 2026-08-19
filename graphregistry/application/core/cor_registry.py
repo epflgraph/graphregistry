@@ -3831,14 +3831,17 @@ class GraphRegistry():
                       FORCE INDEX (idx_concept_type_proc_score)
                              USING (concept_id)
 
-                             WHERE e1.object_type = "{from_object_type}"
-                               AND e2.object_type = "{  to_object_type}"
+                              WHERE e1.object_type = "{from_object_type}"
+                                AND e2.object_type = "{  to_object_type}"
 
-                               AND e1.to_process = 1
-                               AND e2.to_process = 1
+                                AND e1.to_process = 1
+                                AND e2.to_process = 1
 
-                               AND e1.score >= 0.1
-                               AND e2.score >= 0.1
+                                AND e1.deleted = 0
+                                AND e2.deleted = 0
+
+                                AND e1.score >= 0.1
+                                AND e2.score >= 0.1
 
                                AND ((e1.object_type = e2.object_type AND e1.object_id < e2.object_id) OR (e1.object_type != e2.object_type))
 
@@ -3909,9 +3912,10 @@ class GraphRegistry():
                                  '{ontology_type}' AS to_object_type,
                                  {ontology_type.lower().replace(' ','_')}_id AS to_object_id,
                                  score, to_process, 0 AS deleted
-                            FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_{ontology_type.title().replace(' ','')}_T_FinalScores
-                           WHERE to_process = 1
-                             AND score >= {score_thr}
+                             FROM {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_{ontology_type.title().replace(' ','')}_T_FinalScores
+                            WHERE to_process = 1
+                              AND deleted = 0
+                              AND score >= {score_thr}
                 """
 
             # Concept-to-concept tables
@@ -3936,10 +3940,11 @@ class GraphRegistry():
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s2
                               ON s2.object_id = c.to_id
 
-                           WHERE s1.object_type = 'Concept'
-                             AND s2.object_type = 'Concept'
-                             AND (s1.to_process = 1 OR s2.to_process = 1)
-                             AND normalised_score >= {score_thr}
+                            WHERE s1.object_type = 'Concept'
+                              AND s2.object_type = 'Concept'
+                              AND (s1.to_process = 1 OR s2.to_process = 1)
+                              AND c.record_deleted = 0
+                              AND normalised_score >= {score_thr}
                 """
 
             # Calculate all other edge types, including Category-to-Category (to fetch from GBC table)
@@ -3952,12 +3957,13 @@ class GraphRegistry():
                     sql_query_avg = f"""
                     REPLACE INTO {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG
                                 (from_object_type, to_object_type, avg_score, n_rows)
-                          SELECT from_object_type, to_object_type,
-                                 AVG(score) AS avg_score, COUNT(*) AS n_rows
-                            FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc}
-                           WHERE from_object_type = '{from_object_type}'
-                             AND to_object_type   = '{to_object_type}'
-                        GROUP BY from_object_type, to_object_type
+                           SELECT from_object_type, to_object_type,
+                                  AVG(score) AS avg_score, COUNT(*) AS n_rows
+                             FROM {glbcfg.schema_graph_cache_test}.{scores_matrix_table_name_gbc}
+                            WHERE from_object_type = '{from_object_type}'
+                              AND to_object_type   = '{to_object_type}'
+                              AND deleted = 0
+                         GROUP BY from_object_type, to_object_type
                     """
 
                     # Print average score calculation query
@@ -3993,10 +3999,11 @@ class GraphRegistry():
                                INNER JOIN {glbcfg.schema_graph_cache_test}.Edges_N_Object_N_Object_T_ScoresMatrix_AVG av
                                        ON gb.from_object_type = av.from_object_type
                                       AND   gb.to_object_type = av.to_object_type
-                                    WHERE gb.to_process = 1
-                                      AND gb.from_object_type = '{from_object_type}'
-                                      AND gb.to_object_type   = '{to_object_type}'
-                                  ) t
+                                     WHERE gb.to_process = 1
+                                       AND gb.deleted = 0
+                                       AND gb.from_object_type = '{from_object_type}'
+                                       AND gb.to_object_type   = '{to_object_type}'
+                                   ) t
                             WHERE t.score >= {score_thr}
                 """
 
