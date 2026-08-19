@@ -4480,9 +4480,14 @@ class GraphRegistry():
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
         def delete_loose_ends(self, engine_name='xaas_coresrv', refresh_graph=False, actions=()):
 
-            #---------------------------------------------------------#
-            # Step 0: Remove orphaned row_rank = 99 placeholder rows  #
-            #---------------------------------------------------------#
+            #------------------------------------------------------------------#
+            # Step 0: Remove orphaned row_rank = 99 / overflow rows from SEM   #
+            #------------------------------------------------------------------#
+
+            # SEM tables are capped at row_rank 32 by horizontal_patch. Any row with
+            # row_rank > 32 is leftover stale data; row_rank = 99 is the legacy
+            # placeholder from the old replace-then-re-rank logic.
+            sem_row_rank_threshold = 32
 
             index_tables = db.get_tables_in_schema(
                 engine_name = engine_name,
@@ -4493,20 +4498,15 @@ class GraphRegistry():
             # Exclude private/internal backup tables that start with an underscore
             index_tables = [t for t in index_tables if not t.startswith('_')]
 
-            # Print list of affected tables
-            # print('\n[🐬 GraphSearch DB] [CLEAN] The following tables will be affected:')
-            # for t in index_tables:
-            #     print(f" - {glbcfg.schema_graphsearch_test}.{t}")
-            # print('')
-
-            # Loop over index tables and check for orphaned row_rank=99 rows
+            # Loop over SEM index tables and check for orphaned / overflow rows
             for table_name in index_tables:
 
                 # Generate evaluation query
                 sql_query_eval = f"""
                    SELECT doc_type, link_type, COUNT(*) AS n_to_delete
                      FROM {glbcfg.schema_graphsearch_test}.{table_name}
-                    WHERE row_rank = 99
+                    WHERE row_rank > {sem_row_rank_threshold}
+                       OR row_rank = 99
                  GROUP BY doc_type, link_type
                 """
 
@@ -4534,8 +4534,8 @@ class GraphRegistry():
                             # Trace message
                             print(f"🔥 Deleting loose ends from table: '{glbcfg.schema_graphsearch_test}.{table_name}'.")
 
-                            # Generate delete query to remove rows with row_rank=99 from the current table
-                            sql_query_delete = f"DELETE FROM {glbcfg.schema_graphsearch_test}.{table_name} WHERE row_rank = 99"
+                            # Generate delete query to remove overflow / placeholder rows
+                            sql_query_delete = f"DELETE FROM {glbcfg.schema_graphsearch_test}.{table_name} WHERE row_rank > {sem_row_rank_threshold} OR row_rank = 99"
 
                             # Execute the delete query in the database shell with the specified engine name, verbosity, and query ID
                             db.execute_query_in_shell(engine_name=engine_name, query=sql_query_delete, verbose='print' in actions, query_id='rr99del')
@@ -6743,7 +6743,7 @@ class GraphRegistry():
                 #--------------------------#
 
                 # Initialise the SQL queries
-                SQLQuery1, SQLQuery2, SQLQuery3 = None, None, None
+                SQLQuery1, SQLQuery2 = None, None
                 SQLQuery_Delete = None
                 SQLQuery_Insert_Forward = None
                 SQLQuery_Insert_Flipped = None
@@ -6887,7 +6887,7 @@ class GraphRegistry():
                                    AND to_process = 1
                              """
 
-                        # Delete existing rows for affected doc ids
+                        # Delete existing rows for affected doc ids [locator: #sem-onto-del]
                         SQLQuery_Delete = f"""
                         DELETE FROM {target_table_path}
                          WHERE doc_id IN ({doc_id_subquery})
@@ -7091,23 +7091,15 @@ class GraphRegistry():
                             SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
                         """
 
-                    # # Generate evaluation query (#3)
-                    # sql_query_eval_3 = f"""
-                    #     SELECT COUNT(*) AS n_total
-                    #     FROM (SELECT {SQLQuery3.split('FROM (SELECT')[1]}
-                    # """
-
                     # Print the evaluation queries
                     if 'print' in actions:
                         print(f"\n🔍 Evaluation queries for {target_table_path}:")
                         print_sql(sql_query_eval_1, title='z0rFNfM5')
                         print_sql(sql_query_eval_2, title='oxyoF81R')
-                        # print(sql_query_eval_3)
 
                     # Execute the evaluation queries
                     out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1, query_id='z0rFNfM5')
                     out_2 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_2, query_id='oxyoF81R')
-                    # out_3 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_3)
 
                     # Sum up the results
                     out = [[out_1[0][0] + out_2[0][0], out_1[0][1] + out_2[0][1]]]
@@ -7130,8 +7122,6 @@ class GraphRegistry():
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Insert_Forward, verbose='print' in actions, query_id='InsFwdKuT')
                     if SQLQuery_Insert_Flipped:
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Insert_Flipped, verbose='print' in actions, query_id='InsFlippedT1B')
-                    if SQLQuery3:
-                        db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery3, verbose='print' in actions, query_id='uh3n6T1B')
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
