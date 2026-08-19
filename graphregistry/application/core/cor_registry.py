@@ -160,6 +160,59 @@ def generate_airflow_where_conditions(doc_type=None):
     # Return Airflow WHERE conditions
     return where_conditions
 
+# Auxiliary function: Generate Airflow WHERE conditions for the expire command
+def generate_expire_where_conditions(include_nodes=True, include_edges=True, object_types=None):
+    """
+    Generate Airflow WHERE conditions for the expire command.
+
+    Supports node/edge scoping, fields/scores table selection, and an optional
+    list of object types to restrict the expiration to.  Conditions are built
+    on top of the active typeflags configuration; an empty/missing condition is
+    returned as ``FALSE`` so the caller can skip the table safely.
+    """
+
+    # Fetch typeflags config JSON
+    typeflags = GraphRegistry.Orchestration.TypeFlags()
+    config_json = typeflags.get_config_json()
+
+    # Get active node and edge types from typeflags config (deduplicated while
+    # preserving the original order for cleaner generated SQL)
+    doc_types_fields_to_process     = list(dict.fromkeys([ r[0]        for r in config_json['nodes'] if r[1]]))
+    doc_types_scores_to_process     = list(dict.fromkeys([ r[0]        for r in config_json['nodes'] if r[2]]))
+    doclink_types_fields_to_process = list(dict.fromkeys([(r[0], r[1]) for r in config_json['edges'] if r[2]]))
+
+    # Object-types filter as an SQL fragment, reused for both nodes and edges
+    object_types_set = set(object_types) if object_types is not None else None
+
+    # Build per-table conditions.  A missing/empty condition is represented as
+    # "FALSE" so the table is skipped safely.
+    node_fields_condition = None
+    if include_nodes and len(doc_types_fields_to_process) > 0:
+        node_fields_condition = f"""object_type IN ({', '.join(repr(e) for e in doc_types_fields_to_process)})"""
+        if object_types_set is not None:
+            node_fields_condition = f"""({node_fields_condition} AND object_type IN ({', '.join(repr(e) for e in object_types)}))"""
+
+    node_scores_condition = None
+    if include_nodes and len(doc_types_scores_to_process) > 0:
+        node_scores_condition = f"""object_type IN ({', '.join(repr(e) for e in doc_types_scores_to_process)})"""
+        if object_types_set is not None:
+            node_scores_condition = f"""({node_scores_condition} AND object_type IN ({', '.join(repr(e) for e in object_types)}))"""
+
+    edge_fields_condition = None
+    if include_edges and len(doclink_types_fields_to_process) > 0:
+        edge_fields_condition = f"""( (from_object_type, to_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) OR (to_object_type, from_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) )"""
+        if object_types_set is not None:
+            edge_fields_condition = f"""({edge_fields_condition} AND (from_object_type IN ({', '.join(repr(e) for e in object_types)}) OR to_object_type IN ({', '.join(repr(e) for e in object_types)})))"""
+
+    # Return Airflow WHERE conditions
+    where_conditions = {
+        'Operations_N_Object_T_FieldsChanged'          : node_fields_condition if node_fields_condition is not None else "FALSE",
+        'Operations_N_Object_T_ScoresExpired'          : node_scores_condition if node_scores_condition is not None else "FALSE",
+        'Operations_N_Object_N_Object_T_FieldsChanged' : edge_fields_condition if edge_fields_condition is not None else "FALSE",
+    }
+
+    return where_conditions
+
 # Auxiliary function: Get scores matrix table name from edge type tuple
 def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
 
@@ -586,15 +639,35 @@ class GraphRegistry():
             self.scoresexpired.randomize(doc_type=doc_type, time_period=time_period, verbose=verbose)
 
         # Set expiration dates
-        def expire(self, doc_type=None, older_than=None, limit_per_type=None, count_only=False, verbose=False):
+        def expire(self, include_nodes=True, include_edges=True, include_fields=True, include_scores=True,
+                         object_types=None, older_than=None, limit_per_type=None, count_only=False, verbose=False):
 
             # Apply defaults
-            older_than = older_than if older_than!=None else 90
-            limit_per_type = limit_per_type if limit_per_type!=None else 9999999999
+            # older_than=0 or None means "expire everything regardless of cache date".
+            older_than = older_than if older_than is not None else 0
+            limit_per_type = limit_per_type if limit_per_type is not None else 9999999999
 
-            # Call expire functions for both 'fields changed' and 'scores expired' flag types
-            self.fieldschanged.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, count_only=count_only, verbose=verbose)
-            self.scoresexpired.expire(doc_type=doc_type, older_than=older_than, limit_per_type=limit_per_type, count_only=count_only, verbose=verbose)
+            # Call expire functions for selected flag types
+            if include_fields:
+                self.fieldschanged.expire(
+                    include_nodes    = include_nodes,
+                    include_edges    = include_edges,
+                    object_types     = object_types,
+                    older_than       = older_than,
+                    limit_per_type   = limit_per_type,
+                    count_only       = count_only,
+                    verbose          = verbose
+                )
+            if include_scores:
+                self.scoresexpired.expire(
+                    include_nodes    = include_nodes,
+                    include_edges    = include_edges,
+                    object_types     = object_types,
+                    older_than       = older_than,
+                    limit_per_type   = limit_per_type,
+                    count_only       = count_only,
+                    verbose          = verbose
+                )
 
         # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
         def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
@@ -1718,30 +1791,40 @@ class GraphRegistry():
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'FieldsChanged' airflow tables.\n")
 
             # Set expiration dates
-            def expire(self, doc_type=None, older_than=None, limit_per_type=None, count_only=False, verbose=False):
+            def expire(self, include_nodes=True, include_edges=True, object_types=None, older_than=None, limit_per_type=None, count_only=False, verbose=False):
 
                 # Apply defaults
-                older_than = older_than if older_than!=None else 90
-                limit_per_type = limit_per_type if limit_per_type!=None else 100
+                # older_than=0 or None means "expire everything regardless of cache date".
+                older_than = older_than if older_than is not None else 0
+                limit_per_type = limit_per_type if limit_per_type is not None else 100
 
                 # Print status
                 sysmsg.info("⌛️ 📝 Set 'has_expired' flag to 1 for expired dates in 'FieldsChanged' airflow tables.")
 
                 # Print parameters
-                sysmsg.trace(f"Input parameters: older_than={older_than} (days), limit_per_type={limit_per_type} (rows).")
+                sysmsg.trace(f"Input parameters: include_nodes={include_nodes}, include_edges={include_edges}, object_types={object_types}, older_than={older_than} (days), limit_per_type={limit_per_type} (rows).")
 
-                # Generate Airflow WHERE conditions
-                where_conditions = generate_airflow_where_conditions(doc_type=doc_type)
+                # Generate Airflow WHERE conditions scoped to the requested objects/types
+                where_conditions = generate_expire_where_conditions(
+                    include_nodes  = include_nodes,
+                    include_edges  = include_edges,
+                    object_types   = object_types
+                )
 
                 # Print where conditions
                 sysmsg.trace(f"Input WHERE conditions: {where_conditions}")
 
                 # Check if something to do
                 if where_conditions is None:
-                    sysmsg.warning("Nothing to do. Check input 'doc_type' or typeflags config.")
+                    sysmsg.warning("Nothing to do. Check input 'object_types' or typeflags config.")
 
                 # If WHERE conditions were generated, continue
                 else:
+
+                    # Build optional date filter.  older_than=0 means no date filtering.
+                    date_filter = ""
+                    if older_than > 0:
+                        date_filter = f"AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY"
 
                     # Print conditions if verbose
                     if verbose:
@@ -1791,7 +1874,7 @@ class GraphRegistry():
                                         FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
                                                 FROM {glbcfg.schema_airflow}.{table_name}
                                                WHERE ({where_conditions[table_name]})
-                                                 AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
+                                                 {date_filter}
                                              ) ranked
                                        WHERE rn <= {limit_per_type}
                                      ) ranked_rows
@@ -1815,13 +1898,13 @@ class GraphRegistry():
                                           FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY {'object_type' if u=='n' else 'from_object_type, to_object_type'} ORDER BY row_id) AS rn
                                                   FROM {glbcfg.schema_airflow}.{table_name}
                                                  WHERE ({where_conditions[table_name]})
-                                                   AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
+                                                   {date_filter}
                                                ) ranked
-                                         WHERE rn <= {limit_per_type}
-                                       ) ranked_rows
-                                    ON ranked_rows.row_id = t.row_id
-                                 WHERE {where_conditions[table_name]}
-                              GROUP BY {'object_type' if u=='n' else 'from_object_type, to_object_type'}
+                                          WHERE rn <= {limit_per_type}
+                                        ) ranked_rows
+                                     ON ranked_rows.row_id = t.row_id
+                                  WHERE {where_conditions[table_name]}
+                               GROUP BY {'object_type' if u=='n' else 'from_object_type, to_object_type'}
                             """
 
                             # Print query of verbose
@@ -2465,30 +2548,40 @@ class GraphRegistry():
                 sysmsg.success("🎲 ✅ Done randomizing dates in 'ScoresExpired' airflow table.\n")
 
             # Set expiration dates
-            def expire(self, doc_type=None, older_than=None, limit_per_type=None, count_only=False, verbose=False):
+            def expire(self, include_nodes=True, include_edges=True, object_types=None, older_than=None, limit_per_type=None, count_only=False, verbose=False):
 
                 # Apply defaults
-                older_than = older_than if older_than!=None else 90
-                limit_per_type = limit_per_type if limit_per_type!=None else 100
+                # older_than=0 or None means "expire everything regardless of cache date".
+                older_than = older_than if older_than is not None else 0
+                limit_per_type = limit_per_type if limit_per_type is not None else 100
 
                 # Print status
                 sysmsg.info("⌛️ 📝 Set 'has_expired' flag to 1 for expired dates in 'ScoresExpired' airflow table.")
 
                 # Print parameters
-                sysmsg.trace(f"Input parameters: older_than={older_than} (days), limit_per_type={limit_per_type} (rows).")
+                sysmsg.trace(f"Input parameters: include_nodes={include_nodes}, include_edges={include_edges}, object_types={object_types}, older_than={older_than} (days), limit_per_type={limit_per_type} (rows).")
 
-                # Generate Airflow WHERE conditions
-                where_conditions = generate_airflow_where_conditions(doc_type=doc_type)
+                # Generate Airflow WHERE conditions scoped to the requested objects/types
+                where_conditions = generate_expire_where_conditions(
+                    include_nodes  = include_nodes,
+                    include_edges  = include_edges,
+                    object_types   = object_types
+                )
 
                 # Print where conditions
                 sysmsg.trace(f"Input WHERE conditions: {where_conditions}")
 
                 # Check if something to do
                 if where_conditions is None:
-                    sysmsg.warning("Nothing to do. Check input 'doc_type' or typeflags config.")
+                    sysmsg.warning("Nothing to do. Check input 'object_types' or typeflags config.")
 
                 # If WHERE conditions were generated, continue
                 else:
+
+                    # Build optional date filter.  older_than=0 means no date filtering.
+                    date_filter = ""
+                    if older_than > 0:
+                        date_filter = f"AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY"
 
                     # Print conditions if verbose
                     if verbose:
@@ -2498,7 +2591,7 @@ class GraphRegistry():
 
                     # Check if something to do before continuing
                     if where_conditions['Operations_N_Object_T_ScoresExpired'] == "FALSE":
-                        sysmsg.trace("Nothing to do. Check input 'doc_type' or typeflags config.")
+                        sysmsg.trace("Nothing to do. Check input 'object_types' or typeflags config.")
                         pass
 
                     # If WHERE conditions were generated, continue
@@ -2535,13 +2628,13 @@ class GraphRegistry():
                                           FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY object_type ORDER BY row_id) AS rn
                                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                                  WHERE ({where_conditions['Operations_N_Object_T_ScoresExpired']})
-                                                   AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
+                                                   {date_filter}
                                                ) ranked
-                                         WHERE rn <= {limit_per_type}
-                                       ) ranked_rows
-                                    ON t.row_id = ranked_rows.row_id
-                                   SET t.has_expired = 1
-                                 WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
+                                          WHERE rn <= {limit_per_type}
+                                        ) ranked_rows
+                                     ON t.row_id = ranked_rows.row_id
+                                    SET t.has_expired = 1
+                                  WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
                             """
 
                             # Set has_expired=1 for dates older than time_period
@@ -2558,13 +2651,13 @@ class GraphRegistry():
                                           FROM (SELECT row_id, ROW_NUMBER() OVER (PARTITION BY object_type ORDER BY row_id) AS rn
                                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                                                  WHERE ({where_conditions['Operations_N_Object_T_ScoresExpired']})
-                                                   AND COALESCE(last_date_cached, DATE('1900-01-01')) < CURDATE() - INTERVAL {older_than} DAY
+                                                   {date_filter}
                                                ) ranked
-                                         WHERE rn <= {limit_per_type}
-                                       ) ranked_rows
-                                    ON ranked_rows.row_id = t.row_id
-                                 WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
-                              GROUP BY object_type
+                                          WHERE rn <= {limit_per_type}
+                                        ) ranked_rows
+                                     ON ranked_rows.row_id = t.row_id
+                                  WHERE {where_conditions['Operations_N_Object_T_ScoresExpired']}
+                               GROUP BY object_type
                             """
 
                             # Print query of verbose

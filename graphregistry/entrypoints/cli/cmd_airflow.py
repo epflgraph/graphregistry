@@ -230,22 +230,31 @@ def cmd_airflow_expire(args):
 
     # Fetch context objects
     gr = args.ctx.registry
-    glbcfg = args.ctx.global_config
     c = args.count
     v = args.verbose
 
-    # # Validate safety limits
-    # if not _validate_limit_per_type(args.limit_per_type, glbcfg.limit_per_type_max):
-    #     return
-    # No need to validate here
+    # Resolve scope flags.
+    # If neither side of a pair is passed, default to including both.
+    include_nodes  = args.nodes  or not args.edges
+    include_edges  = args.edges  or not args.nodes
+    include_fields = args.fields or not args.scores
+    include_scores = args.scores or not args.fields
+
+    # Resolve object types filter
+    object_types = [t.strip() for t in args.types.split(',') if t.strip()] if args.types else None
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")
-    if args.doc_type or args.older_than or args.limit_per_type or args.verbose:
+    if any([args.nodes, args.edges, args.fields, args.scores, args.types,
+            args.older_than is not None, args.limit_per_type, args.verbose]):
         print("\nInput options:")
-        if args.doc_type:
-            print(f"  doc_type ............. {args.doc_type}")
-        if args.older_than:
+        print(f"  nodes ................ {include_nodes}")
+        print(f"  edges ................ {include_edges}")
+        print(f"  fields ............... {include_fields}")
+        print(f"  scores ............... {include_scores}")
+        if object_types:
+            print(f"  types ................ {object_types}")
+        if args.older_than is not None:
             print(f"  older_than ........... {args.older_than}")
         if args.limit_per_type:
             print(f"  limit_per_type ....... {args.limit_per_type}")
@@ -256,11 +265,15 @@ def cmd_airflow_expire(args):
     # Execute command:
     # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
     gr.orchestrator.expire(
-        doc_type       = args.doc_type,
-        older_than     = args.older_than,
-        limit_per_type = args.limit_per_type,
-        count_only = c,
-        verbose    = v
+        include_nodes    = include_nodes,
+        include_edges    = include_edges,
+        include_fields   = include_fields,
+        include_scores   = include_scores,
+        object_types     = object_types,
+        older_than       = args.older_than,
+        limit_per_type   = args.limit_per_type,
+        count_only       = c,
+        verbose          = v
     )
 
     # Print footers
