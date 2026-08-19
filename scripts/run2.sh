@@ -15,7 +15,7 @@ graphregistry airflow config --typeflags config/config_airflow.json
 # graphregistry airflow update_checksums
 
 # Step 4: Decide what to process
-new
+graphregistry airflow expire --older_than=1
 graphregistry airflow refresh --limit_per_type=1000
 graphregistry airflow status
 
