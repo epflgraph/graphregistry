@@ -4,9 +4,13 @@
 
 -- ======================= Graph traversal: Course number of lectures (CREATE TABLE)
 CREATE TABLE IF NOT EXISTS [[traversals]].Course__NLectures (
-                            course_id VARCHAR(255) NOT NULL,
+                            course_id  VARCHAR(255) NOT NULL,
                             n_lectures INT(10) unsigned NOT NULL,
-                            UNIQUE KEY course_id (course_id));
+                            to_process TINYINT(1) NOT NULL DEFAULT 0,
+                            deleted    TINYINT(1) NOT NULL DEFAULT 0,
+                            UNIQUE KEY course_id (course_id),
+                            KEY to_process (to_process),
+                            KEY deleted (deleted));
 
 -- ============ Cleanup: Reset to_process flags
          UPDATE [[traversals]].Course__NLectures
@@ -32,9 +36,10 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Course__NLectures (
 
 -- ========= Graph traversal: Course number of lectures (REPLACE)
 REPLACE INTO [[traversals]].Course__NLectures
-             (course_id, n_lectures, to_process)
+             (course_id, n_lectures, to_process, deleted)
        SELECT course_id, COUNT(DISTINCT lecture_id) AS n_lectures,
-              1 AS to_process
+              1 AS to_process,
+              0 AS deleted
         FROM [[traversals]].Course_Lecture_Slide_Concept__LLMValidated
        WHERE to_process = 1
          AND deleted = 0

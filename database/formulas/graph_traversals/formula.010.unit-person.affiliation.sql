@@ -27,11 +27,12 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
 
 -- ============ Graph traversal: Unit-Person affiliation edges (REPLACE)
    REPLACE INTO [[traversals]].Unit_Person__Affiliation
-                (unit_id, person_id, position_group, to_process)
-         SELECT p2u.to_object_id        AS unit_id,
-                p2u.from_object_id      AS person_id,
-                f2.from_field_value     AS position_group,
-                1 AS to_process
+                 (unit_id, person_id, position_group, to_process, deleted)
+          SELECT p2u.to_object_id        AS unit_id,
+                 p2u.from_object_id      AS person_id,
+                 f2.from_field_value     AS position_group,
+                 1 AS to_process,
+                 0 AS deleted
 
            FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
 

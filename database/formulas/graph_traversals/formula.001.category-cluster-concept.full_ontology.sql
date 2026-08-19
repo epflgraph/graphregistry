@@ -49,7 +49,7 @@ IF NOT EXISTS [[traversals]].Category_Cluster_Concept__FullOntology (
 
 -- ============ Graph traversal: Category-Cluster-Concept ontology edges (REPLACE)
    REPLACE INTO [[traversals]].Category_Cluster_Concept__FullOntology
-                (root_id, root_name, category_1_id, category_1_name, category_2_id, category_2_name, category_3_id, category_3_name, category_4_id, category_4_name, cluster_id, concept_id, concept_name, to_process)
+                 (root_id, root_name, category_1_id, category_1_name, category_2_id, category_2_name, category_3_id, category_3_name, category_4_id, category_4_name, cluster_id, concept_id, concept_name, to_process, deleted)
 SELECT DISTINCT n5.id   AS       root_id, n5.name AS       root_name,
                 n4.id   AS category_1_id, n4.name AS category_1_name,
                 n3.id   AS category_2_id, n3.name AS category_2_name,
@@ -57,7 +57,8 @@ SELECT DISTINCT n5.id   AS       root_id, n5.name AS       root_name,
                 n1.id   AS category_4_id, n1.name AS category_4_name,
                 a.to_id AS    cluster_id,
                 d.id    AS    concept_id,  d.name AS    concept_name,
-                fc.to_process AS to_process
+                fc.to_process AS to_process,
+                0 AS deleted
            FROM [[ontology]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild a
      INNER JOIN [[ontology]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild b ON (a.to_id = b.from_id)
      INNER JOIN [[ontology]].Nodes_N_Concept d ON (b.to_id = d.id)

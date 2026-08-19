@@ -30,14 +30,15 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Publication_Concept__ConceptDetec
 
 -- ============= Graph traversal: Unit-Publication-Concept score edges (REPLACE)
     REPLACE INTO [[traversals]].Unit_Publication_Concept__ConceptDetection
-                 (unit_id, publication_id, concept_id, score, idx_publication_id, to_process)
+                 (unit_id, publication_id, concept_id, score, idx_publication_id, to_process, deleted)
 
           SELECT u2p.unit_id                 AS unit_id,
                  p2a.publication_id          AS publication_id,
                  a2c.concept_id              AS concept_id,
                  a2c.score                   AS score,
                  LEFT(p2a.publication_id, 2) AS idx_publication_id,
-                 1 AS to_process
+                 1 AS to_process,
+                 0 AS deleted
 
               -- Start with: Unit-Person affiliation edges
             FROM [[traversals]].Unit_Person__Affiliation u2p

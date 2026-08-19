@@ -33,14 +33,15 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication_Concept__ConceptDet
 -- ===============================================================================
 
     REPLACE INTO [[traversals]].Person_Publication_Concept__ConceptDetection
-                 (person_id, publication_id, concept_id, score, idx_publication_id, to_process)
+                 (person_id, publication_id, concept_id, score, idx_publication_id, to_process, deleted)
 
           SELECT t1.person_id          AS person_id,
                  t1.publication_id     AS publication_id,
                  t2.concept_id         AS concept_id,
                  t2.score              AS score,
                  t1.idx_publication_id AS idx_publication_id,
-                 1 AS to_process
+                 1 AS to_process,
+                 0 AS deleted
 
               -- Link to: Person-Publication authorship edges
             FROM [[traversals]].Person_Publication__Authorship t1

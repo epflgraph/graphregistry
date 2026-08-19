@@ -26,12 +26,13 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication__Authorship (
 
 -- ============ Graph traversal: Person-Publication authorship edges (REPLACE)
    REPLACE INTO [[traversals]].Person_Publication__Authorship
-                (person_id, publication_id, idx_publication_id, to_process)
+                 (person_id, publication_id, idx_publication_id, to_process, deleted)
 
          SELECT a2p.to_object_id            AS person_id,
                 a2p.from_object_id          AS publication_id,
                 LEFT(a2p.from_object_id, 2) AS idx_publication_id,
-                1 AS to_process
+                1 AS to_process,
+                0 AS deleted
 
            FROM [[airflow]].Operations_N_Object_N_Object_T_FieldsChanged tp
 
