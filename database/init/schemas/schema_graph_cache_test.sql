@@ -210,12 +210,14 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_CalculatedScores (
   calculation_type varchar(64) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   UNIQUE KEY unique_key (object_type,object_id,category_id,calculation_type) USING HASH,
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY category_id (category_id),
   KEY calculation_type (calculation_type),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY object_type_and_id (object_type,object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -231,11 +233,13 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_FinalScores (
   category_id varchar(255) NOT NULL,
   score float DEFAULT NULL,
   to_process tinyint(4) DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   UNIQUE KEY unique_key (object_type,object_id,category_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY category_id (category_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY idx_concept_type_proc (category_id,object_type,to_process),
   KEY idx_concept_type_proc_score (category_id,object_type,to_process,score),
   KEY idx_proc_type_score_category (to_process,object_type,score,category_id),
@@ -249,12 +253,14 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_CalculatedScores (
   calculation_type varchar(64) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   UNIQUE KEY unique_key (object_type,object_id,concept_id,calculation_type),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
   KEY calculation_type (calculation_type),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY object_type_and_id (object_type,object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -300,6 +306,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ScoringMatrix (
   score_2 float DEFAULT NULL,
   score_3 float DEFAULT 0,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY unique_key (object_type,object_id,concept_id),
@@ -308,6 +315,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ScoringMatrix (
   KEY object_id (object_id),
   KEY concept_id (concept_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY object_type_and_id (object_type,object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -318,6 +326,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_UnionAllScores (
   calculation_type varchar(64) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) NOT NULL,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY unique_key (object_type,object_id,concept_id,calculation_type),
@@ -326,6 +335,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_UnionAllScores (
   KEY concept_id (concept_id),
   KEY calculation_type (calculation_type),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY object_type_and_id (object_type,object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -336,13 +346,15 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_CalculatedScores (
   calculation_type varchar(64) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   UNIQUE KEY object_type_and_id (object_type,object_id),
   UNIQUE KEY unique_key (object_type,object_id,curated_area_id,calculation_type) USING HASH,
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY curated_area_id (curated_area_id),
   KEY calculation_type (calculation_type),
-  KEY to_process (to_process)
+  KEY to_process (to_process),
+  KEY deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_FinalScores (
@@ -351,12 +363,14 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_FinalScores (
   curated_area_id varchar(255) NOT NULL,
   score float DEFAULT NULL,
   to_process tinyint(4) DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   UNIQUE KEY object_type_and_id (object_type,object_id),
   UNIQUE KEY unique_key (object_type,object_id,curated_area_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY curated_area_id (curated_area_id),
-  KEY to_process (to_process)
+  KEY to_process (to_process),
+  KEY deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_DegreeCombinations (
@@ -365,12 +379,14 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_DegreeCombinations (
   to_object_type varchar(32) NOT NULL,
   degree int unsigned NOT NULL DEFAULT 0,
   log_degree float DEFAULT NULL,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_object_type (to_object_type)
+  KEY to_object_type (to_object_type),
+  KEY deleted (deleted)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_MaxLogDegrees (
@@ -389,9 +405,11 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_NormLogDegrees (
   degree int unsigned NOT NULL DEFAULT 0,
   log_degree float DEFAULT NULL,
   norm_log_degree float DEFAULT NULL,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
-  KEY to_object_type (to_object_type)
+  KEY to_object_type (to_object_type),
+  KEY deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ParentChildSymmetric (
@@ -434,6 +452,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS (
   to_object_id varchar(255) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
@@ -442,6 +461,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS (
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY idx_fot_foid_tot_toid (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY idx_fot_foid_tot_toid_tp (from_object_type,from_object_id,to_object_type,to_object_id,to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -453,6 +473,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Education_GBC 
   to_object_id varchar(255) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
@@ -463,6 +484,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Education_GBC 
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY idx_fot_foid_tot_toid (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY idx_fot_foid_tot_toid_tp (from_object_type,from_object_id,to_object_type,to_object_id,to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -543,6 +565,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_GBC (
   to_object_id varchar(255) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
@@ -553,6 +576,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_GBC (
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY idx_fot_foid_tot_toid (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY idx_fot_foid_tot_toid_tp (from_object_type,from_object_id,to_object_type,to_object_id,to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -564,6 +588,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_AS (
   to_object_id varchar(255) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
@@ -572,6 +597,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_AS (
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY idx_fot_foid_tot_toid (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY idx_fot_foid_tot_toid_tp (from_object_type,from_object_id,to_object_type,to_object_id,to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -583,6 +609,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_GBC (
   to_object_id varchar(255) NOT NULL,
   score float NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   row_id bigint unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
@@ -593,6 +620,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_GBC (
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY to_process (to_process),
+  KEY deleted (deleted),
   KEY idx_fot_foid_tot_toid (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY idx_fot_foid_tot_toid_tp (from_object_type,from_object_id,to_object_type,to_object_id,to_process)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -604,10 +632,12 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Object_T_DegreeScores (
   avg_log_degree float NOT NULL,
   avg_norm_log_degree float NOT NULL,
   to_process tinyint(4) NOT NULL DEFAULT 0,
+  deleted tinyint(4) NOT NULL DEFAULT 0,
   UNIQUE KEY object_type_and_id (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
-  KEY to_process (to_process)
+  KEY to_process (to_process),
+  KEY deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_Checksums (
