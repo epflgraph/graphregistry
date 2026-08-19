@@ -2,13 +2,14 @@
 -- ========== Object type: Category
 -- ========== Formula: 'concept sum-scores aggregation'
  REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-             (object_type, object_id, concept_id, calculation_type, score, to_process)
+             (object_type, object_id, concept_id, calculation_type, score, to_process, deleted)
        SELECT 'Category'        AS object_type,
               t1.from_id        AS object_id,
               t3.to_id          AS concept_id,
               'concept sum-scores aggregation' AS calculation_type,
               SUM(t3.score)     AS score,
-              1 AS to_process
+              1 AS to_process,
+              0 AS deleted
 
          FROM [[ontology]].Edges_N_Category_N_ConceptsCluster_T_ParentToChild t1
 STRAIGHT_JOIN [[ontology]].Edges_N_ConceptsCluster_N_Concept_T_ParentToChild t2
@@ -39,11 +40,12 @@ SET @avg_score = (
 
 -- ========= Formula: 'concept sum-scores aggregation (bounded)'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (object_type, object_id, concept_id, calculation_type, score, to_process)
+            (object_type, object_id, concept_id, calculation_type, score, to_process, deleted)
       SELECT s.object_type, s.object_id, s.concept_id,
              'concept sum-scores aggregation (bounded)' AS calculation_type,
              (2/(1 + EXP(-s.score/(4*@avg_score))) - 1) AS score,
-             1 AS to_process
+             1 AS to_process,
+             0 AS deleted
         FROM [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores s
   INNER JOIN [[airflow]].Operations_N_Object_T_ScoresExpired se
           ON (se.object_type, se.object_id) = ('Category', s.object_id)

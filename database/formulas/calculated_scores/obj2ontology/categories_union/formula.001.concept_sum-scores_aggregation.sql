@@ -1,14 +1,15 @@
 -- ========= Object type: All types
 -- ========= Formula: 'concept sum-scores aggregation'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
-             (object_type, object_id, category_id, calculation_type, score, to_process)
+             (object_type, object_id, category_id, calculation_type, score, to_process, deleted)
 
       SELECT fs.object_type   AS object_type,
              fs.object_id     AS object_id,
              tr.category_4_id AS category_id,
              'concept sum-scores aggregation' AS calculation_type,
              SUM(fs.score) AS score,
-             fs.to_process
+             1 AS to_process,
+             0 AS deleted
 
           -- Select from pre-calculated object to concept scores
         FROM [[graph_cache]].Edges_N_Object_N_Concept_T_FinalScores fs

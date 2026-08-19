@@ -1,7 +1,7 @@
 -- ==================== Put all calculation types in columns
             INSERT INTO [[graph_cache]].Edges_N_Object_N_Concept_T_ScoringMatrix
-                       (object_type, object_id, concept_id, score_1, score_2, score_3, to_process)
-                 SELECT object_type, object_id, concept_id, score_1, score_2, score_3, to_process
+                       (object_type, object_id, concept_id, score_1, score_2, score_3, to_process, deleted)
+                 SELECT object_type, object_id, concept_id, score_1, score_2, score_3, to_process, deleted
                    FROM (SELECT object_type, object_id, concept_id,
 
                       CASE WHEN (object_type = 'Person'      AND calculation_type = 'concept detection on user input')
@@ -30,7 +30,8 @@
                              OR (object_type = 'Unit'        AND calculation_type = 'abstract sum-scores aggregation (bounded)')
                            THEN score END AS score_3,
 
-                                1 AS to_process
+                                1 AS to_process,
+                                0 AS deleted
                            FROM [[graph_cache]].Edges_N_Object_N_Concept_T_UnionAllScores
                           WHERE deleted = 0
                             AND to_process = 1

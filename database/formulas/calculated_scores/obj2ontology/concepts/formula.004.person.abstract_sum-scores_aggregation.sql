@@ -1,12 +1,12 @@
 -- ========= Object type: Person
 -- ========= Formula: 'abstract sum-scores aggregation'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-             (object_type, object_id, concept_id, calculation_type, score, to_process)
+             (object_type, object_id, concept_id, calculation_type, score, to_process, deleted)
       SELECT 'Person'   AS object_type,
              person_id  AS object_id,
              concept_id AS concept_id,
              'abstract sum-scores aggregation' AS calculation_type,
-             SUM(score) AS score, 1 AS to_process
+             SUM(score) AS score, 1 AS to_process, 0 AS deleted
          FROM [[traversals]].Person_Publication_Concept__ConceptDetection
         WHERE to_process = 1
           AND deleted = 0
@@ -27,10 +27,10 @@ SET @avg_score = (
 
 -- ========= Formula: 'abstract sum-scores aggregation (bounded)'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
-            (object_type, object_id, concept_id, calculation_type, score, to_process)
+            (object_type, object_id, concept_id, calculation_type, score, to_process, deleted)
       SELECT object_type, object_id, concept_id,
              'abstract sum-scores aggregation (bounded)' AS calculation_type,
-             (2/(1 + EXP(-t2.score/(4*@avg_score))) - 1) AS score, 1 AS to_process
+             (2/(1 + EXP(-t2.score/(4*@avg_score))) - 1) AS score, 1 AS to_process, 0 AS deleted
         FROM [[airflow]].Operations_N_Object_T_ScoresExpired t1
   INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
        USING (object_type)
