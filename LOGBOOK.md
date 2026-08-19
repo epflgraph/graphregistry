@@ -60,3 +60,5 @@
 - 👉 fix repeated `row_rank` values bug after re-ranking query
 - 👉 check 404 errors in API
 - 👉 clean out object-to-link tables (eg, graph_cache.Edges_N_Object_N_Concept_T_ScoringMatrix) by object_id before updating
+- 👉 change all tables charset/collates to `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
+- 👉 add missing concepts in ontology that come from exoset
