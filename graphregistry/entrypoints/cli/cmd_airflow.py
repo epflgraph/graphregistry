@@ -30,7 +30,7 @@ def _validate_limit_per_type(limit_per_type, limit_per_type_max):
 def cmd_airflow_sync(args):
     """
     Handle:
-      graphregistry cache sync
+      graphregistry airflow sync [--include_lectures] [--include_ontology]
     """
 
     # Fetch context objects
@@ -41,7 +41,10 @@ def cmd_airflow_sync(args):
 
     # Execute command:
     # - Sync new registry data with airflow tables
-    gr.orchestrator.sync()
+    gr.orchestrator.sync(
+        include_lectures = args.include_lectures,
+        include_ontology = args.include_ontology,
+    )
 
     # Print footers
     print("🖥️  ~ Done.")

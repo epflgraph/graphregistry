@@ -629,9 +629,19 @@ class GraphRegistry():
             sysmsg.success("⛳️ ✅ All 'to_process' flags have been propagated throughout cache.\n")
 
         # Sync new objects to operations table
-        def sync(self, to_process=1, verbose=False):
-            self.fieldschanged.sync(to_process=to_process, verbose=verbose)
-            self.scoresexpired.sync(to_process=to_process, verbose=verbose)
+        def sync(self, to_process=1, include_lectures=False, include_ontology=False, verbose=False):
+            self.fieldschanged.sync(
+                to_process       = to_process,
+                include_lectures = include_lectures,
+                include_ontology = include_ontology,
+                verbose          = verbose,
+            )
+            self.scoresexpired.sync(
+                to_process       = to_process,
+                include_lectures = include_lectures,
+                include_ontology = include_ontology,
+                verbose          = verbose,
+            )
 
         # Randomize airflow fields [OPTIONAL: For testing purposes]
         def randomize(self, doc_type=None, time_period=182, verbose=False):
@@ -1560,13 +1570,21 @@ class GraphRegistry():
                 return output
 
             # Sync new objects to operations table
-            def sync(self, to_process=1, verbose=False):
+            def sync(self, to_process=1, include_lectures=False, include_ontology=False, verbose=False):
 
                 # Print status
                 sysmsg.info("♻️  📝 Synching new objects added to the registry with 'FieldsChanged' airflow tables.")
 
+                # Build list of registry data schemas to sync (registry is always included)
+                schemas_to_sync = []
+                if include_lectures:
+                    schemas_to_sync.append(glbcfg.schema_lectures)
+                schemas_to_sync.append(glbcfg.schema_registry)
+                if include_ontology:
+                    schemas_to_sync.append(glbcfg.schema_ontology)
+
                 # Loop over registry data schemas
-                for schema_name in [glbcfg.schema_lectures, glbcfg.schema_registry, glbcfg.schema_ontology]:
+                for schema_name in schemas_to_sync:
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing nodes on schema '{schema_name}' ...")
@@ -2373,13 +2391,21 @@ class GraphRegistry():
                 return output
 
             # Sync new objects to operations table -> TODO: optimise queries and include graph_lectures (done?)
-            def sync(self, to_process=1, verbose=False):
+            def sync(self, to_process=1, include_lectures=False, include_ontology=False, verbose=False):
 
                 # Print status
                 sysmsg.info("♻️  📝 Synching new objects added to the registry with 'ScoresExpired' airflow tables.")
 
+                # Build list of registry data schemas to sync (registry is always included)
+                schemas_to_sync = []
+                if include_lectures:
+                    schemas_to_sync.append(glbcfg.schema_lectures)
+                schemas_to_sync.append(glbcfg.schema_registry)
+                if include_ontology:
+                    schemas_to_sync.append(glbcfg.schema_ontology)
+
                 # Loop over registry data schemas
-                for schema_name in [glbcfg.schema_lectures, glbcfg.schema_registry, glbcfg.schema_ontology]:
+                for schema_name in schemas_to_sync:
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing nodes on schema '{schema_name}' ...")

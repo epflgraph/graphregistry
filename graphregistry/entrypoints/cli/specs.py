@@ -338,7 +338,10 @@ cli_definitions: Dict[str, Any] = {
             'sync' : dict(
                 help = "Sync new Registry data with Airflow tables.",
                 func = cmd_airflow_sync,
-                args = [],
+                args = [
+                    dict(flags=('--include_lectures',), kwargs=dict(action='store_true', default=False, help="Also sync objects from the lectures schema (default: false).")),
+                    dict(flags=('--include_ontology',), kwargs=dict(action='store_true', default=False, help="Also sync objects from the ontology schema (default: false).")),
+                ],
                 common_args = []
             ),
             'status' : dict(
