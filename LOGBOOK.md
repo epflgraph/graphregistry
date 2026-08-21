@@ -33,8 +33,8 @@
 - ✅ Node endpoints are mostly fixed
 - ✅ Edge endpoints need work, fix output format of 'get edge'. also, 'get many edges' is not returning results
 - 👉 need to fix global/local paths issue in graphdb repo
-- 👉 ./examples/entrypoints/node_list/api.sh is still returning DB format json, not API format
-- 👉 this is not working: ./examples/entrypoints/node_delete/api.sh
+- ✅ ./examples/entrypoints/node_list/api.sh is still returning DB format json, not API format
+- ✅ this is not working: ./examples/entrypoints/node_delete/api.sh
 - ✅ Why is `SELECT * FROM _1_DEV_graphsearch_test.Index_D_Course_L_Course_T_SEM;` empy?! See comment `GRW24tg`
 - 👉 In `run2.sh`, add alternative way of importing data using API endpoints
 - 👉 working on `t_video.py` script
@@ -44,21 +44,20 @@
 - ✅ Create a lecture sample set for dev
 - 👉 execute all operations with the operations object, not with the repo class directly
 - 👉 centralize initalization of operations object in a single function
-- 👉 Fix line 1045 in graphdb
 - 👉 implement handling of "file not found" in graphai endpoints
 - 👉 make db exports always overwrite the export folder, or at least ask for confirmation
 
 ### July
 - 👉 `avg_scores` and `log_degrees` formulas take a long time even with no active flags
 - 👉 make distinction between typeflags and airflow in reset cache operation
-- 👉 implement soft delete throughout cache updates
+- 👨🏻‍💻 implement soft delete throughout cache updates
 
 ### August
 - 👉 create nodes patching table on registry, to apply on every update cycle. Start with C***a L***t request
 - 👉 investigate startups not showing in ES search
 - 👉 check Execises out-of-date data
-- 👉 fix repeated `row_rank` values bug after re-ranking query
-- 👉 check 404 errors in API
-- 👉 clean out object-to-link tables (eg, graph_cache.Edges_N_Object_N_Concept_T_ScoringMatrix) by object_id before updating
+- 👨🏻‍💻 fix repeated `row_rank` values bug after re-ranking query
+- 👨🏻‍💻 check 404 errors in API
+- 👨🏻‍💻 clean out object-to-link tables (eg, graph_cache.Edges_N_Object_N_Concept_T_ScoringMatrix) by object_id before updating
 - 👉 change all tables charset/collates to `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
 - 👉 add missing concepts in ontology that come from exoset
