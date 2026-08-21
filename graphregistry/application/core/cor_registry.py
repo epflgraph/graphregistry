@@ -1595,13 +1595,9 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                USING (object_type, object_id)
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (object_type)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.record_deleted = 0
-                                 AND tf.flag_type = 'fields'
-                                 AND tf.to_process = 1
                              GROUP BY cp.object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='DY3x5PC8')
@@ -1614,13 +1610,9 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                USING (object_type, object_id)
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (object_type)
                                WHERE fc.object_id IS NULL
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.record_deleted = 0
-                                 AND tf.flag_type = 'fields'
-                                 AND tf.to_process = 1
                      ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='2PbejfUm')
@@ -1650,14 +1642,11 @@ class GraphRegistry():
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
                                USING (from_object_type, from_object_id, to_object_type, to_object_id)
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                               USING (from_object_type, to_object_type)
                                WHERE fc.from_object_id IS NULL
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
                                  AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                                  AND cp.record_deleted = 0
-                                 AND tf.to_process = 1
                              GROUP BY cp.from_object_type, cp.to_object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='Gk7dDRC0')
@@ -1670,14 +1659,11 @@ class GraphRegistry():
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
                                USING (from_object_type, from_object_id, to_object_type, to_object_id)
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
-                               USING (from_object_type, to_object_type)
                                WHERE fc.from_object_id IS NULL
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
                                  AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                                  AND cp.record_deleted = 0
-                                 AND tf.to_process = 1
                      ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='s1gXyPYb')
@@ -2390,7 +2376,7 @@ class GraphRegistry():
                 # Return output as tuples
                 return output
 
-            # Sync new objects to operations table -> TODO: optimise queries and include graph_lectures (done?)
+            # Sync new objects to operations table
             def sync(self, to_process=1, include_lectures=False, include_ontology=False, verbose=False):
 
                 # Print status
@@ -2416,14 +2402,10 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
                                USING (object_type, object_id)
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (object_type)
                                WHERE o.object_id IS NULL
                                  AND n.object_type != 'Transcript'
                                  AND n.object_type != 'Slide'
                                  AND n.record_deleted = 0
-                                 AND tf.flag_type = 'fields'
-                                 AND tf.to_process = 1
                              GROUP BY n.object_type
                     """
                     out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='7RNfE1fF')
@@ -2436,13 +2418,9 @@ class GraphRegistry():
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
                                USING (object_type, object_id)
-                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                               USING (object_type)
                                WHERE o.object_id IS NULL
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
                                  AND n.record_deleted = 0
-                                 AND tf.flag_type = 'fields'
-                                 AND tf.to_process = 1
                      ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5mhz4Uwr')
