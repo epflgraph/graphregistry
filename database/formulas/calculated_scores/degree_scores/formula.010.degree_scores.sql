@@ -54,6 +54,8 @@
                      )
 
                  AND se.to_process = 1
+                 AND se.deleted = 0
+                 AND d.deleted = 0
                  AND tf.flag_type  = 'scores'
                  AND tf.to_process = 1
 

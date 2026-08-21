@@ -3,6 +3,7 @@ DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees;
         CREATE TABLE [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees AS
               SELECT from_object_type, to_object_type, MAX(log_degree) AS max_log_degree
                 FROM [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations
+               WHERE deleted = 0
             GROUP BY from_object_type, to_object_type;
 
 -- ================= Add indices to optimise the following query
@@ -24,5 +25,7 @@ DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees;
           INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
                USING (object_type)
                WHERE se.to_process = 1
+                 AND se.deleted = 0
+                 AND d.deleted = 0
                  AND tf.flag_type  = 'scores'
                  AND tf.to_process = 1;

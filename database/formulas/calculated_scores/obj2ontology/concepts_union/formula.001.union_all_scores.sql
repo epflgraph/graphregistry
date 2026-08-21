@@ -36,6 +36,7 @@ ON DUPLICATE KEY UPDATE score      = new.score,
                           USING (object_type)
                           WHERE s.record_deleted = 0
                             AND se.to_process = 1
+                            AND se.deleted = 0
                             AND tf.flag_type  = 'scores'
                             AND tf.to_process = 1
                             AND s.score >= 0.1
@@ -57,6 +58,7 @@ ON DUPLICATE KEY UPDATE score      = new.score,
                           USING (object_type)
                           WHERE s.record_deleted = 0
                             AND se.to_process = 1
+                            AND se.deleted = 0
                             AND tf.flag_type  = 'scores'
                             AND tf.to_process = 1
                         ) AS new

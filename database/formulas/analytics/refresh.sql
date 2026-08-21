@@ -66,6 +66,7 @@ REPLACE INTO graph_analytics._course_n_lectures
              ON (c.object_type, c.object_id, 'part of') = (p.from_object_type, p.from_object_id, p.context)
           WHERE c.object_type = 'Lecture'
             AND c.calculation_type IN ('slide count ai validated')
+            AND c.deleted = 0
        GROUP BY p.to_object_id, c.concept_id;
 
 

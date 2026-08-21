@@ -21,6 +21,7 @@ SET @avg_score = (
       USING (object_type)
       WHERE (object_type, calculation_type) = ('Person', 'abstract sum-scores aggregation')
         AND score >= .1
+        AND deleted = 0
         AND tf.flag_type  = 'scores'
         AND tf.to_process = 1
 );
@@ -38,7 +39,9 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
        USING (object_type, object_id)
        WHERE t1.object_type = 'Person'
          AND t1.to_process  = 1
+         AND t1.deleted     = 0
          AND tf.flag_type   = 'scores'
          AND tf.to_process  = 1
          AND (t2.object_type, t2.calculation_type) = ('Person', 'abstract sum-scores aggregation')
+         AND t2.deleted = 0
          AND t2.score >= .1;

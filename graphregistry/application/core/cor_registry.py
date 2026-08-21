@@ -152,9 +152,9 @@ def generate_airflow_where_conditions(doc_type=None):
 
     # Initialise WHERE contitions
     where_conditions = {
-        'Operations_N_Object_T_FieldsChanged' : f"""object_type IN ({', '.join(repr(e) for e in doc_types_fields_to_process)})""" if len(doc_types_fields_to_process)>0 else "FALSE",
-        'Operations_N_Object_T_ScoresExpired' : f"""object_type IN ({', '.join(repr(e) for e in doc_types_scores_to_process)})""" if len(doc_types_scores_to_process)>0 else "FALSE",
-        'Operations_N_Object_N_Object_T_FieldsChanged' : f"( (from_object_type, to_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) OR (to_object_type, from_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) )" if len(doclink_types_fields_to_process)>0 else "FALSE",
+        'Operations_N_Object_T_FieldsChanged'          : f"""object_type IN ({', '.join(repr(e) for e in doc_types_fields_to_process)}) AND deleted = 0""" if len(doc_types_fields_to_process)>0 else "FALSE",
+        'Operations_N_Object_T_ScoresExpired'          : f"""object_type IN ({', '.join(repr(e) for e in doc_types_scores_to_process)}) AND deleted = 0""" if len(doc_types_scores_to_process)>0 else "FALSE",
+        'Operations_N_Object_N_Object_T_FieldsChanged' : f"""( (from_object_type, to_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) OR (to_object_type, from_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) ) AND deleted = 0""" if len(doclink_types_fields_to_process)>0 else "FALSE",
     }
 
     # Return Airflow WHERE conditions
@@ -188,19 +188,19 @@ def generate_expire_where_conditions(include_nodes=True, include_edges=True, obj
     # "FALSE" so the table is skipped safely.
     node_fields_condition = None
     if include_nodes and len(doc_types_fields_to_process) > 0:
-        node_fields_condition = f"""object_type IN ({', '.join(repr(e) for e in doc_types_fields_to_process)})"""
+        node_fields_condition = f"""object_type IN ({', '.join(repr(e) for e in doc_types_fields_to_process)}) AND deleted = 0"""
         if object_types_set is not None:
             node_fields_condition = f"""({node_fields_condition} AND object_type IN ({', '.join(repr(e) for e in object_types)}))"""
 
     node_scores_condition = None
     if include_nodes and len(doc_types_scores_to_process) > 0:
-        node_scores_condition = f"""object_type IN ({', '.join(repr(e) for e in doc_types_scores_to_process)})"""
+        node_scores_condition = f"""object_type IN ({', '.join(repr(e) for e in doc_types_scores_to_process)}) AND deleted = 0"""
         if object_types_set is not None:
             node_scores_condition = f"""({node_scores_condition} AND object_type IN ({', '.join(repr(e) for e in object_types)}))"""
 
     edge_fields_condition = None
     if include_edges and len(doclink_types_fields_to_process) > 0:
-        edge_fields_condition = f"""( (from_object_type, to_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) OR (to_object_type, from_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) )"""
+        edge_fields_condition = f"""( (from_object_type, to_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) OR (to_object_type, from_object_type) IN ({', '.join(repr(t) for t in doclink_types_fields_to_process)}) ) AND deleted = 0"""
         if object_types_set is not None:
             edge_fields_condition = f"""({edge_fields_condition} AND (from_object_type IN ({', '.join(repr(e) for e in object_types)}) OR to_object_type IN ({', '.join(repr(e) for e in object_types)})))"""
 
@@ -510,6 +510,7 @@ class GraphRegistry():
                                      USING (object_type)
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
+                                       AND fc.deleted = 0
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
                         """
@@ -538,6 +539,7 @@ class GraphRegistry():
                                              = (tf.from_object_type,  tf.to_object_type)
                                            SET  p.to_process = 1
                                          WHERE fc.to_process = 1
+                                           AND fc.deleted = 0
                                            AND tf.to_process = 1
                                            AND  p.to_process = 0;
                             """
@@ -568,6 +570,7 @@ class GraphRegistry():
                                              = (tf.from_object_type, tf.to_object_type)
                                            SET  p.to_process = 1
                                          WHERE se.to_process = 1
+                                           AND se.deleted = 0
                                            AND tf.to_process = 1
                                            AND  p.to_process = 0;
                             """
@@ -591,6 +594,7 @@ class GraphRegistry():
                                      USING (object_type)
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
+                                       AND fc.deleted = 0
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
                         """)
@@ -617,6 +621,7 @@ class GraphRegistry():
                                          = (tf.from_object_type, tf.to_object_type)
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
+                                       AND fc.deleted = 0
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
                         """
@@ -972,6 +977,7 @@ class GraphRegistry():
                              SET f.checksum_current = c.checksum_val
                            WHERE t.flag_type = 'fields'
                              AND t.to_process = 1
+                             AND f.deleted = 0
                 """
 
                 # Execute query in shell
@@ -1011,8 +1017,8 @@ class GraphRegistry():
                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
                            USING (from_object_type, to_object_type)
                            WHERE e.record_deleted = 0
-                            AND to_process = 1
-                 """
+                             AND t.to_process = 1
+                  """
 
                 # Print query if verbose
                 if verbose:
@@ -1130,6 +1136,7 @@ class GraphRegistry():
                            USING (from_object_type, to_object_type)
                              SET f.checksum_current = c.checksum_val
                            WHERE t.to_process = 1
+                             AND f.deleted = 0
                 """
 
                 # Execute query in shell
@@ -1392,6 +1399,7 @@ class GraphRegistry():
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                              WHERE (object_type)
                                  = ("{object_key[0]}", "{object_key[1]}")
+                               AND deleted = 0
                         """
 
                     elif len(object_key) == 3:
@@ -1400,6 +1408,7 @@ class GraphRegistry():
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                              WHERE (object_type, object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")
+                               AND deleted = 0
                         """
 
                     elif len(object_key) == 4:
@@ -1408,6 +1417,7 @@ class GraphRegistry():
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                              WHERE (from_object_type, to_object_type)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}")
+                               AND deleted = 0
                         """
 
                     elif len(object_key) == 6:
@@ -1416,6 +1426,7 @@ class GraphRegistry():
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                              WHERE (from_object_type, from_object_id, to_object_type, to_object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}", "{object_key[4]}", "{object_key[5]}")
+                               AND deleted = 0
                         """
 
                     else:
@@ -1434,6 +1445,7 @@ class GraphRegistry():
                         SELECT object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                          WHERE to_process = 1
+                           AND deleted = 0
                       GROUP BY object_type
                     """, query_id='TDgw7fYz')
                     df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
@@ -1444,6 +1456,7 @@ class GraphRegistry():
                         SELECT from_object_type, to_object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                          WHERE to_process = 1
+                           AND deleted = 0
                       GROUP BY from_object_type, to_object_type
                     """, query_id='EqpDtL34')
                     df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
@@ -1596,6 +1609,7 @@ class GraphRegistry():
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                USING (object_type, object_id)
                                WHERE fc.object_id IS NULL
+                                 AND (fc.deleted = 0 OR fc.object_id IS NULL)
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.record_deleted = 0
                              GROUP BY cp.object_type
@@ -1605,16 +1619,18 @@ class GraphRegistry():
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                                    (object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process)
-                              SELECT cp.object_type, cp.object_id, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                    (object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process, deleted)
+                              SELECT cp.object_type, cp.object_id, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process, 0 AS deleted
                                 FROM {schema_name}.Nodes_N_Object cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                USING (object_type, object_id)
                                WHERE fc.object_id IS NULL
+                                 AND (fc.deleted = 0 OR fc.object_id IS NULL)
                                  AND cp.object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.record_deleted = 0
-                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    """
+                       ON DUPLICATE KEY UPDATE to_process = VALUES(to_process),
+                                               deleted    = VALUES(deleted);
+                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='2PbejfUm')
 
                     # Print status
@@ -1629,6 +1645,7 @@ class GraphRegistry():
                                            (object_type, flag_type, to_process)
                             SELECT DISTINCT object_type, 'fields' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
+                                      WHERE deleted = 0
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='x5BdjGfN')
@@ -1643,6 +1660,7 @@ class GraphRegistry():
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
                                USING (from_object_type, from_object_id, to_object_type, to_object_id)
                                WHERE fc.from_object_id IS NULL
+                                 AND (fc.deleted = 0 OR fc.from_object_id IS NULL)
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
                                  AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
@@ -1654,18 +1672,20 @@ class GraphRegistry():
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                                    (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process)
-                              SELECT cp.from_object_type, cp.from_object_id, cp.to_object_type, cp.to_object_id, cp.context, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                    (from_object_type, from_object_id, to_object_type, to_object_id, context, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process, deleted)
+                              SELECT cp.from_object_type, cp.from_object_id, cp.to_object_type, cp.to_object_id, cp.context, NULL AS checksum_current, NULL AS checksum_previous, NULL AS has_changed, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process, 0 AS deleted
                                 FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent cp
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged fc
                                USING (from_object_type, from_object_id, to_object_type, to_object_id)
                                WHERE fc.from_object_id IS NULL
+                                 AND (fc.deleted = 0 OR fc.from_object_id IS NULL)
                                  AND cp.from_object_type NOT IN ('Slide', 'Transcript')
                                  AND cp.to_object_type   NOT IN ('Slide', 'Transcript')
                                  AND NOT (cp.from_object_type = 'Concept' AND cp.to_object_type = 'Concept')
                                  AND cp.record_deleted = 0
-                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    """
+                       ON DUPLICATE KEY UPDATE to_process = VALUES(to_process),
+                                               deleted    = VALUES(deleted);
+                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='s1gXyPYb')
 
                     # Print status
@@ -1680,6 +1700,7 @@ class GraphRegistry():
                                            (from_object_type, to_object_type, to_process)
                             SELECT DISTINCT from_object_type, to_object_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
+                                      WHERE deleted = 0
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='dEE3eDPD')
@@ -1963,11 +1984,12 @@ class GraphRegistry():
 
                     # Generate SQL query for objects
                     sql_query = f"""
-                         UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged f
-                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
-                          USING (object_type)
-                            SET has_changed = (f.checksum_current != f.checksum_previous)
-                          WHERE t.to_process = 1
+                          UPDATE {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged f
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags t
+                           USING (object_type)
+                             SET has_changed = (f.checksum_current != f.checksum_previous)
+                           WHERE t.to_process = 1
+                             AND f.deleted = 0
                     """
 
                     # Execute query in shell
@@ -1975,11 +1997,12 @@ class GraphRegistry():
 
                     # Generate SQL query for object-to-objects
                     sql_query = f"""
-                         UPDATE {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged f
-                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
-                          USING (from_object_type, to_object_type)
-                            SET has_changed = (f.checksum_current != f.checksum_previous)
-                          WHERE t.to_process = 1
+                          UPDATE {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged f
+                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags t
+                           USING (from_object_type, to_object_type)
+                             SET has_changed = (f.checksum_current != f.checksum_previous)
+                           WHERE t.to_process = 1
+                             AND f.deleted = 0
                     """
 
                     # Execute query in shell
@@ -2063,6 +2086,7 @@ class GraphRegistry():
                                    SUM(NOT ISNULL(last_date_cached) AND NOT has_changed AND has_expired) AS cache_expired,
                                    SUM(to_process)                                                       AS to_process
                               FROM {glbcfg.schema_airflow}.{table_name}
+                             WHERE deleted = 0
                           GROUP BY {'object_type' if u=='n' else 'from_object_type, to_object_type'}
                             HAVING new_or_never_cached + checksum_changed + cache_expired > 0
                         """
@@ -2080,6 +2104,7 @@ class GraphRegistry():
                                    SUM(NOT ISNULL(last_date_cached) AND NOT has_changed AND has_expired) AS cache_expired,
                                    SUM(to_process)                                                       AS to_process
                               FROM {glbcfg.schema_airflow}.{table_name}
+                             WHERE deleted = 0
                         """
 
                         # Execute evaluation query
@@ -2265,11 +2290,12 @@ class GraphRegistry():
                     sql_query = f"""
                         SELECT object_type, object_id, last_date_cached, has_expired, to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
+                        WHERE deleted = 0
                     """
                     if len(object_key) == 2:
-                        sql_query += f"""WHERE (object_type) = ("{object_key[0]}", "{object_key[1]}")"""
+                        sql_query += f"""  AND (object_type) = ("{object_key[0]}", "{object_key[1]}")"""
                     elif len(object_key) == 3:
-                        sql_query += f"""WHERE (object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")"""
+                        sql_query += f"""  AND (object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")"""
                     else:
                         msg = 'Invalid key length.'
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
@@ -2283,6 +2309,7 @@ class GraphRegistry():
                         SELECT object_type, COUNT(*) AS n_to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                         WHERE to_process = 1
+                          AND deleted = 0
                      GROUP BY object_type
                     """, query_id='ts8NQExF')
                     df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
@@ -2403,6 +2430,7 @@ class GraphRegistry():
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
                                USING (object_type, object_id)
                                WHERE o.object_id IS NULL
+                                 AND (o.deleted = 0 OR o.object_id IS NULL)
                                  AND n.object_type != 'Transcript'
                                  AND n.object_type != 'Slide'
                                  AND n.record_deleted = 0
@@ -2413,16 +2441,18 @@ class GraphRegistry():
                     # Execute object sync
                     sql_query = f"""
                          INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                                    (object_type, object_id, last_date_cached, has_expired, to_process)
-                              SELECT n.object_type, n.object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process
+                                    (object_type, object_id, last_date_cached, has_expired, to_process, deleted)
+                              SELECT n.object_type, n.object_id, NULL AS last_date_cached, NULL AS has_expired, {to_process} AS to_process, 0 AS deleted
                                 FROM {schema_name}.Nodes_N_Object n
                            LEFT JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired o
                                USING (object_type, object_id)
                                WHERE o.object_id IS NULL
+                                 AND (o.deleted = 0 OR o.object_id IS NULL)
                                  AND n.object_type NOT IN ('Slide', 'Transcript')
                                  AND n.record_deleted = 0
-                     ON DUPLICATE KEY UPDATE to_process = VALUES(to_process);
-                    """
+                       ON DUPLICATE KEY UPDATE to_process = VALUES(to_process),
+                                               deleted    = VALUES(deleted);
+                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5mhz4Uwr')
 
                     # Print status
@@ -2437,6 +2467,7 @@ class GraphRegistry():
                                            (object_type, flag_type, to_process)
                             SELECT DISTINCT object_type, 'scores' AS flag_type, 0 AS to_process
                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
+                                      WHERE deleted = 0
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='n2TKRWNV')
@@ -2777,6 +2808,7 @@ class GraphRegistry():
                                    SUM(    ISNULL(last_date_cached)                ) AS new_or_never_cached,
                                    SUM(NOT ISNULL(last_date_cached) AND has_expired) AS cache_expired
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
+                             WHERE deleted = 0
                           GROUP BY object_type
                             HAVING new_or_never_cached + cache_expired > 0
                         """
@@ -2792,6 +2824,7 @@ class GraphRegistry():
                                    SUM(    ISNULL(last_date_cached)                ) AS new_or_never_cached,
                                    SUM(NOT ISNULL(last_date_cached) AND has_expired) AS cache_expired
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
+                             WHERE deleted = 0
                         """
 
                         # Execute evaluation query
@@ -3110,6 +3143,7 @@ class GraphRegistry():
                 INNER JOIN %s.Operations_N_Object_N_Object_T_TypeFlags tf
                      USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
+                       AND tp.deleted = 0
                        AND tf.to_process = 1
                        AND cf.%s = 0
                        AND cf.from_object_type NOT IN ('Slide')
@@ -3130,6 +3164,7 @@ class GraphRegistry():
                 INNER JOIN %s.Operations_N_Object_N_Object_T_TypeFlags tf
                      USING (from_object_type, to_object_type)
                      WHERE tp.to_process = 1
+                       AND tp.deleted = 0
                        AND tf.to_process = 1
                        AND cf.%s = 0
                        AND cf.from_object_type NOT IN ('Slide')
@@ -3199,6 +3234,7 @@ class GraphRegistry():
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
                          USING (object_type)
                           WHERE tp.to_process = 1
+                            AND tp.deleted = 0
                             AND tf.flag_type = 'fields'
                             AND tf.to_process = 1
                             AND pp.{deleted_col} = 0
@@ -3232,6 +3268,7 @@ class GraphRegistry():
                 INNER JOIN %s.Operations_N_Object_T_TypeFlags tf
                      USING (object_type)
                      WHERE tp.to_process = 1
+                       AND tp.deleted = 0
                        AND tf.flag_type = 'fields'
                        AND tf.to_process = 1
                        AND cf.%s = 0
@@ -3300,9 +3337,10 @@ class GraphRegistry():
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                          USING (from_object_type, to_object_type)
-                         WHERE tp.to_process = 1
-                           AND tf.to_process = 1
-                           AND c2p.{deleted_col} = 0
+                          WHERE tp.to_process = 1
+                            AND tp.deleted = 0
+                            AND tf.to_process = 1
+                            AND c2p.{deleted_col} = 0
 
                      UNION ALL
 
@@ -3319,9 +3357,10 @@ class GraphRegistry():
                          USING (from_object_type, from_object_id, to_object_type, to_object_id)
                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags tf
                          USING (from_object_type, to_object_type)
-                         WHERE tp.to_process = 1
-                           AND tf.to_process = 1
-                           AND c2p.{deleted_col} = 0
+                          WHERE tp.to_process = 1
+                            AND tp.deleted = 0
+                            AND tf.to_process = 1
+                            AND c2p.{deleted_col} = 0
                     """]
 
                 # Build query (base)
@@ -3756,6 +3795,7 @@ class GraphRegistry():
                    AND (t4.from_object_type, t4.to_object_type, t4.field_name) = ('Lecture', 'Slide', 'time_hms')
                    AND (t5.from_object_type, t5.to_object_type, t5.field_name) = ('Lecture', 'Slide', 'timestamp')
                    AND t1.to_process = 1
+                   AND t1.deleted = 0
 
               GROUP BY t2.from_object_type,
                        t2.from_object_id,
@@ -3800,6 +3840,7 @@ class GraphRegistry():
                         SELECT object_type AS from_object_type, object_type AS to_object_type, SUM(to_process) * COUNT(*) AS estimated_n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                          WHERE object_type = '{from_object_type}'
+                           AND deleted = 0
                     """
                 else:
                     # Total count = from[to_process=1] x to[all] + from[all] x to[to_process=1]
@@ -3808,10 +3849,12 @@ class GraphRegistry():
                                t1.n_to_process * t2.n_count + t1.n_count * t2.n_to_process AS estimated_n_to_process
                           FROM (SELECT '_' AS id, object_type, SUM(to_process) AS n_to_process, COUNT(*) AS n_count
                                   FROM  {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                                 WHERE object_type = '{from_object_type}') t1
+                                 WHERE object_type = '{from_object_type}'
+                                   AND deleted = 0) t1
                     INNER JOIN (SELECT '_' AS id, object_type, SUM(to_process) AS n_to_process, COUNT(*) AS n_count
                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                                 WHERE object_type = '{to_object_type}') t2
+                                 WHERE object_type = '{to_object_type}'
+                                   AND deleted = 0) t2
                          USING (id)
                     """
 
@@ -3938,17 +3981,19 @@ class GraphRegistry():
                                  0 AS deleted
                             FROM {glbcfg.schema_ontology}.Edges_N_Concept_N_Concept_T_Undirected c
 
-                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s1
-                              ON s1.object_id = c.from_id
+                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s1
+                               ON s1.object_id = c.from_id
 
-                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s2
-                              ON s2.object_id = c.to_id
+                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired s2
+                               ON s2.object_id = c.to_id
 
-                            WHERE s1.object_type = 'Concept'
-                              AND s2.object_type = 'Concept'
-                              AND (s1.to_process = 1 OR s2.to_process = 1)
-                              AND c.record_deleted = 0
-                              AND normalised_score >= {score_thr}
+                             WHERE s1.object_type = 'Concept'
+                               AND s2.object_type = 'Concept'
+                               AND (s1.to_process = 1 OR s2.to_process = 1)
+                               AND s1.deleted = 0
+                               AND s2.deleted = 0
+                               AND c.record_deleted = 0
+                               AND normalised_score >= {score_thr}
                 """
 
             # Calculate all other edge types, including Category-to-Category (to fetch from GBC table)
@@ -6177,6 +6222,7 @@ class GraphRegistry():
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE p.object_type = '{self.doc_type}'
                          AND p.to_process = 1
+                         AND a.deleted = 0
                 """
 
                 # Generate commit query
@@ -6190,6 +6236,7 @@ class GraphRegistry():
                        WHERE p.object_type = '{self.doc_type}'
                          AND p.to_process = 0
                          AND n.to_process = 1
+                         AND a.deleted = 0
                 """
 
                 # Execute the commit query
@@ -7236,6 +7283,7 @@ class GraphRegistry():
                                                FROM {final_scores_table}
                                               WHERE object_type = '{object_type}'
                                                 AND to_process = 1
+                                                AND deleted = 0
                             """
                         else:
                             to_process_sql_statement = f"""
@@ -7243,6 +7291,7 @@ class GraphRegistry():
                                                FROM {final_scores_table}
                                               WHERE object_type = '{object_type}'
                                                 AND to_process = 1
+                                                AND deleted = 0
                             """
 
                     else:
@@ -7433,6 +7482,7 @@ class GraphRegistry():
                           ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                          SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                        WHERE b.to_process = 1
+                         AND a.deleted = 0
                 """
 
                 # Execute the commit query
@@ -7452,6 +7502,7 @@ class GraphRegistry():
                              SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                            WHERE (s.from_object_type, s.to_object_type) = ('{self.doc_type}', '{self.link_type}')
                              AND s.to_process = 1
+                             AND a.deleted = 0
                     """
 
                     # Execute the commit query
@@ -7465,6 +7516,7 @@ class GraphRegistry():
                              SET a.last_date_cached = CURDATE(), a.has_expired = 0, a.to_process = 0
                            WHERE (s.from_object_type, s.to_object_type) = ('{self.link_type}', '{self.doc_type}')
                              AND s.to_process = 1
+                             AND a.deleted = 0
                     """
 
                     # Execute the commit query

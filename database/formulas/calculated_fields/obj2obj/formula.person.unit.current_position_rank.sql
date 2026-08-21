@@ -46,6 +46,7 @@ INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
        AND m1.from_field_name   = 'position_name'
        AND m2.from_field_name   = 'position_group'
        AND tp.to_process = 1
+       AND tp.deleted = 0
        AND tf.to_process = 1
         -- Conditions for being an active Person-Unit affiliation: no end date or end date in the future
        AND (cf2.field_value IS NULL OR CAST(cf2.field_value AS DATETIME) > NOW()) = 1

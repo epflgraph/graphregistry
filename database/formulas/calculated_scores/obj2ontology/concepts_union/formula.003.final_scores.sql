@@ -7,8 +7,8 @@
                                 1 AS to_process,
                                 0 AS deleted
                            FROM [[graph_cache]].Edges_N_Object_N_Concept_T_ScoringMatrix AS d
-                          WHERE deleted = 0
-                            AND to_process = 1
+                          WHERE d.deleted = 0
+                            AND d.to_process = 1
                         ) AS new
 ON DUPLICATE KEY UPDATE score      = new.score,
                         to_process = new.to_process,

@@ -19,6 +19,7 @@ INNER JOIN [[airflow]].Operations_N_Object_N_Object_T_TypeFlags tf
        AND e.record_deleted = 0
 
        AND tp.to_process = 1
+       AND tp.deleted = 0
        AND tf.to_process = 1
 
    GROUP BY e.from_object_id, e.to_object_id

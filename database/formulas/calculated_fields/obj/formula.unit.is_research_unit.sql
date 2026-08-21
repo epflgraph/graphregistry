@@ -15,5 +15,6 @@ INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
        AND p.record_deleted = 0
 
        AND tp.to_process = 1
+       AND tp.deleted = 0
        AND tf.to_process = 1
        AND tf.flag_type = 'fields'

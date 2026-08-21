@@ -6,4 +6,5 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores_AVG
        WHERE tf.flag_type = 'scores'
          AND tf.to_process = 1
          AND cs.calculation_type = 'concept sum-scores aggregation'
+         AND cs.deleted = 0
     GROUP BY object_type;

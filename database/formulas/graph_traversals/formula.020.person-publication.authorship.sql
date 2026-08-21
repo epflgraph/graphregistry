@@ -50,4 +50,5 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Person_Publication__Authorship (
             AND a2p.context          = 'authorship'
 
             AND tp.to_process = 1
+            AND tp.deleted = 0
             AND tf.to_process = 1;

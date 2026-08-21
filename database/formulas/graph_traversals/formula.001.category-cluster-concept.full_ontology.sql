@@ -75,4 +75,5 @@ SELECT DISTINCT n5.id   AS       root_id, n5.name AS       root_name,
      INNER JOIN [[airflow]].Operations_N_Object_T_FieldsChanged fc
              ON d.id = fc.object_id
             AND fc.object_type = 'Concept'
-            AND fc.to_process = 1;
+            AND fc.to_process = 1
+            AND fc.deleted = 0;

@@ -16,12 +16,14 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_FinalScores
          AND tf.flag_type   = 'scores'
          AND tf.to_process  = 1
          AND se.to_process  = 1
+         AND se.deleted     = 0
 
           -- Join scores table
   INNER JOIN [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores cs
           ON se.object_type = cs.object_type
          AND se.object_id = cs.object_id
          AND cs.calculation_type = 'concept sum-scores aggregation'
+         AND cs.deleted = 0
 
           -- Join score averages
   INNER JOIN [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores_AVG av

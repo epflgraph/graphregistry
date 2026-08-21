@@ -60,4 +60,5 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Person__Affiliation (
             AND f2.from_field_value IN ('Professor', 'Director', 'Researcher')
 
             AND tp.to_process = 1
+            AND tp.deleted = 0
             AND tf.to_process = 1;

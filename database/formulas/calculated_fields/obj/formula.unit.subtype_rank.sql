@@ -17,5 +17,6 @@ INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
        AND (m1.from_object_type, m1.to_object_type, m1.context) = ('Unit', 'Unit', 'subtype ranking')
 
        AND tp.to_process = 1
+       AND tp.deleted = 0
        AND tf.to_process = 1
        AND tf.flag_type = 'fields'

@@ -18,6 +18,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores
   INNER JOIN [[traversals]].Category_Cluster_Concept__FullOntology tr
           ON fs.concept_id = tr.concept_id
          AND fs.to_process = 1
+         AND fs.deleted = 0
 
           -- Aggregate by category level 4
     GROUP BY fs.object_type, fs.object_id, tr.category_4_id;

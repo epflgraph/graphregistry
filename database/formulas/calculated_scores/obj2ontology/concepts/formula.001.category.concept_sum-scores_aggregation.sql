@@ -21,6 +21,7 @@ STRAIGHT_JOIN [[ontology]].Edges_N_Concept_N_Concept_T_Symmetric t3
    INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
            ON (se.object_type) = (tf.object_type)
         WHERE se.to_process = 1
+          AND se.deleted = 0
           AND tf.flag_type  = 'scores'
           AND tf.to_process = 1
      GROUP BY t1.from_id, t3.to_id
@@ -34,6 +35,7 @@ SET @avg_score = (
       USING (object_type)
       WHERE (s.object_type, s.calculation_type) = ('Category', 'concept sum-scores aggregation')
         AND s.score >= 1
+        AND s.deleted = 0
         AND tf.flag_type  = 'scores'
         AND tf.to_process = 1
 );
@@ -53,6 +55,8 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
           ON (se.object_type) = (tf.object_type)
        WHERE (s.object_type, s.calculation_type) = ('Category', 'concept sum-scores aggregation')
          AND se.to_process = 1
+         AND se.deleted = 0
+         AND s.deleted = 0
          AND tf.flag_type  = 'scores'
          AND tf.to_process = 1
          AND s.score >= .1;

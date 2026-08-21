@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Course__NLectures (
 			SET t.to_process = 1
           WHERE tf.flag_type = 'fields'
             AND tf.to_process = 1
-            AND tp.to_process = 1;
+            AND tp.to_process = 1
+            AND tp.deleted = 0;
 
 -- ========= Graph traversal: Course number of lectures (REPLACE)
 REPLACE INTO [[traversals]].Course__NLectures

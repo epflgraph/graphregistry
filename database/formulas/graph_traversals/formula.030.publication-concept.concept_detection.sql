@@ -49,4 +49,5 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Publication_Concept__ConceptDetection 
            WHERE a2c.object_type = 'Publication'
              AND a2c.score >= 0.1
              AND tp.to_process = 1
+             AND tp.deleted = 0
              AND tf.to_process = 1;

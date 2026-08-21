@@ -26,6 +26,7 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
  INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
          ON e.object_type = tf.object_type
       WHERE (e.object_type, e.calculation_type) = ('Unit', 'abstract sum-scores aggregation')
+        AND e.deleted = 0
         AND tf.flag_type  = 'scores'
         AND tf.to_process = 1
 );
@@ -44,7 +45,9 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
        USING (object_type, object_id)
        WHERE t1.object_type = 'Unit'
          AND t1.to_process  = 1
+         AND t1.deleted     = 0
          AND tf.flag_type   = 'scores'
          AND tf.to_process  = 1
          AND (t2.object_type, t2.calculation_type) = ('Unit', 'abstract sum-scores aggregation')
+         AND t2.deleted = 0
          AND t2.score >= 1;
