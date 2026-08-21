@@ -5,7 +5,9 @@ set -euo pipefail
 # Parameters
 IMAGE="epflgraph/graphregistry"
 BUILDER="multiarch"
-AGRESSIVE_CACHING=1
+# 0 = fully clean build (passes --no-cache, so even the local BuildKit cache is ignored)
+# 1 = use registry-based aggressive caching (--cache-from / --cache-to)
+AGRESSIVE_CACHING=0
 
 # Get the version from pyproject.toml
 VERSION=$(
@@ -30,6 +32,13 @@ fi
 # Bootstrap the builder to ensure it's ready
 docker buildx inspect --bootstrap
 
+# Print the caching mode that will be used
+if [[ "$AGRESSIVE_CACHING" -eq 1 ]]; then
+    echo "Caching:       Agressive"
+else
+    echo "Caching:       None"
+fi
+
 # Build and push the Docker image
 echo
 echo "Building and pushing:"
@@ -51,12 +60,13 @@ if [[ "$AGRESSIVE_CACHING" -eq 1 ]]; then
         -t "${IMAGE}:${VERSION}" \
         -t "${IMAGE}:latest" \
         --push .
-# Else, use default caching
+# Else, do a clean build: ignore the local builder cache and the registry cache.
 else
-    echo "Using default caching ..."
+    echo "Using default caching (clean build, --no-cache) ..."
     docker buildx build \
         --builder "$BUILDER" \
         --platform linux/amd64,linux/arm64 \
+        --no-cache \
         -t "${IMAGE}:${VERSION}" \
         -t "${IMAGE}:latest" \
         --push .
