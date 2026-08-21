@@ -217,33 +217,28 @@ INNER JOIN [[lectures]].Data_N_Object_T_PageProfile s
 -- ----------------------------------------------------------------------------
 -- graph_cache: Object-object edge tables
 -- ----------------------------------------------------------------------------
+-- Note: DegreeCombinations and NormLogDegrees do not have a to_object_id column;
+--       they aggregate by (from_object_*, to_object_type). Only the from endpoint
+--       is propagated here.
     UPDATE [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations t
-INNER JOIN [[registry]].Data_N_Object_T_PageProfile sf
-        ON (t.from_object_type, t.from_object_id) = (sf.object_type, sf.object_id)
-INNER JOIN [[registry]].Data_N_Object_T_PageProfile st
-        ON (t.to_object_type,   t.to_object_id)   = (st.object_type, st.object_id)
-       SET t.deleted = GREATEST(sf.record_deleted, st.record_deleted);
+INNER JOIN [[registry]].Data_N_Object_T_PageProfile s
+        ON (t.from_object_type, t.from_object_id) = (s.object_type, s.object_id)
+       SET t.deleted = s.record_deleted;
 
     UPDATE [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations t
-INNER JOIN [[lectures]].Data_N_Object_T_PageProfile sf
-        ON (t.from_object_type, t.from_object_id) = (sf.object_type, sf.object_id)
-INNER JOIN [[lectures]].Data_N_Object_T_PageProfile st
-        ON (t.to_object_type,   t.to_object_id)   = (st.object_type, st.object_id)
-       SET t.deleted = GREATEST(sf.record_deleted, st.record_deleted);
+INNER JOIN [[lectures]].Data_N_Object_T_PageProfile s
+        ON (t.from_object_type, t.from_object_id) = (s.object_type, s.object_id)
+       SET t.deleted = s.record_deleted;
 
     UPDATE [[graph_cache]].Edges_N_Object_N_Object_T_NormLogDegrees t
-INNER JOIN [[registry]].Data_N_Object_T_PageProfile sf
-        ON (t.from_object_type, t.from_object_id) = (sf.object_type, sf.object_id)
-INNER JOIN [[registry]].Data_N_Object_T_PageProfile st
-        ON (t.to_object_type,   t.to_object_id)   = (st.object_type, st.object_id)
-       SET t.deleted = GREATEST(sf.record_deleted, st.record_deleted);
+INNER JOIN [[registry]].Data_N_Object_T_PageProfile s
+        ON (t.from_object_type, t.from_object_id) = (s.object_type, s.object_id)
+       SET t.deleted = s.record_deleted;
 
     UPDATE [[graph_cache]].Edges_N_Object_N_Object_T_NormLogDegrees t
-INNER JOIN [[lectures]].Data_N_Object_T_PageProfile sf
-        ON (t.from_object_type, t.from_object_id) = (sf.object_type, sf.object_id)
-INNER JOIN [[lectures]].Data_N_Object_T_PageProfile st
-        ON (t.to_object_type,   t.to_object_id)   = (st.object_type, st.object_id)
-       SET t.deleted = GREATEST(sf.record_deleted, st.record_deleted);
+INNER JOIN [[lectures]].Data_N_Object_T_PageProfile s
+        ON (t.from_object_type, t.from_object_id) = (s.object_type, s.object_id)
+       SET t.deleted = s.record_deleted;
 
     UPDATE [[graph_cache]].Edges_N_Object_N_Object_T_ParentChildSymmetric t
 INNER JOIN [[registry]].Data_N_Object_T_PageProfile sf
