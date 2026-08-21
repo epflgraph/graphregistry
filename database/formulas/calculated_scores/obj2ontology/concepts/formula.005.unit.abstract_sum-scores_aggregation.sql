@@ -20,9 +20,11 @@ REPLACE INTO [[graph_cache]].Edges_N_Object_N_Concept_T_CalculatedScores
  INNER JOIN [[graph_cache]].Data_N_Object_T_CalculatedFields d1
          ON (d1.object_type, d1.object_id, d1.field_language, d1.field_name, d1.field_value)
           = ( e.object_type,  e.object_id, 'n/a', 'is_active_unit', 1)
+        AND d1.deleted = 0
  INNER JOIN [[graph_cache]].Data_N_Object_T_CalculatedFields d2
          ON (d2.object_type, d2.object_id, d2.field_language, d2.field_name, d2.field_value)
           = ( e.object_type,  e.object_id, 'n/a', 'is_research_unit', 1)
+        AND d2.deleted = 0
  INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
          ON e.object_type = tf.object_type
       WHERE (e.object_type, e.calculation_type) = ('Unit', 'abstract sum-scores aggregation')
