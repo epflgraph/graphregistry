@@ -1,0 +1,176 @@
+{
+    "node": {
+        "type": "Course",
+        "id": "AR-101",
+        "short_code": "AR-101",
+        "title": [
+            {
+                "language": "en",
+                "text": "Studio BA1"
+            },
+            {
+                "language": "fr",
+                "text": "Th\u00e9orie et critique du projet BA1"
+            }
+        ],
+        "description": {
+            "short": [
+                {
+                    "language": "en",
+                    "text": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architectu ..."
+                },
+                {
+                    "language": "fr",
+                    "text": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architectu ..."
+                }
+            ],
+            "medium": [
+                {
+                    "language": "en",
+                    "text": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architecture comme savoir-faire, pens\u00e9e, et attitude qui interroge l'inscription des \u00eatres vivants dans leur environnement par la conception de l'espace. ..."
+                },
+                {
+                    "language": "fr",
+                    "text": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architecture comme savoir-faire, pens\u00e9e, et attitude qui interroge l'inscription des \u00eatres vivants dans leur environnement par la conception de l'espace. ..."
+                }
+            ],
+            "long": [
+                {
+                    "language": "en",
+                    "text": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architecture comme savoir-faire, pens\u00e9e, et attitude qui interroge l'inscription des \u00eatres vivants dans leur environnement par la conception de l'espace. ..."
+                },
+                {
+                    "language": "fr",
+                    "text": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architecture comme savoir-faire, pens\u00e9e, et attitude qui interroge l'inscription des \u00eatres vivants dans leur environnement par la conception de l'espace. ..."
+                }
+            ]
+        },
+        "url": [
+            {
+                "language": "en",
+                "text": "https://edu.epfl.ch/coursebook/en/studio-ba1-AR-101"
+            },
+            {
+                "language": "fr",
+                "text": "https://edu.epfl.ch/coursebook/fr/theorie-et-critique-du-projet-ba1-AR-101"
+            }
+        ],
+        "custom_fields": [
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_bibliography",
+                "field_value": "Sera distribu\u00e9e au d\u00e9but du semestre."
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_concepts_to_master",
+                "field_value": "Compr\u00e9hension > Participation > Faire (acte de)\u00a0;\n\u00c9chelle, relev\u00e9s et proportions (Scale, Measures and proportion)\u00a0;\nEspace, le plein et le vide (Space, solid and void)\u00a0;\nTectoniques (Tectonics)\u00a0;\nInt\u00e9riorit\u00e9 (Interiority)\u00a0;\nTerritoire (Territory and landscape)\u00a0;\nAffordances et potentiel/potentialit\u00e9 (Affordances and Potentialities)\u00a0;\nPens\u00e9es et outils projectuels (Design Thinking and Design Tools) ;\nProtofigure and Protostructure\u00a0;"
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_content",
+                "field_value": "La premi\u00e8re ann\u00e9e est d\u00e9volue \u00e0 l'acquisition des bases et outils de recherche et d'\u00e9laboration de projets d'architecture. L'architecture y est comprise comme une activit\u00e9 qui n'implique pas uniquement ce qui est b\u00e2ti, et la notion d'espace est au centre l'enseignement.\nAu travers de l'acquisition de ces outils et l'\u00e9tude de cette notion, les \u00e9tudiant\u00b7e\u00b7x\u00b7s se familiarisent avec le rapport du projet architectural \u00e0 des contextes donn\u00e9s. Leur propre corps constitue l'instrument d'observation et d'habitation du projet architectural et du contexte donn\u00e9.\nLe cours interroge notre relation au monde et exige que nous observions nos situations afin de reconna\u00eetre les prises et les potentialit\u00e9s sur lesquelles nous pouvons agir.\nLes 4 comp\u00e9tences fondamentales requises dans l'\u00e9laboration du projet architectural en 1\u00e8re ann\u00e9e sont: DESSIN, MAQUETTE ET CONSTRUCTION, COLLECTIVIT\u00c9 ET CONTRIBUTION, PROJET.\nShow more"
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_evaluation_method",
+                "field_value": "L'\u00e9valuation\nest faite sur 4 comp\u00e9tences fondamentales dont l'\u00e9tudiant\n\u00b7\ne\u00b7x doit d\u00e9montrer l'acquisition et la ma\u00eetrise personnelle.\n1. DESSIN\n- S'applique \u00e0 : Dessin construit, mise en page et support, organisation.\n- Comp\u00e9tences : Ma\u00eetrise du dessin comme outil fondamental de l'architecte. Utilisation de la logique tectonique du dessin bidimensionnel et de sa transposition en espace tridimensionnel en tant qu'outil d'acquisition et de projection - spatial et narratif.\n- \u00c9valuation : Niveau de ma\u00eetrise, force analytique, spatialit\u00e9, expression, rigueur de construction, justesse de l'information, pr\u00e9cision d'ex\u00e9cution.\n2.\nMAQUETTE\nET CONSTRUCTION\n- S'applique \u00e0 :\u00a0Maquette, Mock-up, Construction\n- Comp\u00e9tences : Techniques de moulage, de construction, d'assemblage. Compr\u00e9hension des \u00e9chelles et de leur transposition dans l'espace. Engagement dans la pens\u00e9e constructive, du d\u00e9tail jusqu'au site. Fondation d'une r\u00e9flexion et de comp\u00e9tences quant aux probl\u00e9matiques constructives et leur influence directe sur l'\u00e9laboration du projet.\n-\u00c9valuation : coh\u00e9rence conceptuelle, pr\u00e9cision d'ex\u00e9cution, compr\u00e9hension des \u00e9chelles, d\u00e9monstration d'une pens\u00e9e et d'une logique constructive, structurelle, spatiale, environnementale et du geste \u00e0 travers diff\u00e9rentes \u00e9chelles, du d\u00e9tail au site.\n3. COLLECTIVIT\u00c9 ET\nCONTRIBUTION\n- S'applique \u00e0\u00a0: Dessin collectif, maquette collective, projet collectif, organisation, atelier, d\u00e9l\u00e9gation.\n- Comp\u00e9tences : Contribution active \u00e0 tous les niveaux - projet, travail et dessin collectif, interactions de groupe, d\u00e9bats, pin-up et durant les progress reviews. Habilet\u00e9 \u00e0 naviguer dans et \u00e0 travers des contraintes de toute sorte et amplitude, y compris celles li\u00e9es aux relations sociales n\u00e9cessaires au projet architectural. Approche collective et int\u00e9gr\u00e9e au sein du projet (contraintes, conditions, id\u00e9es), au sein de l'atelier (entre les \u00e9tudiant\u00b7e\u00b7x\u00b7s et les projets), au sein de la classe (production transversale), et aussi sur le territoire et de ses diff\u00e9rent\u00b7e\u00b7x\u00b7s intervenant\u00b7e\u00b7x\u00b7s.\n- \u00c9valuation : Pertinence et qualit\u00e9 de l'apport au collectif, (documents et d\u00e9cision), prise en compte des autres, autonomie dans l'organisation g\u00e9n\u00e9ral..\n4. PROJET\n- S'applique \u00e0: Concept, articulation architecturale, processus de recherche, d\u00e9marche exp\u00e9rimentale, risque/\u00e9chec, pr\u00e9sentation\n- Comp\u00e9tences : Expression \u00a0claire, structur\u00e9e et pertinente du projet architecturale (orale et dessin\u00e9e).\u00a0Recherche et \u00e9laboration d'un concept fort, finesse de son articulation. Int\u00e8gre \u00e9galement divers autres formats d'expression - texte, rendus 3d, collage, vid\u00e9os - ensembles comme supports pour en exprimer les diff\u00e9rents aspects\u00a0du projet. \u00c9laboration de la narration et du d\u00e9veloppement conceptuel relatif au projet. Habilit\u00e9d'int\u00e9grer ou de r\u00e9agir aux retours (avis, feedback, critiques positives ou n\u00e9gatives, propositions, questions, mise endoutes, perspectives divergentes, convergentes ou parall\u00e8les) - sous forme de r\u00e9ponses ou arguments dans le projet.\n- \u00c9valuation : Qualit\u00e9 narrative et conceptuelle articul\u00e9e et pr\u00e9sent\u00e9e de mani\u00e8re claire, pr\u00e9cise et coh\u00e9rente \u00e0 l'aide de documents appropri\u00e9s et demand\u00e9s.\nBASE\u00a0 D'\u00c9VALUATION\n- Discussion \u00e0 la table (travail pr\u00e9sent\u00e9, avancement hebdomadaire), par directrice ou directeur du studio\u00a0;\n- Reviews et autres p\u00e9riodes d'\u00e9change (travail pr\u00e9sent\u00e9, pr\u00e9sentation et discussion), par directrice ou directeur du studio et invit\u00e9\u00b7e\u00b7x\u00b7s/\u00e9quipe enseignante Alice\u00a0;\n- Blog ALICE y1, journal et auto-\u00e9valuation, par \u00e9quipe enseignante de projet Alice Y1 ;"
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_expected_work",
+                "field_value": "Les \u00e9tudiant\u00b7e\u00b7x\u00b7s doivent :\n\u00b7\u00a0 \u00a0 Produire l'ensemble des \u00e9l\u00e9ments de rendu conform\u00e9ment au programme officiel fourni en d\u00e9but d'ann\u00e9e,\n\u00b7\u00a0\u00a0\u00a0 Pratiquer et ma\u00eetriser les quatre comp\u00e9tences dans l'\u00e9laboration d'un projet architectural et les acquis de formation selon la description ci-dessus,\n\u00b7\u00a0\u00a0\u00a0 Engager des discussions et d\u00e9bats avec leur directeur\u00b7rice\u00b7x\u00b7s de studio, invit\u00e9\u00b7e\u00b7x\u00b7s et pair\u00b7e\u00b7x\u00b7s afin de faire progresser leurs projets,\n\u00b7\u00a0\u00a0\u00a0 Participer aux workshops propos\u00e9s (\u00e0 l'EPFL ou sur des sites externes en lien au projet)\n\u00b7\u00a0\u00a0\u00a0 Structurer leur travail en pr\u00e9sentations succinctes lors de\u00a0Project Reviews\u00a0(contr\u00f4le continu) et pouvoir argumenter leurs choix et d\u00e9cisions \u00e0 travers leur production tout en cultivant une autocritique constante,\n\u00b7\u00a0\u00a0\u00a0 Documenter la progression de leurs projets (dessins, maquettes, images, textes et autres \u00e9l\u00e9ments de travail et de recherche) en les publiant chaque semaine sur le blog ALICE y1 et en proc\u00e9dant \u00e0 leur \u00e9valuation,\n\u00b7\u00a0\u00a0\u00a0 Travailler de mani\u00e8re ind\u00e9pendante et autonome tout en \u00a0contribuant de mani\u00e8re constructive au travail collectif."
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_keywords",
+                "field_value": "space, architecture, territory,\u00a0affordance, potentialities, measures, project-based learning, craft, making"
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_required_courses_ind",
+                "field_value": "-"
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_required_courses_obl",
+                "field_value": "-"
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_summary",
+                "field_value": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architecture comme savoir-faire, pens\u00e9e, et attitude qui interroge l'inscription des \u00eatres vivants dans leur environnement par la conception de l'espace."
+            },
+            {
+                "field_language": "en",
+                "field_name": "CUSTOM_FIELD_teaching_method",
+                "field_value": "1. COURS\nLes\ncours th\u00e9oriques\nservent de support au d\u00e9veloppement et \u00e0 l'\u00e9volution du projet au cours de l'ann\u00e9e. Ils prennent la forme de conf\u00e9rences par des intervenant\u00b7e\u00b7x\u00b7s internes ou externes, d\u00e9bats participatifs, pr\u00e9sentations et d\u00e9monstrations Tekhn\u00e8 pour l'apprentissage des outils de bases.\n2. STUDIOS\nLe d\u00e9veloppement de projets se d\u00e9roule au sein des studios afin de favoriser une culture collective d'atelier. Le transfert de connaissances et d'informations se m\u00e8ne en continu entre les directeur\u00b7rice\u00b7x\u00b7s de studio et leurs \u00e9tudiant\u00b7e\u00b7x\u00b7s, et entre les \u00e9tudiant\u00b7e\u00b7x\u00b7s eux-m\u00eames durant les heures de studios, la journ\u00e9e du lundi et le mardi matin.\n3. WORKSHOPS\nLes workshops sont d\u00e9velopp\u00e9s et organis\u00e9s par ALICE et des invit\u00e9\u00b7e\u00b7x\u00b7s externes pour approfondir la compr\u00e9hension et la pratique des comp\u00e9tences et du territoire.\n4. PROGRESS REVIEWS et PIN-UPS\nLes Progess Review (revue d'avancement) et Pin-ups (affichage) font parties int\u00e9grantes du processus d'apprentissage des \u00e9tudiant\u00b7e\u00b7x\u00b7s. En assistant aux reviews et pin-ups de leurs coll\u00e8gues, les \u00e9tudiant\u00b7e\u00b7x\u00b7s apprennent \u00e0 comprendre comment celles et ceux-ci cr\u00e9ent des narratifs expliquant leur intervention, comment am\u00e9liorer leur propre projet et id\u00e9es par comparaison, et \u00e0 construire et positionner leur point de vue en relation avec ceux de leur pair\u00b7e\u00b7x\u00b7s.\n\u00b7\u00a0\u00a0\u00a0\u00a0 Pr\u00e9sentation orale succincte de l'\u00e9tat du projet sur la base de dessins, de maquettes et d'images. Les \u00e9tudiant\u00b7e\u00b7x\u00b7s d\u00e9crivent l'\u00e9volution future de leurs projets \u00e0 partir de ce qui a \u00e9t\u00e9 r\u00e9alis\u00e9 au moment de l'\u00e9valuation. Ce processus encourage la culture du d\u00e9bat.\n\u00b7\u00a0\u00a0\u00a0 \u00c9changes et discussions entre les diff\u00e9rents studios, les directeur\u00b7rice\u00b7x\u00b7s de studio et des expert\u00b7e\u00b7x\u00b7s externes. Ces \u00e9changes nourrissent le projet et fournissent des outils suppl\u00e9mentaires pour le d\u00e9veloppement des projets des \u00e9tudiant\u00b7e\u00b7x\u00b7s.\n* Co\u00fbts: Une contribution de 280.- est demand\u00e9e en d\u00e9but de semestre pour la fourniture du mat\u00e9riel de base n\u00e9cessaire, en sus du mat\u00e9riel usuel pour la r\u00e9alisation de maquettes et des impressions (variable selon projet/\u00e9tudiant\u00b7e\u00b7x)"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_bibliography",
+                "field_value": "Sera distribu\u00e9e au d\u00e9but du semestre."
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_concepts_to_master",
+                "field_value": "Compr\u00e9hension > Participation > Faire (acte de)\u00a0;\n\u00c9chelle, relev\u00e9s et proportions (Scale, Measures and proportion)\u00a0;\nEspace, le plein et le vide (Space, solid and void)\u00a0;\nTectoniques (Tectonics)\u00a0;\nInt\u00e9riorit\u00e9 (Interiority)\u00a0;\nTerritoire (Territory and landscape)\u00a0;\nAffordances et potentiel/potentialit\u00e9 (Affordances and Potentialities)\u00a0;\nPens\u00e9es et outils projectuels (Design Thinking and Design Tools) ;\nProtofigure and Protostructure\u00a0;"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_content",
+                "field_value": "La premi\u00e8re ann\u00e9e est d\u00e9volue \u00e0 l'acquisition des bases et outils de recherche et d'\u00e9laboration de projets d'architecture. L'architecture y est comprise comme une activit\u00e9 qui n'implique pas uniquement ce qui est b\u00e2ti, et la notion d'espace est au centre l'enseignement.\nAu travers de l'acquisition de ces outils et l'\u00e9tude de cette notion, les \u00e9tudiant\u00b7e\u00b7x\u00b7s se familiarisent avec le rapport du projet architectural \u00e0 des contextes donn\u00e9s. Leur propre corps constitue l'instrument d'observation et d'habitation du projet architectural et du contexte donn\u00e9.\nLe cours interroge notre relation au monde et exige que nous observions nos situations afin de reconna\u00eetre les prises et les potentialit\u00e9s sur lesquelles nous pouvons agir.\nLes 4 comp\u00e9tences fondamentales requises dans l'\u00e9laboration du projet architectural en 1\u00e8re ann\u00e9e sont: DESSIN, MAQUETTE ET CONSTRUCTION, COLLECTIVIT\u00c9 ET CONTRIBUTION, PROJET.\nLire la suite"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_evaluation_method",
+                "field_value": "L'\u00e9valuation\nest faite sur 4 comp\u00e9tences fondamentales dont l'\u00e9tudiant\n\u00b7\ne\u00b7x doit d\u00e9montrer l'acquisition et la ma\u00eetrise personnelle.\n1. DESSIN\n- S'applique \u00e0 : Dessin construit, mise en page et support, organisation.\n- Comp\u00e9tences : Ma\u00eetrise du dessin comme outil fondamental de l'architecte. Utilisation de la logique tectonique du dessin bidimensionnel et de sa transposition en espace tridimensionnel en tant qu'outil d'acquisition et de projection - spatial et narratif.\n- \u00c9valuation : Niveau de ma\u00eetrise, force analytique, spatialit\u00e9, expression, rigueur de construction, justesse de l'information, pr\u00e9cision d'ex\u00e9cution.\n2.\nMAQUETTE\nET CONSTRUCTION\n- S'applique \u00e0 :\u00a0Maquette, Mock-up, Construction\n- Comp\u00e9tences : Techniques de moulage, de construction, d'assemblage. Compr\u00e9hension des \u00e9chelles et de leur transposition dans l'espace. Engagement dans la pens\u00e9e constructive, du d\u00e9tail jusqu'au site. Fondation d'une r\u00e9flexion et de comp\u00e9tences quant aux probl\u00e9matiques constructives et leur influence directe sur l'\u00e9laboration du projet.\n-\u00c9valuation : coh\u00e9rence conceptuelle, pr\u00e9cision d'ex\u00e9cution, compr\u00e9hension des \u00e9chelles, d\u00e9monstration d'une pens\u00e9e et d'une logique constructive, structurelle, spatiale, environnementale et du geste \u00e0 travers diff\u00e9rentes \u00e9chelles, du d\u00e9tail au site.\n3. COLLECTIVIT\u00c9 ET\nCONTRIBUTION\n- S'applique \u00e0\u00a0: Dessin collectif, maquette collective, projet collectif, organisation, atelier, d\u00e9l\u00e9gation.\n- Comp\u00e9tences : Contribution active \u00e0 tous les niveaux - projet, travail et dessin collectif, interactions de groupe, d\u00e9bats, pin-up et durant les progress reviews. Habilet\u00e9 \u00e0 naviguer dans et \u00e0 travers des contraintes de toute sorte et amplitude, y compris celles li\u00e9es aux relations sociales n\u00e9cessaires au projet architectural. Approche collective et int\u00e9gr\u00e9e au sein du projet (contraintes, conditions, id\u00e9es), au sein de l'atelier (entre les \u00e9tudiant\u00b7e\u00b7x\u00b7s et les projets), au sein de la classe (production transversale), et aussi sur le territoire et de ses diff\u00e9rent\u00b7e\u00b7x\u00b7s intervenant\u00b7e\u00b7x\u00b7s.\n- \u00c9valuation : Pertinence et qualit\u00e9 de l'apport au collectif, (documents et d\u00e9cision), prise en compte des autres, autonomie dans l'organisation g\u00e9n\u00e9ral..\n4. PROJET\n- S'applique \u00e0: Concept, articulation architecturale, processus de recherche, d\u00e9marche exp\u00e9rimentale, risque/\u00e9chec, pr\u00e9sentation\n- Comp\u00e9tences : Expression \u00a0claire, structur\u00e9e et pertinente du projet architecturale (orale et dessin\u00e9e).\u00a0Recherche et \u00e9laboration d'un concept fort, finesse de son articulation. Int\u00e8gre \u00e9galement divers autres formats d'expression - texte, rendus 3d, collage, vid\u00e9os - ensembles comme supports pour en exprimer les diff\u00e9rents aspects\u00a0du projet. \u00c9laboration de la narration et du d\u00e9veloppement conceptuel relatif au projet. Habilit\u00e9d'int\u00e9grer ou de r\u00e9agir aux retours (avis, feedback, critiques positives ou n\u00e9gatives, propositions, questions, mise endoutes, perspectives divergentes, convergentes ou parall\u00e8les) - sous forme de r\u00e9ponses ou arguments dans le projet.\n- \u00c9valuation : Qualit\u00e9 narrative et conceptuelle articul\u00e9e et pr\u00e9sent\u00e9e de mani\u00e8re claire, pr\u00e9cise et coh\u00e9rente \u00e0 l'aide de documents appropri\u00e9s et demand\u00e9s.\nBASE\u00a0 D'\u00c9VALUATION\n- Discussion \u00e0 la table (travail pr\u00e9sent\u00e9, avancement hebdomadaire), par directrice ou directeur du studio\u00a0;\n- Reviews et autres p\u00e9riodes d'\u00e9change (travail pr\u00e9sent\u00e9, pr\u00e9sentation et discussion), par directrice ou directeur du studio et invit\u00e9\u00b7e\u00b7x\u00b7s/\u00e9quipe enseignante Alice\u00a0;\n- Blog ALICE y1, journal et auto-\u00e9valuation, par \u00e9quipe enseignante de projet Alice Y1 ;"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_expected_work",
+                "field_value": "Les \u00e9tudiant\u00b7e\u00b7x\u00b7s doivent :\n\u00b7\u00a0 \u00a0 Produire l'ensemble des \u00e9l\u00e9ments de rendu conform\u00e9ment au programme officiel fourni en d\u00e9but d'ann\u00e9e,\n\u00b7\u00a0\u00a0\u00a0 Pratiquer et ma\u00eetriser les quatre comp\u00e9tences dans l'\u00e9laboration d'un projet architectural et les acquis de formation selon la description ci-dessus,\n\u00b7\u00a0\u00a0\u00a0 Engager des discussions et d\u00e9bats avec leur directeur\u00b7rice\u00b7x\u00b7s de studio, invit\u00e9\u00b7e\u00b7x\u00b7s et pair\u00b7e\u00b7x\u00b7s afin de faire progresser leurs projets,\n\u00b7\u00a0\u00a0\u00a0 Participer aux workshops propos\u00e9s (\u00e0 l'EPFL ou sur des sites externes en lien au projet)\n\u00b7\u00a0\u00a0\u00a0 Structurer leur travail en pr\u00e9sentations succinctes lors de\u00a0Project Reviews\u00a0(contr\u00f4le continu) et pouvoir argumenter leurs choix et d\u00e9cisions \u00e0 travers leur production tout en cultivant une autocritique constante,\n\u00b7\u00a0\u00a0\u00a0 Documenter la progression de leurs projets (dessins, maquettes, images, textes et autres \u00e9l\u00e9ments de travail et de recherche) en les publiant chaque semaine sur le blog ALICE y1 et en proc\u00e9dant \u00e0 leur \u00e9valuation,\n\u00b7\u00a0\u00a0\u00a0 Travailler de mani\u00e8re ind\u00e9pendante et autonome tout en \u00a0contribuant de mani\u00e8re constructive au travail collectif."
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_keywords",
+                "field_value": "space, architecture, territory,\u00a0affordance, potentialities, measures, project-based learning, craft, making"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_required_courses_ind",
+                "field_value": "-"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_required_courses_obl",
+                "field_value": "-"
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_summary",
+                "field_value": "Le cours vise \u00e0 l'acquisition des outils essentiels au projet et \u00e0 une compr\u00e9hension de l'architecture comme savoir-faire, pens\u00e9e, et attitude qui interroge l'inscription des \u00eatres vivants dans leur environnement par la conception de l'espace."
+            },
+            {
+                "field_language": "fr",
+                "field_name": "CUSTOM_FIELD_teaching_method",
+                "field_value": "1. COURS\nLes\ncours th\u00e9oriques\nservent de support au d\u00e9veloppement et \u00e0 l'\u00e9volution du projet au cours de l'ann\u00e9e. Ils prennent la forme de conf\u00e9rences par des intervenant\u00b7e\u00b7x\u00b7s internes ou externes, d\u00e9bats participatifs, pr\u00e9sentations et d\u00e9monstrations Tekhn\u00e8 pour l'apprentissage des outils de bases.\n2. STUDIOS\nLe d\u00e9veloppement de projets se d\u00e9roule au sein des studios afin de favoriser une culture collective d'atelier. Le transfert de connaissances et d'informations se m\u00e8ne en continu entre les directeur\u00b7rice\u00b7x\u00b7s de studio et leurs \u00e9tudiant\u00b7e\u00b7x\u00b7s, et entre les \u00e9tudiant\u00b7e\u00b7x\u00b7s eux-m\u00eames durant les heures de studios, la journ\u00e9e du lundi et le mardi matin.\n3. WORKSHOPS\nLes workshops sont d\u00e9velopp\u00e9s et organis\u00e9s par ALICE et des invit\u00e9\u00b7e\u00b7x\u00b7s externes pour approfondir la compr\u00e9hension et la pratique des comp\u00e9tences et du territoire.\n4. PROGRESS REVIEWS et PIN-UPS\nLes Progess Review (revue d'avancement) et Pin-ups (affichage) font parties int\u00e9grantes du processus d'apprentissage des \u00e9tudiant\u00b7e\u00b7x\u00b7s. En assistant aux reviews et pin-ups de leurs coll\u00e8gues, les \u00e9tudiant\u00b7e\u00b7x\u00b7s apprennent \u00e0 comprendre comment celles et ceux-ci cr\u00e9ent des narratifs expliquant leur intervention, comment am\u00e9liorer leur propre projet et id\u00e9es par comparaison, et \u00e0 construire et positionner leur point de vue en relation avec ceux de leur pair\u00b7e\u00b7x\u00b7s.\n\u00b7\u00a0\u00a0\u00a0\u00a0 Pr\u00e9sentation orale succincte de l'\u00e9tat du projet sur la base de dessins, de maquettes et d'images. Les \u00e9tudiant\u00b7e\u00b7x\u00b7s d\u00e9crivent l'\u00e9volution future de leurs projets \u00e0 partir de ce qui a \u00e9t\u00e9 r\u00e9alis\u00e9 au moment de l'\u00e9valuation. Ce processus encourage la culture du d\u00e9bat.\n\u00b7\u00a0\u00a0\u00a0 \u00c9changes et discussions entre les diff\u00e9rents studios, les directeur\u00b7rice\u00b7x\u00b7s de studio et des expert\u00b7e\u00b7x\u00b7s externes. Ces \u00e9changes nourrissent le projet et fournissent des outils suppl\u00e9mentaires pour le d\u00e9veloppement des projets des \u00e9tudiant\u00b7e\u00b7x\u00b7s.\n* Co\u00fbts: Une contribution de 280.- est demand\u00e9e en d\u00e9but de semestre pour la fourniture du mat\u00e9riel de base n\u00e9cessaire, en sus du mat\u00e9riel usuel pour la r\u00e9alisation de maquettes et des impressions (variable selon projet/\u00e9tudiant\u00b7e\u00b7x)"
+            },
+            {
+                "field_language": "n/a",
+                "field_name": "CUSTOM_FIELD_course_code",
+                "field_value": "AR-101"
+            },
+            {
+                "field_language": "n/a",
+                "field_name": "CUSTOM_FIELD_exam_type",
+                "field_value": "Winter session\nDuring the semester"
+            },
+            {
+                "field_language": "n/a",
+                "field_name": "CUSTOM_FIELD_section_code",
+                "field_value": "AR"
+            }
+        ]
+    }
+}

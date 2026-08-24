@@ -115,7 +115,7 @@ class TestNodeOperationsEnrich:
                 ])
 
         repo = FakeNodeRepository()
-        ops = NodeOperations(repo=repo, ai_gateways={"concept_detection": FakeConceptGateway()})
+        ops = NodeOperations(repo=repo, concept_detection_gateway=FakeConceptGateway())
         node = make_node(object_id="CS-433", raw_text="Machine learning")
         result = ops.enrich_with_concepts(node)
         assert result.concepts.detected.item_list[0].concept.name == "ML"
@@ -126,7 +126,7 @@ class TestNodeOperationsEnrich:
                 return ScoredConceptList(item_list=[])
 
         repo = FakeNodeRepository()
-        ops = NodeOperations(repo=repo, ai_gateways={"concept_detection": FakeConceptGateway()})
+        ops = NodeOperations(repo=repo, concept_detection_gateway=FakeConceptGateway())
         node_list = NodeList(item_list=[make_node(object_id="CS-433", raw_text="ML")])
         result = ops.enrich_with_concepts(node_list)
         assert len(result.item_list) == 1

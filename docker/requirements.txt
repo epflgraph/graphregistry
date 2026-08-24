@@ -16,6 +16,9 @@ pymysql
 flatten_dict
 dictdiffer
 pytest
+pytest-cov
+pytest-xdist
+openai
 graphdb-client@git+https://github.com/epflgraph/graphdb-client.git
 graphes-client@git+https://github.com/epflgraph/graphes-client.git
 graphai-client@git+https://github.com/epflgraph/graphai-client.git

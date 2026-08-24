@@ -1,8 +1,6 @@
 {
-  "from_institution_id": "EPFL",
   "from_object_type": "Course",
   "from_object_id": "TEST-101",
-  "to_institution_id": "EPFL",
   "to_object_type": "Person",
   "to_object_id": "01010101",
   "context": "teacher",

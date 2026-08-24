@@ -1,0 +1,10 @@
+REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores_AVG
+      SELECT object_type, COALESCE(AVG(score), 1) AS avg_score
+	    FROM [[airflow]].Operations_N_Object_T_TypeFlags tf
+  INNER JOIN [[graph_cache]].Edges_N_Object_N_Category_T_CalculatedScores cs
+       USING (object_type)
+       WHERE tf.flag_type = 'scores'
+         AND tf.to_process = 1
+         AND cs.calculation_type = 'concept sum-scores aggregation'
+         AND cs.deleted = 0
+    GROUP BY object_type;

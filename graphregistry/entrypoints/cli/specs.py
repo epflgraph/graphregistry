@@ -29,6 +29,7 @@ from graphregistry.entrypoints.cli.cmd_data import (
     cmd_data_save,
     cmd_data_delete,
     cmd_data_import,
+    cmd_data_delete_loose_ends,
 )
 from graphregistry.entrypoints.cli.cmd_airflow import (
     cmd_airflow_sync,
@@ -93,8 +94,9 @@ cli_definitions: Dict[str, Any] = {
             'init' : dict(
                 help = "Initialize the Registry instance.",
                 func = cmd_setup_init,
-                args = [dict(flags = ('--dry_run' , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
-                        dict(flags = ('--verbose' , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
+                args = [dict(flags = ('--dry_run'     , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
+                        dict(flags = ('--verbose'     , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
+                        dict(flags = ('--index_tables', '-i'), kwargs = dict(action='store_true', default=False, help="Ensure index buildup tables from config_index.json exist.")),
                 ],
                 common_args = ['env'],
             )
@@ -304,6 +306,15 @@ cli_definitions: Dict[str, Any] = {
                 ],
                 common_args = ['env']
             ),
+            'delete_loose_ends' : dict(
+                help = "Delete loose ends from cache and graphsearch index tables.",
+                func = cmd_data_delete_loose_ends,
+                args = [
+                    dict(flags=('--use_cache', '-c'), kwargs=dict(action='store_true', default=False, help="Use the cached largest connected graph instead of recalculating it.")),
+                    dict(flags=('--actions',   ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
+                ],
+                common_args = ['env']
+            ),
         }
     ),
 
@@ -319,7 +330,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_reset,
                 args = [
                     dict(flags=('--doc_type',), kwargs=dict(required=False, type=str, default=None,        help="Restrict reset to a single document type (default: all types).")),
-                    dict(flags=('--options', ), kwargs=dict(required=False, type=str, default='typeflags', help="Comma-separated options to apply. Options: typeflags,airflow,cache (default: typeflags).")),
+                    dict(flags=('--options', ), kwargs=dict(required=False, type=str, default='typeflags', help="Comma-separated options to apply. Options: typeflags,airflow,cache,traversals (default: typeflags).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []
@@ -327,7 +338,10 @@ cli_definitions: Dict[str, Any] = {
             'sync' : dict(
                 help = "Sync new Registry data with Airflow tables.",
                 func = cmd_airflow_sync,
-                args = [],
+                args = [
+                    dict(flags=('--include_lectures',), kwargs=dict(action='store_true', default=False, help="Also sync objects from the lectures schema (default: false).")),
+                    dict(flags=('--include_ontology',), kwargs=dict(action='store_true', default=False, help="Also sync objects from the ontology schema (default: false).")),
+                ],
                 common_args = []
             ),
             'status' : dict(
@@ -349,7 +363,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Apply typeflags configuration JSON to the Airflow orchestrator.",
                 func = cmd_airflow_config,
                 args = [
-                    dict(flags=('--typeflags',), kwargs=dict(required=True, type=str, default=None, help="Typeflags configuration as a JSON string, or '@path/to/file.json' to load JSON from a file."))
+                    dict(flags=('--typeflags',), kwargs=dict(required=True, type=str, default=None, help="Typeflags configuration as a JSON string, or a path to a JSON file (with or without a leading '@')."))
                 ],
                 common_args = []
             ),
@@ -357,6 +371,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Update object checksums based on typeflag activation.",
                 func = cmd_airflow_update_checksums,
                 args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, default='commit', help="Comma-separated actions to perform: print,eval,commit (default=commit).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []
@@ -365,9 +380,13 @@ cli_definitions: Dict[str, Any] = {
                 help = "Mark objects as expired (has_expired=1) based on when they were last cached.",
                 func = cmd_airflow_expire,
                 args = [
-                    dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict expiration to a single document type (default: all types).")),
-                    dict(flags=('--older_than',    ), kwargs=dict(required=False, type=int, default=None, help="Expire objects last cached more than N days ago (default: 90).")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to expire per document type (default: 100).")),
+                    dict(flags=('--nodes',   '-n'), kwargs=dict(action='store_true', default=False, help="Include node objects in expiration. If neither --nodes nor --edges is passed, both are included by default.")),
+                    dict(flags=('--edges',   '-e'), kwargs=dict(action='store_true', default=False, help="Include edge objects in expiration. If neither --nodes nor --edges is passed, both are included by default.")),
+                    dict(flags=('--fields',  '-f'), kwargs=dict(action='store_true', default=False, help="Include 'fields changed' airflow tables in expiration. If neither --fields nor --scores is passed, both are included by default.")),
+                    dict(flags=('--scores',  '-s'), kwargs=dict(action='store_true', default=False, help="Include 'scores expired' airflow table in expiration. If neither --fields nor --scores is passed, both are included by default.")),
+                    dict(flags=('--types',       ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated object types to restrict expiration to (default: all active types from typeflags).")),
+                    dict(flags=('--older_than',  ), kwargs=dict(required=False, type=int, default=None, help="Expire objects last cached more than N days ago. If 0 or not passed, all rows are expired regardless of cache date.")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help=f"Maximum number of objects to expire per document type (default: 100, max: see config limits.limit_per_type_max).")),
                     dict(flags=('--count',   '-c'), kwargs=dict(action='store_true', default=False, help="Only show how many objects would be affected (do not modify data).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
@@ -378,7 +397,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_refresh,
                 args = [
                     dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict refresh to a single document type (default: all types).")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config limits.limit_per_type_max).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', default=False, help="Recompute and persist checksums for matching objects.")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
@@ -414,9 +433,10 @@ cli_definitions: Dict[str, Any] = {
                 help = "Execute computations for Knowledge Graph construction (selected subset based on Airflow config).",
                 func = cmd_cache_update,
                 args = [
-                    dict(flags=('--formulas',), kwargs=dict(required=False, type=str, default=None,   help="Comma-separated formulas to apply: fields,views,traversals,scores (default=none).")),
-                    dict(flags=('--matrix',  ), kwargs=dict(action='store_true',      default=False,  help="(Re)calculate scores matrix.")),
-                    dict(flags=('--actions', ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
+                    dict(flags=('--formulas',    ), kwargs=dict(required=False, type=str, default=None,   help="Comma-separated formulas to apply: reset,fields,views,traversals,scores (default=none). 'reset' runs the data_reset formulas in row_id chunks.")),
+                    dict(flags=('--formula_path',), kwargs=dict(required=False, type=str, default=None,   help="Relative path to a single SQL formula file under database/formulas, e.g. 'traversals/formula.007.course-lecture-slide-concept.concept_detection'. Folder aliases (fields, traversals, scores) and omission of the .sql suffix are supported. Runs independently of --formulas.")),
+                    dict(flags=('--matrix',      ), kwargs=dict(action='store_true',      default=False,  help="(Re)calculate scores matrix.")),
+                    dict(flags=('--actions',     ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
                 ],
                 common_args = []
             ),

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from functools import cached_property
 from typing import TYPE_CHECKING, Any
 
 # If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
@@ -10,15 +10,34 @@ if TYPE_CHECKING:
     from graphregistry.application.core.cor_registry import GraphRegistry
 
 
-# Define a dataclass to hold shared context for CLI commands
-@dataclass
+# Define a class to hold shared context for CLI commands.
+# GraphDB is initialized lazily so commands that do not need MySQL start quickly.
 class CLIContext:
-    global_config: "GlobalConfig"
-    index_config: "IndexConfig"
-    scores_config: "ScoresConfig"
-    db: "GraphDB"
-    db_config: "GraphDBConfig"
-    es: "GraphES"
-    registry: "GraphRegistry | None"
-    ai: "Any | None"
-    graphai_auth_token: "dict[str, Any] | None"
+    def __init__(
+        self,
+        *,
+        global_config: "GlobalConfig",
+        index_config: "IndexConfig",
+        scores_config: "ScoresConfig",
+        db_config: "GraphDBConfig",
+        registry: "GraphRegistry | None",
+        ai: "Any | None",
+    ) -> None:
+        self.global_config = global_config
+        self.index_config = index_config
+        self.scores_config = scores_config
+        self.db_config = db_config
+        self.registry = registry
+        self.ai = ai
+
+    @cached_property
+    def db(self) -> "GraphDB":
+        from graphdb.core.graphdb import GraphDB
+
+        return GraphDB(config=self.db_config)
+
+    @cached_property
+    def es(self) -> "GraphES":
+        from graphregistry.adapters.clients.elasticsearch import GraphES
+
+        return GraphES()

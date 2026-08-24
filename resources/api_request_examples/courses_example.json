@@ -2,7 +2,6 @@
     "type": "nodes",
     "data": [
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "ChE-613",
             "object_title": "Organic semiconductors (Next time Fall 24)",
@@ -31,7 +30,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "COM-502",
             "object_title": "Dynamical system theory for engineers",
@@ -66,7 +64,6 @@
             }
         },
         {
-            "institution_id": "EPFL",
             "object_type": "Course",
             "object_id": "CS-726",
             "object_title": "Machine Learning for Database Systems",

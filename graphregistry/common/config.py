@@ -49,9 +49,11 @@ class GlobalConfig:
                 'registry'    : self.settings['mysql']['db_schema_names']['registry'],
                 'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
                 'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
+                'traversals'  : self.settings['mysql']['db_schema_names']['traversals'],
                 'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
-                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test']
+                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test'],
+                'prod_mirror' : self.settings['mysql']['db_schema_names']['graphsearch_prod_mirror']
             },
             'prod' : {
                 'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
@@ -72,17 +74,36 @@ class GlobalConfig:
         self.schema_registry = self.mysql_schema_names['test']['registry']
         self.schema_lectures = self.mysql_schema_names['test']['lectures']
         self.schema_airflow  = self.mysql_schema_names['test']['airflow']
+        self.schema_traversals = self.mysql_schema_names['test']['traversals']
         self.schema_es_cache = self.mysql_schema_names['test']['es_cache']
         self.schema_graph_cache_test = self.mysql_schema_names['test']['graph_cache']
         self.schema_graph_cache_prod = self.mysql_schema_names['prod']['graph_cache']
         self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
         self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
+        self.schema_graphsearch_prod_mirror = self.mysql_schema_names['test']['prod_mirror']
+
+        # Path where index patch/rollback SQL files are generated.
+        # Supports the new top-level 'data_paths.patches' key, with a fallback
+        # to the legacy 'mysql.patch_path' key for backwards compatibility.
+        patch_path_setting = (
+            self.settings.get('data_paths', {}).get('patches')
+            or self.settings.get('mysql', {}).get('patch_path')
+            or 'data/index_patches'
+        )
+        self.index_patch_path = Path(patch_path_setting)
+        if not self.index_patch_path.is_absolute():
+            self.index_patch_path = REPO_ROOT / self.index_patch_path
+
+        # Safety limits
+        self.limit_per_type_max = self.settings.get('limits', {}).get('limit_per_type_max', 1000)
+        self.patch_max_rows = self.settings.get('limits', {}).get('patch_max_rows', 50000)
 
         # Object type to schema mapping
         self.object_type_to_schema = {
             'Category'       : self.schema_ontology,
             'Concept'        : self.schema_ontology,
             'Course'         : self.schema_registry,
+            'Exercise'       : self.schema_registry,
             'Lecture'        : self.schema_lectures,
             'MOOC'           : self.schema_registry,
             'Notebook'       : self.schema_registry,
@@ -91,8 +112,8 @@ class GlobalConfig:
             'Slide'          : self.schema_lectures,
             'Specialisation' : self.schema_registry,
             'Startup'        : self.schema_registry,
-            'Transcript'     : self.schema_lectures,
             'StudyPlan'      : self.schema_registry,
+            'Transcript'     : self.schema_lectures,
             'Unit'           : self.schema_registry,
             'Widget'         : self.schema_registry,
         }
@@ -125,27 +146,6 @@ class GlobalConfig:
         for k, v in self.object_type_to_schema.items():
             self.schema_to_object_types[v].append(k)
 
-        # Object type to institution id mapping
-        self.object_type_to_institution_id = {
-            'Category'       : 'Ont',
-            'Concept'        : 'Ont',
-            'Curated area'   : 'Ont',
-            'Course'         : 'EPFL',
-            'Exercise'       : 'EPFL',
-            'Lecture'        : 'EPFL',
-            'MOOC'           : 'EPFL',
-            'Notebook'       : 'EPFL',
-            'Person'         : 'EPFL',
-            'Publication'    : 'EPFL',
-            'Slide'          : 'EPFL',
-            'Specialisation' : 'EPFL',
-            'Startup'        : 'EPFL',
-            'Transcript'     : 'EPFL',
-            'StudyPlan'      : 'EPFL',
-            'Unit'           : 'EPFL',
-            'Widget'         : 'EPFL',
-        }
-
         # Page profile columns
         self.page_profile_columns = ["numeric_id_en", "numeric_id_fr", "numeric_id_de", "numeric_id_it", "short_code", "subtype_en", "subtype_fr", "subtype_de", "subtype_it", "name_en_is_auto_generated", "name_en_is_auto_corrected", "name_en_is_auto_translated", "name_en_translated_from", "name_en_value", "name_fr_is_auto_generated", "name_fr_is_auto_corrected", "name_fr_is_auto_translated", "name_fr_translated_from", "name_fr_value", "name_de_is_auto_generated", "name_de_is_auto_corrected", "name_de_is_auto_translated", "name_de_translated_from", "name_de_value", "name_it_is_auto_generated", "name_it_is_auto_corrected", "name_it_is_auto_translated", "name_it_translated_from", "name_it_value", "description_short_en_is_auto_generated", "description_short_en_is_auto_corrected", "description_short_en_is_auto_translated", "description_short_en_translated_from", "description_short_en_value", "description_short_fr_is_auto_generated", "description_short_fr_is_auto_corrected", "description_short_fr_is_auto_translated", "description_short_fr_translated_from", "description_short_fr_value", "description_short_de_is_auto_generated", "description_short_de_is_auto_corrected", "description_short_de_is_auto_translated", "description_short_de_translated_from", "description_short_de_value", "description_short_it_is_auto_generated", "description_short_it_is_auto_corrected", "description_short_it_is_auto_translated", "description_short_it_translated_from", "description_short_it_value", "description_medium_en_is_auto_generated", "description_medium_en_is_auto_corrected", "description_medium_en_is_auto_translated", "description_medium_en_translated_from", "description_medium_en_value", "description_medium_fr_is_auto_generated", "description_medium_fr_is_auto_corrected", "description_medium_fr_is_auto_translated", "description_medium_fr_translated_from", "description_medium_fr_value", "description_medium_de_is_auto_generated", "description_medium_de_is_auto_corrected", "description_medium_de_is_auto_translated", "description_medium_de_translated_from", "description_medium_de_value", "description_medium_it_is_auto_generated", "description_medium_it_is_auto_corrected", "description_medium_it_is_auto_translated", "description_medium_it_translated_from", "description_medium_it_value"]
 
@@ -175,6 +175,64 @@ class GlobalConfig:
         print('mysql_schema_names:')
         rich.print_json(data=self.mysql_schema_names)
 
+#==============================#
+# Class definition: APIConfig  #
+#==============================#
+class APIConfig:
+    """Class to handle API-specific configuration, including allowed types."""
+
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_api.json"
+
+    def __init__(self, api_config: dict | None = None):
+        """Load and parse the API configuration.
+
+        ``allowed_node_types`` is exposed as a set of object type names.
+        ``allowed_edge_tuples`` is exposed as a set of
+        ``(from_type, to_type, context)`` triples.
+
+        The configuration file is required. If it is missing, a clear error is
+        raised explaining where the file should be placed.
+        """
+        if api_config is None:
+            try:
+                api_config = self._load_raw()
+            except FileNotFoundError as exc:
+                raise FileNotFoundError(
+                    f"API configuration file not found: {exc.filename}. "
+                    f"Create this file at {self.DEFAULT_PATH} with the "
+                    "allowed node/edge types, or mount it into the container "
+                    f"at {self.DEFAULT_PATH}."
+                ) from exc
+
+        allowed = api_config.get("allowed-types", {})
+        # Preserve the config file order for OpenAPI examples, while also
+        # providing sets for O(1) membership checks in validators.
+        self.allowed_node_types_list = list(allowed.get("nodes", []))
+        self.allowed_edge_tuples_list = [
+            tuple(triple) for triple in allowed.get("edges", [])
+        ]
+        self.allowed_node_types = set(self.allowed_node_types_list)
+        self.allowed_edge_tuples = set(self.allowed_edge_tuples_list)
+
+    @classmethod
+    def from_file(cls, path: str | Path | None = None) -> "APIConfig":
+        """Create an API configuration instance from a JSON file."""
+        return cls(cls._load_raw(path))
+
+    @classmethod
+    def _load_raw(cls, path: str | Path | None = None) -> dict:
+        if path is None:
+            path = cls.DEFAULT_PATH
+        path = Path(path)
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def print(self):
+        print('Allowed node types:')
+        rich.print_json(data=self.allowed_node_types_list)
+        print('Allowed edge tuples:')
+        rich.print_json(data=[list(t) for t in self.allowed_edge_tuples_list])
+
 #===============================#
 # Class definition: IndexConfig #
 #===============================#
@@ -194,10 +252,23 @@ class IndexConfig:
         tree = lambda: defaultdict(tree); self.settings = tree()
 
         # Fetch list of supported doc types
-        doc_types = index_config['doc-types']
+        doc_types = index_config['object-selection']['nodes']
 
         # Assign to parsed options dictionary
         self.settings['doc_types'] = doc_types
+
+        # Fetch the configured edge selection (from_type, to_type, context).
+        # The context is the canonical relationship to use when flattening the
+        # 5-tuple edge identity into a 4-tuple index link identity.
+        edge_selection = index_config.get('object-selection', {}).get('edges', [])
+        self.settings['edge_selection'] = [list(triple) for triple in edge_selection]
+        self.settings['edge_selection_contexts'] = {
+            (a, b): context
+            for (a, b, context) in (
+                tuple(sorted([triple[0], triple[1]]) + [triple[2]])
+                for triple in edge_selection
+            )
+        }
 
         # Fetch data types for SQL field definitions
         self.settings['data_types'] = index_config['data-types']
@@ -240,6 +311,7 @@ class IndexConfig:
             # Assign to parsed options dictionary
             if len(graphsearch_obj_fields)>0:
                 self.settings['graphsearch']['fields']['docs'][doc_type] = graphsearch_obj_fields
+                self.settings['graphsearch']['fields']['docs_raw'][doc_type] = list_of_fields
 
             #------------------------------------------------------#
             # Fetch doc definitions for ElasticSearch cache tables #
@@ -262,6 +334,7 @@ class IndexConfig:
             # Assign to parsed options dictionary
             if len(elasticsearch_obj_fields)>0:
                 self.settings['elasticsearch']['fields']['docs'][doc_type] = elasticsearch_obj_fields
+                self.settings['elasticsearch']['fields']['docs_raw'][doc_type] = list_of_fields
 
             # Fetch ElasticSearch filters (if available)
             if doc_type              in index_config['es-filters']['docs']:
@@ -303,6 +376,7 @@ class IndexConfig:
                 # Assign to parsed options dictionary
                 if len(graphsearch_obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['default'][link_type] = graphsearch_obj_fields
+                    self.settings['graphsearch']['fields']['links']['default_raw'][link_type] = list_of_fields
 
                 #--------------------------------------------------------------------------#
                 # Fetch doclink ORDER BY rules for link ranking (default / semantic links) #
@@ -344,6 +418,7 @@ class IndexConfig:
                 # Assign to parsed options dictionary
                 if p2c_exists: # len(graphsearch_obj2obj_fields)>0:
                     self.settings['graphsearch']['fields']['links']['parent_child'][doc_type][link_type] = graphsearch_obj2obj_fields
+                    self.settings['graphsearch']['fields']['links']['parent_child_raw'][doc_type][link_type] = list_of_fields
 
                 #--------------------------------------------------------------------#
                 # Fetch doclink ORDER BY rules for link ranking (parent-child links) #
@@ -380,12 +455,13 @@ class IndexConfig:
                 # Assign list of fields to object's internal variables
                 elasticsearch_obj_fields = [
                     f"{field_name}"+{'n/a':'', 'en':'_en', 'fr':'_fr'}[field_language]
-                    for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
+                for field_language, field_name in [tuple(v) if type(v) is list else ('n/a', v) for v in list_of_fields]
                 ]
 
                 # Assign to parsed options dictionary
                 if len(elasticsearch_obj_fields)>0:
                     self.settings['elasticsearch']['fields']['links'][link_type] = elasticsearch_obj_fields
+                    self.settings['elasticsearch']['fields']['links_raw'][link_type] = list_of_fields
 
                 # Fetch ElasticSearch filters (if available)
                 if link_type  in index_config['es-filters']['links']:
@@ -397,8 +473,19 @@ class IndexConfig:
                 if len(elasticsearch_filters)>0:
                     self.settings['elasticsearch']['filters']['links'][link_type] = elasticsearch_filters
 
-        # Convert defaultdict to normal dict for easier handling
-        self.settings = json.loads(json.dumps(self.settings))
+        # Convert defaultdict to normal dict for easier handling.
+        # We cannot use json.dumps/loads because edge_selection_contexts uses
+        # tuple keys (e.g. ("Person", "Unit")).
+        def _to_dict(obj):
+            if isinstance(obj, defaultdict):
+                obj = dict(obj)
+            if isinstance(obj, dict):
+                return {k: _to_dict(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [_to_dict(v) for v in obj]
+            return obj
+
+        self.settings = _to_dict(self.settings)
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "IndexConfig":
@@ -559,6 +646,9 @@ class ScoresConfig:
         for edge_class in self.settings['scored_edge_tuples']:
             for edge_tuple in self.settings['scored_edge_tuples'][edge_class]:
                 self.settings['scored_edge_tuple_to_class_mapping'][tuple(edge_tuple)] = edge_class
+
+        # Fetch mixed-scoring tuples (pairs that should use a MIX view for ES cache)
+        self.settings['mixed_scoring_tuples'] = [tuple(t) for t in scores_config.get('mixed-scoring-tuples', [])]
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "ScoresConfig":

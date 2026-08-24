@@ -1,0 +1,178 @@
+{
+    "doc-types" : ["Category", "Concept", "Course", "Exercise", "Lecture", "MOOC", "Notebook", "Person", "Publication", "Specialisation", "Startup", "StudyPlan", "Unit", "Widget"],
+    "options" : {
+        "docs" : {
+            "Course" : {"include_code_in_name" : 1},
+            "Unit"   : {"include_code_in_name" : 1}
+        }
+    },
+    "fields" : {
+        "docs" : {
+            "Category"    : ["depth"],
+            "Course"      : ["latest_academic_year"],
+            "Exercise"    : ["breadcrumb_ontology", "difficulty", "question_type", ["en", "pdf_document_url"], ["fr", "pdf_document_url"]],
+            "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
+            "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
+            "Notebook"    : ["notebook_type", "language", "repository_id", "html_document_url"],
+            "Person"      : ["is_at_epfl", "gender"],
+            "Publication" : ["year", "published_in", "publisher", "publication_id_v1"],
+            "Unit"        : ["is_active_unit", "is_research_unit", "subtype_rank"],
+            "Widget"      : ["chapter_id", "mainly_math_notation", "mooc_id", "platform_name", "quiz_filename", "quiz_type", "sequential_id", "study_level", "vertical_id"]
+        },
+        "links" : {
+            "default" : {
+                "Category"    : {
+                    "order" : [["depth", "DESC"]]
+                },
+                "Course"      : {
+                    "order" : [["latest_academic_year", "DESC"]]
+                },
+                "Lecture"     : {
+                    "obj"   : ["video_stream_url", "video_duration", "is_restricted"],
+                    "order" : [["is_restricted", "DESC"]]
+                },
+                "Person"      : {
+                    "order" : [["is_at_epfl", "DESC"]]
+                },
+                "Publication" : {
+                    "obj"   : ["year", "published_in", "publisher"],
+                    "order" : [["year", "DESC"]]
+                },
+                "Unit"        : {
+                    "order" : [["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
+                }
+            },
+            "parent-child" : {
+                "Category" : {
+                    "Category" : {},
+                    "Concept" : {}
+                },
+                "Concept" : {
+                    "Category" : {}
+                },
+                "Course" : {
+                    "Lecture" : {
+                        "obj2obj" : ["sort_number_per_academic_year"],
+                        "order"   : [["is_restricted", "DESC"]]
+                    },
+                    "Person" : {
+                        "obj2obj" : ["latest_teaching_assignment_year"],
+                        "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
+                    }
+                },
+                "Lecture" : {
+                    "Course" : {
+                        "obj2obj" : ["sort_number_per_academic_year"],
+                        "order"   : [["latest_academic_year", "DESC"]]
+                    },
+                    "MOOC" : {},
+                    "Widget" : {}
+                },
+                "MOOC" : {
+                    "Person" : {},
+                    "Lecture" : {}
+                },
+                "Notebook" : {
+                    "Person" : {}
+                },
+                "Person" : {
+                    "Course" : {
+                        "obj2obj" : ["latest_teaching_assignment_year"],
+                        "order"   : [["latest_teaching_assignment_year", "DESC"]]
+                    },
+                    "MOOC" : {},
+                    "Notebook" : {},
+                    "Publication" : {},
+                    "Unit" : {
+                        "obj2obj" : ["is_active_affiliation", "current_position_rank"],
+                        "order"   : [["is_active_affiliation", "DESC"], ["is_active_unit", "DESC"], ["is_research_unit", "DESC"]]
+                    }
+                },
+                "Publication" : {
+                    "Person" : {}
+                },
+                "Unit" : {
+                    "Person" : {
+                        "obj2obj" : ["is_active_affiliation", "current_position_rank"],
+                        "order"   : [["is_at_epfl", "DESC"], ["is_active_affiliation", "DESC"], ["current_position_rank", "ASC"]]
+                    },
+                    "Unit" : {}
+                },
+                "Widget" : {
+                    "Lecture" : {}
+                }
+            }
+        }
+    },
+    "es-fields" : {
+        "docs" : {
+            "Lecture"     : [],
+            "MOOC"        : ["domain", "language", "level", "platform"],
+            "Publication" : ["year", "published_in", "publisher"],
+            "Unit"        : ["is_active_unit", "is_research_unit"],
+            "Widget"      : ["mainly_math_notation", "platform_name", "quiz_type", "study_level"]
+        },
+        "links" : {
+            "Category"    : [],
+            "Person"      : [],
+            "Publication" : [],
+            "Unit"        : []
+        }
+    },
+    "es-filters" : {
+        "docs"  : {
+            "Lecture"     : ["is_restricted = 0"]
+        },
+        "links" : {
+            "Category"    : ["depth = 4"],
+            "Lecture"     : ["is_restricted = 0"],
+            "Person"      : ["is_at_epfl = 1"],
+            "Unit"        : ["is_active_unit = 1", "is_research_unit = 1"]
+        }
+    },
+    "data-types" : {
+        "include_code_in_name" : "bool",
+        "depth" : "int",
+        "latest_academic_year" : "char",
+        "video_stream_url" : "text",
+        "video_duration" : "int",
+        "is_restricted" : "bool",
+        "srt_subtitles_en" : "longtext",
+        "srt_subtitles_fr" : "longtext",
+        "domain" : "char",
+        "language" : "char",
+        "level" : "char",
+        "platform" : "char",
+        "thumbnail_image_url" : "text",
+        "notebook_type" : "char",
+        "repository_id" : "char",
+        "html_document_url" : "text",
+        "is_at_epfl" : "bool",
+        "gender" : "char",
+        "year" : "int",
+        "published_in" : "text",
+        "publisher" : "char",
+        "publication_id_v1" : "char",
+        "is_active_unit" : "bool",
+        "is_research_unit" : "bool",
+        "subtype_rank" : "int",
+        "chapter_id" : "char",
+        "mainly_math_notation" : "bool",
+        "mooc_id" : "char",
+        "platform_name" : "char",
+        "quiz_filename" : "char",
+        "quiz_type" : "char",
+        "sequential_id" : "int",
+        "study_level" : "char",
+        "vertical_id" : "int",
+        "sort_number_per_academic_year" : "char",
+        "latest_teaching_assignment_year" : "char",
+        "is_active_affiliation" : "bool",
+        "current_position_rank" : "bool",
+        "breadcrumb_ontology" : "text",
+        "difficulty" : "char",
+        "question_type" : "char",
+        "pdf_document_url_en" : "text",
+        "pdf_document_url_fr" : "text"
+    }
+}
