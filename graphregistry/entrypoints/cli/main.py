@@ -3,9 +3,7 @@ import argparse
 from typing import Any
 
 from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
 
-from graphregistry.adapters.clients.elasticsearch import GraphES
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.entrypoints.cli.context import CLIContext
 from graphregistry.entrypoints.cli.register import register
@@ -48,51 +46,39 @@ def main(argv=None) -> int:
         parser.print_help()
         return 1
 
-    # Create shared config and service objects
+    # Create shared config objects. Heavy clients (MySQL, ES) are initialized lazily.
     global_config = GlobalConfig()
     index_config  = IndexConfig()
     scores_config = ScoresConfig()
-    es = GraphES()
 
-    # Initialise MySQL client
+    # Load MySQL config; the client itself is initialized lazily by CLIContext.db.
     from graphregistry.common.paths import CONFIG_DB_PATH
 
     db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-    db = GraphDB(config=db_config)
 
     # Registry is only required for selected domains.
     registry: Any | None = None
-    if args.domain in {"airflow", "cache", "index"}:
+    if args.domain in {"airflow", "cache", "index", "data"}:
         from graphregistry.application.core.cor_registry import GraphRegistry
 
         registry = GraphRegistry()
 
-    # GraphAI is only required for the ai domain.
+    # GraphAI module is only required when an ai subcommand wires a GraphAI gateway.
+    # Authentication is handled lazily inside the hexagonal gateway adapters, not here.
     ai: Any | None = None
-    graphai_auth_token: dict[str, Any] | None = None
     if args.domain == "ai":
         import graphai_client as GraphAI
-        import graphai_client.client as GraphAIClient
 
         ai = GraphAI
-        graphai_auth_token = GraphAIClient.login(
-            global_config.settings["graphai"]["client_config_file"]
-        )
-        if not isinstance(graphai_auth_token, dict) or not graphai_auth_token:
-            print("Error: Failed to obtain valid GraphAI auth token.")
-            return 1
 
     # Create CLI context
     ctx = CLIContext(
         global_config=global_config,
         index_config=index_config,
         scores_config=scores_config,
-        db=db,
         db_config=db_config,
-        es=es,
         registry=registry,
         ai=ai,
-        graphai_auth_token=graphai_auth_token,
     )
 
     # Attach to args for all subcommands

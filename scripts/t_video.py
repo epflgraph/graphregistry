@@ -1,5 +1,5 @@
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.gateways.graphai.agt_voice import GraphAIAudioGateway
+from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
+from graphregistry.adapters.gateways.graphai.gtw_voice import GraphAIVoiceGateway
 from graphregistry.domain.models.entities.mdl_lecture import Lecture
 import rich
 
@@ -8,7 +8,7 @@ file_url = 'https://raw.githubusercontent.com/epflgraph/graphregistry/master/scr
 
 # Initialize the gateway
 gtw_video = GraphAIVideoGateway(debug=False)
-gtw_audio = GraphAIAudioGateway(debug=False)
+gtw_audio = GraphAIVoiceGateway(debug=False)
 
 #-------------------------------------------------------#
 

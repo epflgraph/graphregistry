@@ -108,7 +108,7 @@ def cmd_setup_init(args):
 
                 # Open SQL file and get all table names that should be created
                 with open(sql_file_path, 'r') as sql_file:
-                    match = re.findall(r'CREATE (TABLE IF NOT EXISTS|OR REPLACE VIEW)\s*([^\s]*)\s*', sql_file.read())
+                    match = re.findall(r'CREATE\s+(TABLE(?:\s+IF\s+NOT\s+EXISTS)?|OR\s+REPLACE\s+VIEW)\s+([^\s(]+)', sql_file.read(), re.IGNORECASE)
 
                 # Check if any tables were found in the SQL file
                 if not match:
@@ -150,6 +150,69 @@ def cmd_setup_init(args):
 
         # Print success message
         sysmsg.success("🗂️ ✅ All required MySQL tables were created.\n")
+
+    #===========================================================#
+    # Step 3b: Ensure dynamic index buildup tables exist        #
+    #===========================================================#
+
+    if args.index_tables:
+
+        # Print info message
+        sysmsg.info("🗂️ 📝 Ensure index buildup tables from config_index.json exist.")
+
+        # Import helpers locally to keep plain setup init startup fast
+        from graphregistry.common.dbstruct import DynamicSQL, GraphTable
+
+        # Get lazy DB client and dynamic SQL metadata (doc types come from config_index.json)
+        db = args.ctx.db
+        dynsql = DynamicSQL(db=db)
+
+        # Target schema for index buildup tables
+        cache_schema_name = glbcfg.schema_graph_cache_test
+
+        # Collect expected doc buildup tables
+        expected_doc_tables = [
+            f"IndexBuildup_Fields_Docs_{doc_type}"
+            for doc_type in dynsql.doc_types
+        ]
+
+        # Collect expected doc-link buildup tables (parent-child, organisational)
+        expected_doclink_tables = sorted(set(
+            f"IndexBuildup_Fields_Links_ParentChild_{sorted([doc_type, link_type])[0]}_{sorted([doc_type, link_type])[1]}"
+            for doc_type, link_type in dynsql.doclink_types_org
+        ))
+
+        # Find missing tables
+        missing_tables = [
+            table_name
+            for table_name in expected_doc_tables + expected_doclink_tables
+            if not db.table_exists(engine_name=db_env, schema_name=cache_schema_name, table_name=table_name)
+        ]
+
+        if not missing_tables:
+            sysmsg.success("🗂️ ✅ All index buildup tables already exist.\n")
+        elif not commit:
+            sysmsg.info(f"🗂️ 💡 Dry run: would create {len(missing_tables)} index buildup tables:")
+            for table_name in missing_tables:
+                sysmsg.trace(f" - {cache_schema_name}.{table_name}")
+            print('')
+        else:
+            # Create missing tables using the existing GraphTable helper
+            # (no need to spin up the full GraphRegistry for schema creation).
+            sysmsg.trace(f"Creating {len(missing_tables)} missing index buildup tables ...")
+            for table_name in missing_tables:
+                tb = GraphTable(db=db, schema_name=cache_schema_name, table_name=table_name)
+                db.execute_query_in_shell(
+                    engine_name = db_env,
+                    query       = tb.create_table_sql,
+                    verbose     = False,
+                    query_id    = 'setup-init-index'
+                )
+                # Verify
+                if not db.table_exists(engine_name=db_env, schema_name=cache_schema_name, table_name=table_name):
+                    sysmsg.critical(f"🗂️ ❌ Failed to create table '{cache_schema_name}.{table_name}'.")
+                    exit()
+            sysmsg.success("🗂️ ✅ Index buildup tables ensured.\n")
 
     #===============================================#
     # Step 4: Insert default data into MySQL tables #
