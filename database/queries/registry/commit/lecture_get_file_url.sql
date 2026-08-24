@@ -4,4 +4,5 @@ SELECT field_value
  WHERE object_type = 'Lecture'
    AND object_id = '[[lecture_id]]'
    AND field_language = 'n/a'
-   AND field_name = 'video_stream_url';
+   AND field_name = 'video_stream_url'
+   AND record_deleted = 0;

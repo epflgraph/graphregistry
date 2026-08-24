@@ -76,9 +76,12 @@ class Slide(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    token       : str
-    timestamp   : int
-    fingerprint : str | None = None
+    token         : str
+    timestamp     : int
+    fingerprint   : str | None = None
+    text          : str | None = None
+    language      : str | None = None
+    translations  : dict[str, str] | None = None
 
     #-----------------------------------#
     # Model constructors and validators #
@@ -125,9 +128,10 @@ class TranscriptSegment(BaseModel):
     #--------------------#
     # Internal variables #
     #--------------------#
-    start       : float
-    end         : float
-    text        : str
+    start         : float
+    end           : float
+    text          : str
+    translations  : dict[str, str] | None = None
 
     #-----------------------#
     # Serialization methods #

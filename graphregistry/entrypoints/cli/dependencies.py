@@ -8,19 +8,16 @@ scripts don't have to repeat that knowledge.
 """
 from __future__ import annotations
 
-from typing import Any
-
 from graphdb.core.graphdb import GraphDB
 
-from graphregistry.adapters.gateways.genai.agt_lectureenrich import GenAILectureEnrichmentGateway
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
-from graphregistry.adapters.gateways.graphai.agt_video import GraphAIVideoGateway
-from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
-from graphregistry.adapters.persistence.mysql.repositories.arp_lecturerepo import MySQLLectureRepository
-from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
-from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
-from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
-from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.adapters.gateways.genai.gtw_lectureenrich import GenAILectureEnrichmentGateway
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
+from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
+from graphregistry.adapters.persistence.mysql.repositories.rpo_lecturerepo import MySQLLectureRepository
+from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
+from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_lecture import LectureOperations
 from graphregistry.application.operations.ops_node import NodeOperations
@@ -43,11 +40,10 @@ def build_node_operations(
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
     repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
 
-    ai_gateways: dict[str, Any] = {}
-    if concept_detection_gateway is not None:
-        ai_gateways["concept_detection"] = concept_detection_gateway
-
-    return NodeOperations(repo=repo, ai_gateways=ai_gateways)
+    return NodeOperations(
+        repo=repo,
+        concept_detection_gateway=concept_detection_gateway,
+    )
 
 
 def build_edge_operations(
@@ -76,19 +72,20 @@ def build_lecture_operations(
     node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
     lecture_repo = MySQLLectureRepository(
         db=db,
-        schema_name=global_config.schema_lectures,
+        schema_resolver=schema_resolver,
         node_repo=node_repo,
     )
 
-    ai_gateways: dict[str, Any] = {}
-    if include_video_gateway:
-        ai_gateways["video_processing"] = GraphAIVideoGateway()
-    if include_concept_gateway:
-        ai_gateways["concept_detection"] = GraphAIConceptDetectionGateway()
-    if include_enrichment_gateway:
-        ai_gateways["lecture_enrichment"] = GenAILectureEnrichmentGateway()
+    video_processing_gateway = GraphAIVideoGateway() if include_video_gateway else None
+    concept_detection_gateway = GraphAIConceptDetectionGateway() if include_concept_gateway else None
+    lecture_enrichment_gateway = GenAILectureEnrichmentGateway() if include_enrichment_gateway else None
 
-    return LectureOperations(repo=lecture_repo, ai_gateways=ai_gateways)
+    return LectureOperations(
+        repo=lecture_repo,
+        video_processing_gateway=video_processing_gateway,
+        concept_detection_gateway=concept_detection_gateway,
+        lecture_enrichment_gateway=lecture_enrichment_gateway,
+    )
 
 
 def build_lecture_enrichment_operations(

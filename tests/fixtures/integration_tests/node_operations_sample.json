@@ -1,5 +1,4 @@
 {
-  "institution_id": "EPFL",
   "object_type": "Course",
   "object_id": "TEST-101",
   "object_title": "Introduction to Autonomous Systems Design",
@@ -49,7 +48,7 @@
     {
       "field_language": "fr",
       "field_name": "summary",
-      "field_value": "Introduction à la conception et à l’implémentation de systèmes autonomes intelligents."
+      "field_value": "Introduction \u00e0 la conception et \u00e0 l\u2019impl\u00e9mentation de syst\u00e8mes autonomes intelligents."
     },
     {
       "field_language": "n/a",
@@ -65,7 +64,7 @@
   "page_profile": {
     "short_code": "TEST-101",
     "name_en_value": "Introduction to Autonomous Systems Design",
-    "name_fr_value": "Introduction à la conception de systèmes autonomes",
+    "name_fr_value": "Introduction \u00e0 la conception de syst\u00e8mes autonomes",
     "description_short_en_value": "Learn the fundamentals of autonomous systems, including perception, planning, and control.",
     "description_medium_en_value": "This course provides a structured introduction to autonomous systems, combining theoretical foundations with practical applications in robotics and AI.",
     "description_long_en_value": "This course explores the design of autonomous systems capable of perceiving, reasoning, and acting in complex environments. Students will study perception pipelines, planning under uncertainty, reinforcement learning, and system safety. Applications include robotics, autonomous vehicles, and smart infrastructure.",

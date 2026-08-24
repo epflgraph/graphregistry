@@ -1,10 +1,28 @@
 # graphregistry/entrypoints/cli/cmd_airflow.py
 import json
 from pathlib import Path
+from loguru import logger as sysmsg
 
 # #===========================#
 # # Command handler functions #
 # #===========================#
+
+#---------------------------------------------------#
+# Helper: Validate limit_per_type against config cap #
+#---------------------------------------------------#
+def _validate_limit_per_type(limit_per_type, limit_per_type_max):
+    """
+    Refuse to process if limit_per_type exceeds the configured maximum.
+    Returns True when the value is acceptable (including None), False otherwise.
+    """
+    if limit_per_type is not None and limit_per_type > limit_per_type_max:
+        sysmsg.warning(
+            f"limit_per_type ({limit_per_type}) exceeds LIMIT_PER_TYPE_MAX ({limit_per_type_max}). "
+            f"Large values may cause instability and frozen SQL operations that take a long time to rollback. "
+            f"Refusing to process."
+        )
+        return False
+    return True
 
 #-------------------------------------------#
 # Handler: Sync new data into airflow table #
@@ -12,7 +30,7 @@ from pathlib import Path
 def cmd_airflow_sync(args):
     """
     Handle:
-      graphregistry cache sync
+      graphregistry airflow sync [--include_lectures] [--include_ontology]
     """
 
     # Fetch context objects
@@ -23,7 +41,10 @@ def cmd_airflow_sync(args):
 
     # Execute command:
     # - Sync new registry data with airflow tables
-    gr.orchestrator.sync()
+    gr.orchestrator.sync(
+        include_lectures = args.include_lectures,
+        include_ontology = args.include_ontology,
+    )
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -112,6 +133,7 @@ def cmd_airflow_config(args):
     Handle:
       graphregistry airflow config --typeflags='{json}'
       graphregistry airflow config --typeflags=@path/to/file.json
+      graphregistry airflow config --typeflags=path/to/file.json
     """
 
     # Print headers
@@ -123,14 +145,10 @@ def cmd_airflow_config(args):
     # Resolve the configuration
     tf_arg = args.typeflags
 
-    # Case 1: --typeflags=@path/to/file.json
-    if tf_arg.startswith("@"):
-        path_str = tf_arg[1:]
-        cfg_path = Path(path_str)
-
-        if not cfg_path.exists():
-            raise FileNotFoundError(f"Typeflags config file not found: {cfg_path}")
-
+    # Case 1: --typeflags=@path/to/file.json or --typeflags=path/to/file.json
+    path_str = tf_arg[1:] if tf_arg.startswith("@") else tf_arg
+    cfg_path = Path(path_str)
+    if cfg_path.is_file():
         print(f"Loading typeflags configuration from file: {cfg_path}")
         with cfg_path.open("r") as fp:
             cfg = json.load(fp)
@@ -164,6 +182,7 @@ def cmd_airflow_update_checksums(args):
     gr = args.ctx.registry
 
     # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ('commit',)
     v = args.verbose
 
     # Print headers
@@ -171,7 +190,7 @@ def cmd_airflow_update_checksums(args):
 
     # Execute command:
     # - ...
-    gr.orchestrator.update_checksums_v2(verbose=v)
+    gr.orchestrator.update_checksums_v2(actions=actions, verbose=v)
 
     # Print footers
     print("🖥️  ~ Done.")
@@ -217,13 +236,28 @@ def cmd_airflow_expire(args):
     c = args.count
     v = args.verbose
 
+    # Resolve scope flags.
+    # If neither side of a pair is passed, default to including both.
+    include_nodes  = args.nodes  or not args.edges
+    include_edges  = args.edges  or not args.nodes
+    include_fields = args.fields or not args.scores
+    include_scores = args.scores or not args.fields
+
+    # Resolve object types filter
+    object_types = [t.strip() for t in args.types.split(',') if t.strip()] if args.types else None
+
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")
-    if args.doc_type or args.older_than or args.limit_per_type or args.verbose:
+    if any([args.nodes, args.edges, args.fields, args.scores, args.types,
+            args.older_than is not None, args.limit_per_type, args.verbose]):
         print("\nInput options:")
-        if args.doc_type:
-            print(f"  doc_type ............. {args.doc_type}")
-        if args.older_than:
+        print(f"  nodes ................ {include_nodes}")
+        print(f"  edges ................ {include_edges}")
+        print(f"  fields ............... {include_fields}")
+        print(f"  scores ............... {include_scores}")
+        if object_types:
+            print(f"  types ................ {object_types}")
+        if args.older_than is not None:
             print(f"  older_than ........... {args.older_than}")
         if args.limit_per_type:
             print(f"  limit_per_type ....... {args.limit_per_type}")
@@ -234,11 +268,15 @@ def cmd_airflow_expire(args):
     # Execute command:
     # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
     gr.orchestrator.expire(
-        doc_type       = args.doc_type,
-        older_than     = args.older_than,
-        limit_per_type = args.limit_per_type,
-        count_only = c,
-        verbose    = v
+        include_nodes    = include_nodes,
+        include_edges    = include_edges,
+        include_fields   = include_fields,
+        include_scores   = include_scores,
+        object_types     = object_types,
+        older_than       = args.older_than,
+        limit_per_type   = args.limit_per_type,
+        count_only       = c,
+        verbose          = v
     )
 
     # Print footers
@@ -255,8 +293,13 @@ def cmd_airflow_refresh(args):
 
     # Fetch context objects
     registry = args.ctx.registry
+    glbcfg = args.ctx.global_config
     r = args.refresh_checksums
     v = args.verbose
+
+    # Validate safety limits
+    if not _validate_limit_per_type(args.limit_per_type, glbcfg.limit_per_type_max):
+        return
 
     # Print headers
     print("🖥️  ~ Graph Registry CLI. Set 'has_expired' flag to 1 for objects based on date when they were last cached.")

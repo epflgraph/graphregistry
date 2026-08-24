@@ -9,8 +9,8 @@ from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeF
 class TestEdgeField:
     def test_edge_field_from_json(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         field = EdgeField.from_json(
@@ -24,8 +24,8 @@ class TestEdgeField:
 class TestEdge:
     def test_edge_json_roundtrip(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         field = EdgeField(
@@ -41,8 +41,8 @@ class TestEdge:
 class TestEdgeList:
     def test_edge_list_from_list(self) -> None:
         key = EdgeKey(
-            from_institution_id="EPFL", from_object_type="Course", from_object_id="CS-433",
-            to_institution_id="EPFL", to_object_type="Person", to_object_id="p-1",
+            from_object_type="Course", from_object_id="CS-433",
+            to_object_type="Person", to_object_id="p-1",
             context="taught_by",
         )
         edge_list = EdgeList(item_list=[Edge(key=key)])
