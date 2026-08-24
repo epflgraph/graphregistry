@@ -1,0 +1,37 @@
+{
+    "scored-edge-tuples" : {
+        "education" : [
+            ["Course"   , "Course"  ],
+            ["Course"   , "Lecture" ],
+            ["Course"   , "MOOC"    ],
+            ["Exercise" , "Exercise"],
+            ["Lecture"  , "Lecture" ],
+            ["Lecture"  , "MOOC"    ],
+            ["Lecture"  , "Widget"  ],
+            ["MOOC"     , "MOOC"    ],
+            ["Notebook" , "Notebook"],
+            ["Widget"   , "Widget"  ]
+        ],
+        "research" : [
+            ["Person"      , "Person"     ],
+            ["Person"      , "Publication"],
+            ["Person"      , "Startup"    ],
+            ["Person"      , "Unit"       ],
+            ["Publication" , "Publication"],
+            ["Publication" , "Startup"    ],
+            ["Publication" , "Unit"       ],
+            ["Startup"     , "Startup"    ],
+            ["Startup"     , "Unit"       ],
+            ["Unit"        , "Unit"       ]
+        ]
+    },
+    "mixed-scoring-tuples" : [
+        ["Category" , "Category" ],
+        ["Course"   , "Person"   ],
+        ["Exercise" , "Person"   ],
+        ["MOOC"     , "Person"   ],
+        ["Notebook" , "Person"   ],
+        ["Person"   , "Unit"     ],
+        ["Unit"     , "Unit"     ]
+    ]
+}

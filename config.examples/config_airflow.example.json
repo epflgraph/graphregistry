@@ -1,0 +1,31 @@
+{
+    "nodes": [
+        ["Category"       , false, false],
+        ["Concept"        , false, false],
+        ["Curated area"   , false, false],
+        ["Course"         , false, false],
+        ["Exercise"       , true, false],
+        ["Lecture"        , false, false],
+        ["MOOC"           , false, false],
+        ["Notebook"       , true, false],
+        ["Person"         , false, false],
+        ["Publication"    , false, false],
+        ["Startup"        , false, false],
+        ["Unit"           , false, false],
+        ["Widget"         , false, false]
+    ],
+    "edges": [
+        ["Category"    , "Category"       , false],
+        ["Concept"     , "Category"       , false],
+        ["Course"      , "Person"         , false],
+        ["Exercise"    , "Person"         , true],
+        ["Lecture"     , "Course"         , false],
+        ["Lecture"     , "MOOC"           , false],
+        ["MOOC"        , "Person"         , false],
+        ["Notebook"    , "Person"         , true],
+        ["Person"      , "Unit"           , false],
+        ["Publication" , "Person"         , false],
+        ["Unit"        , "Unit"           , false],
+        ["Widget"      , "Lecture"        , false]
+    ]
+}

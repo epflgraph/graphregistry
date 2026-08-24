@@ -1,0 +1,23 @@
+#=======================#
+# GraphES Configuration #
+#=======================#
+
+# Index environments
+environments:
+
+  # Environment: XaaS > coresrv
+  xaas_coresrv_env:
+    host_address: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Environment: XaaS > prod
+  xaas_prod_env:
+    host_address: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the command line
+default_env: xaas_coresrv_env

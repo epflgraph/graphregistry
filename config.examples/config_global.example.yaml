@@ -1,0 +1,75 @@
+graphai:
+  url: "https://graphai.example.com"
+  user: USERNAME
+  password: PASSWORD
+  client_config_file: config/config_graphai.json
+
+genai:
+  llm_api_key: API_KEY
+  llm_base_url: "https://api.example.com/v1"
+  llm_model: "moonshotai/Kimi-K2.7-Code"
+
+mysql:
+
+  data_paths:
+    formulas: "/path/to/database/formulas/"
+    exports:  "/path/to/data/exports/"
+    patches:  "/path/to/data/patches/"
+
+  db_schema_names:
+    ontology:                graph_ontology
+    registry:                graph_registry
+    lectures:                graph_lectures
+    airflow:                 graph_airflow
+    traversals:              graph_traversals
+    elasticsearch_cache:     elasticsearch_cache
+    graph_cache_test:        graph_cache
+    graph_cache_prod:        graph_cache_prod
+    graphsearch_test:        graphsearch_test
+    graphsearch_prod:        graphsearch_prod
+    graphsearch_prod_mirror: graphsearch_prod_mirror
+    graphai_cache_api:       graphai_cache_api
+
+  # Execution mode [dev, prod]
+  # In 'dev' mode, data is written to separate tables with prefix "_1_DEV_"
+  mode: dev
+
+elasticsearch:
+
+  # Environment: test
+  test_env:
+    hostname: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Environment: prod
+  prod_env:
+    hostname: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Environment: XaaS > coresrv
+  xaas_coresrv_env:
+    hostname: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Environment: XaaS > prod
+  xaas_prod_env:
+    hostname: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  data_export_path: /path/to/data/es_exports
+  index_date: YYYY-MM-DD
+  index_file: YYYY-MM-DD/es_fullindex_YYYY-MM-DD.json.gz
+  index_names:
+    graphsearch_test: graphsearch_test_YYYY_MM_DD
+
+api:
+  title: "GraphRegistry API"
+  summary: "HTTP API for Graph data management."

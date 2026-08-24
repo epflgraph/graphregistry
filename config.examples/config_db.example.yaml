@@ -1,0 +1,45 @@
+#=======================#
+# GraphDB Configuration #
+#=======================#
+
+# MySQL client and dump binaries
+client_bin: /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb
+dump_bin:   /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb-dump
+
+# Default export path for database dumps
+export_path: /path/to/data/mysql_exports
+
+# Database environments
+environments:
+
+  # Environment: XaaS > coresrv
+  xaas_coresrv_env:
+    host_address: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      # mode: REQUIRED
+      verify_server_cert: true
+
+  # Environment: XaaS > prod
+  xaas_prod_env:
+    host_address: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      # mode: REQUIRED
+      verify_server_cert: true
+
+  # Environment: analytics
+  analyticsdb_env:
+    host_address: HOSTNAME
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the command line
+default_env: xaas_coresrv_env

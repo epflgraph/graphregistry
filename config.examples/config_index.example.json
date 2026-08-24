@@ -1,5 +1,39 @@
 {
-    "doc-types" : ["Category", "Concept", "Course", "Exercise", "Lecture", "MOOC", "Notebook", "Person", "Publication", "Specialisation", "Startup", "StudyPlan", "Unit", "Widget"],
+    "object-selection" : {
+        "nodes" : [
+            "Category",
+            "Concept",
+            "Course",
+            "Exercise",
+            "Lecture",
+            "MOOC",
+            "Notebook",
+            "Person",
+            "Publication",
+            "Specialisation",
+            "Startup",
+            "StudyPlan",
+            "Unit",
+            "Widget"
+        ],
+        "edges" : [
+            ["Concept"     , "Category"       , "ontology tree" ],
+            ["Category"    , "Category"       , "ontology tree" ],
+            ["Course"      , "Person"         , "teacher"       ],
+            ["Course"      , "StudyPlan"      , "coursebook"    ],
+            ["Course"      , "Specialisation" , "coursebook"    ],
+            ["Exercise"    , "Person"         , "authorship"    ],
+            ["Lecture"     , "Course"         , "part of"       ],
+            ["Lecture"     , "MOOC"           , "part of"       ],
+            ["MOOC"        , "Person"         , "teacher"       ],
+            ["Notebook"    , "Person"         , "authorship"    ],
+            ["Person"      , "Unit"           , "accreditation" ],
+            ["Publication" , "Person"         , "authorship"    ],
+            ["Slide"       , "Lecture"        , "part of"       ],
+            ["Unit"        , "Unit"           , "affiliation"   ],
+            ["Widget"      , "Lecture"        , "part of"       ]
+        ]
+    },
     "options" : {
         "docs" : {
             "Course" : {"include_code_in_name" : 1},
@@ -12,7 +46,7 @@
             "Course"      : ["latest_academic_year"],
             "Exercise"    : ["breadcrumb_ontology", "difficulty", "question_type", ["en", "pdf_document_url"], ["fr", "pdf_document_url"]],
             "Lecture"     : ["video_stream_url", "video_duration", "is_restricted", ["en", "srt_subtitles"], ["fr", "srt_subtitles"]],
-            "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url"],
+            "MOOC"        : ["domain", "language", "level", "platform", "thumbnail_image_url", "courses_info"],
             "Notebook"    : ["notebook_type", "language", "repository_id", "html_document_url"],
             "Person"      : ["is_at_epfl", "gender"],
             "Publication" : ["year", "published_in", "publisher", "publication_id_v1"],
@@ -29,7 +63,10 @@
                 },
                 "Lecture"     : {
                     "obj"   : ["video_stream_url", "video_duration", "is_restricted"],
-                    "order" : [["is_restricted", "DESC"]]
+                    "order" : [["is_restricted", "ASC"]]
+                },
+                 "MOOC"     : {
+                    "obj"   : ["domain", "language", "level", "platform", "thumbnail_image_url"]
                 },
                 "Person"      : {
                     "order" : [["is_at_epfl", "DESC"]]
@@ -53,24 +90,33 @@
                 "Course" : {
                     "Lecture" : {
                         "obj2obj" : ["sort_number_per_academic_year"],
-                        "order"   : [["is_restricted", "DESC"]]
+                        "order"   : [["is_restricted", "ASC"]]
                     },
                     "Person" : {
                         "obj2obj" : ["latest_teaching_assignment_year"],
                         "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
                     }
                 },
+                "Exercise" : {
+                    "Person" : {}
+                },
                 "Lecture" : {
                     "Course" : {
                         "obj2obj" : ["sort_number_per_academic_year"],
                         "order"   : [["latest_academic_year", "DESC"]]
                     },
-                    "MOOC" : {},
+                    "MOOC" : {
+                        "obj2obj" : ["sort_number_per_data_package_id"],
+                        "order"   : []
+                    },
                     "Widget" : {}
                 },
                 "MOOC" : {
                     "Person" : {},
-                    "Lecture" : {}
+                    "Lecture" : {
+                        "obj2obj" : ["sort_number_per_data_package_id"],
+                        "order"   : []
+                    }
                 },
                 "Notebook" : {
                     "Person" : {}
@@ -80,6 +126,7 @@
                         "obj2obj" : ["latest_teaching_assignment_year"],
                         "order"   : [["latest_teaching_assignment_year", "DESC"]]
                     },
+                    "Exercise" : {},
                     "MOOC" : {},
                     "Notebook" : {},
                     "Publication" : {},
@@ -169,6 +216,8 @@
         "latest_teaching_assignment_year" : "char",
         "is_active_affiliation" : "bool",
         "current_position_rank" : "bool",
+        "sort_number_per_data_package_id" : "char",
+        "courses_info" : "text",
         "breadcrumb_ontology" : "text",
         "difficulty" : "char",
         "question_type" : "char",
