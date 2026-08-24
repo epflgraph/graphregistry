@@ -2,21 +2,17 @@
 from __future__ import annotations
 import os
 from dataclasses import dataclass
-from fastapi import APIRouter, Depends
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
-from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
-from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
-from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
+from typing import Callable
+from fastapi import APIRouter, Depends, Request
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.application.policies.pol_graphunits import GraphUnitsValidator
+from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import APIConfig, GlobalConfig
-from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
-from graphregistry.application.ports.repositories.prt_node import NodeRepository
-from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList, NodeKey, NodeKeyList
 from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.application.factories.fct_node import NodeFactory
+from graphregistry.entrypoints.dependencies import build_uow_factory
 from graphregistry.entrypoints.mappers import SpecMapper
 import graphregistry.entrypoints.api.schemas as apispecs
 
@@ -43,55 +39,20 @@ def _get_api_env() -> str:
     """
     return os.getenv(API_ENV_VAR, DEFAULT_API_ENV)
 
-def _make_db() -> GraphDB:
-    """
-    Build the GraphDB client.
-    """
-    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
-    from graphregistry.common.paths import CONFIG_DB_PATH
-    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-    return GraphDB(config=db_config)
 
-def _make_schema_resolver() -> DefaultSchemaResolver:
-    """
-    Build the default schema resolver for the configured API environment.
-    """
-    env = _get_api_env()
+def _get_uow_factory(request: Request) -> Callable[[], UnitOfWork]:
+    """Build a UnitOfWork factory backed by the process-scoped GraphDB client."""
+    return build_uow_factory(db=request.app.state.db, engine_name=_get_api_env())
 
-    global_config = GlobalConfig()
-    from graphregistry.common.paths import CONFIG_DB_PATH
-    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
 
-    if env not in db_config.environments:
-        available_envs = ", ".join(db_config.environments.keys())
-        raise ValueError(
-            f"Unknown API env '{env}'. "
-            f"Set {API_ENV_VAR} to one of: {available_envs}"
-        )
+def _make_node_ops(uow_factory: Callable[[], UnitOfWork]) -> NodeOperations:
+    """Build node operations wired to a UnitOfWork factory."""
+    return NodeOperations(uow_factory=uow_factory)
 
-    return DefaultSchemaResolver(
-        engine_name=env,
-        glbcfg=global_config,
-    )
 
-def _make_node_repo(db: GraphDB | None = None) -> NodeRepository:
-    """
-    Build node repository.
-    """
-    return MySQLNodeRepository(
-        db=db if db is not None else _make_db(),
-        schema_resolver=_make_schema_resolver(),
-    )
-
-def _make_edge_repo(db: GraphDB | None = None) -> EdgeRepository:
-    """
-    Build edge repository.
-    """
-    return MySQLEdgeRepository(
-        db=db if db is not None else _make_db(),
-        schema_resolver=_make_schema_resolver(),
-    )
+def _make_edge_ops(uow_factory: Callable[[], UnitOfWork]) -> EdgeOperations:
+    """Build edge operations wired to a UnitOfWork factory."""
+    return EdgeOperations(uow_factory=uow_factory)
 
 #-------------------------#
 # API config / validation #
@@ -120,25 +81,23 @@ def get_graph_units_validator() -> GraphUnitsValidator:
 # FastAPI dependencies #
 #======================#
 
-def get_node_ops() -> NodeOperations:
+def get_node_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> NodeOperations:
     """
     Build NodeOperations for one request.
 
-    This function is registered as a FastAPI dependency so tests can override
-    it with a fake repository via `app.dependency_overrides`.
+    Tests can override `_get_uow_factory` via `app.dependency_overrides` to
+    inject a fake UnitOfWork.
     """
-    node_repo: NodeRepository = _make_node_repo()
-    return NodeOperations(repo=node_repo)
+    return _make_node_ops(uow_factory)
 
-def get_edge_ops() -> EdgeOperations:
+def get_edge_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> EdgeOperations:
     """
     Build EdgeOperations for one request.
 
-    This function is registered as a FastAPI dependency so tests can override
-    it with a fake repository via `app.dependency_overrides`.
+    Tests can override `_get_uow_factory` via `app.dependency_overrides` to
+    inject a fake UnitOfWork.
     """
-    edge_repo: EdgeRepository = _make_edge_repo()
-    return EdgeOperations(repo=edge_repo)
+    return _make_edge_ops(uow_factory)
 
 def get_node_factory() -> NodeFactory:
     """
@@ -150,26 +109,21 @@ def get_node_factory() -> NodeFactory:
 @dataclass(frozen=True)
 class RegistryOps:
     """
-    Operations that share one database client.
+    Operations that share one UnitOfWork.
 
     Useful for operations that need to coordinate node and edge persistence
-    in the same request.
+    atomically in the same request.
     """
     node_ops: NodeOperations
     edge_ops: EdgeOperations
 
-def get_registry_ops() -> RegistryOps:
+def get_registry_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> RegistryOps:
     """
-    Build node and edge operations sharing the same GraphDB client.
+    Build node and edge operations sharing the same UnitOfWork factory.
     """
-    db = _make_db()
-
-    node_repo: NodeRepository = _make_node_repo(db=db)
-    edge_repo: EdgeRepository = _make_edge_repo(db=db)
-
     return RegistryOps(
-        node_ops=NodeOperations(repo=node_repo),
-        edge_ops=EdgeOperations(repo=edge_repo),
+        node_ops=_make_node_ops(uow_factory),
+        edge_ops=_make_edge_ops(uow_factory),
     )
 
 #==================#

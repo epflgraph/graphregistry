@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -14,7 +15,14 @@ from graphregistry.entrypoints.api.router import router
 # import global config
 from graphregistry.common.config import APIConfig, GlobalConfig
 from graphregistry.common.version import REGISTRY_API_VERSION
-from graphregistry.domain.exceptions import DisallowedTypeError
+from graphregistry.domain.exceptions import (
+    ConnectionExhaustedError,
+    DisallowedTypeError,
+    DuplicateKeyError,
+    LockWaitTimeoutError,
+    PersistenceError,
+)
+from graphregistry.entrypoints.dependencies import build_db
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
@@ -79,6 +87,15 @@ def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str |
     return messages[0] if len(messages) == 1 else messages
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize process-scoped resources and clean them up on shutdown."""
+    app.state.db = build_db()
+    yield
+    # The GraphDB engine pool is cleaned up automatically when the process
+    # exits. Explicit disposal can be added here later if needed.
+
+
 # Create the FastAPI application
 def create_app() -> FastAPI:
 
@@ -94,6 +111,7 @@ def create_app() -> FastAPI:
         docs_url    = "/docs",
         redoc_url   = "/redoc",
         openapi_url = "/openapi.json",
+        lifespan    = lifespan,
     )
 
     # Include the API router which contains all the endpoint definitions
@@ -217,6 +235,77 @@ def create_app() -> FastAPI:
             status_code=400,
             content={
                 "detail": str(exc),
+            },
+        )
+
+    @app.exception_handler(ConnectionExhaustedError)
+    async def connection_exhausted_exception_handler(
+        request: Request, exc: ConnectionExhaustedError
+    ) -> JSONResponse:
+        """Handle database connection exhaustion (MySQL 1040)."""
+        logger.warning(
+            "Database connection exhausted: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "10"},
+            content={
+                "detail": "Database is temporarily overloaded. Please retry after a short delay.",
+            },
+        )
+
+    @app.exception_handler(LockWaitTimeoutError)
+    async def lock_wait_timeout_exception_handler(
+        request: Request, exc: LockWaitTimeoutError
+    ) -> JSONResponse:
+        """Handle lock wait timeouts (MySQL 1205)."""
+        logger.warning(
+            "Lock wait timeout in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code=503,
+            headers={"Retry-After": "5"},
+            content={
+                "detail": "Database lock wait timeout. Please retry after a short delay.",
+            },
+        )
+
+    @app.exception_handler(DuplicateKeyError)
+    async def duplicate_key_exception_handler(request: Request, exc: DuplicateKeyError) -> JSONResponse:
+        """Handle duplicate key violations (MySQL 1062)."""
+        logger.warning(
+            "Duplicate key in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code=409,
+            content={
+                "detail": f"Duplicate key: {exc}",
+            },
+        )
+
+    @app.exception_handler(PersistenceError)
+    async def persistence_error_exception_handler(request: Request, exc: PersistenceError) -> JSONResponse:
+        """Handle generic persistence errors that were not matched above."""
+        logger.error(
+            "Persistence error in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": f"Persistence error: {exc}",
             },
         )
 

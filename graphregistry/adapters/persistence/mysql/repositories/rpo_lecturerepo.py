@@ -1,32 +1,141 @@
 # graphregistry/adapters/persistence/mysql/repositories/rpo_lecturerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
+
 from graphregistry.adapters.persistence.mysql.mappers.map_lecture import MySQLLectureEnrichmentTaskMapper
-from graphregistry.common.dbstruct import sql_queries_paths, resolve_sql_query
-from graphregistry.common.logger import GraphLogger
-from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
+from graphregistry.adapters.persistence.mysql.repositories._helpers import qualified_table, upsert_rows
+from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
+from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.application.ports.repositories.prt_lecture import LectureRepository
 from graphregistry.application.ports.repositories.prt_lecture_processing import LectureProcessingStatePort
 from graphregistry.application.ports.repositories.prt_node import NodeRepository
+from graphregistry.common.dbstruct import resolve_sql_query, sql_queries_paths
+from graphregistry.common.logger import GraphLogger
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
+from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.types import ActionSet
-from graphregistry.adapters.persistence.mysql.repositories.schemas import UPSERT_RETRIES, UPSERT_RETRY_DELAY
 
-# If TYPE_CHECKING is True, these imports are only for type checking and will not be executed at runtime
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
+    from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
     from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 
-# Class definition
-class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
 
-    # Method: Initialize the lecture repository with database connection,
-    # schema resolver, and a node repository for node-level persistence.
-    def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver", node_repo: NodeRepository) -> None:
-        self.db = db
-        self.schema_resolver = schema_resolver
-        self.node_repo = node_repo
+class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
+    """MySQL adapter for lecture processing and enrichment persistence.
+
+    The repository is bound to a UnitOfWork when used inside application
+    services. In that mode it also creates a node repository that shares the
+    same UnitOfWork, so lecture enrichment updates are atomic with the
+    underlying node updates.
+
+    For backward compatibility it can also be constructed directly with a
+    GraphDB client, schema resolver, and node repository.
+    """
+
+    def __init__(
+        self,
+        db: "GraphDB | None" = None,
+        schema_resolver: "SchemaResolver | None" = None,
+        node_repo: NodeRepository | None = None,
+        *,
+        uow: "MySQLUnitOfWork | None" = None,
+    ) -> None:
+        if uow is not None and (db is not None or schema_resolver is not None or node_repo is not None):
+            raise ValueError("Provide either uow= or (db=, schema_resolver=, node_repo=), not both.")
+
+        if uow is not None:
+            self._uow = uow
+            self.db = uow.db
+            self.schema_resolver = uow.schema_resolver
+            self.node_repo: NodeRepository = MySQLNodeRepository(uow=uow)
+        elif db is not None and schema_resolver is not None and node_repo is not None:
+            self._uow = None
+            self.db = db
+            self.schema_resolver = schema_resolver
+            self.node_repo = node_repo
+        else:
+            raise ValueError("MySQLLectureRepository requires either uow= or (db=, schema_resolver=, node_repo=).")
+
         self.msg = GraphLogger()
+
+    # ---------------------------------------------------------------------- #
+    # Internal helpers                                                       #
+    # ---------------------------------------------------------------------- #
+
+    def _session(self, engine_name: str) -> MySQLSession:
+        """Return a session for engine_name, creating a standalone one if needed."""
+        if self._uow is not None:
+            return self._uow.get_session(engine_name)
+
+        session = MySQLSession(self.db, engine_name)
+        session.begin()
+        return session
+
+    def _close_standalone_session(self, session: MySQLSession) -> None:
+        """Close a session created outside a UnitOfWork."""
+        if self._uow is None:
+            session.close()
+
+    def _execute_read(
+        self,
+        engine_name: str,
+        query: str,
+        params: dict[str, Any] | None = None,
+    ) -> list[tuple[Any, ...]]:
+        """Execute a read query."""
+        session = self._session(engine_name)
+        try:
+            return session.execute(query, params)
+        finally:
+            self._close_standalone_session(session)
+
+    @staticmethod
+    def _qt(schema_name: str, table_name: str) -> str:
+        return qualified_table(schema_name, table_name)
+
+    @staticmethod
+    def _upsert_single_row(
+        session: MySQLSession,
+        table_path: str,
+        key_column_names: list[str],
+        key_column_values: list[Any],
+        upd_column_names: list[str],
+        upd_column_values: list[Any],
+    ) -> None:
+        """Upsert a single row using the shared batch upsert helper."""
+        row = dict(zip(key_column_names, key_column_values))
+        row.update(dict(zip(upd_column_names, upd_column_values)))
+        upsert_rows(session, table_path, key_column_names, upd_column_names, [row])
+
+    def _commit_single_row(
+        self,
+        engine_name: str,
+        table_path: str,
+        key_column_names: list[str],
+        key_column_values: list[Any],
+        upd_column_names: list[str],
+        upd_column_values: list[Any],
+    ) -> None:
+        """Open a session, upsert one row, and commit if running standalone."""
+        session = self._session(engine_name)
+        try:
+            self._upsert_single_row(
+                session=session,
+                table_path=table_path,
+                key_column_names=key_column_names,
+                key_column_values=key_column_values,
+                upd_column_names=upd_column_names,
+                upd_column_values=upd_column_values,
+            )
+            if self._uow is None:
+                session.commit()
+        except Exception:
+            if self._uow is None:
+                session.rollback()
+            raise
+        finally:
+            self._close_standalone_session(session)
 
     #===============================#
     # Content processing operations #
@@ -46,7 +155,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        undownloaded_lectures = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        undownloaded_lectures = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract lecture ids from query result and convert them into NodeKey objects
         undownloaded_lecture_keys = NodeKeyList(
@@ -78,7 +187,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        file_url_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        file_url_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract file URL from query result
         if not file_url_result:
@@ -97,18 +206,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
-        # Resolve placeholders in template query
-        self.db.execute_upsert_row(
-            engine_name       = engine_name,
-            schema_name       = schema_name,
-            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["object_type", "object_id"],
-            key_column_values = [lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['video_download_task_id'],
-            upd_column_values = [task_id],
-            actions           = ('commit',),
-            max_retries       = UPSERT_RETRIES,
-            retry_delay       = UPSERT_RETRY_DELAY,
+        # Persist token row
+        self._commit_single_row(
+            engine_name=engine_name,
+            table_path=self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
+            key_column_names=["object_type", "object_id"],
+            key_column_values=[lecture_key.object_type, lecture_key.object_id],
+            upd_column_names=["video_download_task_id"],
+            upd_column_values=[task_id],
         )
 
         # Print status message
@@ -131,7 +236,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        task_id_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        task_id_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract task ID from query result
         if not task_id_result:
@@ -158,7 +263,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        unfinished_video_tasks = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        unfinished_video_tasks = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract lecture ids from query result and convert them into NodeKey objects
         unfinished_video_task_keys = NodeKeyList(
@@ -177,18 +282,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
-        # Resolve placeholders in template query
-        self.db.execute_upsert_row(
-            engine_name       = engine_name,
-            schema_name       = schema_name,
-            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["object_type", "object_id"],
-            key_column_values = [lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['video_token'],
-            upd_column_values = [video_token],
-            actions           = ('commit',),
-            max_retries       = UPSERT_RETRIES,
-            retry_delay       = UPSERT_RETRY_DELAY,
+        # Persist token row
+        self._commit_single_row(
+            engine_name=engine_name,
+            table_path=self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
+            key_column_names=["object_type", "object_id"],
+            key_column_values=[lecture_key.object_type, lecture_key.object_id],
+            upd_column_names=["video_token"],
+            upd_column_values=[video_token],
         )
 
         # Print status message
@@ -211,7 +312,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        video_token_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        video_token_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract video token from query result
         if not video_token_result:
@@ -242,7 +343,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        lectures_with_unextracted_audio = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        lectures_with_unextracted_audio = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract lecture ids from query result and convert them into NodeKey objects
         lecture_keys_with_unextracted_audio = NodeKeyList(
@@ -261,18 +362,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
-        # Resolve placeholders in template query
-        self.db.execute_upsert_row(
-            engine_name       = engine_name,
-            schema_name       = schema_name,
-            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["object_type", "object_id"],
-            key_column_values = [lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['audio_extraction_task_id'],
-            upd_column_values = [task_id],
-            actions           = ('commit',),
-            max_retries       = UPSERT_RETRIES,
-            retry_delay       = UPSERT_RETRY_DELAY,
+        # Persist token row
+        self._commit_single_row(
+            engine_name=engine_name,
+            table_path=self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
+            key_column_names=["object_type", "object_id"],
+            key_column_values=[lecture_key.object_type, lecture_key.object_id],
+            upd_column_names=["audio_extraction_task_id"],
+            upd_column_values=[task_id],
         )
 
         # Print status message
@@ -295,7 +392,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        task_id_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        task_id_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract task ID from query result
         if not task_id_result:
@@ -322,7 +419,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        unfinished_audio_tasks = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        unfinished_audio_tasks = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract lecture ids from query result and convert them into NodeKey objects
         unfinished_audio_task_keys = NodeKeyList(
@@ -341,18 +438,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
-        # Resolve placeholders in template query
-        self.db.execute_upsert_row(
-            engine_name       = engine_name,
-            schema_name       = schema_name,
-            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["object_type", "object_id"],
-            key_column_values = [lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['audio_token'],
-            upd_column_values = [audio_token],
-            actions           = ('commit',),
-            max_retries       = UPSERT_RETRIES,
-            retry_delay       = UPSERT_RETRY_DELAY,
+        # Persist token row
+        self._commit_single_row(
+            engine_name=engine_name,
+            table_path=self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
+            key_column_names=["object_type", "object_id"],
+            key_column_values=[lecture_key.object_type, lecture_key.object_id],
+            upd_column_names=["audio_token"],
+            upd_column_values=[audio_token],
         )
 
         # Print status message
@@ -375,7 +468,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        audio_token_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        audio_token_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract audio token from query result
         if not audio_token_result:
@@ -406,7 +499,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        lectures_with_undetected_slides = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        lectures_with_undetected_slides = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract lecture ids from query result and convert them into NodeKey objects
         lecture_keys_with_undetected_slides = NodeKeyList(
@@ -425,18 +518,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Get schema name for Lecture object type using the schema resolver
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
-        # Resolve placeholders in template query
-        self.db.execute_upsert_row(
-            engine_name       = engine_name,
-            schema_name       = schema_name,
-            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["object_type", "object_id"],
-            key_column_values = [lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['slide_detection_task_id'],
-            upd_column_values = [task_id],
-            actions           = ('commit',),
-            max_retries       = UPSERT_RETRIES,
-            retry_delay       = UPSERT_RETRY_DELAY,
+        # Persist token row
+        self._commit_single_row(
+            engine_name=engine_name,
+            table_path=self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
+            key_column_names=["object_type", "object_id"],
+            key_column_values=[lecture_key.object_type, lecture_key.object_id],
+            upd_column_names=["slide_detection_task_id"],
+            upd_column_values=[task_id],
         )
 
         # Print status message
@@ -459,7 +548,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        task_id_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        task_id_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract task ID from query result
         if not task_id_result:
@@ -486,7 +575,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        unfinished_slide_tasks = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        unfinished_slide_tasks = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Extract lecture ids from query result and convert them into NodeKey objects
         unfinished_slide_task_keys = NodeKeyList(
@@ -508,48 +597,51 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Get video token
         video_token = self.get_video_token(lecture_key)
 
-        # Loop over slide tokens
+        # Build slide token rows for a single batched upsert
+        slide_rows: list[dict[str, Any]] = []
+        slide_keys: list[NodeKey] = []
         for slide_num, slide_token in slide_num_and_tokens:
-
-            # Generate slide id from lecture id and slide number
             slide_id = f"{lecture_key.object_id}-{slide_num:04d}"
+            slide_key = NodeKey(object_type="Slide", object_id=slide_id)
+            slide_keys.append(slide_key)
+            slide_rows.append({
+                "object_type": slide_key.object_type,
+                "object_id": slide_key.object_id,
+                "video_token": video_token,
+                "image_token": slide_token,
+            })
 
-            # Create slide key
-            slide_key = NodeKey(
-                object_type    = "Slide",
-                object_id      = slide_id
+        session = self._session(engine_name)
+        try:
+            if slide_rows:
+                upsert_rows(
+                    session=session,
+                    table_path=self._qt(schema_name, "Operations_N_Slide_T_ProcessingTokens"),
+                    key_column_names=["object_type", "object_id"],
+                    upd_column_names=["video_token", "image_token"],
+                    rows=slide_rows,
+                )
+
+            self._upsert_single_row(
+                session=session,
+                table_path=self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
+                key_column_names=["object_type", "object_id"],
+                key_column_values=[lecture_key.object_type, lecture_key.object_id],
+                upd_column_names=["slides_detected"],
+                upd_column_values=[True],
             )
 
-            # Resolve placeholders in template query
-            self.db.execute_upsert_row(
-                engine_name       = engine_name,
-                schema_name       = schema_name,
-                table_name        = "Operations_N_Slide_T_ProcessingTokens",
-                key_column_names  = ["object_type", "object_id"],
-                key_column_values = [slide_key.object_type, slide_key.object_id],
-                upd_column_names  = ['video_token', 'image_token'],
-                upd_column_values = [video_token, slide_token],
-                actions           = ('commit',),
-                max_retries       = UPSERT_RETRIES,
-                retry_delay       = UPSERT_RETRY_DELAY,
-            )
+            if self._uow is None:
+                session.commit()
+        except Exception:
+            if self._uow is None:
+                session.rollback()
+            raise
+        finally:
+            self._close_standalone_session(session)
 
-            # Print status message
+        for slide_key in slide_keys:
             self.msg.airflow_saved(slide_key)
-
-        # Set 'slides_detected' flag to True for the lecture
-        self.db.execute_upsert_row(
-            engine_name       = engine_name,
-            schema_name       = schema_name,
-            table_name        = "Operations_N_Lecture_T_ProcessingTokens",
-            key_column_names  = ["object_type", "object_id"],
-            key_column_values = [lecture_key.object_type, lecture_key.object_id],
-            upd_column_names  = ['slides_detected'],
-            upd_column_values = [True],
-            actions           = ('commit',),
-            max_retries       = UPSERT_RETRIES,
-            retry_delay       = UPSERT_RETRY_DELAY,
-        )
 
         # Print status message
         self.msg.airflow_saved(lecture_key)
@@ -571,7 +663,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Note: the result is a list of slide keys
-        slide_tokens_result = cast(list[tuple[str]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        slide_tokens_result = cast(list[tuple[str]], self._execute_read(engine_name=engine_name, query=sql_query))
         
         # Extract slide tokens from query result
         if not slide_tokens_result:
@@ -612,7 +704,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         )
 
         # Execute query and fetch result
-        enrich_data = cast(list[tuple[Any, ...]], self.db.execute_query(engine_name=engine_name, query=sql_query))
+        enrich_data = cast(list[tuple[Any, ...]], self._execute_read(engine_name=engine_name, query=sql_query))
 
         # Any rows returned?
         if not enrich_data:

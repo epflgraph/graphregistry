@@ -32,9 +32,9 @@ class CLIContext:
 
     @cached_property
     def db(self) -> "GraphDB":
-        from graphdb.core.graphdb import GraphDB
+        from graphregistry.entrypoints.dependencies import build_db
 
-        return GraphDB(config=self.db_config)
+        return build_db(config=self.db_config)
 
     @cached_property
     def es(self) -> "GraphES":

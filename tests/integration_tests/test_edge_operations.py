@@ -14,7 +14,7 @@ from graphdb.core.graphdb import GraphDB
 from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import EdgeKey
-from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
+from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList, EdgeList
 from tests.helpers.db_checks import db_field_map, field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture
 
@@ -129,3 +129,56 @@ def test_mysql_edge_repository_real_crud_cycle(
     finally:
         if real_repo.exists(edge_key):
             real_repo.delete(edge_key, actions=("eval", "commit"))
+
+
+@pytest.mark.integration
+def test_mysql_edge_repository_real_batch_save_cycle(
+    real_repo: MySQLEdgeRepository,
+    sample_data: dict[str, Any],
+) -> None:
+    """Verify that save_many persists and reloads multiple edges atomically."""
+    edges: list[Edge] = []
+    keys: list[EdgeKey] = []
+    for i in range(3):
+        key = EdgeKey(
+            from_object_type=sample_data["from_object_type"],
+            from_object_id=f"{sample_data['from_object_id']}-BATCH-{i}",
+            to_object_type=sample_data["to_object_type"],
+            to_object_id=f"{sample_data['to_object_id']}-BATCH-{i}",
+            context=sample_data["context"],
+        )
+        keys.append(key)
+        edges.append(Edge(
+            key=key,
+            field_list=EdgeFieldList(item_list=[
+                EdgeField(
+                    key=EdgeFieldKey(key=key, field_language="en", field_name="weight"),
+                    field_value=str(i),
+                ),
+            ]),
+        ))
+
+    for key in keys:
+        if real_repo.exists(key):
+            real_repo.delete(key, actions=("commit",))
+
+    try:
+        saved = real_repo.save_many(EdgeList(item_list=edges), actions=("commit",))
+        assert len(saved.item_list) == 3
+
+        for key in keys:
+            assert real_repo.exists(key) is True
+            loaded = real_repo.get(key)
+            assert loaded is not None
+            assert loaded.key == key
+
+        deleted = real_repo.delete_many(keys, actions=("commit",))
+        assert all(result is True for result in deleted)
+
+        for key in keys:
+            assert real_repo.exists(key) is False
+
+    finally:
+        for key in keys:
+            if real_repo.exists(key):
+                real_repo.delete(key, actions=("commit",))

@@ -1,107 +1,161 @@
 # graphregistry/application/operations/ops_node.py
 from __future__ import annotations
-from dataclasses import dataclass
-from graphregistry.domain.types import ActionSet
+from typing import Any, Callable
+
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.ports.repositories.prt_node import NodeRepository
+from graphregistry.application.ports.unit_of_work import UnitOfWork
+from graphregistry.application.resilience import retry_on_transient_db_error
+from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
-from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
-from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
-from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.types import ConceptMapType
+from graphregistry.domain.types import ActionSet
 
-# Class definition
+
+class _RepoAsNodeUoW(UnitOfWork):
+    """Backward-compat wrapper that exposes a single repository as a UoW."""
+
+    def __init__(self, repo: NodeRepository) -> None:
+        self._repo = repo
+
+    @property
+    def nodes(self) -> NodeRepository:
+        return self._repo
+
+    @property
+    def edges(self) -> Any:
+        raise NotImplementedError("Edges are not available in this backward-compat wrapper.")
+
+    def commit(self) -> None:
+        pass
+
+    def rollback(self) -> None:
+        pass
+
+    def __enter__(self) -> UnitOfWork:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object | None,
+    ) -> None:
+        pass
+
+
 class NodeOperations:
+    """Application service for node-related use cases.
 
-    # Class constructor
+    The service depends on a factory that produces a fresh UnitOfWork for each
+    business operation. This keeps transaction boundaries explicit and ensures
+    that every public method owns its own persistence scope.
+    """
+
     def __init__(
         self,
-        repo: NodeRepository,
+        uow_factory: Callable[[], UnitOfWork] | None = None,
         *,
+        repo: NodeRepository | None = None,
         concept_detection_gateway: ConceptDetectionGateway | None = None,
     ) -> None:
-        self.repo = repo
+        if repo is not None and uow_factory is not None:
+            raise ValueError("Provide either uow_factory= or repo=, not both.")
+        if repo is not None:
+            self.uow_factory = lambda: _RepoAsNodeUoW(repo)
+        elif uow_factory is not None:
+            self.uow_factory = uow_factory
+        else:
+            raise ValueError("NodeOperations requires either uow_factory= or repo=.")
         self.concept_detection_gateway = concept_detection_gateway
         self.msg = GraphLogger()
 
-    #----------------------------------------#
-    # Basic Node CRUD/persistence operations #
-    #----------------------------------------#
+    def _repo(self) -> NodeRepository:
+        """Return a repository from a new unit of work.
 
-    # Method: List nodes by object type and optional ID pattern, returning a list of (object_type, id, title) tuples
+        Callers are responsible for entering the UoW context.
+        """
+        return self.uow_factory().nodes
+
+    # ---------------------------------------- #
+    # Basic Node CRUD/persistence operations   #
+    # ---------------------------------------- #
+
     def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str]]:
-        return self.repo.list(object_type=object_type, id_pattern=id_pattern)
+        with self.uow_factory() as uow:
+            return uow.nodes.list(object_type=object_type, id_pattern=id_pattern)
 
-    # Method: Check if a node exists by its key
     def exists(self, key: NodeKey) -> bool:
-        return self.repo.exists(key)
+        with self.uow_factory() as uow:
+            return uow.nodes.exists(key)
 
-    # Method: Check if multiple nodes exist by their keys, returning a list of booleans corresponding to the input keys
     def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
-        return self.repo.exists_many(key_list)
+        with self.uow_factory() as uow:
+            return uow.nodes.exists_many(key_list)
 
-    # Method: Get a node by its key, returning the Node instance or None if not found
     def get(self, key: NodeKey) -> Node | None:
-        return self.repo.get(key)
+        with self.uow_factory() as uow:
+            return uow.nodes.get(key)
 
-    # Method: Get multiple nodes by their keys, returning a list of Node instances corresponding to the input keys (with None for keys that are not found)
     def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
-        return self.repo.get_many(key_list)
+        with self.uow_factory() as uow:
+            return uow.nodes.get_many(key_list)
 
-    # Method: Save a node, with optional actions to perform (default is ('commit',)), returning the saved Node instance
-    def save(self, node: Node, actions: ActionSet = ('commit',)) -> Node:
-        return self.repo.save(node, actions=actions)
+    @retry_on_transient_db_error()
+    def save(self, node: Node, actions: ActionSet = ("commit",)) -> Node:
+        with self.uow_factory() as uow:
+            return uow.nodes.save(node, actions=actions)
 
-    # Method: Save multiple nodes, with optional actions to perform (default is ('commit',)), returning a list of the saved Node instances
-    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ('commit',)) -> NodeList:
-        return self.repo.save_many(node_list, actions=actions)
+    @retry_on_transient_db_error()
+    def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("commit",)) -> NodeList:
+        with self.uow_factory() as uow:
+            return uow.nodes.save_many(node_list, actions=actions)
 
-    # Method: Delete a node by its key, with optional actions to perform (default is ('commit',)), returning True if the node was deleted, False if it was not found, or None if the deletion was not performed due to the actions
-    def delete(self, key: NodeKey, actions: ActionSet = ('commit',)) -> bool | None:
-        return self.repo.delete(key, actions=actions)
+    @retry_on_transient_db_error()
+    def delete(self, key: NodeKey, actions: ActionSet = ("commit",)) -> bool | None:
+        with self.uow_factory() as uow:
+            return uow.nodes.delete(key, actions=actions)
 
-    # Method: Delete multiple nodes by their keys, with optional actions to perform (default is ('commit',)), returning a list of booleans corresponding to the input keys indicating whether each node was deleted (True), not found (False), or not deleted due to the actions (None)
-    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
-        return self.repo.delete_many(key_list, actions=actions)
+    @retry_on_transient_db_error()
+    def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("commit",)) -> list[bool | None]:
+        with self.uow_factory() as uow:
+            return uow.nodes.delete_many(key_list, actions=actions)
 
-    #--------------------------------------------------#
-    # Node diagnostics and special get/save operations #
-    #--------------------------------------------------#
+    # -------------------------------------------------- #
+    # Node diagnostics and special get/save operations   #
+    # -------------------------------------------------- #
 
-    # Method: Check if a node has detected concepts by its key or Node instance
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+        with self.uow_factory() as uow:
+            return uow.nodes.get_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+
     def has_concepts(self, node_or_key: Node | NodeKey, map_type: ConceptMapType) -> bool:
         if isinstance(node_or_key, NodeKey):
-            node = self.repo.get(node_or_key)
+            with self.uow_factory() as uow:
+                node = uow.nodes.get(node_or_key)
             if not node:
                 raise ValueError(f"Node with key {node_or_key} not found")
         else:
             node = node_or_key
-        if   not getattr(node.concepts, map_type):
-            return False
-        elif not getattr(node.concepts, map_type).item_list:
-            return False
-        elif len(getattr(node.concepts, map_type).item_list) == 0:
-            return False
-        else:
-            return True
 
-    # Method: Get nodes that have no detected concepts, optionally filtered by object type and ID pattern
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
-        return self.repo.get_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+        if not getattr(node.concepts, map_type):
+            return False
+        if not getattr(node.concepts, map_type).item_list:
+            return False
+        if len(getattr(node.concepts, map_type).item_list) == 0:
+            return False
+        return True
 
-    #----------------------------------#
-    # Node field enrichment operations #
-    #----------------------------------#
+    # ---------------------------------- #
+    # Node field enrichment operations   #
+    # ---------------------------------- #
 
-    # Method: Enrich a node with detected concepts using the concept detection gateway, returning the enriched Node instance
     def enrich_with_concepts(self, nodes: Node | NodeList) -> Node | NodeList:
-
-        # Get gateway for concept detection
         gateway = self.concept_detection_gateway
         if gateway is None:
             raise ValueError("Concept detection gateway not configured")
 
-        # Perform concept detection using the gateway and populate the concepts.detected field
         if isinstance(nodes, NodeList):
             for node in nodes.item_list:
                 concepts = gateway.detect_concepts(f"{node.title}. {node.raw_text}" or "")
@@ -112,5 +166,16 @@ class NodeOperations:
             nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)
 
-        # Return the node(s) with detected concepts
         return nodes
+
+    # ---------------------------------- #
+    # Backward-compatible repo accessor  #
+    # ---------------------------------- #
+
+    @property
+    def repo(self) -> NodeRepository:
+        """Expose the node repository for callers that still expect it.
+
+        Deprecated: prefer to obtain repositories through a UnitOfWork.
+        """
+        return self._repo()

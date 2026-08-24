@@ -1,27 +1,30 @@
 # graphregistry/entrypoints/cli/dependencies.py
 """Centralized dependency builders for CLI handlers and scripts.
 
-These builders wire adapters (MySQL repositories, GraphAI/GenAI gateways) with
-application operations while keeping the wiring logic in one place.  They are
+These builders wire adapters (MySQL UnitOfWork, GraphAI/GenAI gateways) with
+application operations while keeping the wiring logic in one place. They are
 entrypoint concerns: they know about concrete adapters so the handlers and
 scripts don't have to repeat that knowledge.
 """
 from __future__ import annotations
+
+from typing import Callable
 
 from graphdb.core.graphdb import GraphDB
 
 from graphregistry.adapters.gateways.genai.gtw_lectureenrich import GenAILectureEnrichmentGateway
 from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
-from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_lecturerepo import MySQLLectureRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
-from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_lecture import LectureOperations
 from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
+from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import GlobalConfig
+from graphregistry.entrypoints.dependencies import build_uow_factory
 
 
 def build_schema_resolver(*, engine_name: str, global_config: GlobalConfig) -> DefaultSchemaResolver:
@@ -31,31 +34,22 @@ def build_schema_resolver(*, engine_name: str, global_config: GlobalConfig) -> D
 
 def build_node_operations(
     *,
-    db: GraphDB,
-    engine_name: str,
-    global_config: GlobalConfig,
+    uow_factory: Callable[[], UnitOfWork],
     concept_detection_gateway: ConceptDetectionGateway | None = None,
 ) -> NodeOperations:
-    """Build node operations wired to the MySQL repository."""
-    schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
-    repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
-
+    """Build node operations wired to a UnitOfWork factory."""
     return NodeOperations(
-        repo=repo,
+        uow_factory=uow_factory,
         concept_detection_gateway=concept_detection_gateway,
     )
 
 
 def build_edge_operations(
     *,
-    db: GraphDB,
-    engine_name: str,
-    global_config: GlobalConfig,
+    uow_factory: Callable[[], UnitOfWork],
 ) -> EdgeOperations:
-    """Build edge operations wired to the MySQL repository."""
-    schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
-    repo = MySQLEdgeRepository(db=db, schema_resolver=schema_resolver)
-    return EdgeOperations(repo=repo)
+    """Build edge operations wired to a UnitOfWork factory."""
+    return EdgeOperations(uow_factory=uow_factory)
 
 
 def build_lecture_operations(
@@ -103,19 +97,6 @@ def build_lecture_enrichment_operations(
     )
 
 
-def build_registry_operations(
-    *,
-    db: GraphDB,
-    engine_name: str,
-    global_config: GlobalConfig,
-) -> tuple[NodeOperations, EdgeOperations]:
-    """Build node and edge operations sharing one schema resolver."""
-    schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
-    node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
-    edge_repo = MySQLEdgeRepository(db=db, schema_resolver=schema_resolver)
-    return NodeOperations(repo=node_repo), EdgeOperations(repo=edge_repo)
-
-
 # ---------------------------------------------------------------------------
 # CLI-specific helpers that read from the standard argparse context.
 # ---------------------------------------------------------------------------
@@ -126,39 +107,34 @@ def build_node_operations_from_args(
     concept_detection_gateway: ConceptDetectionGateway | None = None,
 ) -> NodeOperations:
     """Build node operations from a CLI args namespace."""
+    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
     return build_node_operations(
-        db=args.ctx.db,
-        engine_name=args.env,
-        global_config=args.ctx.global_config,
+        uow_factory=uow_factory,
         concept_detection_gateway=concept_detection_gateway,
     )
 
 
 def build_edge_operations_from_args(args) -> EdgeOperations:
     """Build edge operations from a CLI args namespace."""
-    return build_edge_operations(
-        db=args.ctx.db,
-        engine_name=args.env,
-        global_config=args.ctx.global_config,
-    )
+    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
+    return build_edge_operations(uow_factory=uow_factory)
 
 
 def build_node_operations_with_concept_detection_from_args(args) -> NodeOperations:
     """Build node operations with a GraphAI concept-detection gateway."""
+    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
     return build_node_operations(
-        db=args.ctx.db,
-        engine_name=args.env,
-        global_config=args.ctx.global_config,
+        uow_factory=uow_factory,
         concept_detection_gateway=GraphAIConceptDetectionGateway(),
     )
 
 
 def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOperations]:
-    """Build node and edge operations from a CLI args namespace, sharing one schema resolver."""
-    return build_registry_operations(
-        db=args.ctx.db,
-        engine_name=args.env,
-        global_config=args.ctx.global_config,
+    """Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory."""
+    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
+    return (
+        build_node_operations(uow_factory=uow_factory),
+        build_edge_operations(uow_factory=uow_factory),
     )
 
 

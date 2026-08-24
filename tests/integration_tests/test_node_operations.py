@@ -15,6 +15,7 @@ from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeM
 from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import NodeKey
+from graphregistry.domain.models.entities.mdl_node import NodeList
 from tests.helpers.db_checks import field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture
 
@@ -133,3 +134,44 @@ def test_mysql_node_repository_real_crud_cycle(
         # Always clean up even if an assertion fails
         if real_repo.exists(node_key):
             real_repo.delete(node_key, actions=("eval", "commit"))
+
+
+@pytest.mark.integration
+def test_mysql_node_repository_real_batch_save_cycle(
+    real_repo: MySQLNodeRepository,
+    sample_data: dict[str, Any],
+) -> None:
+    """Verify that save_many persists and reloads multiple nodes atomically."""
+    nodes = [
+        MySQLNodeMapper.from_simplified_dict({**sample_data, "object_id": f"TEST-BATCH-{i}"})
+        for i in range(3)
+    ]
+    keys = [node.key for node in nodes]
+
+    # Defensive cleanup
+    for key in keys:
+        if real_repo.exists(key):
+            real_repo.delete(key, actions=("commit",))
+
+    try:
+        saved = real_repo.save_many(NodeList(item_list=nodes), actions=("commit",))
+        assert len(saved.item_list) == 3
+
+        for key in keys:
+            assert real_repo.exists(key) is True
+            loaded = real_repo.get(key)
+            assert loaded is not None
+            assert loaded.title == sample_data["object_title"]
+            assert loaded.page_profile is not None
+            assert loaded.page_profile.short_code == sample_data["page_profile"]["short_code"]
+
+        deleted = real_repo.delete_many(keys, actions=("commit",))
+        assert all(result is True for result in deleted)
+
+        for key in keys:
+            assert real_repo.exists(key) is False
+
+    finally:
+        for key in keys:
+            if real_repo.exists(key):
+                real_repo.delete(key, actions=("commit",))
