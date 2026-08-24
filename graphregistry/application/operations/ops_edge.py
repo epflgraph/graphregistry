@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
+from graphregistry.domain.repositories.rpo_edge import EdgeRepository
 from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 
@@ -18,7 +18,7 @@ class EdgeOperations:
     def __init__(self, repo: EdgeRepository):
         self.repo = repo
 
-    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str]]:
+    def list(self, object_type: tuple[str, str], id_pattern: str | None = None) -> list[tuple[str, str, str, str, str, str, str]]:
         return self.repo.list(object_type=object_type, id_pattern=id_pattern)
 
     def exists(self, key: EdgeKey) -> bool:

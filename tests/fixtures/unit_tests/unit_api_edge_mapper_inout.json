@@ -23,8 +23,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Course",
                     "from_object_id": "CS-433",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Person",
                     "to_object_id": "person-12345",
                     "context": "teaching_assignment"
@@ -34,8 +36,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Course",
                                     "from_object_id": "CS-433",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Person",
                                     "to_object_id": "person-12345",
                                     "context": "teaching_assignment"
@@ -48,8 +52,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Course",
                                     "from_object_id": "CS-433",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Person",
                                     "to_object_id": "person-12345",
                                     "context": "teaching_assignment"
@@ -82,8 +88,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Course",
                     "from_object_id": "CS-433",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Unit",
                     "to_object_id": "ml-lab",
                     "context": "offered_by"
@@ -93,8 +101,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Course",
                                     "from_object_id": "CS-433",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Unit",
                                     "to_object_id": "ml-lab",
                                     "context": "offered_by"
@@ -131,8 +141,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Person",
                     "from_object_id": "person-12345",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Unit",
                     "to_object_id": "ml-lab",
                     "context": "affiliation"
@@ -142,8 +154,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Person",
                                     "from_object_id": "person-12345",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Unit",
                                     "to_object_id": "ml-lab",
                                     "context": "affiliation"
@@ -156,8 +170,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Person",
                                     "from_object_id": "person-12345",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Unit",
                                     "to_object_id": "ml-lab",
                                     "context": "affiliation"
@@ -193,8 +209,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Publication",
                     "from_object_id": "doi-10.1234-example-ml-2024",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Person",
                     "to_object_id": "person-12345",
                     "context": "authorship"
@@ -204,8 +222,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Publication",
                                     "from_object_id": "doi-10.1234-example-ml-2024",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Person",
                                     "to_object_id": "person-12345",
                                     "context": "authorship"
@@ -218,8 +238,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Publication",
                                     "from_object_id": "doi-10.1234-example-ml-2024",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Person",
                                     "to_object_id": "person-12345",
                                     "context": "authorship"
@@ -251,8 +273,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Publication",
                     "from_object_id": "doi-10.1234-example-ml-2024",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Unit",
                     "to_object_id": "ml-lab",
                     "context": "research_output"
@@ -262,8 +286,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Publication",
                                     "from_object_id": "doi-10.1234-example-ml-2024",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Unit",
                                     "to_object_id": "ml-lab",
                                     "context": "research_output"
@@ -296,8 +322,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Course",
                     "from_object_id": "CS-250",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Course",
                     "to_object_id": "CS-433",
                     "context": "prerequisite"
@@ -307,8 +335,10 @@
                         {
                             "key": {
                                 "key": {
+                                    "from_institution_id": "EPFL",
                                     "from_object_type": "Course",
                                     "from_object_id": "CS-250",
+                                    "to_institution_id": "EPFL",
                                     "to_object_type": "Course",
                                     "to_object_id": "CS-433",
                                     "context": "prerequisite"
@@ -335,8 +365,10 @@
             },
             "output": {
                 "key": {
+                    "from_institution_id": "EPFL",
                     "from_object_type": "Course",
                     "from_object_id": "MATH-203",
+                    "to_institution_id": "EPFL",
                     "to_object_type": "Course",
                     "to_object_id": "CS-433",
                     "context": "prerequisite"

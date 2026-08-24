@@ -28,21 +28,12 @@ COPY docker/requirements.txt /tmp/requirements.txt
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r /tmp/requirements.txt
 
-# Copy packaging metadata and the application code into the container
-COPY pyproject.toml README.md ./
+# Copy the application code into the container
 COPY graphregistry ./graphregistry
 COPY database ./database
 COPY docker ./docker
 
-# Install the graphregistry package itself in editable mode so that package
-# metadata (including the version) is available to importlib.metadata.
-# --no-deps is used because all runtime dependencies were already installed
-# from docker/requirements.txt; without it, any change to the source code would
-# invalidate this layer and re-run the full dependency resolution.
-RUN pip install --no-deps --no-cache-dir -e .
-
-# Create a directory for configuration files and ensure the entrypoint script is executable.
-# Runtime configs (including config_api.json) are mounted at deploy time, not baked into the image.
+# Create a directory for configuration files and ensure the entrypoint script is executable
 RUN mkdir -p /app/config \
     && chmod +x /app/docker/entrypoint.sh
 

@@ -66,8 +66,7 @@ CONFIG_INDEX_PATH = CONFIG_DIR / "config_index.json"
 CONFIG_INDEX_TEMPLATE_PATH = CONFIG_DIR / "config_index.template.json"
 CONFIG_SCORES_PATH = CONFIG_DIR / "config_scores.json"
 CONFIG_SCORES_TEMPLATE_PATH = CONFIG_DIR / "config_scores.template.json"
-CONFIG_API_PATH = CONFIG_DIR / "config_api.json"
-CONFIG_GRAPHAI_CLIENT_PATH = CONFIG_DIR / "config_graphai.json"
+CONFIG_GRAPHAI_CLIENT_PATH = CONFIG_DIR / "config_graphai_client.json"
 
 
 DATABASE_QUERIES_DIR = DATABASE_DIR / "queries"

@@ -1,7 +1,7 @@
 # graphregistry/application/factories/fct_node.py
 from __future__ import annotations
 from graphregistry.domain.models.entities.mdl_node import Node
-from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
 
 # Factory definition
 class NodeFactory:

@@ -5,17 +5,16 @@ from dataclasses import dataclass
 from fastapi import APIRouter, Depends
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
-from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
-from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
-from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
+from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
+from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
+from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
+from graphregistry.common.config import GlobalConfig
+from graphregistry.domain.repositories.rpo_edge import EdgeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
+from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
-from graphregistry.application.policies.pol_graphunits import GraphUnitsValidator
-from graphregistry.common.config import APIConfig, GlobalConfig
-from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
-from graphregistry.application.ports.repositories.prt_node import NodeRepository
-from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
-from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.entrypoints.mappers import SpecMapper
 import graphregistry.entrypoints.api.schemas as apispecs
@@ -91,29 +90,6 @@ def _make_edge_repo(db: GraphDB | None = None) -> EdgeRepository:
     return MySQLEdgeRepository(
         db=db if db is not None else _make_db(),
         schema_resolver=_make_schema_resolver(),
-    )
-
-#-------------------------#
-# API config / validation #
-#-------------------------#
-
-_api_config: APIConfig | None = None
-
-
-def _get_api_config() -> APIConfig:
-    """Lazy-load the API configuration once per process."""
-    global _api_config
-    if _api_config is None:
-        _api_config = APIConfig()
-    return _api_config
-
-
-def get_graph_units_validator() -> GraphUnitsValidator:
-    """Build the graph-units validator from the API configuration."""
-    cfg = _get_api_config()
-    return GraphUnitsValidator(
-        allowed_node_types=cfg.allowed_node_types,
-        allowed_edge_tuples=cfg.allowed_edge_tuples,
     )
 
 #======================#
@@ -295,19 +271,12 @@ def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOpera
 # API Endpoint: /api/nodes/save #
 #-------------------------------#
 @router.post("/nodes/save", response_model=apispecs.APINodesSaveResponse, tags=["nodes"])
-def nodes_save(
-    request: apispecs.APINodesSaveRequest,
-    node_ops: NodeOperations = Depends(get_node_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APINodesSaveResponse:
+def nodes_save(request: apispecs.APINodesSaveRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesSaveResponse:
     """
     Save one node.
     """
     # Convert the API request to a domain model node
     node = SpecMapper.from_node_spec(request.node)
-
-    # Enforce the configured allow-list before persisting
-    validator.validate_node(node)
 
     # Save the node and return the saved node object
     saved_node = node_ops.save(node, actions=('commit',))
@@ -325,19 +294,12 @@ def nodes_save(
 # API Endpoint: /api/nodes/save_many #
 #------------------------------------#
 @router.post("/nodes/save_many", response_model=apispecs.APINodesSaveManyResponse, tags=["nodes"])
-def nodes_save_many(
-    request: apispecs.APINodesSaveManyRequest,
-    node_ops: NodeOperations = Depends(get_node_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APINodesSaveManyResponse:
+def nodes_save_many(request: apispecs.APINodesSaveManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesSaveManyResponse:
     """
     Save a list of nodes.
     """
     # Convert the API request to a domain model node list
     node_list = SpecMapper.from_node_list_spec(request.node_list)
-
-    # Enforce the configured allow-list before persisting
-    validator.validate_nodes(node_list)
 
     # Save the nodes and return the saved node objects
     saved_nodes = node_ops.save_many(node_list, actions=('commit',))
@@ -499,19 +461,12 @@ def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOpera
 # API Endpoint: /api/edges/save #
 #-------------------------------#
 @router.post("/edges/save", response_model=apispecs.APIEdgesSaveResponse, tags=["edges"])
-def edges_save(
-    request: apispecs.APIEdgesSaveRequest,
-    edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APIEdgesSaveResponse:
+def edges_save(request: apispecs.APIEdgesSaveRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesSaveResponse:
     """
     Save one edge.
     """
     # Convert the API request to a domain model edge
     edge = SpecMapper.from_edge_spec(request.edge)
-
-    # Enforce the configured allow-list before persisting
-    validator.validate_edge(edge)
 
     # Save the edge and return the saved edge object
     saved_edge = edge_ops.save(edge, actions=('commit',))
@@ -529,19 +484,12 @@ def edges_save(
 # API Endpoint: /api/edges/save_many #
 #------------------------------------#
 @router.post("/edges/save_many", response_model=apispecs.APIEdgesSaveManyResponse, tags=["edges"])
-def edges_save_many(
-    request: apispecs.APIEdgesSaveManyRequest,
-    edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APIEdgesSaveManyResponse:
+def edges_save_many(request: apispecs.APIEdgesSaveManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesSaveManyResponse:
     """
     Save a list of edges.
     """
     # Convert the API request to a domain model edge list
     edge_list = SpecMapper.from_edge_list_spec(request.edge_list)
-
-    # Enforce the configured allow-list before persisting
-    validator.validate_edges(edge_list)
 
     # Save the edges and return the saved edge objects``
     saved_edges = edge_ops.save_many(edge_list, actions=('commit',))

@@ -9,7 +9,7 @@ from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 class TestNodeField:
     def test_node_field_from_json(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         field = NodeField.from_json(
             {"field_language": "en", "field_name": "level", "field_value": "master"},
             node_key=key,
@@ -21,20 +21,20 @@ class TestNodeField:
 
 class TestNode:
     def test_node_default_page_profile(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         node = Node(key=key)
         assert node.page_profile is not None
         assert node.page_profile.key == key
 
     def test_node_field_keys_are_fixed_on_validation(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
-        wrong_key = NodeKey(object_type="Course", object_id="OLD-123")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        wrong_key = NodeKey(institution_id="EPFL", object_type="Course", object_id="OLD-123")
         field = NodeField(key=NodeFieldKey(key=wrong_key, field_language="en", field_name="level"), field_value="master")
         node = Node(key=key, field_list=NodeFieldList(item_list=[field]))
         assert node.field_list.item_list[0].key.key == key
 
     def test_node_json_roundtrip(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         node = Node(
             key=key,
             title="Machine Learning",
@@ -47,7 +47,7 @@ class TestNode:
         assert rebuilt.page_profile.name.get_value("en") == "Machine Learning"
 
     def test_node_concepts_default_empty(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         node = Node(key=key)
         assert isinstance(node.concepts, NodeConceptList)
         assert node.concepts.detected.item_list == []
@@ -55,8 +55,8 @@ class TestNode:
 
 class TestNodeList:
     def test_node_list_from_list(self) -> None:
-        key1 = NodeKey(object_type="Course", object_id="CS-433")
-        key2 = NodeKey(object_type="Course", object_id="MATH-203")
+        key1 = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
+        key2 = NodeKey(institution_id="EPFL", object_type="Course", object_id="MATH-203")
         node_list = NodeList(item_list=[Node(key=key1), Node(key=key2)])
         rebuilt = NodeList.from_list(node_list.to_list())
         assert len(rebuilt.item_list) == 2

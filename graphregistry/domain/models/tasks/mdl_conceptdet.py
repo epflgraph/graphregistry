@@ -50,26 +50,12 @@ class ConceptDetectionTask(BaseModel):
     def get_params_dict(self) -> dict[str, Any]:
         return {
             "restrict_to_ontology": self.restrict_to_ontology,
-            "graph_score_smoothing": self.graph_score_smoothing,
-            "ontology_score_smoothing": self.ontology_score_smoothing,
-            "keywords_score_smoothing": self.keywords_score_smoothing,
-            "normalisation_coef": self.normalisation_coefficient,
-            "aggregation_coef": self.aggregation_coef,
-            "filtering_threshold": self.filtering_threshold,
-            "filtering_min_votes": self.filtering_min_votes,
-            "refresh_scores": self.refresh_scores,
-        }
-
-    def get_url_safe_params_dict(self) -> dict[str, str]:
-        """
-        Return parameters as URL query-string values.
-
-        urlencode emits Python-style booleans ("True"/"False"). FastAPI accepts
-        those, but we normalize to lowercase JSON-style booleans for clarity and
-        to match the legacy client's observed URLs.
-        """
-        params = self.get_params_dict()
-        return {
-            key: ("true" if value else "false") if isinstance(value, bool) else str(value)
-            for key, value in params.items()
+            # "graph_score_smoothing": self.graph_score_smoothing,
+            # "ontology_score_smoothing": self.ontology_score_smoothing,
+            # "keywords_score_smoothing": self.keywords_score_smoothing,
+            # "normalisation_coef": self.normalisation_coefficient,
+            # "aggregation_coef": self.aggregation_coef,
+            # "filtering_threshold": self.filtering_threshold,
+            # "filtering_min_votes": self.filtering_min_votes,
+            # "refresh_scores": self.refresh_scores,
         }

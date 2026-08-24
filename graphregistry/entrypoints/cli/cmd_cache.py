@@ -16,26 +16,21 @@ def cmd_cache_update(args):
     print("🖥️  ~ Graph Registry CLI. Update cache from registry tables.")
 
     # Get input options
-    formulas     = tuple(args.formulas.split(','))    if args.formulas     else ()
-    actions      = tuple(args.actions.split(','))     if args.actions      else ()
-    matrix       = args.matrix       if 'matrix'       in args else False
-    formula_path = args.formula_path if 'formula_path' in args else None
+    formulas = tuple(args.formulas.split(',')) if args.formulas else ()
+    actions  = tuple(args.actions.split(','))  if args.actions  else ()
+    matrix   = args.matrix if 'matrix' in args else False
 
     # -----------------#
     # Execute commands #
     # -----------------#
-    if formula_path:
-        registry.cachemanager.apply_formula_by_path(formula_path=formula_path, actions=actions)
-    if 'reset' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_data_reset_formulas(verbose='print' in actions, actions=actions)
     if 'fields' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_calculated_field_formulas(verbose='print' in actions, actions=actions)
+        registry.cachemanager.apply_calculated_field_formulas(verbose='print' in actions)
     if 'views' in formulas:
         registry.cachemanager.materialize_views(actions=actions)
     if 'traversals' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_traversals(verbose='print' in actions, actions=actions)
+        registry.cachemanager.apply_traversals(verbose='print' in actions)
     if 'scores' in formulas and 'commit' in actions:
-        registry.cachemanager.apply_scoring_formulas(verbose='print' in actions, actions=actions)
+        registry.cachemanager.apply_scoring_formulas(verbose='print' in actions)
     if matrix is True:
         registry.cachemanager.update_scores_matrix(score_thr=0.1, actions=actions)
 
@@ -153,7 +148,7 @@ def cmd_cache_debug(args):
 
     # registry.indexdb.idoclinks['Publication']['Person']['ORG'].vertical_patch_parentchild(actions=('print', 'commit'))
 
-    registry.indexdb.delete_loose_ends(actions=('print', 'eval'))
+    registry.indexdb.delete_loose_ends(include_scores_matrix=True, actions=('print', 'eval'))
 
 
     # Print footers

@@ -1,12 +1,13 @@
 # graphregistry/application/operations/ops_node.py
 from __future__ import annotations
+from typing import Any
 from dataclasses import dataclass
 from graphregistry.domain.types import ActionSet
-from graphregistry.application.ports.repositories.prt_node import NodeRepository
+from graphregistry.domain.repositories.rpo_node import NodeRepository
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.models.entities.mdl_conceptmap import ScoredConceptList
-from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
+from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.common.logger import GraphLogger
 from graphregistry.domain.models.entities.types import ConceptMapType
 
@@ -14,14 +15,9 @@ from graphregistry.domain.models.entities.types import ConceptMapType
 class NodeOperations:
 
     # Class constructor
-    def __init__(
-        self,
-        repo: NodeRepository,
-        *,
-        concept_detection_gateway: ConceptDetectionGateway | None = None,
-    ) -> None:
+    def __init__(self, repo: NodeRepository, ai_gateways: GatewayDict | None = None) -> None:
         self.repo = repo
-        self.concept_detection_gateway = concept_detection_gateway
+        self.ai_gateways = ai_gateways or {}
         self.msg = GraphLogger()
 
     #----------------------------------------#
@@ -29,7 +25,7 @@ class NodeOperations:
     #----------------------------------------#
 
     # Method: List nodes by object type and optional ID pattern, returning a list of (object_type, id, title) tuples
-    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str]]:
+    def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str, str]]:
         return self.repo.list(object_type=object_type, id_pattern=id_pattern)
 
     # Method: Check if a node exists by its key
@@ -97,18 +93,18 @@ class NodeOperations:
     def enrich_with_concepts(self, nodes: Node | NodeList) -> Node | NodeList:
 
         # Get gateway for concept detection
-        gateway = self.concept_detection_gateway
-        if gateway is None:
+        gateway = self.ai_gateways.get("concept_detection")
+        if not gateway:
             raise ValueError("Concept detection gateway not configured")
 
         # Perform concept detection using the gateway and populate the concepts.detected field
         if isinstance(nodes, NodeList):
             for node in nodes.item_list:
-                concepts = gateway.detect_concepts(f"{node.title}. {node.raw_text}" or "")
+                concepts = gateway.detect_concepts(node.raw_text or "")
                 node.concepts.detected = concepts
                 self.msg.concepts_detected(node.key)
         else:
-            concepts = gateway.detect_concepts(f"{nodes.title}. {nodes.raw_text}" or "")
+            concepts = gateway.detect_concepts(nodes.raw_text or "")
             nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)
 

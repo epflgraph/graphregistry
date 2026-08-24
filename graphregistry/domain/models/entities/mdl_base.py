@@ -12,6 +12,7 @@ class NodeKey(BaseModel):
     # Internal variables #
     #--------------------#
     model_config = {"frozen": True}
+    institution_id : str
     object_type    : ObjectType
     object_id      : str
 
@@ -22,11 +23,12 @@ class NodeKey(BaseModel):
     @classmethod
     def parse_tuple(cls, data):
         if isinstance(data, tuple):
-            if len(data) != 2:
-                raise ValueError("NodeKey tuple must have 2 elements")
+            if len(data) != 3:
+                raise ValueError("NodeKey tuple must have 3 elements")
             return {
-                "object_type"    : data[0],
-                "object_id"      : data[1],
+                "institution_id" : data[0],
+                "object_type"    : data[1],
+                "object_id"      : data[2],
             }
         return data
 
@@ -37,8 +39,8 @@ class NodeKey(BaseModel):
     def from_tuple(cls, input_tuple: tuple) -> "NodeKey":
         return cls.model_validate(input_tuple)
 
-    def to_tuple(self) -> tuple[str, str]:
-        return (self.object_type, self.object_id)
+    def to_tuple(self) -> tuple[str, str, str]:
+        return (self.institution_id, self.object_type, self.object_id)
 
 # Model definition
 class NodeFieldKey(BaseModel):
@@ -56,18 +58,19 @@ class NodeFieldKey(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple(cls, input_tuple: tuple[str, str, str, str]) -> "NodeFieldKey":
-        if len(input_tuple) != 4:
-            raise ValueError("NodeFieldKey tuple must have 4 elements")
-        node_key = NodeKey.from_tuple(input_tuple[:2])
+    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str]) -> "NodeFieldKey":
+        if len(input_tuple) != 5:
+            raise ValueError("NodeFieldKey tuple must have 5 elements")
+        node_key = NodeKey.from_tuple(input_tuple[:3])
         return cls(
             key = node_key,
-            field_language = cast(FieldLanguage, input_tuple[2]),
-            field_name     = input_tuple[3],
+            field_language = cast(FieldLanguage, input_tuple[3]),
+            field_name     = input_tuple[4],
         )
 
-    def to_tuple(self) -> tuple[str, str, str, str]:
+    def to_tuple(self) -> tuple[str, str, str, str, str]:
         return (
+            self.key.institution_id,
             self.key.object_type,
             self.key.object_id,
             self.field_language,
@@ -82,8 +85,10 @@ class EdgeKey(BaseModel):
     # Internal variables #
     #--------------------#
     model_config = {"frozen": True}
+    from_institution_id : str
     from_object_type    : ObjectType
     from_object_id      : str
+    to_institution_id   : str
     to_object_type      : ObjectType
     to_object_id        : str
     context             : str
@@ -95,14 +100,16 @@ class EdgeKey(BaseModel):
     @classmethod
     def parse_tuple(cls, data):
         if isinstance(data, tuple):
-            if len(data) != 5:
-                raise ValueError("EdgeKey tuple must have 5 elements")
+            if len(data) != 7:
+                raise ValueError("EdgeKey tuple must have 7 elements")
             return {
-                "from_object_type"    : data[0],
-                "from_object_id"      : data[1],
-                "to_object_type"      : data[2],
-                "to_object_id"        : data[3],
-                "context"             : data[4],
+                "from_institution_id" : data[0],
+                "from_object_type"    : data[1],
+                "from_object_id"      : data[2],
+                "to_institution_id"   : data[3],
+                "to_object_type"      : data[4],
+                "to_object_id"        : data[5],
+                "context"             : data[6],
             }
         return data
 
@@ -113,10 +120,12 @@ class EdgeKey(BaseModel):
     def from_tuple(cls, input_tuple: tuple) -> "EdgeKey":
         return cls.model_validate(input_tuple)
 
-    def to_tuple(self) -> tuple[str, str, str, str, str]:
+    def to_tuple(self) -> tuple[str, str, str, str, str, str, str]:
         return (
+            self.from_institution_id,
             self.from_object_type,
             self.from_object_id,
+            self.to_institution_id,
             self.to_object_type,
             self.to_object_id,
             self.context,
@@ -138,20 +147,22 @@ class EdgeFieldKey(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str, str, str]) -> "EdgeFieldKey":
-        if len(input_tuple) != 7:
-            raise ValueError("EdgeFieldKey tuple must have 7 elements")
-        edge_key = EdgeKey.from_tuple(input_tuple[:5])
+    def from_tuple(cls, input_tuple: tuple[str, str, str, str, str, str, str, str, str]) -> "EdgeFieldKey":
+        if len(input_tuple) != 9:
+            raise ValueError("EdgeFieldKey tuple must have 9 elements")
+        edge_key = EdgeKey.from_tuple(input_tuple[:7])
         return cls(
             key = edge_key,
-            field_language = cast(FieldLanguage, input_tuple[5]),
-            field_name     = input_tuple[6],
+            field_language = cast(FieldLanguage, input_tuple[7]),
+            field_name     = input_tuple[8],
         )
 
-    def to_tuple(self) -> tuple[str, str, str, str, str, str, str]:
+    def to_tuple(self) -> tuple[str, str, str, str, str, str, str, str, str]:
         return (
+            self.key.from_institution_id,
             self.key.from_object_type,
             self.key.from_object_id,
+            self.key.to_institution_id,
             self.key.to_object_type,
             self.key.to_object_id,
             self.key.context,
@@ -172,10 +183,10 @@ class NodeKeyList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str]]) -> "NodeKeyList":
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str]]) -> "NodeKeyList":
         return cls(item_list=[NodeKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
 
-    def to_tuple_list(self) -> list[tuple[str, str]]:
+    def to_tuple_list(self) -> list[tuple[str, str, str]]:
         return [item.to_tuple() for item in self.item_list]
 
 # Model definition
@@ -191,10 +202,10 @@ class NodeFieldKeyList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str]]) -> "NodeFieldKeyList":
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str]]) -> "NodeFieldKeyList":
         return cls(item_list=[NodeFieldKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
 
-    def to_tuple_list(self) -> list[tuple[str, str, str, str]]:
+    def to_tuple_list(self) -> list[tuple[str, str, str, str, str]]:
         return [item.to_tuple() for item in self.item_list]
 
 # Model definition
@@ -210,10 +221,10 @@ class EdgeKeyList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str]]) -> "EdgeKeyList":
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str, str, str]]) -> "EdgeKeyList":
         return cls(item_list=[EdgeKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
 
-    def to_tuple_list(self) -> list[tuple[str, str, str, str, str]]:
+    def to_tuple_list(self) -> list[tuple[str, str, str, str, str, str, str]]:
         return [item.to_tuple() for item in self.item_list]
 
 # Model definition
@@ -229,8 +240,8 @@ class EdgeFieldKeyList(BaseModel):
     # Serialization methods #
     #-----------------------#
     @classmethod
-    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str, str, str]]) -> "EdgeFieldKeyList":
+    def from_tuple_list(cls, input_tuple_list: list[tuple[str, str, str, str, str, str, str, str, str]]) -> "EdgeFieldKeyList":
         return cls(item_list=[EdgeFieldKey.from_tuple(input_tuple) for input_tuple in input_tuple_list])
 
-    def to_tuple_list(self) -> list[tuple[str, str, str, str, str, str, str]]:
+    def to_tuple_list(self) -> list[tuple[str, str, str, str, str, str, str, str, str]]:
         return [item.to_tuple() for item in self.item_list]

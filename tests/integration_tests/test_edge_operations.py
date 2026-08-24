@@ -11,8 +11,8 @@ from typing import Any, cast
 import pytest
 from graphdb.core.graphdb import GraphDB
 
-from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
-from graphregistry.application.ports.repositories.resolvers import SchemaResolver
+from graphregistry.adapters.persistence.mysql.repositories.arp_edgerepo import MySQLEdgeRepository
+from graphregistry.application.services.srv_schema import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import EdgeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList
 from tests.helpers.db_checks import db_field_map, field_map
@@ -49,8 +49,10 @@ def sample_data() -> dict[str, Any]:
 @pytest.fixture
 def edge_key(sample_data: dict[str, Any]) -> EdgeKey:
     return EdgeKey(
+        from_institution_id=sample_data["from_institution_id"],
         from_object_type=sample_data["from_object_type"],
         from_object_id=sample_data["from_object_id"],
+        to_institution_id=sample_data["to_institution_id"],
         to_object_type=sample_data["to_object_type"],
         to_object_id=sample_data["to_object_id"],
         context=sample_data["context"],
@@ -60,8 +62,10 @@ def edge_key(sample_data: dict[str, Any]) -> EdgeKey:
 @pytest.fixture
 def edge(sample_data: dict[str, Any]) -> Edge:
     key = EdgeKey(
+        from_institution_id=sample_data["from_institution_id"],
         from_object_type=sample_data["from_object_type"],
         from_object_id=sample_data["from_object_id"],
+        to_institution_id=sample_data["to_institution_id"],
         to_object_type=sample_data["to_object_type"],
         to_object_id=sample_data["to_object_id"],
         context=sample_data["context"],

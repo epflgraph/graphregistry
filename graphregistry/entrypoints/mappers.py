@@ -20,6 +20,8 @@ from graphregistry.entrypoints.schemas import (
 )
 from graphregistry.domain.types import TextLanguage, ObjectType
 
+INSTITUTION_ID = "EPFL"
+
 # Class definition
 class SpecMapper:
     """
@@ -32,6 +34,7 @@ class SpecMapper:
         if isinstance(key_spec, dict):
             key_spec = NodeKeySpec.model_validate(key_spec)
         return NodeKey(
+            institution_id = INSTITUTION_ID,
             object_type    = key_spec.type,
             object_id      = key_spec.id
         )
@@ -52,6 +55,7 @@ class SpecMapper:
 
         # Create node key
         node_key = NodeKey(
+            institution_id = INSTITUTION_ID,
             object_type    = node_spec.type,
             object_id      = node_spec.id
         )
@@ -319,8 +323,10 @@ class SpecMapper:
         if isinstance(key, dict):
             key = EdgeKeySpec.model_validate(key)
         return EdgeKey(
+            from_institution_id = INSTITUTION_ID,
             from_object_type    = key.from_type,
             from_object_id      = key.from_id,
+            to_institution_id   = INSTITUTION_ID,
             to_object_type      = key.to_type,
             to_object_id        = key.to_id,
             context             = key.context
@@ -342,8 +348,10 @@ class SpecMapper:
 
         # Create edge key
         edge_key = EdgeKey(
+            from_institution_id = INSTITUTION_ID,
             from_object_type    = edge_spec.from_type,
             from_object_id      = edge_spec.from_id,
+            to_institution_id   = INSTITUTION_ID,
             to_object_type      = edge_spec.to_type,
             to_object_id        = edge_spec.to_id,
             context             = edge_spec.context,

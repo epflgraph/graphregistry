@@ -2,8 +2,10 @@
     "type": "edges",
     "data": [
         {
+            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "107461",
+            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "AVP-E-CEDE",
             "context": "accreditation",
@@ -21,8 +23,10 @@
             ]
         },
         {
+            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "118272",
+            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "AVP-E-CEDE",
             "context": "accreditation",
@@ -40,8 +44,10 @@
             ]
         },
         {
+            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "155704",
+            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "AVP-E-CEDE",
             "context": "accreditation",
@@ -59,8 +65,10 @@
             ]
         },
         {
+            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "157873",
+            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "AVP-E-CEDE",
             "context": "accreditation",
@@ -78,8 +86,10 @@
             ]
         },
         {
+            "from_institution_id": "EPFL",
             "from_object_type": "Person",
             "from_object_id": "170864",
+            "to_institution_id": "EPFL",
             "to_object_type": "Unit",
             "to_object_id": "AVP-E-CEDE",
             "context": "accreditation",

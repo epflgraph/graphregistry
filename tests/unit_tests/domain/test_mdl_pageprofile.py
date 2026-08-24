@@ -11,7 +11,7 @@ from graphregistry.domain.models.entities.mdl_pageprofile import PageProfile
 
 class TestPageProfile:
     def test_page_profile_requires_node_key(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         profile = PageProfile(key=key)
         assert profile.key == key
 
@@ -20,7 +20,7 @@ class TestPageProfile:
             PageProfile(key="invalid-key")  # type: ignore[arg-type]
 
     def test_page_profile_multilingual_fields(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         profile = PageProfile(key=key, short_code="ML")
         profile.name.set("en", "Machine Learning", is_auto_generated=True)
         profile.description.long.set("en", "A course about machine learning.")
@@ -33,7 +33,7 @@ class TestPageProfile:
         assert profile.external_url.get_value("en") == "https://edu.epfl.ch/coursebook/machine-learning"
 
     def test_page_profile_json_roundtrip(self) -> None:
-        key = NodeKey(object_type="Course", object_id="CS-433")
+        key = NodeKey(institution_id="EPFL", object_type="Course", object_id="CS-433")
         profile = PageProfile(key=key, short_code="ML")
         profile.name.set("en", "Machine Learning")
         rebuilt = PageProfile.from_json(profile.to_json())
