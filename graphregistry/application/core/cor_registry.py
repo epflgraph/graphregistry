@@ -3012,7 +3012,25 @@ class GraphRegistry():
 
         # Batch apply formulas: traversal and scoring
         def apply_data_reset_formulas(self, verbose=False, actions=None):
-            self.apply_formulas_from_folder(local_path='data_reset', verbose=verbose, actions=actions)
+
+            # Print status
+            sysmsg.info(f"🧪 📝 Apply data reset formulas in chunks.")
+
+            # Fetch list of data reset formulas to execute
+            list_of_files = sorted(glob.glob(f'{SQL_FORMULAS_PATH}/data_reset/formula.*.sql'))
+
+            # Loop over and execute all formulas in chunks
+            for file_path in list_of_files:
+                self.apply_formula_from_file_in_chunks(
+                    file_path      = file_path,
+                    chunk_size     = 100000,
+                    actions        = actions,
+                    show_progress  = True,
+                    verbose        = verbose,
+                )
+
+            # Print status
+            sysmsg.success(f"🧪 ✅ Done applying data reset formulas in chunks.\n")
 
         # Batch apply formulas: calculated fields only
         def apply_calculated_field_formulas(self, verbose=False, actions=None):
@@ -3676,6 +3694,55 @@ class GraphRegistry():
             else:
                 sysmsg.warning(f"Could not determine type of formula (safe inserts vs direct execution).")
                 return
+
+        # Apply formula from SQL file in row_id chunks
+        def apply_formula_from_file_in_chunks(self, file_path, chunk_size=100000, actions=None, show_progress=True, verbose=False):
+            """
+            Read a SQL formula file, substitute [[schema]] placeholders, and execute each
+            individual UPDATE statement in row_id chunks. DDL and non-UPDATE statements
+            fall back to direct shell execution.
+            """
+            # Backward-compatible default actions
+            if actions is None:
+                actions = ('print', 'commit') if verbose else ('commit',)
+            actions = tuple(actions)
+
+            # Resolve relative paths against the formulas folder
+            file_path = Path(file_path)
+            if not file_path.is_absolute():
+                file_path = SQL_FORMULAS_PATH / file_path
+            if not file_path.is_file():
+                sysmsg.error(f"Formula file not found: {file_path}")
+                return
+
+            # Extract formula name from file path
+            formula_name = re.findall(r'formula\.(.*)\.sql$', str(file_path))[0]
+
+            # Print status
+            sysmsg.trace(f"⚙️  Applying formula in chunks: '{formula_name}' ...")
+
+            # Read the SQL formula
+            with open(file_path, 'r') as file:
+                sql_formula = file.read()
+
+            # Fill in the template variables
+            for db_schema_name in glbcfg.mysql_schema_names['xaas_coresrv']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
+
+            # Print formula when requested (avoid double-printing during commit)
+            if 'print' in actions:
+                print_sql(sql_formula, title=f"Formula in chunks [{formula_name}]")
+
+            # Execute the SQL formula statement-by-statement in chunks
+            if 'commit' in actions:
+                db.execute_sql_statements_in_chunks(
+                    engine_name   = 'xaas_coresrv',
+                    sql           = sql_formula,
+                    chunk_size    = chunk_size,
+                    show_progress = show_progress,
+                    verbose       = verbose,
+                    query_id      = formula_name,
+                )
 
         # Update cache table from SQL batch formula
         def cache_update_from_batch_formula(self, formula_name, verbose=False):

@@ -433,7 +433,7 @@ cli_definitions: Dict[str, Any] = {
                 help = "Execute computations for Knowledge Graph construction (selected subset based on Airflow config).",
                 func = cmd_cache_update,
                 args = [
-                    dict(flags=('--formulas',    ), kwargs=dict(required=False, type=str, default=None,   help="Comma-separated formulas to apply: fields,views,traversals,scores (default=none).")),
+                    dict(flags=('--formulas',    ), kwargs=dict(required=False, type=str, default=None,   help="Comma-separated formulas to apply: reset,fields,views,traversals,scores (default=none). 'reset' runs the data_reset formulas in row_id chunks.")),
                     dict(flags=('--formula_path',), kwargs=dict(required=False, type=str, default=None,   help="Relative path to a single SQL formula file under database/formulas, e.g. 'traversals/formula.007.course-lecture-slide-concept.concept_detection'. Folder aliases (fields, traversals, scores) and omission of the .sql suffix are supported. Runs independently of --formulas.")),
                     dict(flags=('--matrix',      ), kwargs=dict(action='store_true',      default=False,  help="(Re)calculate scores matrix.")),
                     dict(flags=('--actions',     ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
