@@ -3,25 +3,29 @@ from __future__ import annotations
 from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig
 from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.application.gateways.types import GatewayDict
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList
 from graphregistry.domain.models.entities.mdl_base import NodeKey
-from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
-from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
-from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.services.asv_schema_default import DefaultSchemaResolver
+from graphregistry.adapters.persistence.mysql.repositories.arp_noderepo import MySQLNodeRepository
+from graphregistry.adapters.gateways.graphai.agt_conceptdet import GraphAIConceptDetectionGateway
 import rich
 
-# Initialize node operations with the repository and concept-detection gateway
+# Initialize node operations with the repository and gateways
 node_ops = NodeOperations(
     repo = MySQLNodeRepository(
         db = GraphDB(),
         schema_resolver = DefaultSchemaResolver(engine_name='xaas_coresrv', glbcfg=GlobalConfig())
     ),
-    concept_detection_gateway = GraphAIConceptDetectionGateway()
+    ai_gateways = {
+        "concept_detection": GraphAIConceptDetectionGateway()
+    }
 )
 
 # Example node to enrich with concept detection
 node = Node(
     key=NodeKey(
+        institution_id="EPFL",
         object_type="Course",
         object_id="MATH-101",
     ),

@@ -20,26 +20,11 @@ def cmd_ai_detect_concepts(args) -> None:
     # Get list of nodes without detected concepts
     node_list = node_ops.get_with_no_concepts()
 
-    # Loop through the nodes and detect concepts for each node
-    for node in node_list.item_list:
+    # Detect concepts for the returned list of nodes
+    enriched_node_list = cast(NodeList, node_ops.enrich_with_concepts(node_list))
 
-        # Detect concepts for the node
-        # enriched_node = node_ops.enrich_with_concepts(node)
-
-        import pickle
-        # # save as pickle file
-        # with open(f"enriched_node_{enriched_node.key}.pkl", "wb") as f:
-        #     pickle.dump(enriched_node, f)
-
-        # Load from pickle file
-        with open(f"enriched_node_{node.key}.pkl", "rb") as f:
-            enriched_node = pickle.load(f)
-
-        rich.print(enriched_node)
-        exit()
-
-        # Save the enriched node back to the repository
-        node_ops.save(enriched_node)
+    # Save the enriched nodes back to the repository
+    node_ops.save_many(node_list=enriched_node_list)
 
 #--------------------------------------------------#
 # Handler: Launch interation of lecture processing #

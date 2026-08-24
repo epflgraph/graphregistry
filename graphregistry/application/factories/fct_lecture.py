@@ -2,9 +2,9 @@
 from __future__ import annotations
 from typing import Any
 
-from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
-from graphregistry.application.ports.gateways.prt_video import VideoProcessingGateway
-from graphregistry.application.ports.gateways.prt_voice import VoiceProcessingGateway
+from graphregistry.application.gateways.gtw_conceptdet import ConceptDetectionGateway
+from graphregistry.application.gateways.gtw_video import VideoProcessingGateway
+from graphregistry.application.gateways.gtw_voice import VoiceProcessingGateway
 from graphregistry.domain.models.entities.mdl_lecture import (
     Lecture,
     SlideList,
