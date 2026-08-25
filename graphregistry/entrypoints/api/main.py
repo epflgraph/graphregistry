@@ -10,7 +10,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
-from graphregistry.entrypoints.api.router import router
 
 # import global config
 from graphregistry.common.config import APIConfig, GlobalConfig
@@ -22,6 +21,7 @@ from graphregistry.domain.exceptions import (
     LockWaitTimeoutError,
     PersistenceError,
 )
+from graphregistry.entrypoints.api.router import router
 from graphregistry.entrypoints.dependencies import build_db
 
 # Set up logging
@@ -32,6 +32,11 @@ logger = logging.getLogger("uvicorn.error")
 _OBJECT_TYPE_FIELDS = {"type", "from_type", "to_type"}
 
 
+#================================================================#
+# Function Group: Validation error helpers                       #
+#================================================================#
+
+# Function: Detect Pydantic literal errors on object-type fields.
 def _is_object_type_literal_error(error: dict[str, Any]) -> bool:
     """Detect Pydantic literal errors on object-type fields."""
     if error.get("type") != "literal_error":
@@ -40,6 +45,7 @@ def _is_object_type_literal_error(error: dict[str, Any]) -> bool:
     return bool(loc) and loc[-1] in _OBJECT_TYPE_FIELDS
 
 
+# Function: Convert object-type literal errors into unified 'not an allowed type' messages.
 def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str | list[str] | None:
     """Convert object-type literal errors into unified 'not an allowed type' messages.
 
@@ -87,6 +93,7 @@ def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str |
     return messages[0] if len(messages) == 1 else messages
 
 
+# Function: Initialize process-scoped resources and clean them up on shutdown.
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialize process-scoped resources and clean them up on shutdown."""
@@ -96,7 +103,11 @@ async def lifespan(app: FastAPI):
     # exits. Explicit disposal can be added here later if needed.
 
 
-# Create the FastAPI application
+#================================================================#
+# Function Group: Application factory                            #
+#================================================================#
+
+# Function: Create and configure the FastAPI application.
 def create_app() -> FastAPI:
 
     # Load configuration when the app is created, not at import time.
@@ -117,9 +128,9 @@ def create_app() -> FastAPI:
     # Include the API router which contains all the endpoint definitions
     app.include_router(router)
 
-    #====================#
-    # Exception handlers #
-    #====================#
+    #================================================================#
+    # Method Group: Exception handlers                               #
+    #================================================================#
 
     @app.exception_handler(RequestValidationError)
     async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -331,9 +342,9 @@ def create_app() -> FastAPI:
             },
         )
 
-    #===============================#
-    # OpenAPI / Swagger customisation #
-    #===============================#
+    #================================================================#
+    # Function Group: OpenAPI / Swagger customisation                #
+    #================================================================#
 
     def custom_openapi() -> dict[str, Any]:
         """Generate the OpenAPI schema and override object-type examples.
@@ -431,17 +442,16 @@ def create_app() -> FastAPI:
 
     app.openapi = custom_openapi
 
-    #==================#
-    # Utility routes   #
-    #==================#
+    #================================================================#
+    # Function Group: Utility routes                                 #
+    #================================================================#
 
-    # Define a root endpoint that redirects to the API documentation for easy access
+    # Function: Redirect the root path to the API documentation.
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
         return RedirectResponse(url="/docs")
 
-    # Define a health check endpoint that returns a simple status message
-    # to indicate the service is running
+    # Function: Return a simple health-check response.
     @app.get("/health", tags=["system"])
     def healthcheck() -> dict[str, str]:
         return {"status": "ok"}

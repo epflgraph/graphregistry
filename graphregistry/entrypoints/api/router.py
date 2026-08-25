@@ -1,20 +1,22 @@
 # graphregistry/entrypoints/api/router.py
 from __future__ import annotations
-import os
 from dataclasses import dataclass
+import os
 from typing import Callable
+
 from fastapi import APIRouter, Depends, Request
+
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.application.policies.pol_graphunits import GraphUnitsValidator
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import APIConfig, GlobalConfig
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList, NodeKey, NodeKeyList
-from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
-from graphregistry.application.factories.fct_node import NodeFactory
+import graphregistry.entrypoints.api.schemas as apispecs
 from graphregistry.entrypoints.dependencies import build_uow_factory
 from graphregistry.entrypoints.mappers import SpecMapper
-import graphregistry.entrypoints.api.schemas as apispecs
 
 # Environment variables
 API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
@@ -26,10 +28,12 @@ router = APIRouter(
     responses={404: {"description": "Not found"}},
 )
 
-#=================#
-# Helper methods  #
-#=================#
 
+#================================================================#
+# Function Group: Helper functions                               #
+#================================================================#
+
+# Function: Return the single environment used by this API instance.
 def _get_api_env() -> str:
     """
     Return the single environment used by this API instance.
@@ -40,27 +44,32 @@ def _get_api_env() -> str:
     return os.getenv(API_ENV_VAR, DEFAULT_API_ENV)
 
 
+# Function: Build a UnitOfWork factory backed by the process-scoped GraphDB client.
 def _get_uow_factory(request: Request) -> Callable[[], UnitOfWork]:
     """Build a UnitOfWork factory backed by the process-scoped GraphDB client."""
     return build_uow_factory(db=request.app.state.db, engine_name=_get_api_env())
 
 
+# Function: Build node operations wired to a UnitOfWork factory.
 def _make_node_ops(uow_factory: Callable[[], UnitOfWork]) -> NodeOperations:
     """Build node operations wired to a UnitOfWork factory."""
     return NodeOperations(uow_factory=uow_factory)
 
 
+# Function: Build edge operations wired to a UnitOfWork factory.
 def _make_edge_ops(uow_factory: Callable[[], UnitOfWork]) -> EdgeOperations:
     """Build edge operations wired to a UnitOfWork factory."""
     return EdgeOperations(uow_factory=uow_factory)
 
-#-------------------------#
-# API config / validation #
-#-------------------------#
+
+#================================================================#
+# Function Group: API config / validation                        #
+#================================================================#
 
 _api_config: APIConfig | None = None
 
 
+# Function: Lazy-load the API configuration once per process.
 def _get_api_config() -> APIConfig:
     """Lazy-load the API configuration once per process."""
     global _api_config
@@ -69,6 +78,7 @@ def _get_api_config() -> APIConfig:
     return _api_config
 
 
+# Function: Build the graph-units validator from the API configuration.
 def get_graph_units_validator() -> GraphUnitsValidator:
     """Build the graph-units validator from the API configuration."""
     cfg = _get_api_config()
@@ -77,10 +87,12 @@ def get_graph_units_validator() -> GraphUnitsValidator:
         allowed_edge_tuples=cfg.allowed_edge_tuples,
     )
 
-#======================#
-# FastAPI dependencies #
-#======================#
 
+#================================================================#
+# Function Group: FastAPI dependencies                           #
+#================================================================#
+
+# Function: Build NodeOperations for one request.
 def get_node_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> NodeOperations:
     """
     Build NodeOperations for one request.
@@ -90,6 +102,8 @@ def get_node_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factor
     """
     return _make_node_ops(uow_factory)
 
+
+# Function: Build EdgeOperations for one request.
 def get_edge_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> EdgeOperations:
     """
     Build EdgeOperations for one request.
@@ -99,6 +113,8 @@ def get_edge_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factor
     """
     return _make_edge_ops(uow_factory)
 
+
+# Function: Build NodeFactory for one request.
 def get_node_factory() -> NodeFactory:
     """
     Build NodeFactory for one request.
@@ -106,6 +122,10 @@ def get_node_factory() -> NodeFactory:
     gtw = GraphAIConceptDetectionGateway(debug=True)
     return NodeFactory(concept_gateway=gtw)
 
+
+#================================================================#
+# Class Definition                                               #
+#================================================================#
 @dataclass(frozen=True)
 class RegistryOps:
     """
@@ -117,6 +137,8 @@ class RegistryOps:
     node_ops: NodeOperations
     edge_ops: EdgeOperations
 
+
+# Function: Build node and edge operations sharing the same UnitOfWork factory.
 def get_registry_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> RegistryOps:
     """
     Build node and edge operations sharing the same UnitOfWork factory.
@@ -126,10 +148,12 @@ def get_registry_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_fa
         edge_ops=_make_edge_ops(uow_factory),
     )
 
-#==================#
-# System endpoints #
-#==================#
 
+#================================================================#
+# API Endpoint Group: System endpoints                           #
+#================================================================#
+
+# API Endpoint: Check that the registry API is reachable.
 @router.get("", response_model=apispecs.StatusResponse, tags=["system"])
 def registry_status() -> apispecs.StatusResponse:
     """
@@ -144,13 +168,12 @@ def registry_status() -> apispecs.StatusResponse:
         ),
     )
 
-#=====================================#
-# API Endpoint Group: Node operations #
-#=====================================#
 
-#-------------------------------#
-# API Endpoint: /api/nodes/list #
-#-------------------------------#
+#================================================================#
+# API Endpoint Group: Node operations                            #
+#================================================================#
+
+# API Endpoint: /api/nodes/list
 @router.post("/nodes/list", response_model=apispecs.APINodesListResponse, tags=["nodes"])
 def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesListResponse:
     """
@@ -168,9 +191,8 @@ def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations =
     # Return the list of node key specs and the count in the response
     return apispecs.APINodesListResponse(nodes=node_key_specs, count=len(node_key_specs))
 
-#---------------------------------#
-# API Endpoint: /api/nodes/exists #
-#---------------------------------#
+
+# API Endpoint: /api/nodes/exists
 @router.post("/nodes/exists", response_model=apispecs.APINodesExistsResponse, tags=["nodes"])
 def nodes_exists(request: apispecs.APINodesExistsRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesExistsResponse:
     """
@@ -182,9 +204,8 @@ def nodes_exists(request: apispecs.APINodesExistsRequest, node_ops: NodeOperatio
     # Return the existence result in the response
     return apispecs.APINodesExistsResponse(exists=exists)
 
-#--------------------------------------#
-# API Endpoint: /api/nodes/exists_many #
-# -------------------------------------#
+
+# API Endpoint: /api/nodes/exists_many
 @router.post("/nodes/exists_many", response_model=apispecs.APINodesExistsManyResponse, tags=["nodes"])
 def nodes_exists_many(request: apispecs.APINodesExistsManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesExistsManyResponse:
     """
@@ -199,9 +220,8 @@ def nodes_exists_many(request: apispecs.APINodesExistsManyRequest, node_ops: Nod
     # Return the existence results in the response, including list of individual results and count
     return apispecs.APINodesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
-#------------------------------#
-# API Endpoint: /api/nodes/get #
-#------------------------------#
+
+# API Endpoint: /api/nodes/get
 @router.post("/nodes/get", response_model=apispecs.APINodesGetResponse, response_model_exclude_none=True, tags=["nodes"])
 def nodes_get(request: apispecs.APINodesGetRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesGetResponse:
     """
@@ -220,9 +240,8 @@ def nodes_get(request: apispecs.APINodesGetRequest, node_ops: NodeOperations = D
     # Return the node data in the response
     return apispecs.APINodesGetResponse(found=True, node=node_spec.model_dump(exclude_none=True))
 
-#-----------------------------------#
-# API Endpoint: /api/nodes/get_many #
-#-----------------------------------#
+
+# API Endpoint: /api/nodes/get_many
 @router.post("/nodes/get_many", response_model=apispecs.APINodesGetManyResponse, tags=["nodes"])
 def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesGetManyResponse:
     """
@@ -245,9 +264,8 @@ def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOpera
         count = len(node_list_spec.item_list)
     )
 
-#-------------------------------#
-# API Endpoint: /api/nodes/save #
-#-------------------------------#
+
+# API Endpoint: /api/nodes/save
 @router.post("/nodes/save", response_model=apispecs.APINodesSaveResponse, tags=["nodes"])
 def nodes_save(
     request: apispecs.APINodesSaveRequest,
@@ -275,9 +293,8 @@ def nodes_save(
         saved_key = saved_key_spec.model_dump()
     )
 
-#------------------------------------#
-# API Endpoint: /api/nodes/save_many #
-#------------------------------------#
+
+# API Endpoint: /api/nodes/save_many
 @router.post("/nodes/save_many", response_model=apispecs.APINodesSaveManyResponse, tags=["nodes"])
 def nodes_save_many(
     request: apispecs.APINodesSaveManyRequest,
@@ -306,9 +323,8 @@ def nodes_save_many(
         count      = len(saved_nodes.item_list)
     )
 
-#---------------------------------#
-# API Endpoint: /api/nodes/delete #
-#---------------------------------#
+
+# API Endpoint: /api/nodes/delete
 @router.post("/nodes/delete", response_model=apispecs.APINodesDeleteResponse, tags=["nodes"])
 def nodes_delete(request: apispecs.APINodesDeleteRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesDeleteResponse:
     """
@@ -323,9 +339,8 @@ def nodes_delete(request: apispecs.APINodesDeleteRequest, node_ops: NodeOperatio
     # Return the deletion result in the response
     return apispecs.APINodesDeleteResponse(success=bool(deleted))
 
-#--------------------------------------#
-# API Endpoint: /api/nodes/delete_many #
-#--------------------------------------#
+
+# API Endpoint: /api/nodes/delete_many
 @router.post("/nodes/delete_many", response_model=apispecs.APINodesDeleteManyResponse, tags=["nodes"])
 def nodes_delete_many(request: apispecs.APINodesDeleteManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesDeleteManyResponse:
     """
@@ -348,13 +363,12 @@ def nodes_delete_many(request: apispecs.APINodesDeleteManyRequest, node_ops: Nod
         n_deleted = sum(bool_results)
     )
 
-#=====================================#
-# API Endpoint Group: Edge operations #
-#=====================================#
 
-#-------------------------------#
-# API Endpoint: /api/edges/list #
-#-------------------------------#
+#================================================================#
+# API Endpoint Group: Edge operations                            #
+#================================================================#
+
+# API Endpoint: /api/edges/list
 @router.post("/edges/list", response_model=apispecs.APIEdgesListResponse, tags=["edges"])
 def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesListResponse:
     """
@@ -372,9 +386,8 @@ def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations =
     # Return the list of edge key specs and the count in the response
     return apispecs.APIEdgesListResponse(edges=edge_key_specs, count=len(edge_key_specs))
 
-#---------------------------------#
-# API Endpoint: /api/edges/exists #
-#---------------------------------#
+
+# API Endpoint: /api/edges/exists
 @router.post("/edges/exists", response_model=apispecs.APIEdgesExistsResponse, tags=["edges"])
 def edges_exists(request: apispecs.APIEdgesExistsRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesExistsResponse:
     """
@@ -386,9 +399,8 @@ def edges_exists(request: apispecs.APIEdgesExistsRequest, edge_ops: EdgeOperatio
     # Return the existence result in the response
     return apispecs.APIEdgesExistsResponse(exists=exists)
 
-#--------------------------------------#
-# API Endpoint: /api/edges/exists_many #
-# -------------------------------------#
+
+# API Endpoint: /api/edges/exists_many
 @router.post("/edges/exists_many", response_model=apispecs.APIEdgesExistsManyResponse, tags=["edges"])
 def edges_exists_many(request: apispecs.APIEdgesExistsManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesExistsManyResponse:
     """
@@ -403,9 +415,8 @@ def edges_exists_many(request: apispecs.APIEdgesExistsManyRequest, edge_ops: Edg
     # Return the existence results in the response, including list of individual results and count
     return apispecs.APIEdgesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
-#------------------------------#
-# API Endpoint: /api/edges/get #
-#------------------------------#
+
+# API Endpoint: /api/edges/get
 @router.post("/edges/get", response_model=apispecs.APIEdgesGetResponse, response_model_exclude_none=True, tags=["edges"])
 def edges_get(request: apispecs.APIEdgesGetRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesGetResponse:
     """
@@ -424,9 +435,8 @@ def edges_get(request: apispecs.APIEdgesGetRequest, edge_ops: EdgeOperations = D
     # Return the edge data in the response
     return apispecs.APIEdgesGetResponse(found=True, edge=edge_spec.model_dump(exclude_none=True))
 
-#-----------------------------------#
-# API Endpoint: /api/edges/get_many #
-#-----------------------------------#
+
+# API Endpoint: /api/edges/get_many
 @router.post("/edges/get_many", response_model=apispecs.APIEdgesGetManyResponse, tags=["edges"])
 def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesGetManyResponse:
     """
@@ -449,9 +459,8 @@ def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOpera
         count = len(edge_list_spec.item_list)
     )
 
-#-------------------------------#
-# API Endpoint: /api/edges/save #
-#-------------------------------#
+
+# API Endpoint: /api/edges/save
 @router.post("/edges/save", response_model=apispecs.APIEdgesSaveResponse, tags=["edges"])
 def edges_save(
     request: apispecs.APIEdgesSaveRequest,
@@ -479,9 +488,8 @@ def edges_save(
         saved_key = saved_key_spec.model_dump()
     )
 
-#------------------------------------#
-# API Endpoint: /api/edges/save_many #
-#------------------------------------#
+
+# API Endpoint: /api/edges/save_many
 @router.post("/edges/save_many", response_model=apispecs.APIEdgesSaveManyResponse, tags=["edges"])
 def edges_save_many(
     request: apispecs.APIEdgesSaveManyRequest,
@@ -510,9 +518,8 @@ def edges_save_many(
         count      = len(saved_edges.item_list)
     )
 
-#---------------------------------#
-# API Endpoint: /api/edges/delete #
-#---------------------------------#
+
+# API Endpoint: /api/edges/delete
 @router.post("/edges/delete", response_model=apispecs.APIEdgesDeleteResponse, tags=["edges"])
 def edges_delete(request: apispecs.APIEdgesDeleteRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesDeleteResponse:
     """
@@ -527,9 +534,8 @@ def edges_delete(request: apispecs.APIEdgesDeleteRequest, edge_ops: EdgeOperatio
     # Return the deletion result in the response
     return apispecs.APIEdgesDeleteResponse(success=bool(deleted))
 
-#--------------------------------------#
-# API Endpoint: /api/edges/delete_many #
-#--------------------------------------#
+
+# API Endpoint: /api/edges/delete_many
 @router.post("/edges/delete_many", response_model=apispecs.APIEdgesDeleteManyResponse, tags=["edges"])
 def edges_delete_many(request: apispecs.APIEdgesDeleteManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesDeleteManyResponse:
     """

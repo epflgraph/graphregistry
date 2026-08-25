@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from graphregistry.adapters.persistence.mysql.repositories.resolvers import SchemaResolver
 
 
+#================================================================#
+# Class Definition                                               #
+#================================================================#
 class MySQLUnitOfWork(UnitOfWork):
     """MySQL Unit of Work.
 
@@ -30,6 +33,7 @@ class MySQLUnitOfWork(UnitOfWork):
     same per-engine transaction.
     """
 
+    # Class initialization and dependency injection
     def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver") -> None:
         self.db = db
         self.schema_resolver = schema_resolver

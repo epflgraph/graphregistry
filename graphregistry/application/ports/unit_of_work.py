@@ -17,6 +17,9 @@ from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
 from graphregistry.application.ports.repositories.prt_node import NodeRepository
 
 
+#================================================================#
+# Class Definition                                               #
+#================================================================#
 @runtime_checkable
 class UnitOfWork(Protocol):
     """Coordinate a set of persistence operations as one atomic transaction."""

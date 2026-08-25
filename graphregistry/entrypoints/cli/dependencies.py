@@ -27,11 +27,21 @@ from graphregistry.common.config import GlobalConfig
 from graphregistry.entrypoints.dependencies import build_uow_factory
 
 
+#================================================================#
+# Function Group: Schema resolver builders                       #
+#================================================================#
+
+# Function: Build the default schema resolver for a registry environment.
 def build_schema_resolver(*, engine_name: str, global_config: GlobalConfig) -> DefaultSchemaResolver:
     """Build the default schema resolver for a registry environment."""
     return DefaultSchemaResolver(engine_name=engine_name, glbcfg=global_config)
 
 
+#================================================================#
+# Function Group: Operation builders                             #
+#================================================================#
+
+# Function: Build node operations wired to a UnitOfWork factory.
 def build_node_operations(
     *,
     uow_factory: Callable[[], UnitOfWork],
@@ -44,6 +54,7 @@ def build_node_operations(
     )
 
 
+# Function: Build edge operations wired to a UnitOfWork factory.
 def build_edge_operations(
     *,
     uow_factory: Callable[[], UnitOfWork],
@@ -52,6 +63,7 @@ def build_edge_operations(
     return EdgeOperations(uow_factory=uow_factory)
 
 
+# Function: Build lecture operations wired to the MySQL repository and AI gateways.
 def build_lecture_operations(
     *,
     db: GraphDB,
@@ -82,6 +94,7 @@ def build_lecture_operations(
     )
 
 
+# Function: Build lecture operations for enrichment workflows (no video gateway).
 def build_lecture_enrichment_operations(
     *,
     db: GraphDB,
@@ -97,10 +110,11 @@ def build_lecture_enrichment_operations(
     )
 
 
-# ---------------------------------------------------------------------------
-# CLI-specific helpers that read from the standard argparse context.
-# ---------------------------------------------------------------------------
+#================================================================#
+# Function Group: CLI-specific builders from argparse context    #
+#================================================================#
 
+# Function: Build node operations from a CLI args namespace.
 def build_node_operations_from_args(
     args,
     *,
@@ -114,12 +128,14 @@ def build_node_operations_from_args(
     )
 
 
+# Function: Build edge operations from a CLI args namespace.
 def build_edge_operations_from_args(args) -> EdgeOperations:
     """Build edge operations from a CLI args namespace."""
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
     return build_edge_operations(uow_factory=uow_factory)
 
 
+# Function: Build node operations with a GraphAI concept-detection gateway from CLI args.
 def build_node_operations_with_concept_detection_from_args(args) -> NodeOperations:
     """Build node operations with a GraphAI concept-detection gateway."""
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
@@ -129,6 +145,7 @@ def build_node_operations_with_concept_detection_from_args(args) -> NodeOperatio
     )
 
 
+# Function: Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory.
 def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOperations]:
     """Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory."""
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
@@ -138,6 +155,7 @@ def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOpera
     )
 
 
+# Function: Build lecture operations from a CLI args namespace.
 def build_lecture_operations_from_args(
     args,
     *,

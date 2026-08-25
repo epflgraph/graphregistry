@@ -18,12 +18,14 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
+# Domain errors that are considered transient and may succeed on retry.
 _TRANSIENT_DB_ERRORS: tuple[type[Exception], ...] = (
     ConnectionExhaustedError,
     LockWaitTimeoutError,
 )
 
 
+# Function: Build a decorator that retries a function on transient database errors.
 def retry_on_transient_db_error(
     *,
     max_retries: int = 3,

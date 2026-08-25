@@ -66,6 +66,9 @@ def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
     )
 
 
+#================================================================#
+# Class Definition                                               #
+#================================================================#
 class MySQLSession:
     """One connection, one transaction.
 
@@ -73,10 +76,15 @@ class MySQLSession:
     tuples. Higher-level mapping happens in repositories.
     """
 
+    # Class initialization and dependency injection
     def __init__(self, db: "GraphDB", engine_name: str) -> None:
+        # GraphDB client that owns the SQLAlchemy engine pool.
         self.db = db
+        # Name of the engine to use within the GraphDB client.
         self.engine_name = engine_name
+        # Bound SQLAlchemy connection, opened by begin().
         self._connection: Any | None = None
+        # Bound SQLAlchemy transaction, started by begin().
         self._transaction: Any | None = None
 
     def begin(self) -> MySQLSession:

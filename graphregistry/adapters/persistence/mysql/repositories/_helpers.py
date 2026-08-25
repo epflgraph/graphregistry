@@ -13,16 +13,27 @@ from typing import Any
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 
 
+#================================================================#
+# Function Group: SQL identifier helpers                         #
+#================================================================#
+
+# Function: Backtick-quote a single SQL identifier safely.
 def quote_identifier(name: str) -> str:
     """Backtick-quote a single SQL identifier safely."""
     return f"`{name.replace('`', '``')}`"
 
 
+# Function: Return a safely quoted schema-qualified table name.
 def qualified_table(schema_name: str, table_name: str) -> str:
     """Return a safely quoted schema-qualified table name."""
     return f"{quote_identifier(schema_name)}.{quote_identifier(table_name)}"
 
 
+#================================================================#
+# Function Group: Key predicate helpers                          #
+#================================================================#
+
+# Function: Build a parameterized ``(col1, col2, ...) IN (...)`` clause.
 def key_tuple_in_list_predicate(
     key_tuples: list[tuple[Any, ...]],
     key_column_names: list[str],
@@ -47,6 +58,11 @@ def key_tuple_in_list_predicate(
     return ", ".join(placeholders), params
 
 
+#================================================================#
+# Function Group: Batch write helpers                            #
+#================================================================#
+
+# Function: Insert or update a batch of rows in a single statement.
 def upsert_rows(
     session: MySQLSession,
     table_path: str,
@@ -99,6 +115,7 @@ def upsert_rows(
     session.execute(sql, params)
 
 
+# Function: Soft-delete rows whose key columns match the given tuples.
 def soft_delete_by_key_tuples(
     session: MySQLSession,
     schema_name: str,

@@ -15,10 +15,13 @@ from graphregistry.entrypoints.api.main import create_app
 from graphregistry.entrypoints.api.router import get_node_ops
 
 
+#================================================================#
+# Function Group: Pytest fixtures                                #
+#================================================================#
+
+# Function: Build a TestClient with a fake node operations that raises on demand.
 @pytest.fixture
 def api_client() -> TestClient:
-    """Build a TestClient with a fake node operations that raises on demand."""
-
     def _make_node_ops(exc: Exception | None = None):
         class FakeNodeOps:
             def save_many(self, *args, **kwargs):
@@ -41,6 +44,11 @@ def api_client() -> TestClient:
     app.dependency_overrides.clear()
 
 
+#================================================================#
+# Test Group: Persistence exception HTTP responses               #
+#================================================================#
+
+# Test: Connection exhaustion is surfaced as 503 with a Retry-After header.
 def test_connection_exhausted_returns_503(api_client) -> None:
     client = api_client(ConnectionExhaustedError("too many connections"))
     response = client.post("/api/nodes/save_many", json={"node_list": []})
@@ -49,6 +57,7 @@ def test_connection_exhausted_returns_503(api_client) -> None:
     assert "overloaded" in response.json()["detail"].lower()
 
 
+# Test: Lock wait timeout is surfaced as 503 with a Retry-After header.
 def test_lock_wait_timeout_returns_503(api_client) -> None:
     client = api_client(LockWaitTimeoutError("lock wait timeout"))
     response = client.post("/api/nodes/save_many", json={"node_list": []})
@@ -56,6 +65,7 @@ def test_lock_wait_timeout_returns_503(api_client) -> None:
     assert response.headers.get("retry-after") is not None
 
 
+# Test: Duplicate key violation is surfaced as 409.
 def test_duplicate_key_returns_409(api_client) -> None:
     client = api_client(DuplicateKeyError("duplicate entry"))
     response = client.post("/api/nodes/save_many", json={"node_list": []})
@@ -63,6 +73,7 @@ def test_duplicate_key_returns_409(api_client) -> None:
     assert "duplicate" in response.json()["detail"].lower()
 
 
+# Test: Generic persistence error is surfaced as 500.
 def test_generic_persistence_error_returns_500(api_client) -> None:
     client = api_client(PersistenceError("some db error"))
     response = client.post("/api/nodes/save_many", json={"node_list": []})

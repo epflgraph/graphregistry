@@ -5,9 +5,17 @@ from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.types import ActionSet
 
-# Class definition
+
+#================================================================#
+# Class Definition                                               #
+#================================================================#
 @runtime_checkable
 class NodeRepository(Protocol):
+    """Port for node persistence operations.
+
+    Implementations must provide atomic save/save_many/delete/delete_many
+    semantics when 'commit' is in actions.
+    """
 
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
         ...

@@ -22,6 +22,11 @@ from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import GlobalConfig
 
 
+#================================================================#
+# Function Group: Database client builders                       #
+#================================================================#
+
+# Function: Create the single GraphDB client for this process.
 def build_db(
     config_path: Path | str | None = None,
     *,
@@ -46,6 +51,11 @@ def build_db(
     return GraphDB(config=config)
 
 
+#================================================================#
+# Function Group: Unit of Work factory builders                  #
+#================================================================#
+
+# Function: Cache schema resolvers because they are stateless.
 @lru_cache(maxsize=8)
 def _schema_resolver(engine_name: str) -> DefaultSchemaResolver:
     """Cache schema resolvers because they are stateless.
@@ -56,6 +66,7 @@ def _schema_resolver(engine_name: str) -> DefaultSchemaResolver:
     return DefaultSchemaResolver(engine_name=engine_name, glbcfg=GlobalConfig())
 
 
+# Function: Return a factory that creates a fresh UnitOfWork for engine_name.
 def build_uow_factory(db: GraphDB, engine_name: str) -> Callable[[], UnitOfWork]:
     """Return a factory that creates a fresh UnitOfWork for engine_name."""
     schema_resolver = _schema_resolver(engine_name)
