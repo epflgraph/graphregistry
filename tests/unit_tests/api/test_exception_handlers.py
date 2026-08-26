@@ -22,6 +22,9 @@ from graphregistry.entrypoints.api.router import get_node_ops
 # Function: Build a TestClient with a fake node operations that raises on demand.
 @pytest.fixture
 def api_client() -> TestClient:
+
+    # Function: Build a dependency override factory that injects a fake node
+    # operations instance.
     def _make_node_ops(exc: Exception | None = None):
         class FakeNodeOps:
             def save_many(self, *args, **kwargs):
@@ -36,6 +39,7 @@ def api_client() -> TestClient:
 
     app = create_app()
 
+    # Function: Build a TestClient configured with the fake node operations.
     def _client_for(exc: Exception | None) -> TestClient:
         app.dependency_overrides[get_node_ops] = _make_node_ops(exc)
         return TestClient(app)

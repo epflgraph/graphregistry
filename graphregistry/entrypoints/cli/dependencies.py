@@ -42,11 +42,7 @@ def build_schema_resolver(*, engine_name: str, global_config: GlobalConfig) -> D
 #================================================================#
 
 # Function: Build node operations wired to a UnitOfWork factory.
-def build_node_operations(
-    *,
-    uow_factory: Callable[[], UnitOfWork],
-    concept_detection_gateway: ConceptDetectionGateway | None = None,
-) -> NodeOperations:
+def build_node_operations(*, uow_factory: Callable[[], UnitOfWork], concept_detection_gateway: ConceptDetectionGateway | None = None) -> NodeOperations:
     """Build node operations wired to a UnitOfWork factory."""
     return NodeOperations(
         uow_factory=uow_factory,
@@ -55,15 +51,15 @@ def build_node_operations(
 
 
 # Function: Build edge operations wired to a UnitOfWork factory.
-def build_edge_operations(
-    *,
-    uow_factory: Callable[[], UnitOfWork],
-) -> EdgeOperations:
+def build_edge_operations(*, uow_factory: Callable[[], UnitOfWork]) -> EdgeOperations:
     """Build edge operations wired to a UnitOfWork factory."""
     return EdgeOperations(uow_factory=uow_factory)
 
 
-# Function: Build lecture operations wired to the MySQL repository and AI gateways.
+#----------------------------------------------------------------#
+# Function: Build lecture operations wired to the MySQL repository
+# and AI gateways.
+#----------------------------------------------------------------#
 def build_lecture_operations(
     *,
     db: GraphDB,
@@ -73,6 +69,7 @@ def build_lecture_operations(
     include_concept_gateway: bool = True,
     include_enrichment_gateway: bool = True,
 ) -> LectureOperations:
+#----------------------------------------------------------------#
     """Build lecture operations wired to the MySQL repository and AI gateways."""
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
     node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
@@ -87,20 +84,15 @@ def build_lecture_operations(
     lecture_enrichment_gateway = GenAILectureEnrichmentGateway() if include_enrichment_gateway else None
 
     return LectureOperations(
-        repo=lecture_repo,
-        video_processing_gateway=video_processing_gateway,
-        concept_detection_gateway=concept_detection_gateway,
-        lecture_enrichment_gateway=lecture_enrichment_gateway,
+        repo                      = lecture_repo,
+        video_processing_gateway  = video_processing_gateway,
+        concept_detection_gateway = concept_detection_gateway,
+        lecture_enrichment_gateway= lecture_enrichment_gateway,
     )
 
 
 # Function: Build lecture operations for enrichment workflows (no video gateway).
-def build_lecture_enrichment_operations(
-    *,
-    db: GraphDB,
-    engine_name: str,
-    global_config: GlobalConfig,
-) -> LectureOperations:
+def build_lecture_enrichment_operations(*, db: GraphDB, engine_name: str, global_config: GlobalConfig) -> LectureOperations:
     """Build lecture operations for enrichment workflows (no video gateway)."""
     return build_lecture_operations(
         db=db,
@@ -115,11 +107,7 @@ def build_lecture_enrichment_operations(
 #================================================================#
 
 # Function: Build node operations from a CLI args namespace.
-def build_node_operations_from_args(
-    args,
-    *,
-    concept_detection_gateway: ConceptDetectionGateway | None = None,
-) -> NodeOperations:
+def build_node_operations_from_args(args, *, concept_detection_gateway: ConceptDetectionGateway | None = None) -> NodeOperations:
     """Build node operations from a CLI args namespace."""
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
     return build_node_operations(
@@ -145,7 +133,8 @@ def build_node_operations_with_concept_detection_from_args(args) -> NodeOperatio
     )
 
 
-# Function: Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory.
+# Function: Build node and edge operations from a CLI args namespace, sharing one UnitOfWork
+# factory.
 def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOperations]:
     """Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory."""
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
@@ -155,7 +144,9 @@ def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOpera
     )
 
 
+#----------------------------------------------------------------#
 # Function: Build lecture operations from a CLI args namespace.
+#----------------------------------------------------------------#
 def build_lecture_operations_from_args(
     args,
     *,
@@ -163,12 +154,13 @@ def build_lecture_operations_from_args(
     include_concept_gateway: bool = True,
     include_enrichment_gateway: bool = True,
 ) -> LectureOperations:
+#----------------------------------------------------------------#
     """Build lecture operations from a CLI args namespace."""
     return build_lecture_operations(
-        db=args.ctx.db,
-        engine_name=args.env,
-        global_config=args.ctx.global_config,
-        include_video_gateway=include_video_gateway,
-        include_concept_gateway=include_concept_gateway,
-        include_enrichment_gateway=include_enrichment_gateway,
+        db                        = args.ctx.db,
+        engine_name               = args.env,
+        global_config             = args.ctx.global_config,
+        include_video_gateway     = include_video_gateway,
+        include_concept_gateway   = include_concept_gateway,
+        include_enrichment_gateway= include_enrichment_gateway,
     )

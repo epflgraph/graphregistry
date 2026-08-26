@@ -27,11 +27,7 @@ from graphregistry.common.config import GlobalConfig
 #================================================================#
 
 # Function: Create the single GraphDB client for this process.
-def build_db(
-    config_path: Path | str | None = None,
-    *,
-    config: "GraphDBConfig | None" = None,
-) -> GraphDB:
+def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | None" = None) -> GraphDB:
     """Create the single GraphDB client for this process.
 
     Because GraphDB is a singleton class, repeated calls return the same

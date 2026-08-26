@@ -33,12 +33,16 @@ def qualified_table(schema_name: str, table_name: str) -> str:
 # Function Group: Key predicate helpers                          #
 #================================================================#
 
-# Function: Build a parameterized ``(col1, col2, ...) IN (...)`` clause.
+#----------------------------------------------------------------#
+# Function: Build a parameterized ``(col1, col2, ...) IN (...)``
+# clause.
+#----------------------------------------------------------------#
 def key_tuple_in_list_predicate(
     key_tuples: list[tuple[Any, ...]],
     key_column_names: list[str],
     prefix: str = "key",
 ) -> tuple[str, dict[str, Any]]:
+#----------------------------------------------------------------#
     """Build a parameterized ``(col1, col2, ...) IN (...)`` clause.
 
     Returns a tuple of (placeholders_sql, params_dict).
@@ -49,6 +53,7 @@ def key_tuple_in_list_predicate(
     placeholders: list[str] = []
     params: dict[str, Any] = {}
 
+    # Build per-row placeholders and bind each key-column value.
     for i, key_tuple in enumerate(key_tuples):
         row_placeholders = [f":{prefix}_{col}_{i}" for col in key_column_names]
         placeholders.append(f"({', '.join(row_placeholders)})")
@@ -62,7 +67,9 @@ def key_tuple_in_list_predicate(
 # Function Group: Batch write helpers                            #
 #================================================================#
 
+#----------------------------------------------------------------#
 # Function: Insert or update a batch of rows in a single statement.
+#----------------------------------------------------------------#
 def upsert_rows(
     session: MySQLSession,
     table_path: str,
@@ -70,6 +77,7 @@ def upsert_rows(
     upd_column_names: list[str],
     rows: list[dict[str, Any]],
 ) -> None:
+#----------------------------------------------------------------#
     """Insert or update a batch of rows in a single statement.
 
     Mirrors the safe-upsert semantics used by the legacy graphdb client:
@@ -83,6 +91,7 @@ def upsert_rows(
     value_placeholders: list[str] = []
     params: dict[str, Any] = {}
 
+    # Build per-row value placeholders and bind every column value.
     for i, row in enumerate(rows):
         row_placeholders = [f":{col}_{i}" for col in all_column_names]
         value_placeholders.append(f"({', '.join(row_placeholders)})")
@@ -115,7 +124,9 @@ def upsert_rows(
     session.execute(sql, params)
 
 
+#----------------------------------------------------------------#
 # Function: Soft-delete rows whose key columns match the given tuples.
+#----------------------------------------------------------------#
 def soft_delete_by_key_tuples(
     session: MySQLSession,
     schema_name: str,
@@ -123,6 +134,7 @@ def soft_delete_by_key_tuples(
     key_column_names: list[str],
     key_tuples: list[tuple[Any, ...]],
 ) -> None:
+#----------------------------------------------------------------#
     """Soft-delete rows whose key columns match the given tuples."""
     if not key_tuples:
         return

@@ -39,22 +39,23 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     """
 
     # Class initialization and dependency injection
-    def __init__(
-        self,
-        db: "GraphDB | None" = None,
-        schema_resolver: "SchemaResolver | None" = None,
-        node_repo: NodeRepository | None = None,
-        *,
-        uow: "MySQLUnitOfWork | None" = None,
-    ) -> None:
+    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, node_repo: NodeRepository | None = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
+
+        # Validate that either a UnitOfWork is provided, or a GraphDB,
+        # SchemaResolver and NodeRepository are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None or node_repo is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=, node_repo=), not both.")
 
+        # If a UnitOfWork is provided, use its db, schema_resolver and create a
+        # node repository that shares the same UnitOfWork.
         if uow is not None:
             self._uow = uow
             self.db = uow.db
             self.schema_resolver = uow.schema_resolver
             self.node_repo: NodeRepository = MySQLNodeRepository(uow=uow)
+
+        # If a UnitOfWork is not provided, ensure that db, schema_resolver and
+        # node_repo are provided; otherwise, raise an error.
         elif db is not None and schema_resolver is not None and node_repo is not None:
             self._uow = None
             self.db = db
@@ -63,6 +64,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         else:
             raise ValueError("MySQLLectureRepository requires either uow= or (db=, schema_resolver=, node_repo=).")
 
+        # Initialize a GraphLogger instance for logging messages.
         self.msg = GraphLogger()
 
     #================================================================#
@@ -86,12 +88,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             session.close()
 
     # Function: Execute a read query and return the results as a list of tuples.
-    def _execute_read(
-        self,
-        engine_name: str,
-        query: str,
-        params: dict[str, Any] | None = None,
-    ) -> list[tuple[Any, ...]]:
+    def _execute_read(self, engine_name: str, query: str, params: dict[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Execute a read query."""
         session = self._session(engine_name)
         try:
@@ -104,7 +101,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     def _qt(schema_name: str, table_name: str) -> str:
         return qualified_table(schema_name, table_name)
 
+    #----------------------------------------------------------------#
     # Function: Upsert a single row using the shared batch upsert helper.
+    #----------------------------------------------------------------#
     @staticmethod
     def _upsert_single_row(
         session: MySQLSession,
@@ -114,12 +113,16 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         upd_column_names: list[str],
         upd_column_values: list[Any],
     ) -> None:
+    #----------------------------------------------------------------#
         """Upsert a single row using the shared batch upsert helper."""
         row = dict(zip(key_column_names, key_column_values))
         row.update(dict(zip(upd_column_names, upd_column_values)))
         upsert_rows(session, table_path, key_column_names, upd_column_names, [row])
 
-    # Function: Open a session, upsert one row, and commit if running standalone.
+    #----------------------------------------------------------------#
+    # Function: Open a session, upsert one row, and commit if running
+    # standalone.
+    #----------------------------------------------------------------#
     def _commit_single_row(
         self,
         engine_name: str,
@@ -129,6 +132,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         upd_column_names: list[str],
         upd_column_values: list[Any],
     ) -> None:
+    #----------------------------------------------------------------#
         """Open a session, upsert one row, and commit if running standalone."""
         session = self._session(engine_name)
         try:

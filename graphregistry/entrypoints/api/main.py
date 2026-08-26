@@ -129,9 +129,10 @@ def create_app() -> FastAPI:
     app.include_router(router)
 
     #================================================================#
-    # Method Group: Exception handlers                               #
+    # Function Group: Exception handlers                             #
     #================================================================#
 
+    # Function: Handle FastAPI request validation errors.
     @app.exception_handler(RequestValidationError)
     async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """
@@ -175,6 +176,7 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle Pydantic validation errors raised inside endpoint code.
     @app.exception_handler(ValidationError)
     async def pydantic_validation_exception_handler(request: Request, exc: ValidationError) -> JSONResponse:
         """
@@ -198,6 +200,7 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle expected ValueError exceptions as bad API requests.
     @app.exception_handler(ValueError)
     async def value_error_exception_handler(request: Request, exc: ValueError) -> JSONResponse:
         """
@@ -225,6 +228,7 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle attempts to save disallowed node or edge types.
     @app.exception_handler(DisallowedTypeError)
     async def disallowed_type_exception_handler(request: Request, exc: DisallowedTypeError) -> JSONResponse:
         """
@@ -249,10 +253,9 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle database connection exhaustion (MySQL 1040).
     @app.exception_handler(ConnectionExhaustedError)
-    async def connection_exhausted_exception_handler(
-        request: Request, exc: ConnectionExhaustedError
-    ) -> JSONResponse:
+    async def connection_exhausted_exception_handler(request: Request, exc: ConnectionExhaustedError) -> JSONResponse:
         """Handle database connection exhaustion (MySQL 1040)."""
         logger.warning(
             "Database connection exhausted: method=%s path=%s error=%s",
@@ -268,10 +271,9 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle lock wait timeouts (MySQL 1205).
     @app.exception_handler(LockWaitTimeoutError)
-    async def lock_wait_timeout_exception_handler(
-        request: Request, exc: LockWaitTimeoutError
-    ) -> JSONResponse:
+    async def lock_wait_timeout_exception_handler(request: Request, exc: LockWaitTimeoutError) -> JSONResponse:
         """Handle lock wait timeouts (MySQL 1205)."""
         logger.warning(
             "Lock wait timeout in API request: method=%s path=%s error=%s",
@@ -287,6 +289,7 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle duplicate key violations (MySQL 1062).
     @app.exception_handler(DuplicateKeyError)
     async def duplicate_key_exception_handler(request: Request, exc: DuplicateKeyError) -> JSONResponse:
         """Handle duplicate key violations (MySQL 1062)."""
@@ -303,6 +306,7 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle generic persistence errors not matched above.
     @app.exception_handler(PersistenceError)
     async def persistence_error_exception_handler(request: Request, exc: PersistenceError) -> JSONResponse:
         """Handle generic persistence errors that were not matched above."""
@@ -320,6 +324,7 @@ def create_app() -> FastAPI:
             },
         )
 
+    # Function: Handle unexpected errors as structured 500 responses.
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """

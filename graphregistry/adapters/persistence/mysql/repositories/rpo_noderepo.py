@@ -20,9 +20,9 @@ if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 
-#==================#
-# Class Definition #
-#==================#
+#================================================================#
+# Class Definition                                               #
+#================================================================#
 class MySQLNodeRepository(NodeRepository):
     """MySQL adapter for the NodeRepository port.
 
@@ -44,17 +44,20 @@ class MySQLNodeRepository(NodeRepository):
     # Class initialization and dependency injection
     def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
 
-        # Validate that either a UnitOfWork is provided, or both a GraphDB and SchemaResolver are provided, but not both.
+        # Validate that either a UnitOfWork is provided, or both a GraphDB and
+        # SchemaResolver are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=), not both.")
 
-        # If a UnitOfWork is provided, use its db and schema_resolver; otherwise, use the provided db and schema_resolver.
+        # If a UnitOfWork is provided, use its db and schema_resolver; otherwise,
+        # use the provided db and schema_resolver.
         if uow is not None:
             self._uow = uow
             self.db = uow.db
             self.schema_resolver = uow.schema_resolver
 
-        # If a UnitOfWork is not provided, ensure that both db and schema_resolver are provided; otherwise, raise an error.
+        # If a UnitOfWork is not provided, ensure that both db and schema_resolver
+        # are provided; otherwise, raise an error.
         elif db is not None and schema_resolver is not None:
             self._uow = None
             self.db = db
@@ -69,7 +72,8 @@ class MySQLNodeRepository(NodeRepository):
     # Function Group: Internal helpers                               #
     #================================================================#
 
-    # Function: Helper to get a session for a given engine name, creating a standalone session if not in a UnitOfWork.
+    # Function: Helper to get a session for a given engine name, creating a
+    # standalone session if not in a UnitOfWork.
     def _session(self, engine_name: str) -> MySQLSession:
         """Return a session for engine_name, creating a standalone one if needed."""
         if self._uow is not None:
@@ -104,7 +108,8 @@ class MySQLNodeRepository(NodeRepository):
     def _upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[str], upd_column_names: list[str], rows: list[dict[str, Any]]) -> None:
         upsert_rows(session, table_path, key_column_names, upd_column_names, rows)
 
-    # Function: Helper to soft-delete rows by keys in a given table using the provided session
+    # Function: Helper to soft-delete rows by keys in a given table using the
+    # provided session.
     @staticmethod
     def _soft_delete_by_keys(session: MySQLSession, schema_name: str, table_name: str, keys: list[NodeKey]) -> None:
         key_tuples = [(key.object_type, key.object_id) for key in keys]
@@ -130,10 +135,12 @@ class MySQLNodeRepository(NodeRepository):
     # Method: List nodes of a given object type and optional ID pattern
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
 
-        # Determine the engine name and schema name for the given object type using the schema resolver
+        # Determine the engine name and schema name for the given object type using the
+        # schema resolver
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
 
-        # Resolve the SQL query for listing nodes based on the provided object type and ID pattern
+        # Resolve the SQL query for listing nodes based on the provided object type and ID
+        # pattern
         sql_query = resolve_sql_query(
             file_path   = sql_queries_paths["registry"]["commit"]["node_list"],
             registry    = schema_name,
@@ -141,13 +148,15 @@ class MySQLNodeRepository(NodeRepository):
             id_pattern  = id_pattern.replace("*", "%") if id_pattern is not None else "%",
         )
 
-        # Execute the read query and return the results as a list of tuples containing object type and object ID
+        # Execute the read query and return the results as a list of tuples containing
+        # object type and object ID
         return cast(list[tuple[str, str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
     # Method: Check if a node with the given key exists in the database
     def exists(self, key: NodeKey) -> bool:
 
-        # Determine the engine name and schema name for the given node key using the schema resolver
+        # Determine the engine name and schema name for the given node key using the schema
+        # resolver
         engine_name, schema_name = self.schema_resolver.for_node(key)
 
         # Resolve the SQL query for checking if the node exists based on the provided key
@@ -161,7 +170,8 @@ class MySQLNodeRepository(NodeRepository):
         # Execute the read query and return True if the node exists, False otherwise
         result = self._execute_read(engine_name=engine_name, query=sql_query)
 
-        # Return True if the result is not empty and the first element of the first row is truthy, otherwise return False
+        # Return True if the result is not empty and the first element of the first row is
+        # truthy, otherwise return False
         return bool(result[0][0]) if result else False
 
     # Method: Check if multiple nodes with the given keys exist in the database
@@ -172,15 +182,18 @@ class MySQLNodeRepository(NodeRepository):
     # Method: Retrieve a node with the given key from the database
     def get(self, key: NodeKey) -> Node | None:
 
-        # Check if the node with the given key exists in the database; if not, log a "not found" message and return None
+        # Check if the node with the given key exists in the database; if not, log a "not
+        # found" message and return None
         if not self.exists(key):
             self.msg.not_found(key)
             return None
 
-        # Determine the engine name and schema name for the given node key using the schema resolver
+        # Determine the engine name and schema name for the given node key using the schema
+        # resolver
         engine_name, schema_name = self.schema_resolver.for_node(key)
 
-        # Resolve the SQL query for retrieving the basic information of the node based on the provided key
+        # Resolve the SQL query for retrieving the basic information of the node based on
+        # the provided key
         basic_query = resolve_sql_query(
             file_path   = sql_queries_paths["registry"]["commit"]["node_get_basic"],
             registry    = schema_name,
@@ -199,7 +212,8 @@ class MySQLNodeRepository(NodeRepository):
             self.msg.not_found(key)
             return None
 
-        # Resolve the SQL query for retrieving custom fields of the node based on the provided key
+        # Resolve the SQL query for retrieving custom fields of the node based on the
+        # provided key
         custom_query = resolve_sql_query(
             file_path   = sql_queries_paths["registry"]["commit"]["node_get_custom"],
             registry    = schema_name,
@@ -207,10 +221,12 @@ class MySQLNodeRepository(NodeRepository):
             object_id   = key.object_id,
         )
 
-        # Execute the custom query and retrieve the results as a list of tuples containing field information
+        # Execute the custom query and retrieve the results as a list of tuples containing
+        # field information
         custom_fields = cast(list[tuple[str, str, Any]], self._execute_read(engine_name=engine_name, query=custom_query))
 
-        # Resolve the SQL query for retrieving the page profile of the node based on the provided key
+        # Resolve the SQL query for retrieving the page profile of the node based on the
+        # provided key
         profile_query = resolve_sql_query(
             file_path   = sql_queries_paths["registry"]["commit"]["node_get_profile"],
             registry    = schema_name,
@@ -229,14 +245,16 @@ class MySQLNodeRepository(NodeRepository):
             "manually_mapped" : [],
         }
 
-        # Loop through each mapping type (excluding "detected") and retrieve the corresponding concepts for the node
+        # Loop through each mapping type (excluding "detected") and retrieve the
+        # corresponding concepts for the node
         for map_type in get_args(ConceptMapType):
 
             # Skip the "detected" mapping type as it is not needed for this operation
             if map_type == "detected":
                 continue
 
-            # Resolve the SQL query for retrieving concepts of the node based on the provided key and mapping type
+            # Resolve the SQL query for retrieving concepts of the node based on the
+            # provided key and mapping type
             sql_query = resolve_sql_query(
                 file_path=sql_queries_paths["registry"]["commit"][f"node_get_concepts_{map_type}"],
                 registry=schema_name,
@@ -244,10 +262,12 @@ class MySQLNodeRepository(NodeRepository):
                 object_id=key.object_id,
             )
 
-            # Execute the concept query and store the results in the concepts dictionary for the current mapping type
+            # Execute the concept query and store the results in the concepts dictionary for
+            # the current mapping type
             concepts[map_type] = cast(list[tuple[str, float]], self._execute_read(engine_name=engine_name, query=sql_query))
 
-        # Use the MySQLNodeMapper to construct a Node object from the retrieved data and return it
+        # Use the MySQLNodeMapper to construct a Node object from the retrieved data and
+        # return it
         return MySQLNodeMapper.from_parts(
             key                       = key,
             basic_row                 = basic_row,
@@ -275,7 +295,8 @@ class MySQLNodeRepository(NodeRepository):
         # Get the key of the node to be persisted
         key = node.key
 
-        # Get the qualified table path for the "Nodes_N_Object" table in the specified schema
+        # Get the qualified table path for the "Nodes_N_Object" table in the specified
+        # schema
         table_path = self._qt(schema_name, "Nodes_N_Object")
 
         # Convert the node to a basic row representation using the MySQLNodeMapper
@@ -301,10 +322,11 @@ class MySQLNodeRepository(NodeRepository):
         # Convert the node to custom field rows using the MySQLNodeMapper
         custom_rows = MySQLNodeMapper.to_custom_field_rows(node)
 
-        # If there are custom rows, upsert them into the "Data_N_Object_T_CustomFields" table using the provided session
+        # If there are custom rows, upsert them into the "Data_N_Object_T_CustomFields"
+        # table using the provided session
         if custom_rows:
             self._upsert_rows(
-                session=session,
+                session          = session,
                 table_path       = self._qt(schema_name, "Data_N_Object_T_CustomFields"),
                 key_column_names = ["object_type", "object_id", "field_language", "field_name"],
                 upd_column_names = ["field_value", "record_deleted"],
@@ -314,7 +336,8 @@ class MySQLNodeRepository(NodeRepository):
         # Convert the node to a page profile row using the MySQLNodeMapper
         page_profile_row = MySQLNodeMapper.to_page_profile_row(node)
 
-        # If there is a page profile row, upsert it into the "Data_N_Object_T_PageProfile" table using the provided session
+        # If there is a page profile row, upsert it into the "Data_N_Object_T_PageProfile"
+        # table using the provided session
         self._upsert_rows(
             session          = session,
             table_path       = self._qt(schema_name, "Data_N_Object_T_PageProfile"),
@@ -323,19 +346,22 @@ class MySQLNodeRepository(NodeRepository):
             rows             = [{"object_type": key.object_type, "object_id": key.object_id, **page_profile_row}],
         )
 
-        # Upsert concept edges for each mapping type (excluding "detected") using the MySQLNodeMapper
+        # Upsert concept edges for each mapping type (excluding "detected") using the
+        # MySQLNodeMapper
         for map_type, table_name in zip(get_args(ConceptMapType), self._CONCEPT_TABLE_NAMES.values(), strict=True):
 
             # Skip the "detected" mapping type as it is not needed for this operation
             if map_type == "detected":
                 continue
 
-            # Convert the node to scored concept rows for the current mapping type using the MySQLNodeMapper
+            # Convert the node to scored concept rows for the current mapping type using the
+            # MySQLNodeMapper
             concept_rows = MySQLNodeMapper.to_scored_concepts_rows(node, map_to=map_type)
             if not concept_rows:
                 continue
 
-            # Upsert the concept rows into the corresponding concept edge table using the provided session
+            # Upsert the concept rows into the corresponding concept edge table using the
+            # provided session
             self._upsert_rows(
                 session          = session,
                 table_path       = self._qt(schema_name, table_name),
@@ -393,12 +419,14 @@ class MySQLNodeRepository(NodeRepository):
         # list of dictionaries for upserting
         custom_field_rows: list[dict[str, Any]] = []
 
-        # Loop through each node in the group and convert it to custom field rows using the MySQLNodeMapper
+        # Loop through each node in the group and convert it to custom field rows using the
+        # MySQLNodeMapper
         for node in nodes:
             for row in MySQLNodeMapper.to_custom_field_rows(node):
                 custom_field_rows.append({**row, "record_deleted": 0})
 
-        # If there are custom field rows, upsert them into the "Data_N_Object_T_CustomFields"
+        # If there are custom field rows, upsert them into the
+        # "Data_N_Object_T_CustomFields"
         # table using the provided session
         if custom_field_rows:
             self._upsert_rows(
@@ -417,10 +445,12 @@ class MySQLNodeRepository(NodeRepository):
         page_profile_rows: list[dict[str, Any]] = []
         page_profile_cols: set[str] = set()
 
-        # Loop through each node in the group and convert it to a page profile row using the MySQLNodeMapper
+        # Loop through each node in the group and convert it to a page profile row using the
+        # MySQLNodeMapper
         for node in nodes:
 
-            # If the node does not have a page profile, skip it and continue to the next node
+            # If the node does not have a page profile, skip it and continue to the next
+            # node
             if node.page_profile is None:
                 continue
 
@@ -439,15 +469,18 @@ class MySQLNodeRepository(NodeRepository):
                 **row,
             })
 
-        # If there are page profile rows to upsert, normalize them to ensure all rows have the same shape
+        # If there are page profile rows to upsert, normalize them to ensure all rows have
+        # the same shape
         if page_profile_rows:
 
             # Normalize every row to the union of columns; missing values become
             # None so the multi-row INSERT can use a single shape.
             sorted_cols = sorted(page_profile_cols)
 
-            # Create a list of normalized rows where each row contains the object type, object ID,
-            # and all columns from the union of page profile columns. Missing values are filled with None.
+            # Create a list of normalized rows where each row contains the object type,
+            # object ID,
+            # and all columns from the union of page profile columns. Missing values are
+            # filled with None.
             normalized_rows = [
                 {"object_type": row["object_type"], "object_id": row["object_id"], **{col: row.get(col) for col in sorted_cols}}
                 for row in page_profile_rows
@@ -475,15 +508,18 @@ class MySQLNodeRepository(NodeRepository):
             if map_type == "detected":
                 continue
 
-            # Convert each node to scored concept rows for the current mapping type using the MySQLNodeMapper
+            # Convert each node to scored concept rows for the current mapping type using
+            # the MySQLNodeMapper
             concept_rows: list[dict[str, Any]] = []
 
-            # Loop through each node in the group and convert it to scored concept rows for the current mapping type
+            # Loop through each node in the group and convert it to scored concept rows for
+            # the current mapping type
             for node in nodes:
                 for row in MySQLNodeMapper.to_scored_concepts_rows(node, map_to=map_type):
                     concept_rows.append({**row, "record_deleted": 0})
 
-            # If there are concept rows to upsert, perform the upsert operation into the corresponding concept edge table
+            # If there are concept rows to upsert, perform the upsert operation into the
+            # corresponding concept edge table
             if concept_rows:
                 self._upsert_rows(
                     session          = session,
@@ -518,7 +554,8 @@ class MySQLNodeRepository(NodeRepository):
         self.msg.saved(node.key)
         return node
 
-    # Method: Save a list of nodes to the database, optionally committing per schema group
+    # Method: Save a list of nodes to the database, optionally committing per
+    # schema group.
     def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("commit",)) -> NodeList:
         nodes = node_list.item_list if isinstance(node_list, NodeList) else list(node_list)
         do_commit = "commit" in actions
@@ -664,17 +701,22 @@ class MySQLNodeRepository(NodeRepository):
 
     # Method: Return nodes that have no concepts attached
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
-        engine_name, schema_name = self.schema_resolver.for_object_type(object_type if object_type is not None else "Course")
+        engine_name, schema_name = self.schema_resolver.for_object_type(
+            object_type if object_type is not None else "Course"
+        )
         _, airflow_schema_name = self.schema_resolver.for_airflow()
 
         sql_query = resolve_sql_query(
-            file_path=sql_queries_paths["registry"]["commit"]["node_get_with_no_concepts"],
-            registry=schema_name,
-            airflow=airflow_schema_name,
-            object_type=object_type if object_type is not None else "%",
-            id_pattern=id_pattern.replace("*", "%") if id_pattern is not None else "%",
+            file_path   = sql_queries_paths["registry"]["commit"]["node_get_with_no_concepts"],
+            registry    = schema_name,
+            airflow     = airflow_schema_name,
+            object_type = object_type if object_type is not None else "%",
+            id_pattern  = id_pattern.replace("*", "%") if id_pattern is not None else "%",
         )
-        node_keys_data = cast(list[tuple[str, str]], self._execute_read(engine_name=engine_name, query=sql_query))
+        node_keys_data = cast(
+            list[tuple[str, str]],
+            self._execute_read(engine_name=engine_name, query=sql_query),
+        )
         node_keys = [
             NodeKey(object_type=cast(Any, row[0]), object_id=row[1])
             for row in node_keys_data

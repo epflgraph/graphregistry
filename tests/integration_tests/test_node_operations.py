@@ -19,7 +19,9 @@ from graphregistry.domain.models.entities.mdl_node import NodeList
 from tests.helpers.db_checks import field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture
 
+# Engine name used for all integration tests in this module.
 ENGINE_NAME = "xaas_coresrv"
+# Path to the JSON fixture that drives the node operation tests.
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "integration_tests" / "node_operations_sample.json"
 
 
@@ -76,12 +78,7 @@ def node(sample_data: dict[str, Any]) -> Any:
 
 # Test: Verify save/get/delete round-trip for a single node.
 @pytest.mark.integration
-def test_mysql_node_repository_real_crud_cycle(
-    real_repo: MySQLNodeRepository,
-    sample_data: dict[str, Any],
-    node_key: NodeKey,
-    node: Any,
-) -> None:
+def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository, sample_data: dict[str, Any], node_key: NodeKey, node: Any) -> None:
     # Defensive cleanup before test in case a prior failed run left state behind
     if real_repo.exists(node_key):
         real_repo.delete(node_key, actions=("eval", "commit"))
@@ -157,10 +154,7 @@ def test_mysql_node_repository_real_crud_cycle(
 
 # Test: Verify that save_many persists and reloads multiple nodes atomically.
 @pytest.mark.integration
-def test_mysql_node_repository_real_batch_save_cycle(
-    real_repo: MySQLNodeRepository,
-    sample_data: dict[str, Any],
-) -> None:
+def test_mysql_node_repository_real_batch_save_cycle(real_repo: MySQLNodeRepository, sample_data: dict[str, Any]) -> None:
     nodes = [
         MySQLNodeMapper.from_simplified_dict({**sample_data, "object_id": f"TEST-BATCH-{i}"})
         for i in range(3)

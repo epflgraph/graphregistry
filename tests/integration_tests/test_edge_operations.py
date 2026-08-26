@@ -18,7 +18,9 @@ from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeF
 from tests.helpers.db_checks import db_field_map, field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture
 
+# Engine name used for all integration tests in this module.
 ENGINE_NAME = "xaas_coresrv"
+# Path to the JSON fixture that drives the edge operation tests.
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "integration_tests" / "edge_operations_sample.json"
 
 
@@ -98,12 +100,7 @@ def edge(sample_data: dict[str, Any]) -> Edge:
 
 # Test: Verify save/get/delete round-trip for a single edge.
 @pytest.mark.integration
-def test_mysql_edge_repository_real_crud_cycle(
-    real_repo: MySQLEdgeRepository,
-    sample_data: dict[str, Any],
-    edge_key: EdgeKey,
-    edge: Edge,
-) -> None:
+def test_mysql_edge_repository_real_crud_cycle(real_repo: MySQLEdgeRepository, sample_data: dict[str, Any], edge_key: EdgeKey, edge: Edge) -> None:
     # Defensive cleanup
     if real_repo.exists(edge_key):
         real_repo.delete(edge_key, actions=("eval", "commit"))
@@ -152,10 +149,7 @@ def test_mysql_edge_repository_real_crud_cycle(
 
 # Test: Verify that save_many persists and reloads multiple edges atomically.
 @pytest.mark.integration
-def test_mysql_edge_repository_real_batch_save_cycle(
-    real_repo: MySQLEdgeRepository,
-    sample_data: dict[str, Any],
-) -> None:
+def test_mysql_edge_repository_real_batch_save_cycle(real_repo: MySQLEdgeRepository, sample_data: dict[str, Any]) -> None:
     edges: list[Edge] = []
     keys: list[EdgeKey] = []
     for i in range(3):

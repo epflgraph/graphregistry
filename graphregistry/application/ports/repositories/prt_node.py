@@ -17,21 +17,27 @@ class NodeRepository(Protocol):
     semantics when 'commit' is in actions.
     """
 
+    # Method: List nodes of a given object type and optional ID pattern.
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
         ...
 
+    # Method: Check whether a single node exists.
     def exists(self, key: NodeKey) -> bool:
         ...
 
+    # Method: Check whether a list of nodes exist.
     def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
         ...
 
+    # Method: Retrieve a single node by key.
     def get(self, key: NodeKey) -> Node | None:
         ...
 
+    # Method: Retrieve a list of nodes by key.
     def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
         ...
 
+    # Method: Save a single node.
     def save(self, node: Node, actions: ActionSet = ('commit',)) -> Node:
         """Save a single node.
 
@@ -40,6 +46,7 @@ class NodeRepository(Protocol):
         """
         ...
 
+    # Method: Save a list of nodes.
     def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ('commit',)) -> NodeList:
         """Save many nodes efficiently.
 
@@ -49,9 +56,11 @@ class NodeRepository(Protocol):
         """
         ...
 
+    # Method: Delete a single node.
     def delete(self, key: NodeKey, actions: ActionSet = ('commit',)) -> bool | None:
         ...
 
+    # Method: Delete a list of nodes.
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
         """Delete many nodes efficiently.
 
@@ -61,5 +70,6 @@ class NodeRepository(Protocol):
         """
         ...
 
+    # Method: Return nodes that have no concepts attached.
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
         ...

@@ -27,29 +27,30 @@ class _RepoAsEdgeUoW(UnitOfWork):
     def __init__(self, repo: EdgeRepository) -> None:
         self._repo = repo
 
+    # Method: Nodes are not available in this backward-compat wrapper.
     @property
     def nodes(self) -> Any:
         raise NotImplementedError("Nodes are not available in this backward-compat wrapper.")
 
+    # Method: Return the wrapped edge repository.
     @property
     def edges(self) -> EdgeRepository:
         return self._repo
 
+    # Method: No-op commit for the backward-compat wrapper.
     def commit(self) -> None:
         pass
 
+    # Method: No-op rollback for the backward-compat wrapper.
     def rollback(self) -> None:
         pass
 
+    # Method: Enter the backward-compat context.
     def __enter__(self) -> UnitOfWork:
         return self
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object | None,
-    ) -> None:
+    # Method: Exit the backward-compat context without action.
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         pass
 
 
@@ -60,16 +61,18 @@ class EdgeOperations:
     """Application service for edge-related use cases."""
 
     # Class initialization and dependency injection
-    def __init__(
-        self,
-        uow_factory: Callable[[], UnitOfWork] | None = None,
-        *,
-        repo: EdgeRepository | None = None,
-    ) -> None:
+    def __init__(self, uow_factory: Callable[[], UnitOfWork] | None = None, *, repo: EdgeRepository | None = None) -> None:
+
+        # Validate that either a factory or a repository is provided, but not both.
         if repo is not None and uow_factory is not None:
             raise ValueError("Provide either uow_factory= or repo=, not both.")
+
+        # If a repository is provided directly, wrap it in a backward-compatible
+        # UnitOfWork implementation.
         if repo is not None:
             self.uow_factory = lambda: _RepoAsEdgeUoW(repo)
+
+        # If a factory is provided, use it as-is.
         elif uow_factory is not None:
             self.uow_factory = uow_factory
         else:

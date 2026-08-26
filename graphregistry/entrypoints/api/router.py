@@ -134,7 +134,9 @@ class RegistryOps:
     Useful for operations that need to coordinate node and edge persistence
     atomically in the same request.
     """
+    # Node operations that share the UnitOfWork factory.
     node_ops: NodeOperations
+    # Edge operations that share the UnitOfWork factory.
     edge_ops: EdgeOperations
 
 
@@ -179,7 +181,8 @@ def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations =
     """
     List existing nodes for one object type.
     """
-    # Fetch list of nodes from the database for the given object type and optional id pattern
+    # Fetch list of nodes from the database for the given object type and optional id
+    # pattern
     rows = node_ops.list(object_type=request.type, id_pattern=request.id_pattern)
 
     # Convert list of tuples returned by the repository to list of NodeKey objects
@@ -214,10 +217,12 @@ def nodes_exists_many(request: apispecs.APINodesExistsManyRequest, node_ops: Nod
     # Covert the API request key list to a list of domain model node keys
     node_key_list = SpecMapper.from_node_key_list_spec(request.key_list)
 
-    # Check if the nodes exist in the database by key, and get list of boolean results for each key
+    # Check if the nodes exist in the database by key, and get list of boolean results for
+    # each key
     exist_keys = node_ops.exists_many(node_key_list)
 
-    # Return the existence results in the response, including list of individual results and count
+    # Return the existence results in the response, including list of individual results and
+    # count
     return apispecs.APINodesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
 
@@ -260,18 +265,14 @@ def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOpera
     # list of node data (or None if not found), and count
     return apispecs.APINodesGetManyResponse(
         found_keys = [node is not None for node in node_list_spec.item_list],
-        nodes = [node.model_dump(exclude_none=True) if node is not None else None for node in node_list_spec.item_list],
-        count = len(node_list_spec.item_list)
+        nodes      = [node.model_dump(exclude_none=True) if node is not None else None for node in node_list_spec.item_list],
+        count      = len(node_list_spec.item_list)
     )
 
 
 # API Endpoint: /api/nodes/save
 @router.post("/nodes/save", response_model=apispecs.APINodesSaveResponse, tags=["nodes"])
-def nodes_save(
-    request: apispecs.APINodesSaveRequest,
-    node_ops: NodeOperations = Depends(get_node_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APINodesSaveResponse:
+def nodes_save(request: apispecs.APINodesSaveRequest, node_ops: NodeOperations = Depends(get_node_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APINodesSaveResponse:
     """
     Save one node.
     """
@@ -296,11 +297,7 @@ def nodes_save(
 
 # API Endpoint: /api/nodes/save_many
 @router.post("/nodes/save_many", response_model=apispecs.APINodesSaveManyResponse, tags=["nodes"])
-def nodes_save_many(
-    request: apispecs.APINodesSaveManyRequest,
-    node_ops: NodeOperations = Depends(get_node_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APINodesSaveManyResponse:
+def nodes_save_many(request: apispecs.APINodesSaveManyRequest, node_ops: NodeOperations = Depends(get_node_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APINodesSaveManyResponse:
     """
     Save a list of nodes.
     """
@@ -374,7 +371,8 @@ def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations =
     """
     List existing edges for one pair of object types.
     """
-    # Fetch list of edges from the database for the given pair of object types and optional id pattern
+    # Fetch list of edges from the database for the given pair of object types and optional
+    # id pattern
     rows = edge_ops.list(object_type=(request.from_type, request.to_type), id_pattern=request.id_pattern)
 
     # Convert list of tuples returned by the repository to list of EdgeKey objects
@@ -384,7 +382,10 @@ def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations =
     edge_key_specs = [SpecMapper.to_edge_key_spec(key) for key in edge_keys]
 
     # Return the list of edge key specs and the count in the response
-    return apispecs.APIEdgesListResponse(edges=edge_key_specs, count=len(edge_key_specs))
+    return apispecs.APIEdgesListResponse(
+        edges = edge_key_specs,
+        count = len(edge_key_specs)
+    )
 
 
 # API Endpoint: /api/edges/exists
@@ -409,10 +410,12 @@ def edges_exists_many(request: apispecs.APIEdgesExistsManyRequest, edge_ops: Edg
     # Covert the API request key list to a list of domain model edge keys
     edge_key_list = SpecMapper.from_edge_key_list_spec(request.key_list)
 
-    # Check if the edges exist in the database by key, and get list of boolean results for each key
+    # Check if the edges exist in the database by key, and get list of boolean results for
+    # each key
     exist_keys = edge_ops.exists_many(edge_key_list)
 
-    # Return the existence results in the response, including list of individual results and count
+    # Return the existence results in the response, including list of individual results and
+    # count
     return apispecs.APIEdgesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
 
@@ -455,18 +458,14 @@ def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOpera
     # list of edge data (or None if not found), and count
     return apispecs.APIEdgesGetManyResponse(
         found_keys = [edge is not None for edge in edge_list.item_list],
-        edges = [edge.model_dump(exclude_none=True) if edge is not None else None for edge in edge_list_spec.item_list],
-        count = len(edge_list_spec.item_list)
+        edges      = [edge.model_dump(exclude_none=True) if edge is not None else None for edge in edge_list_spec.item_list],
+        count      = len(edge_list_spec.item_list)
     )
 
 
 # API Endpoint: /api/edges/save
 @router.post("/edges/save", response_model=apispecs.APIEdgesSaveResponse, tags=["edges"])
-def edges_save(
-    request: apispecs.APIEdgesSaveRequest,
-    edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APIEdgesSaveResponse:
+def edges_save(request: apispecs.APIEdgesSaveRequest, edge_ops: EdgeOperations = Depends(get_edge_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APIEdgesSaveResponse:
     """
     Save one edge.
     """
@@ -491,11 +490,7 @@ def edges_save(
 
 # API Endpoint: /api/edges/save_many
 @router.post("/edges/save_many", response_model=apispecs.APIEdgesSaveManyResponse, tags=["edges"])
-def edges_save_many(
-    request: apispecs.APIEdgesSaveManyRequest,
-    edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APIEdgesSaveManyResponse:
+def edges_save_many(request: apispecs.APIEdgesSaveManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APIEdgesSaveManyResponse:
     """
     Save a list of edges.
     """
@@ -505,7 +500,7 @@ def edges_save_many(
     # Enforce the configured allow-list before persisting
     validator.validate_edges(edge_list)
 
-    # Save the edges and return the saved edge objects``
+    # Save the edges and return the saved edge objects
     saved_edges = edge_ops.save_many(edge_list, actions=('commit',))
 
     # Get saved keys (spec format)

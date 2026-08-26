@@ -24,26 +24,32 @@ from graphregistry.application.ports.repositories.prt_node import NodeRepository
 class UnitOfWork(Protocol):
     """Coordinate a set of persistence operations as one atomic transaction."""
 
+    # Method: Return the node repository participating in this unit of work.
     @property
     def nodes(self) -> NodeRepository:
         """Return the node repository participating in this unit of work."""
         ...
 
+    # Method: Return the edge repository participating in this unit of work.
     @property
     def edges(self) -> EdgeRepository:
         """Return the edge repository participating in this unit of work."""
         ...
 
+    # Method: Commit all changes made inside this unit of work.
     def commit(self) -> None:
         """Commit all changes made inside this unit of work."""
         ...
 
+    # Method: Roll back all changes made inside this unit of work.
     def rollback(self) -> None:
         """Roll back all changes made inside this unit of work."""
         ...
 
+    # Method: Enter the unit-of-work context.
     def __enter__(self) -> UnitOfWork:
         ...
 
+    # Method: Exit the unit-of-work context.
     def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         ...

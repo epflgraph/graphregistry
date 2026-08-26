@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
 
 
+# Function: Translate a SQLAlchemy error into a typed domain persistence error.
 def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
     """Translate SQLAlchemy errors into typed domain persistence errors."""
     dbapi_code: int | None = None
@@ -87,6 +88,7 @@ class MySQLSession:
         # Bound SQLAlchemy transaction, started by begin().
         self._transaction: Any | None = None
 
+    # Method: Open a connection and start a transaction.
     def begin(self) -> MySQLSession:
         """Open a connection and start a transaction."""
         engine = self.db.engine[self.engine_name]
@@ -94,11 +96,8 @@ class MySQLSession:
         self._transaction = self._connection.begin()
         return self
 
-    def execute(
-        self,
-        query: str,
-        params: dict[str, Any] | None = None,
-    ) -> list[tuple[Any, ...]]:
+    # Method: Execute a query inside the bound transaction and return result rows.
+    def execute(self, query: str, params: dict[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Execute a query inside the bound transaction and return result rows."""
         if self._connection is None:
             raise PersistenceError("Session is not open. Call begin() before execute().")
@@ -111,16 +110,19 @@ class MySQLSession:
         except (DataError, IntegrityError, OperationalError, SQLAlchemyError) as exc:
             raise _map_sqlalchemy_error(exc) from exc
 
+    # Method: Commit the bound transaction.
     def commit(self) -> None:
         """Commit the bound transaction."""
         if self._transaction is not None:
             self._transaction.commit()
 
+    # Method: Roll back the bound transaction.
     def rollback(self) -> None:
         """Roll back the bound transaction."""
         if self._transaction is not None:
             self._transaction.rollback()
 
+    # Method: Close the bound connection and clear state.
     def close(self) -> None:
         """Close the bound connection and clear state."""
         try:

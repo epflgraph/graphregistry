@@ -23,29 +23,30 @@ class _RepoAsNodeUoW(UnitOfWork):
     def __init__(self, repo: NodeRepository) -> None:
         self._repo = repo
 
+    # Method: Return the wrapped node repository.
     @property
     def nodes(self) -> NodeRepository:
         return self._repo
 
+    # Method: Edges are not available in this backward-compat wrapper.
     @property
     def edges(self) -> Any:
         raise NotImplementedError("Edges are not available in this backward-compat wrapper.")
 
+    # Method: No-op commit for the backward-compat wrapper.
     def commit(self) -> None:
         pass
 
+    # Method: No-op rollback for the backward-compat wrapper.
     def rollback(self) -> None:
         pass
 
+    # Method: Enter the backward-compat context.
     def __enter__(self) -> UnitOfWork:
         return self
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object | None,
-    ) -> None:
+    # Method: Exit the backward-compat context without action.
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         pass
 
 
@@ -61,17 +62,18 @@ class NodeOperations:
     """
 
     # Class initialization and dependency injection
-    def __init__(
-        self,
-        uow_factory: Callable[[], UnitOfWork] | None = None,
-        *,
-        repo: NodeRepository | None = None,
-        concept_detection_gateway: ConceptDetectionGateway | None = None,
-    ) -> None:
+    def __init__(self, uow_factory: Callable[[], UnitOfWork] | None = None, *, repo: NodeRepository | None = None, concept_detection_gateway: ConceptDetectionGateway | None = None) -> None:
+
+        # Validate that either a factory or a repository is provided, but not both.
         if repo is not None and uow_factory is not None:
             raise ValueError("Provide either uow_factory= or repo=, not both.")
+
+        # If a repository is provided directly, wrap it in a backward-compatible
+        # UnitOfWork implementation.
         if repo is not None:
             self.uow_factory = lambda: _RepoAsNodeUoW(repo)
+
+        # If a factory is provided, use it as-is.
         elif uow_factory is not None:
             self.uow_factory = uow_factory
         else:
@@ -158,6 +160,8 @@ class NodeOperations:
 
     # Method: Check whether a node has concepts for the given mapping type.
     def has_concepts(self, node_or_key: Node | NodeKey, map_type: ConceptMapType) -> bool:
+
+        # If only a key was provided, load the node from persistence first.
         if isinstance(node_or_key, NodeKey):
             with self.uow_factory() as uow:
                 node = uow.nodes.get(node_or_key)
@@ -166,6 +170,7 @@ class NodeOperations:
         else:
             node = node_or_key
 
+        # Return False if the concept mapping is missing or empty.
         if not getattr(node.concepts, map_type):
             return False
         if not getattr(node.concepts, map_type).item_list:
@@ -180,16 +185,20 @@ class NodeOperations:
 
     # Method: Detect and attach concepts to one or more nodes.
     def enrich_with_concepts(self, nodes: Node | NodeList) -> Node | NodeList:
+
+        # Ensure the concept-detection gateway is configured.
         gateway = self.concept_detection_gateway
         if gateway is None:
             raise ValueError("Concept detection gateway not configured")
 
+        # Detect concepts for each node in a list.
         if isinstance(nodes, NodeList):
             for node in nodes.item_list:
                 concepts = gateway.detect_concepts(f"{node.title}. {node.raw_text}" or "")
                 node.concepts.detected = concepts
                 self.msg.concepts_detected(node.key)
         else:
+            # Detect concepts for a single node.
             concepts = gateway.detect_concepts(f"{nodes.title}. {nodes.raw_text}" or "")
             nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)

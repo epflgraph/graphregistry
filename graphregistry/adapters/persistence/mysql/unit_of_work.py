@@ -35,20 +35,28 @@ class MySQLUnitOfWork(UnitOfWork):
 
     # Class initialization and dependency injection
     def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver") -> None:
+        # GraphDB client that owns the SQLAlchemy engine pool.
         self.db = db
+        # Schema resolver used to map object types to database engines and schemas.
         self.schema_resolver = schema_resolver
+        # Lazy cache of transactional sessions, keyed by engine name.
         self._sessions: dict[str, MySQLSession] = {}
+        # Node repository that participates in this unit of work.
         self._node_repo = MySQLNodeRepository(uow=self)
+        # Edge repository that participates in this unit of work.
         self._edge_repo = MySQLEdgeRepository(uow=self)
 
+    # Method: Return the node repository participating in this unit of work.
     @property
     def nodes(self) -> NodeRepository:
         return self._node_repo
 
+    # Method: Return the edge repository participating in this unit of work.
     @property
     def edges(self) -> EdgeRepository:
         return self._edge_repo
 
+    # Method: Return (creating if needed) a transactional session for engine_name.
     def get_session(self, engine_name: str) -> MySQLSession:
         """Return (creating if needed) a transactional session for engine_name."""
         if engine_name not in self._sessions:
@@ -57,6 +65,7 @@ class MySQLUnitOfWork(UnitOfWork):
             self._sessions[engine_name] = session
         return self._sessions[engine_name]
 
+    # Method: Commit every open session.
     def commit(self) -> None:
         """Commit every open session."""
         last_error: BaseException | None = None
@@ -68,6 +77,7 @@ class MySQLUnitOfWork(UnitOfWork):
         if last_error is not None:
             raise PersistenceError(f"Failed to commit unit of work: {last_error}") from last_error
 
+    # Method: Roll back every open session, swallowing errors on cleanup.
     def rollback(self) -> None:
         """Roll back every open session, swallowing errors on cleanup."""
         for session in self._sessions.values():
@@ -76,6 +86,7 @@ class MySQLUnitOfWork(UnitOfWork):
             except Exception:  # pragma: no cover - best effort cleanup
                 pass
 
+    # Method: Close all sessions.
     def close(self) -> None:
         """Close all sessions."""
         for session in self._sessions.values():
@@ -85,15 +96,12 @@ class MySQLUnitOfWork(UnitOfWork):
                 pass
         self._sessions.clear()
 
+    # Method: Enter the unit-of-work context.
     def __enter__(self) -> MySQLUnitOfWork:
         return self
 
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object | None,
-    ) -> None:
+    # Method: Exit the unit-of-work context, committing or rolling back as needed.
+    def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         try:
             if exc_val is None:
                 self.commit()

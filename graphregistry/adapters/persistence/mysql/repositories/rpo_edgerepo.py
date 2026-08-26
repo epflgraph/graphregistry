@@ -43,20 +43,22 @@ class MySQLEdgeRepository(EdgeRepository):
     ]
 
     # Class initialization and dependency injection
-    def __init__(
-        self,
-        db: "GraphDB | None" = None,
-        schema_resolver: "SchemaResolver | None" = None,
-        *,
-        uow: "MySQLUnitOfWork | None" = None,
-    ) -> None:
+    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
+
+        # Validate that either a UnitOfWork is provided, or both a GraphDB and
+        # SchemaResolver are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=), not both.")
 
+        # If a UnitOfWork is provided, use its db and schema_resolver; otherwise,
+        # use the provided db and schema_resolver.
         if uow is not None:
             self._uow = uow
             self.db = uow.db
             self.schema_resolver = uow.schema_resolver
+
+        # If a UnitOfWork is not provided, ensure that both db and schema_resolver
+        # are provided; otherwise, raise an error.
         elif db is not None and schema_resolver is not None:
             self._uow = None
             self.db = db
@@ -64,6 +66,7 @@ class MySQLEdgeRepository(EdgeRepository):
         else:
             raise ValueError("MySQLEdgeRepository requires either uow= or (db=, schema_resolver=).")
 
+        # Initialize a GraphLogger instance for logging messages.
         self.msg = GraphLogger()
 
     #================================================================#
@@ -87,12 +90,7 @@ class MySQLEdgeRepository(EdgeRepository):
             session.close()
 
     # Function: Execute a read query and return the results as a list of tuples.
-    def _execute_read(
-        self,
-        engine_name: str,
-        query: str,
-        params: dict[str, Any] | None = None,
-    ) -> list[tuple[Any, ...]]:
+    def _execute_read(self, engine_name: str, query: str, params: dict[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Execute a read query."""
         session = self._session(engine_name)
         try:
@@ -118,23 +116,12 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Function: Upsert rows using the shared batch upsert helper.
     @staticmethod
-    def _upsert_rows(
-        session: MySQLSession,
-        table_path: str,
-        key_column_names: list[str],
-        upd_column_names: list[str],
-        rows: list[dict[str, Any]],
-    ) -> None:
+    def _upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[str], upd_column_names: list[str], rows: list[dict[str, Any]]) -> None:
         upsert_rows(session, table_path, key_column_names, upd_column_names, rows)
 
     # Function: Soft-delete rows matching the given edge keys in a table.
     @staticmethod
-    def _soft_delete_by_keys(
-        session: MySQLSession,
-        schema_name: str,
-        table_name: str,
-        keys: list[EdgeKey],
-    ) -> None:
+    def _soft_delete_by_keys(session: MySQLSession, schema_name: str, table_name: str, keys: list[EdgeKey]) -> None:
         key_tuples = [MySQLEdgeRepository._edge_key_tuple(key) for key in keys]
         soft_delete_by_key_tuples(
             session,
@@ -162,30 +149,45 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Method: List edges of a given object-type pair and optional ID pattern.
     def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str]]:
+
+        # Determine the engine name and schema name for the given object-type pair
+        # using the schema resolver.
         engine_name, schema_name = self.schema_resolver.for_object_type(object_type)
         from_object_type, to_object_type = object_type
 
+        # Resolve the SQL query for listing edges based on the provided object types
+        # and ID pattern.
         sql_query = resolve_sql_query(
-            file_path=sql_queries_paths["registry"]["commit"]["edge_list"],
-            registry=schema_name,
-            from_object_type=from_object_type,
-            to_object_type=to_object_type,
-            id_pattern=id_pattern.replace("*", "%") if id_pattern is not None else "%",
+            file_path       = sql_queries_paths["registry"]["commit"]["edge_list"],
+            registry        = schema_name,
+            from_object_type= from_object_type,
+            to_object_type  = to_object_type,
+            id_pattern      = id_pattern.replace("*", "%") if id_pattern is not None else "%",
         )
+
+        # Execute the read query and return the results as a list of edge key tuples.
         return cast(list[tuple[str, str, str, str, str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
     # Method: Check whether a single edge exists.
     def exists(self, key: EdgeKey) -> bool:
+
+        # Determine the engine name and schema name for the given edge key using
+        # the schema resolver.
         engine_name, schema_name = self.schema_resolver.for_edge(key)
+
+        # Resolve the SQL query for checking if the edge exists based on the
+        # provided key.
         sql_query = resolve_sql_query(
-            file_path=sql_queries_paths["registry"]["commit"]["edge_exists"],
-            registry=schema_name,
-            from_object_type=key.from_object_type,
-            from_object_id=key.from_object_id,
-            to_object_type=key.to_object_type,
-            to_object_id=key.to_object_id,
-            context=key.context,
+            file_path       = sql_queries_paths["registry"]["commit"]["edge_exists"],
+            registry        = schema_name,
+            from_object_type= key.from_object_type,
+            from_object_id  = key.from_object_id,
+            to_object_type  = key.to_object_type,
+            to_object_id    = key.to_object_id,
+            context         = key.context,
         )
+
+        # Execute the read query and return True if the edge exists, False otherwise.
         result = self._execute_read(engine_name=engine_name, query=sql_query)
         return bool(result[0][0]) if result else False
 
@@ -196,20 +198,30 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Method: Retrieve a single edge by key.
     def get(self, key: EdgeKey) -> Edge | None:
+
+        # Check if the edge exists in the database; if not, log a "not found"
+        # message and return None.
         if not self.exists(key):
             self.msg.not_found(key)
             return None
 
+        # Determine the engine name and schema name for the given edge key using
+        # the schema resolver.
         engine_name, schema_name = self.schema_resolver.for_edge(key)
+
+        # Resolve the SQL query for retrieving custom fields of the edge based on
+        # the provided key.
         sql_query = resolve_sql_query(
-            file_path=sql_queries_paths["registry"]["commit"]["edge_get_custom"],
-            registry=schema_name,
-            from_object_type=key.from_object_type,
-            from_object_id=key.from_object_id,
-            to_object_type=key.to_object_type,
-            to_object_id=key.to_object_id,
-            context=key.context,
+            file_path       = sql_queries_paths["registry"]["commit"]["edge_get_custom"],
+            registry        = schema_name,
+            from_object_type= key.from_object_type,
+            from_object_id  = key.from_object_id,
+            to_object_type  = key.to_object_type,
+            to_object_id    = key.to_object_id,
+            context         = key.context,
         )
+
+        # Execute the custom-field query and reconstruct the edge domain model.
         custom_fields = cast(list[tuple[str, str, Any]], self._execute_read(engine_name=engine_name, query=sql_query))
         return MySQLEdgeMapper.from_parts(key=key, custom_field_rows=custom_fields)
 
@@ -226,84 +238,110 @@ class MySQLEdgeRepository(EdgeRepository):
     # Function: Persist a single edge inside an already-open session.
     def _persist_edge(self, session: MySQLSession, schema_name: str, edge: Edge) -> None:
         """Write one edge inside an already-open session."""
+
+        # Extract the edge key and basic row data using the mapper.
         key = edge.key
         basic_row = MySQLEdgeMapper.to_basic_row(edge)
 
+        # Upsert the basic edge row into the child-to-parent edge table.
         self._upsert_rows(
-            session=session,
-            table_path=self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent"),
-            key_column_names=self._EDGE_KEY_COLUMNS,
-            upd_column_names=list(basic_row.keys()),
-            rows=[{
-                "from_object_type": key.from_object_type,
-                "from_object_id": key.from_object_id,
-                "to_object_type": key.to_object_type,
-                "to_object_id": key.to_object_id,
-                "context": key.context,
+            session          = session,
+            table_path       = self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent"),
+            key_column_names = self._EDGE_KEY_COLUMNS,
+            upd_column_names = list(basic_row.keys()),
+            rows             = [{
+                "from_object_type" : key.from_object_type,
+                "from_object_id"   : key.from_object_id,
+                "to_object_type"   : key.to_object_type,
+                "to_object_id"     : key.to_object_id,
+                "context"          : key.context,
                 **basic_row,
             }],
         )
 
+        # Soft-delete any existing custom fields so the domain field_list is
+        # authoritative.
         self._soft_delete_by_keys(
-            session=session,
-            schema_name=schema_name,
-            table_name="Data_N_Object_N_Object_T_CustomFields",
-            keys=[key],
+            session     = session,
+            schema_name = schema_name,
+            table_name  = "Data_N_Object_N_Object_T_CustomFields",
+            keys        = [key],
         )
 
+        # Convert the edge to custom field rows and upsert them if any exist.
         custom_rows = MySQLEdgeMapper.to_custom_field_rows(edge)
         if custom_rows:
             self._upsert_rows(
-                session=session,
-                table_path=self._qt(schema_name, "Data_N_Object_N_Object_T_CustomFields"),
-                key_column_names=self._EDGE_KEY_COLUMNS + ["field_language", "field_name"],
-                upd_column_names=["field_value", "record_deleted"],
-                rows=custom_rows,
+                session          = session,
+                table_path       = self._qt(schema_name, "Data_N_Object_N_Object_T_CustomFields"),
+                key_column_names = self._EDGE_KEY_COLUMNS + ["field_language", "field_name"],
+                upd_column_names = ["field_value", "record_deleted"],
+                rows             = [{**row, "record_deleted": 0} for row in custom_rows],
             )
 
     # Function: Persist a group of edges that share one schema in a batched fashion.
     def _persist_edge_group(self, session: MySQLSession, schema_name: str, edges: list[Edge]) -> None:
         """Write a group of edges that share one schema in a batched fashion."""
+
+        # If the list of edges is empty, return early as there is nothing to persist.
         if not edges:
             return
 
+        #--------------------#
+        # Process basic rows #
+        #--------------------#
+
+        # Convert each edge to a basic row representation using the MySQLEdgeMapper and
+        # prepare a list of dictionaries for upserting.
         basic_rows: list[dict[str, Any]] = []
         for edge in edges:
             basic_row = MySQLEdgeMapper.to_basic_row(edge)
             basic_rows.append({
-                "from_object_type": edge.key.from_object_type,
-                "from_object_id": edge.key.from_object_id,
-                "to_object_type": edge.key.to_object_type,
-                "to_object_id": edge.key.to_object_id,
-                "context": edge.key.context,
+                "from_object_type" : edge.key.from_object_type,
+                "from_object_id"   : edge.key.from_object_id,
+                "to_object_type"   : edge.key.to_object_type,
+                "to_object_id"     : edge.key.to_object_id,
+                "context"          : edge.key.context,
                 **basic_row,
             })
 
+        # Upsert the basic edge rows into the child-to-parent edge table.
         self._upsert_rows(
-            session=session,
-            table_path=self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent"),
-            key_column_names=self._EDGE_KEY_COLUMNS,
-            upd_column_names=list(MySQLEdgeMapper.to_basic_row(edges[0]).keys()),
-            rows=basic_rows,
+            session          = session,
+            table_path       = self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent"),
+            key_column_names = self._EDGE_KEY_COLUMNS,
+            upd_column_names = list(MySQLEdgeMapper.to_basic_row(edges[0]).keys()),
+            rows             = basic_rows,
         )
 
+        #---------------------------------------#
+        # Custom fields: delete old, insert new #
+        #---------------------------------------#
+
+        # Soft-delete existing custom fields for all edges in the group so that the
+        # domain field_list is authoritative.
         self._soft_delete_by_keys(
-            session=session,
-            schema_name=schema_name,
-            table_name="Data_N_Object_N_Object_T_CustomFields",
-            keys=[edge.key for edge in edges],
+            session     = session,
+            schema_name = schema_name,
+            table_name  = "Data_N_Object_N_Object_T_CustomFields",
+            keys        = [edge.key for edge in edges],
         )
 
+        # Convert each edge to custom field rows using the MySQLEdgeMapper and prepare a
+        # list of dictionaries for upserting.
         custom_field_rows: list[dict[str, Any]] = []
         for edge in edges:
-            custom_field_rows.extend(MySQLEdgeMapper.to_custom_field_rows(edge))
+            for row in MySQLEdgeMapper.to_custom_field_rows(edge):
+                custom_field_rows.append({**row, "record_deleted": 0})
+
+        # If there are custom field rows, upsert them into the custom fields table.
         if custom_field_rows:
             self._upsert_rows(
-                session=session,
-                table_path=self._qt(schema_name, "Data_N_Object_N_Object_T_CustomFields"),
-                key_column_names=self._EDGE_KEY_COLUMNS + ["field_language", "field_name"],
-                upd_column_names=["field_value", "record_deleted"],
-                rows=custom_field_rows,
+                session          = session,
+                table_path       = self._qt(schema_name, "Data_N_Object_N_Object_T_CustomFields"),
+                key_column_names = self._EDGE_KEY_COLUMNS + ["field_language", "field_name"],
+                upd_column_names = ["field_value", "record_deleted"],
+                rows             = custom_field_rows,
             )
 
     #================================================================#
@@ -312,54 +350,76 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Method: Save a single edge, committing if requested.
     def save(self, edge: Edge, actions: ActionSet = ("commit",)) -> Edge:
+
+        # Determine the engine name and schema name for the edge using the schema resolver.
         engine_name, schema_name = self.schema_resolver.for_edge(edge.key)
+
+        # Check whether the caller requested an explicit commit.
         do_commit = "commit" in actions
 
+        # If committing, open a session, persist the edge, and manage the transaction.
         if do_commit:
             session = self._session(engine_name)
             try:
                 self._persist_edge(session, schema_name, edge)
+
+                # Commit the standalone session if not inside a UnitOfWork.
                 if self._uow is None:
                     session.commit()
             except Exception:
+                # Roll back the standalone session if not inside a UnitOfWork.
                 if self._uow is None:
                     session.rollback()
                 raise
             finally:
                 self._close_standalone_session(session)
 
+        # Log the saved edge and return it for chaining.
         self.msg.saved(edge.key)
         return edge
 
     # Method: Save a list of edges, committing per schema group if requested.
     def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("commit",)) -> EdgeList:
+
+        # Normalize the input to a plain list of edges.
         edges = edge_list.item_list if isinstance(edge_list, EdgeList) else list(edge_list)
+
+        # Check whether the caller requested an explicit commit.
         do_commit = "commit" in actions
 
+        # If not committing, return the edges without touching persistence.
         if not do_commit:
             return EdgeList(item_list=edges)
 
+        # Group edges by (engine_name, schema_name) so each group gets one
+        # transaction and one batch of statements.
         groups: dict[tuple[str, str], list[Edge]] = {}
         for edge in edges:
             engine_name, schema_name = self.schema_resolver.for_edge(edge.key)
             groups.setdefault((engine_name, schema_name), []).append(edge)
 
+        # Persist each group inside its own session.
         for (engine_name, schema_name), group_edges in groups.items():
             session = self._session(engine_name)
             try:
                 self._persist_edge_group(session, schema_name, group_edges)
+
+                # Commit the standalone session if not inside a UnitOfWork.
                 if self._uow is None:
                     session.commit()
             except Exception:
+                # Roll back the standalone session if not inside a UnitOfWork.
                 if self._uow is None:
                     session.rollback()
                 raise
             finally:
                 self._close_standalone_session(session)
 
+        # Log every saved edge.
         for edge in edges:
             self.msg.saved(edge.key)
 
+        # Return the saved edge list.
         return EdgeList(item_list=edges)
 
     #================================================================#
@@ -435,13 +495,17 @@ class MySQLEdgeRepository(EdgeRepository):
 
         return [results.get(key) for key in keys]
 
-    # Function: Return the subset of keys that currently exist and are not soft-deleted.
+    #----------------------------------------------------------------#
+    # Function: Return the subset of keys that currently exist and
+    # are not soft-deleted.
+    #----------------------------------------------------------------#
     def _filter_existing_keys(
         self,
         engine_name: str,
         schema_name: str,
         keys: list[EdgeKey],
     ) -> list[EdgeKey]:
+    #----------------------------------------------------------------#
         """Return the subset of keys that currently exist and are not soft-deleted."""
         if not keys:
             return []
