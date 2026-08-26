@@ -4,19 +4,16 @@
 These decorators live in the application layer because they orchestrate retry
 policies around business operations, independent of any specific adapter.
 """
-
 from __future__ import annotations
-
 import functools
 import time
 from collections.abc import Callable
 from typing import ParamSpec, TypeVar
-
 from graphregistry.domain.exceptions import ConnectionExhaustedError, LockWaitTimeoutError
 
+# Prepare P for the following steps.
 P = ParamSpec("P")
 T = TypeVar("T")
-
 
 # Domain errors that are considered transient and may succeed on retry.
 _TRANSIENT_DB_ERRORS: tuple[type[Exception], ...] = (
@@ -24,11 +21,11 @@ _TRANSIENT_DB_ERRORS: tuple[type[Exception], ...] = (
     LockWaitTimeoutError,
 )
 
-
 #----------------------------------------------------------------#
-# Function: Build a decorator that retries a function on transient
+# Internal Function: Build a decorator that retries a function on transient
 # database errors.
 #----------------------------------------------------------------#
+# Public Method: retry on transient db error
 def retry_on_transient_db_error(
     *,
     max_retries: int = 3,
@@ -51,7 +48,9 @@ def retry_on_transient_db_error(
             before each retry.
     """
 
+    # Public Method: decorator
     def decorator(fn: Callable[P, T]) -> Callable[P, T]:
+        # Public Method: wrapper
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             last_exception: Exception | None = None
@@ -71,10 +70,13 @@ def retry_on_transient_db_error(
                         continue
                     raise
 
+            # Handle the conditional case.
             if last_exception is not None:
                 raise last_exception
             raise RuntimeError("retry loop exited without result or exception")
 
+        # Return the computed result.
         return wrapper
 
+    # Return the computed result.
     return decorator

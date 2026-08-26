@@ -5,11 +5,8 @@ A unit of work corresponds to one business operation. It lazily opens one
 transactional session per database engine used during the operation and
 commits/rolls back all of them together.
 """
-
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
-
 from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
@@ -18,14 +15,14 @@ from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.domain.exceptions import PersistenceError
 
+# Handle the conditional case.
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
     from graphregistry.adapters.persistence.mysql.repositories.resolvers import SchemaResolver
 
-
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class MySQLUnitOfWork(UnitOfWork):
     """MySQL Unit of Work.
 
@@ -46,17 +43,17 @@ class MySQLUnitOfWork(UnitOfWork):
         # Edge repository that participates in this unit of work.
         self._edge_repo = MySQLEdgeRepository(uow=self)
 
-    # Method: Return the node repository participating in this unit of work.
+    # Public Method: Return the node repository participating in this unit of work.
     @property
     def nodes(self) -> NodeRepository:
         return self._node_repo
 
-    # Method: Return the edge repository participating in this unit of work.
+    # Public Method: Return the edge repository participating in this unit of work.
     @property
     def edges(self) -> EdgeRepository:
         return self._edge_repo
 
-    # Method: Return (creating if needed) a transactional session for engine_name.
+    # Public Method: Return (creating if needed) a transactional session for engine_name.
     def get_session(self, engine_name: str) -> MySQLSession:
         """Return (creating if needed) a transactional session for engine_name."""
         if engine_name not in self._sessions:
@@ -65,7 +62,7 @@ class MySQLUnitOfWork(UnitOfWork):
             self._sessions[engine_name] = session
         return self._sessions[engine_name]
 
-    # Method: Commit every open session.
+    # Public Method: Commit every open session.
     def commit(self) -> None:
         """Commit every open session."""
         last_error: BaseException | None = None
@@ -77,7 +74,7 @@ class MySQLUnitOfWork(UnitOfWork):
         if last_error is not None:
             raise PersistenceError(f"Failed to commit unit of work: {last_error}") from last_error
 
-    # Method: Roll back every open session, swallowing errors on cleanup.
+    # Public Method: Roll back every open session, swallowing errors on cleanup.
     def rollback(self) -> None:
         """Roll back every open session, swallowing errors on cleanup."""
         for session in self._sessions.values():
@@ -86,7 +83,7 @@ class MySQLUnitOfWork(UnitOfWork):
             except Exception:  # pragma: no cover - best effort cleanup
                 pass
 
-    # Method: Close all sessions.
+    # Public Method: Close all sessions.
     def close(self) -> None:
         """Close all sessions."""
         for session in self._sessions.values():
@@ -96,11 +93,12 @@ class MySQLUnitOfWork(UnitOfWork):
                 pass
         self._sessions.clear()
 
-    # Method: Enter the unit-of-work context.
+    # Internal Function: Enter the unit-of-work context.
     def __enter__(self) -> MySQLUnitOfWork:
         return self
 
-    # Method: Exit the unit-of-work context, committing or rolling back as needed.
+    # Internal Function: Exit the unit-of-work context, committing or rolling back as
+    # needed.
     def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         try:
             if exc_val is None:

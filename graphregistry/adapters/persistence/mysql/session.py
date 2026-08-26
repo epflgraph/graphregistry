@@ -5,14 +5,10 @@ A session corresponds to one database connection and one transaction. It is
 used by the MySQL Unit of Work adapter so that several repositories can share
 the same connection/transaction for an atomic business operation.
 """
-
 from __future__ import annotations
-
 from typing import Any, TYPE_CHECKING
-
 from sqlalchemy import text
 from sqlalchemy.exc import DataError, IntegrityError, OperationalError, SQLAlchemyError
-
 from graphregistry.domain.exceptions import (
     ConnectionExhaustedError,
     DuplicateKeyError,
@@ -20,11 +16,11 @@ from graphregistry.domain.exceptions import (
     PersistenceError,
 )
 
+# Handle the conditional case.
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
 
-
-# Function: Translate a SQLAlchemy error into a typed domain persistence error.
+# Internal Function: Translate a SQLAlchemy error into a typed domain persistence error.
 def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
     """Translate SQLAlchemy errors into typed domain persistence errors."""
     dbapi_code: int | None = None
@@ -35,41 +31,42 @@ def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
         if args and isinstance(args[0], int):
             dbapi_code = args[0]
 
+    # Handle the conditional case.
     if dbapi_code == 1040:
         return ConnectionExhaustedError(
             "Too many database connections.",
-            dbapi_code=dbapi_code,
-            dbapi_msg=dbapi_msg,
+            dbapi_code = dbapi_code,
+            dbapi_msg  = dbapi_msg,
         )
     if dbapi_code == 1205:
         return LockWaitTimeoutError(
             "Lock wait timeout exceeded.",
-            dbapi_code=dbapi_code,
-            dbapi_msg=dbapi_msg,
+            dbapi_code = dbapi_code,
+            dbapi_msg  = dbapi_msg,
         )
     if dbapi_code == 1062:
         return DuplicateKeyError(
             "Duplicate key violation.",
-            dbapi_code=dbapi_code,
-            dbapi_msg=dbapi_msg,
+            dbapi_code = dbapi_code,
+            dbapi_msg  = dbapi_msg,
         )
     if isinstance(exc, IntegrityError):
         return DuplicateKeyError(
             f"Integrity error: {exc}",
-            dbapi_code=dbapi_code,
-            dbapi_msg=dbapi_msg,
+            dbapi_code = dbapi_code,
+            dbapi_msg  = dbapi_msg,
         )
 
+    # Return the computed result.
     return PersistenceError(
         f"Database error: {exc}",
-        dbapi_code=dbapi_code,
-        dbapi_msg=dbapi_msg,
+        dbapi_code = dbapi_code,
+        dbapi_msg  = dbapi_msg,
     )
 
-
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class MySQLSession:
     """One connection, one transaction.
 
@@ -88,7 +85,7 @@ class MySQLSession:
         # Bound SQLAlchemy transaction, started by begin().
         self._transaction: Any | None = None
 
-    # Method: Open a connection and start a transaction.
+    # Public Method: Open a connection and start a transaction.
     def begin(self) -> MySQLSession:
         """Open a connection and start a transaction."""
         engine = self.db.engine[self.engine_name]
@@ -96,12 +93,13 @@ class MySQLSession:
         self._transaction = self._connection.begin()
         return self
 
-    # Method: Execute a query inside the bound transaction and return result rows.
+    # Public Method: Execute a query inside the bound transaction and return result rows.
     def execute(self, query: str, params: dict[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Execute a query inside the bound transaction and return result rows."""
         if self._connection is None:
             raise PersistenceError("Session is not open. Call begin() before execute().")
 
+        # Execute the operation and handle errors.
         try:
             result = self._connection.execute(text(query), parameters=params or {})
             if result.returns_rows:
@@ -110,19 +108,19 @@ class MySQLSession:
         except (DataError, IntegrityError, OperationalError, SQLAlchemyError) as exc:
             raise _map_sqlalchemy_error(exc) from exc
 
-    # Method: Commit the bound transaction.
+    # Public Method: Commit the bound transaction.
     def commit(self) -> None:
         """Commit the bound transaction."""
         if self._transaction is not None:
             self._transaction.commit()
 
-    # Method: Roll back the bound transaction.
+    # Public Method: Roll back the bound transaction.
     def rollback(self) -> None:
         """Roll back the bound transaction."""
         if self._transaction is not None:
             self._transaction.rollback()
 
-    # Method: Close the bound connection and clear state.
+    # Public Method: Close the bound connection and clear state.
     def close(self) -> None:
         """Close the bound connection and clear state."""
         try:

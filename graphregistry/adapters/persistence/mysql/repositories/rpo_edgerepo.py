@@ -1,9 +1,8 @@
 # graphregistry/adapters/persistence/mysql/repositories/rpo_edgerepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
-
 from graphregistry.adapters.persistence.mysql.mappers.map_edge import MySQLEdgeMapper
-from graphregistry.adapters.persistence.mysql.repositories._helpers import qualified_table, soft_delete_by_key_tuples, upsert_rows
+from graphregistry.adapters.persistence.mysql.repositories._helpers import key_tuple_in_list_predicate, qualified_table, soft_delete_by_key_tuples, upsert_rows
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
@@ -18,10 +17,9 @@ if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 
-
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class MySQLEdgeRepository(EdgeRepository):
     """MySQL adapter for the EdgeRepository port.
 
@@ -73,23 +71,24 @@ class MySQLEdgeRepository(EdgeRepository):
     # Function Group: Internal helpers                               #
     #================================================================#
 
-    # Function: Return a session for engine_name, creating a standalone one if needed.
+    # Internal Function: Return a session for engine_name, creating one if needed.
     def _session(self, engine_name: str) -> MySQLSession:
         """Return a session for engine_name, creating a standalone one if needed."""
         if self._uow is not None:
             return self._uow.get_session(engine_name)
 
+        # No UnitOfWork is active, so create and begin a standalone session.
         session = MySQLSession(self.db, engine_name)
         session.begin()
         return session
 
-    # Function: Close a session created outside a UnitOfWork.
+    # Internal Function: Close a session created outside a UnitOfWork.
     def _close_standalone_session(self, session: MySQLSession) -> None:
         """Close a session created outside a UnitOfWork."""
         if self._uow is None:
             session.close()
 
-    # Function: Execute a read query and return the results as a list of tuples.
+    # Internal Function: Execute a read query and return the results as a list of tuples.
     def _execute_read(self, engine_name: str, query: str, params: dict[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Execute a read query."""
         session = self._session(engine_name)
@@ -98,12 +97,12 @@ class MySQLEdgeRepository(EdgeRepository):
         finally:
             self._close_standalone_session(session)
 
-    # Function: Return a safely quoted schema-qualified table name.
+    # Internal Function: Return a safely quoted schema-qualified table name.
     @staticmethod
     def _qt(schema_name: str, table_name: str) -> str:
         return qualified_table(schema_name, table_name)
 
-    # Function: Convert an EdgeKey into the tuple used by the database key columns.
+    # Internal Function: Convert an EdgeKey into the tuple used by the database key columns.
     @staticmethod
     def _edge_key_tuple(key: EdgeKey) -> tuple[str, str, str, str, str]:
         return (
@@ -114,12 +113,12 @@ class MySQLEdgeRepository(EdgeRepository):
             key.context,
         )
 
-    # Function: Upsert rows using the shared batch upsert helper.
+    # Internal Function: Upsert rows using the shared batch upsert helper.
     @staticmethod
     def _upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[str], upd_column_names: list[str], rows: list[dict[str, Any]]) -> None:
         upsert_rows(session, table_path, key_column_names, upd_column_names, rows)
 
-    # Function: Soft-delete rows matching the given edge keys in a table.
+    # Internal Function: Soft-delete rows matching the given edge keys in a table.
     @staticmethod
     def _soft_delete_by_keys(session: MySQLSession, schema_name: str, table_name: str, keys: list[EdgeKey]) -> None:
         key_tuples = [MySQLEdgeRepository._edge_key_tuple(key) for key in keys]
@@ -131,11 +130,9 @@ class MySQLEdgeRepository(EdgeRepository):
             key_tuples,
         )
 
-    # Function: Build a SQL IN-list predicate for a list of edge keys.
+    # Internal Function: Build a SQL IN-list predicate for a list of edge keys.
     @staticmethod
     def _key_in_list_predicate(keys: list[EdgeKey], prefix: str = "key") -> tuple[str, dict[str, Any]]:
-        from graphregistry.adapters.persistence.mysql.repositories._helpers import key_tuple_in_list_predicate
-
         key_tuples = [MySQLEdgeRepository._edge_key_tuple(key) for key in keys]
         return key_tuple_in_list_predicate(
             key_tuples,
@@ -147,7 +144,7 @@ class MySQLEdgeRepository(EdgeRepository):
     # Method Group: Basic Edge CRUD/persistence operations           #
     #================================================================#
 
-    # Method: List edges of a given object-type pair and optional ID pattern.
+    # Public Method: List edges of a given object-type pair and optional ID pattern.
     def list(self, object_type: tuple[str, str], id_pattern: str | None) -> list[tuple[str, str, str, str, str]]:
 
         # Determine the engine name and schema name for the given object-type pair
@@ -168,7 +165,7 @@ class MySQLEdgeRepository(EdgeRepository):
         # Execute the read query and return the results as a list of edge key tuples.
         return cast(list[tuple[str, str, str, str, str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
-    # Method: Check whether a single edge exists.
+    # Public Method: Check whether a single edge exists.
     def exists(self, key: EdgeKey) -> bool:
 
         # Determine the engine name and schema name for the given edge key using
@@ -191,12 +188,12 @@ class MySQLEdgeRepository(EdgeRepository):
         result = self._execute_read(engine_name=engine_name, query=sql_query)
         return bool(result[0][0]) if result else False
 
-    # Method: Check whether a list of edges exist.
+    # Public Method: Check whether a list of edges exist.
     def exists_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> list[bool]:
         keys = key_list.item_list if isinstance(key_list, EdgeKeyList) else key_list
         return [self.exists(key) for key in keys]
 
-    # Method: Retrieve a single edge by key.
+    # Public Method: Retrieve a single edge by key.
     def get(self, key: EdgeKey) -> Edge | None:
 
         # Check if the edge exists in the database; if not, log a "not found"
@@ -225,7 +222,7 @@ class MySQLEdgeRepository(EdgeRepository):
         custom_fields = cast(list[tuple[str, str, Any]], self._execute_read(engine_name=engine_name, query=sql_query))
         return MySQLEdgeMapper.from_parts(key=key, custom_field_rows=custom_fields)
 
-    # Method: Retrieve a list of edges by key.
+    # Public Method: Retrieve a list of edges by key.
     def get_many(self, key_list: EdgeKeyList | list[EdgeKey]) -> EdgeList:
         keys = key_list.item_list if isinstance(key_list, EdgeKeyList) else key_list
         out = [edge for edge in (self.get(key) for key in keys) if edge is not None]
@@ -235,7 +232,7 @@ class MySQLEdgeRepository(EdgeRepository):
     # Function Group: Save helpers                                   #
     #================================================================#
 
-    # Function: Persist a single edge inside an already-open session.
+    # Internal Function: Persist a single edge inside an already-open session.
     def _persist_edge(self, session: MySQLSession, schema_name: str, edge: Edge) -> None:
         """Write one edge inside an already-open session."""
 
@@ -260,7 +257,7 @@ class MySQLEdgeRepository(EdgeRepository):
         )
 
         # Soft-delete any existing custom fields so the domain field_list is
-        # authoritative.
+        # authoritative. This ensures that any removed fields are deleted from the database.
         self._soft_delete_by_keys(
             session     = session,
             schema_name = schema_name,
@@ -279,7 +276,7 @@ class MySQLEdgeRepository(EdgeRepository):
                 rows             = [{**row, "record_deleted": 0} for row in custom_rows],
             )
 
-    # Function: Persist a group of edges that share one schema in a batched fashion.
+    # Internal Function: Persist edges sharing one schema in batch.
     def _persist_edge_group(self, session: MySQLSession, schema_name: str, edges: list[Edge]) -> None:
         """Write a group of edges that share one schema in a batched fashion."""
 
@@ -348,7 +345,7 @@ class MySQLEdgeRepository(EdgeRepository):
     # Method Group: Save / Save many                                 #
     #================================================================#
 
-    # Method: Save a single edge, committing if requested.
+    # Public Method: Save a single edge, committing if requested.
     def save(self, edge: Edge, actions: ActionSet = ("commit",)) -> Edge:
 
         # Determine the engine name and schema name for the edge using the schema resolver.
@@ -378,7 +375,7 @@ class MySQLEdgeRepository(EdgeRepository):
         self.msg.saved(edge.key)
         return edge
 
-    # Method: Save a list of edges, committing per schema group if requested.
+    # Public Method: Save a list of edges, committing per schema group if requested.
     def save_many(self, edge_list: EdgeList | list[Edge], actions: ActionSet = ("commit",)) -> EdgeList:
 
         # Normalize the input to a plain list of edges.
@@ -426,15 +423,17 @@ class MySQLEdgeRepository(EdgeRepository):
     # Method Group: Delete / Delete many                             #
     #================================================================#
 
-    # Method: Delete a single edge.
+    # Public Method: Delete a single edge.
     def delete(self, key: EdgeKey, actions: ActionSet = ("commit",)) -> bool | None:
         if not self.exists(key):
             self.msg.not_found(key)
             return None
 
+        # Resolve the schema for the edge and decide whether to commit.
         engine_name, schema_name = self.schema_resolver.for_edge(key)
         do_commit = "commit" in actions
 
+        # Persist the deletion inside a new session when requested.
         if do_commit:
             session = self._session(engine_name)
             try:
@@ -452,26 +451,31 @@ class MySQLEdgeRepository(EdgeRepository):
             finally:
                 self._close_standalone_session(session)
 
+        # Log the deletion and report success to the caller.
         self.msg.deleted(key)
         return True
 
-    # Method: Delete a list of edges.
+    # Public Method: Delete a list of edges.
     def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("commit",)) -> list[bool | None]:
         keys = key_list.item_list if isinstance(key_list, EdgeKeyList) else list(key_list)
         do_commit = "commit" in actions
 
+        # Skip persistence when the caller did not request a commit.
         if not do_commit:
             return [None] * len(keys)
 
+        # Group keys by their resolved engine/schema for batched deletes.
         groups: dict[tuple[str, str], list[EdgeKey]] = {}
         for key in keys:
             engine_name, schema_name = self.schema_resolver.for_edge(key)
             groups.setdefault((engine_name, schema_name), []).append(key)
 
+        # Track deletion results for each input key.
         results: dict[EdgeKey, bool] = {}
         for (engine_name, schema_name), group_keys in groups.items():
             existing_keys = self._filter_existing_keys(engine_name, schema_name, group_keys)
 
+            # Delete only the keys that still exist in the database.
             if existing_keys:
                 session = self._session(engine_name)
                 try:
@@ -489,27 +493,26 @@ class MySQLEdgeRepository(EdgeRepository):
                 finally:
                     self._close_standalone_session(session)
 
+                # Record successful deletions and emit log messages.
                 for key in existing_keys:
                     results[key] = True
                     self.msg.deleted(key)
 
+        # Return deletion results aligned with the original key order.
         return [results.get(key) for key in keys]
 
-    #----------------------------------------------------------------#
-    # Function: Return the subset of keys that currently exist and
-    # are not soft-deleted.
-    #----------------------------------------------------------------#
+    # Internal Function: Filter keys that exist and are not soft-deleted.
     def _filter_existing_keys(
         self,
         engine_name: str,
         schema_name: str,
         keys: list[EdgeKey],
     ) -> list[EdgeKey]:
-    #----------------------------------------------------------------#
         """Return the subset of keys that currently exist and are not soft-deleted."""
         if not keys:
             return []
 
+        # Build an IN-list predicate and query the database for the given keys.
         placeholders, params = self._key_in_list_predicate(keys, prefix="ex")
         sql = f"""
             SELECT from_object_type, from_object_id, to_object_type, to_object_id, context
@@ -523,5 +526,6 @@ class MySQLEdgeRepository(EdgeRepository):
         finally:
             self._close_standalone_session(session)
 
+        # Determine which input keys match existing rows.
         existing = {tuple(row) for row in rows}
         return [key for key in keys if self._edge_key_tuple(key) in existing]

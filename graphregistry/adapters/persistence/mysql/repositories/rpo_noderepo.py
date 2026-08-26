@@ -20,9 +20,9 @@ if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class MySQLNodeRepository(NodeRepository):
     """MySQL adapter for the NodeRepository port.
 
@@ -72,24 +72,24 @@ class MySQLNodeRepository(NodeRepository):
     # Function Group: Internal helpers                               #
     #================================================================#
 
-    # Function: Helper to get a session for a given engine name, creating a
-    # standalone session if not in a UnitOfWork.
+    # Internal Function: Return a session for engine_name, creating a standalone one if
     def _session(self, engine_name: str) -> MySQLSession:
         """Return a session for engine_name, creating a standalone one if needed."""
         if self._uow is not None:
             return self._uow.get_session(engine_name)
 
+        # Prepare session for the following steps.
         session = MySQLSession(self.db, engine_name)
         session.begin()
         return session
 
-    # Function: Helper to close a standalone session if not in a UnitOfWork.
+    # Internal Function: Helper to close a standalone session if not in a UnitOfWork.
     def _close_standalone_session(self, session: MySQLSession) -> None:
         """Close a session created outside a UnitOfWork."""
         if self._uow is None:
             session.close()
 
-    # Function: Helper to execute a read query and return the results as a list of tuples.
+    # Internal Function: Execute a read query
     def _execute_read(self, engine_name: str, query: str, params: dict[str, Any] | None = None) -> list[tuple[Any, ...]]:
         """Execute a read query."""
         session = self._session(engine_name)
@@ -98,18 +98,17 @@ class MySQLNodeRepository(NodeRepository):
         finally:
             self._close_standalone_session(session)
 
-    # Function: Helper to get the qualified table name for a given schema and table
+    # Internal Function: Helper to get the qualified table name for a given schema and table
     @staticmethod
     def _qt(schema_name: str, table_name: str) -> str:
         return qualified_table(schema_name, table_name)
 
-    # Function: Helper to upsert rows into a table using the provided session
+    # Internal Function: Helper to upsert rows into a table using the provided session
     @staticmethod
     def _upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[str], upd_column_names: list[str], rows: list[dict[str, Any]]) -> None:
         upsert_rows(session, table_path, key_column_names, upd_column_names, rows)
 
-    # Function: Helper to soft-delete rows by keys in a given table using the
-    # provided session.
+    # Internal Function: soft delete by keys
     @staticmethod
     def _soft_delete_by_keys(session: MySQLSession, schema_name: str, table_name: str, keys: list[NodeKey]) -> None:
         key_tuples = [(key.object_type, key.object_id) for key in keys]
@@ -121,7 +120,7 @@ class MySQLNodeRepository(NodeRepository):
             key_tuples,
         )
 
-    # Function: Helper to generate a SQL predicate for checking if keys are in a list
+    # Internal Function: key in list predicate
     @staticmethod
     def _key_in_list_predicate(keys: list[NodeKey], prefix: str = "key") -> tuple[str, dict[str, Any]]:
         key_tuples = [(key.object_type, key.object_id) for key in keys]
@@ -132,7 +131,7 @@ class MySQLNodeRepository(NodeRepository):
     # Method Group: Basic Node CRUD/persistence operations           #
     #================================================================#
 
-    # Method: List nodes of a given object type and optional ID pattern
+    # Public Method: List nodes of a given object type and optional ID pattern
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
 
         # Determine the engine name and schema name for the given object type using the
@@ -152,7 +151,7 @@ class MySQLNodeRepository(NodeRepository):
         # object type and object ID
         return cast(list[tuple[str, str]], self._execute_read(engine_name=engine_name, query=sql_query))
 
-    # Method: Check if a node with the given key exists in the database
+    # Public Method: Check if a node with the given key exists in the database
     def exists(self, key: NodeKey) -> bool:
 
         # Determine the engine name and schema name for the given node key using the schema
@@ -174,12 +173,12 @@ class MySQLNodeRepository(NodeRepository):
         # truthy, otherwise return False
         return bool(result[0][0]) if result else False
 
-    # Method: Check if multiple nodes with the given keys exist in the database
+    # Public Method: Check if multiple nodes with the given keys exist in the database
     def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
         keys = key_list.item_list if isinstance(key_list, NodeKeyList) else key_list
         return [self.exists(key) for key in keys]
 
-    # Method: Retrieve a node with the given key from the database
+    # Public Method: Retrieve a node with the given key from the database
     def get(self, key: NodeKey) -> Node | None:
 
         # Check if the node with the given key exists in the database; if not, log a "not
@@ -256,10 +255,10 @@ class MySQLNodeRepository(NodeRepository):
             # Resolve the SQL query for retrieving concepts of the node based on the
             # provided key and mapping type
             sql_query = resolve_sql_query(
-                file_path=sql_queries_paths["registry"]["commit"][f"node_get_concepts_{map_type}"],
-                registry=schema_name,
-                object_type=key.object_type,
-                object_id=key.object_id,
+                file_path   = sql_queries_paths["registry"]["commit"][f"node_get_concepts_{map_type}"],
+                registry    = schema_name,
+                object_type = key.object_type,
+                object_id   = key.object_id,
             )
 
             # Execute the concept query and store the results in the concepts dictionary for
@@ -278,7 +277,7 @@ class MySQLNodeRepository(NodeRepository):
             manually_mapped_rows      = concepts["manually_mapped"],
         )
 
-    # Method: Retrieve multiple nodes with the given keys from the database
+    # Public Method: Retrieve multiple nodes with the given keys from the database
     def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
         keys = key_list.item_list if isinstance(key_list, NodeKeyList) else key_list
         out = [node for node in (self.get(key) for key in keys) if node is not None]
@@ -288,7 +287,7 @@ class MySQLNodeRepository(NodeRepository):
     # Function Group: Internal helpers for node persistence          #
     #================================================================#
 
-    # Function: Persist a single node within an already-open session
+    # Internal Function: Persist a single node within an already-open session
     def _persist_node(self, session: MySQLSession, schema_name: str, node: Node) -> None:
         """Write one node inside an already-open session."""
 
@@ -370,7 +369,7 @@ class MySQLNodeRepository(NodeRepository):
                 rows             = [{**row, "record_deleted": 0} for row in concept_rows],
             )
 
-    # Function: Persist a group of nodes that share the same schema in a batched fashion
+    # Internal Function: Write a group of nodes that share one schema in a batched fashion
     def _persist_node_group(self, session: MySQLSession, schema_name: str, nodes: list[Node]) -> None:
         """Write a group of nodes that share one schema in a batched fashion."""
 
@@ -533,11 +532,12 @@ class MySQLNodeRepository(NodeRepository):
     # Method Group: Basic Node CRUD/persistence operations           #
     #================================================================#
 
-    # Method: Save a single node to the database, optionally committing the transaction
+    # Public Method: save
     def save(self, node: Node, actions: ActionSet = ("commit",)) -> Node:
         engine_name, schema_name = self.schema_resolver.for_node(node.key)
         do_commit = "commit" in actions
 
+        # Handle the conditional case.
         if do_commit:
             session = self._session(engine_name)
             try:
@@ -551,15 +551,16 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
+        # Continue with the next step.
         self.msg.saved(node.key)
         return node
 
-    # Method: Save a list of nodes to the database, optionally committing per
-    # schema group.
+    # Public Method: save many
     def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("commit",)) -> NodeList:
         nodes = node_list.item_list if isinstance(node_list, NodeList) else list(node_list)
         do_commit = "commit" in actions
 
+        # Handle the conditional case.
         if not do_commit:
             return NodeList(item_list=nodes)
 
@@ -570,6 +571,7 @@ class MySQLNodeRepository(NodeRepository):
             engine_name, schema_name = self.schema_resolver.for_node(node.key)
             groups.setdefault((engine_name, schema_name), []).append(node)
 
+        # Iterate over the collection.
         for (engine_name, schema_name), group_nodes in groups.items():
             session = self._session(engine_name)
             try:
@@ -583,24 +585,28 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
+        # Iterate over the collection.
         for node in nodes:
             self.msg.saved(node.key)
 
+        # Return the computed result.
         return NodeList(item_list=nodes)
 
     #================================================================#
     # Method Group: Delete / Delete many                             #
     #================================================================#
 
-    # Method: Delete a single node from the database
+    # Public Method: Delete a single node from the database
     def delete(self, key: NodeKey, actions: ActionSet = ("commit",)) -> bool | None:
         if not self.exists(key):
             self.msg.not_found(key)
             return None
 
+        # Continue with the next step.
         engine_name, schema_name = self.schema_resolver.for_node(key)
         do_commit = "commit" in actions
 
+        # Handle the conditional case.
         if do_commit:
             session = self._session(engine_name)
             try:
@@ -620,14 +626,16 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
+        # Continue with the next step.
         self.msg.deleted(key)
         return True
 
-    # Method: Delete a list of nodes from the database
+    # Public Method: Delete a list of nodes from the database
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("commit",)) -> list[bool | None]:
         keys = key_list.item_list if isinstance(key_list, NodeKeyList) else list(key_list)
         do_commit = "commit" in actions
 
+        # Handle the conditional case.
         if not do_commit:
             return [None] * len(keys)
 
@@ -637,12 +645,14 @@ class MySQLNodeRepository(NodeRepository):
             engine_name, schema_name = self.schema_resolver.for_node(key)
             groups.setdefault((engine_name, schema_name), []).append(key)
 
+        # Declare the results data structure.
         results: dict[NodeKey, bool] = {}
         for (engine_name, schema_name), group_keys in groups.items():
             # Determine which keys actually exist before deleting, so we can
             # preserve the per-key boolean/None semantics of the port.
             existing_keys = self._filter_existing_keys(engine_name, schema_name, group_keys)
 
+            # Handle the conditional case.
             if existing_keys:
                 session = self._session(engine_name)
                 try:
@@ -662,13 +672,15 @@ class MySQLNodeRepository(NodeRepository):
                 finally:
                     self._close_standalone_session(session)
 
+                # Iterate over the collection.
                 for key in existing_keys:
                     results[key] = True
                     self.msg.deleted(key)
 
+        # Return the computed result.
         return [results.get(key) for key in keys]
 
-    # Function: Return the subset of keys that currently exist and are not soft-deleted.
+    # Internal Function: filter existing keys
     def _filter_existing_keys(
         self,
         engine_name: str,
@@ -679,6 +691,7 @@ class MySQLNodeRepository(NodeRepository):
         if not keys:
             return []
 
+        # Continue with the next step.
         placeholders, params = self._key_in_list_predicate(keys, prefix="ex")
         sql = f"""
             SELECT object_type, object_id
@@ -692,6 +705,7 @@ class MySQLNodeRepository(NodeRepository):
         finally:
             self._close_standalone_session(session)
 
+        # Prepare existing for the following steps.
         existing = {(row[0], row[1]) for row in rows}
         return [key for key in keys if (key.object_type, key.object_id) in existing]
 
@@ -699,13 +713,14 @@ class MySQLNodeRepository(NodeRepository):
     # Method Group: Node diagnostics and special get/save operations #
     #================================================================#
 
-    # Method: Return nodes that have no concepts attached
+    # Public Method: Return nodes that have no concepts attached
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
         engine_name, schema_name = self.schema_resolver.for_object_type(
             object_type if object_type is not None else "Course"
         )
         _, airflow_schema_name = self.schema_resolver.for_airflow()
 
+        # Prepare sql_query for the following steps.
         sql_query = resolve_sql_query(
             file_path   = sql_queries_paths["registry"]["commit"]["node_get_with_no_concepts"],
             registry    = schema_name,

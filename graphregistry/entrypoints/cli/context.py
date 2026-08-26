@@ -12,10 +12,9 @@ if TYPE_CHECKING:
     from graphregistry.application.core.cor_registry import GraphRegistry
     from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 
-
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class CLIContext:
     """Shared context for CLI commands.
 
@@ -47,16 +46,18 @@ class CLIContext:
         # Optional AI gateway/client instance.
         self.ai = ai
 
-    # Method: Build the GraphDB client lazily from the provided configuration.
+    # Public Method: Build the GraphDB client lazily from the provided configuration.
     @cached_property
     def db(self) -> "GraphDB":
         from graphregistry.entrypoints.dependencies import build_db
 
+        # Return the computed result.
         return build_db(config=self.db_config)
 
-    # Method: Build the Elasticsearch client lazily.
+    # Public Method: Build the Elasticsearch client lazily.
     @cached_property
     def es(self) -> "GraphES":
         from graphregistry.adapters.clients.elasticsearch import GraphES
 
+        # Return the computed result.
         return GraphES()

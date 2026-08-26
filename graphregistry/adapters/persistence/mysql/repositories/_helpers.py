@@ -5,38 +5,33 @@ These functions are intentionally low-level and stateless so they can be reused
 by node, edge, and future repository adapters without forcing an inheritance
 relationship.
 """
-
 from __future__ import annotations
-
 from typing import Any
-
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
-
 
 #================================================================#
 # Function Group: SQL identifier helpers                         #
 #================================================================#
 
-# Function: Backtick-quote a single SQL identifier safely.
+# Public Method: Backtick-quote a single SQL identifier safely.
 def quote_identifier(name: str) -> str:
     """Backtick-quote a single SQL identifier safely."""
     return f"`{name.replace('`', '``')}`"
 
-
-# Function: Return a safely quoted schema-qualified table name.
+# Public Method: Return a safely quoted schema-qualified table name.
 def qualified_table(schema_name: str, table_name: str) -> str:
     """Return a safely quoted schema-qualified table name."""
     return f"{quote_identifier(schema_name)}.{quote_identifier(table_name)}"
-
 
 #================================================================#
 # Function Group: Key predicate helpers                          #
 #================================================================#
 
 #----------------------------------------------------------------#
-# Function: Build a parameterized ``(col1, col2, ...) IN (...)``
+# Internal Function: Build a parameterized ``(col1, col2, ...) IN (...)``
 # clause.
 #----------------------------------------------------------------#
+# Public Method: key tuple in list predicate
 def key_tuple_in_list_predicate(
     key_tuples: list[tuple[Any, ...]],
     key_column_names: list[str],
@@ -50,6 +45,7 @@ def key_tuple_in_list_predicate(
     if not key_tuples:
         return "FALSE", {}
 
+    # Declare the placeholders data structure.
     placeholders: list[str] = []
     params: dict[str, Any] = {}
 
@@ -60,16 +56,17 @@ def key_tuple_in_list_predicate(
         for col, value in zip(key_column_names, key_tuple):
             params[f"{prefix}_{col}_{i}"] = value
 
+    # Return the computed result.
     return ", ".join(placeholders), params
-
 
 #================================================================#
 # Function Group: Batch write helpers                            #
 #================================================================#
 
 #----------------------------------------------------------------#
-# Function: Insert or update a batch of rows in a single statement.
+# Internal Function: Insert or update a batch of rows in a single statement.
 #----------------------------------------------------------------#
+# Public Method: upsert rows
 def upsert_rows(
     session: MySQLSession,
     table_path: str,
@@ -87,6 +84,7 @@ def upsert_rows(
     if not rows:
         return
 
+    # Prepare all_column_names for the following steps.
     all_column_names = key_column_names + upd_column_names
     value_placeholders: list[str] = []
     params: dict[str, Any] = {}
@@ -98,6 +96,7 @@ def upsert_rows(
         for col in all_column_names:
             params[f"{col}_{i}"] = row.get(col)
 
+    # Handle the conditional case.
     if upd_column_names:
         changed_expr = " OR ".join(
             f"COALESCE({table_path}.{col}, '__null__') != COALESCE(VALUES({col}), '__null__')"
@@ -121,12 +120,13 @@ def upsert_rows(
         ON DUPLICATE KEY UPDATE
             {update_sql}
     """
+    # Continue with the next step.
     session.execute(sql, params)
 
-
 #----------------------------------------------------------------#
-# Function: Soft-delete rows whose key columns match the given tuples.
+# Internal Function: Soft-delete rows whose key columns match the given tuples.
 #----------------------------------------------------------------#
+# Public Method: soft delete by key tuples
 def soft_delete_by_key_tuples(
     session: MySQLSession,
     schema_name: str,
@@ -139,6 +139,7 @@ def soft_delete_by_key_tuples(
     if not key_tuples:
         return
 
+    # Continue with the next step.
     placeholders, params = key_tuple_in_list_predicate(key_tuples, key_column_names, prefix="sd")
     sql = f"""
         UPDATE {qualified_table(schema_name, table_name)}

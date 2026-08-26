@@ -6,27 +6,22 @@ leaking adapter details into application services. They live in the entrypoints
 layer because they know about config paths, environment variables, and concrete
 implementations.
 """
-
 from __future__ import annotations
-
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable
-
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
-
 from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
 from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import GlobalConfig
 
-
 #================================================================#
 # Function Group: Database client builders                       #
 #================================================================#
 
-# Function: Create the single GraphDB client for this process.
+# Public Method: Create the single GraphDB client for this process.
 def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | None" = None) -> GraphDB:
     """Create the single GraphDB client for this process.
 
@@ -37,21 +32,23 @@ def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | 
     if config is not None and config_path is not None:
         raise ValueError("Provide either config_path= or config=, not both.")
 
+    # Handle the conditional case.
     if config is None:
         if config_path is None:
             from graphregistry.common.paths import CONFIG_DB_PATH
 
+            # Prepare config_path for the following steps.
             config_path = CONFIG_DB_PATH
         config = GraphDBConfig.from_file(str(config_path))
 
+    # Return the computed result.
     return GraphDB(config=config)
-
 
 #================================================================#
 # Function Group: Unit of Work factory builders                  #
 #================================================================#
 
-# Function: Cache schema resolvers because they are stateless.
+# Internal Function: Cache schema resolvers because they are stateless.
 @lru_cache(maxsize=8)
 def _schema_resolver(engine_name: str) -> DefaultSchemaResolver:
     """Cache schema resolvers because they are stateless.
@@ -61,13 +58,14 @@ def _schema_resolver(engine_name: str) -> DefaultSchemaResolver:
     """
     return DefaultSchemaResolver(engine_name=engine_name, glbcfg=GlobalConfig())
 
-
-# Function: Return a factory that creates a fresh UnitOfWork for engine_name.
+# Public Method: Return a factory that creates a fresh UnitOfWork for engine_name.
 def build_uow_factory(db: GraphDB, engine_name: str) -> Callable[[], UnitOfWork]:
     """Return a factory that creates a fresh UnitOfWork for engine_name."""
     schema_resolver = _schema_resolver(engine_name)
 
+    # Internal Function: factory
     def _factory() -> UnitOfWork:
         return MySQLUnitOfWork(db=db, schema_resolver=schema_resolver)
 
+    # Return the computed result.
     return _factory

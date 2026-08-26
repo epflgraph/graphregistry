@@ -1,7 +1,6 @@
 # graphregistry/application/operations/ops_node.py
 from __future__ import annotations
 from typing import Any, Callable
-
 from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.application.ports.unit_of_work import UnitOfWork
@@ -12,10 +11,9 @@ from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeLis
 from graphregistry.domain.models.entities.types import ConceptMapType
 from graphregistry.domain.types import ActionSet
 
-
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class _RepoAsNodeUoW(UnitOfWork):
     """Backward-compat wrapper that exposes a single repository as a UoW."""
 
@@ -23,36 +21,35 @@ class _RepoAsNodeUoW(UnitOfWork):
     def __init__(self, repo: NodeRepository) -> None:
         self._repo = repo
 
-    # Method: Return the wrapped node repository.
+    # Public Method: Return the wrapped node repository.
     @property
     def nodes(self) -> NodeRepository:
         return self._repo
 
-    # Method: Edges are not available in this backward-compat wrapper.
+    # Public Method: Edges are not available in this backward-compat wrapper.
     @property
     def edges(self) -> Any:
         raise NotImplementedError("Edges are not available in this backward-compat wrapper.")
 
-    # Method: No-op commit for the backward-compat wrapper.
+    # Public Method: No-op commit for the backward-compat wrapper.
     def commit(self) -> None:
         pass
 
-    # Method: No-op rollback for the backward-compat wrapper.
+    # Public Method: No-op rollback for the backward-compat wrapper.
     def rollback(self) -> None:
         pass
 
-    # Method: Enter the backward-compat context.
+    # Internal Function: Enter the backward-compat context.
     def __enter__(self) -> UnitOfWork:
         return self
 
-    # Method: Exit the backward-compat context without action.
+    # Internal Function: Exit the backward-compat context without action.
     def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         pass
 
-
-#================================================================#
-# Class Definition                                               #
-#================================================================#
+#==================#
+# Class Definition #
+#==================#
 class NodeOperations:
     """Application service for node-related use cases.
 
@@ -88,7 +85,7 @@ class NodeOperations:
     # Function Group: Internal helpers                               #
     #================================================================#
 
-    # Function: Return the node repository from a new unit of work.
+    # Internal Function: Return the node repository from a new unit of work.
     def _repo(self) -> NodeRepository:
         """Return a repository from a new unit of work.
 
@@ -100,50 +97,50 @@ class NodeOperations:
     # Method Group: Basic Node CRUD/persistence operations           #
     #================================================================#
 
-    # Method: List nodes of a given object type and optional ID pattern.
+    # Public Method: List nodes of a given object type and optional ID pattern.
     def list(self, object_type: str, id_pattern: str | None = None) -> list[tuple[str, str]]:
         with self.uow_factory() as uow:
             return uow.nodes.list(object_type=object_type, id_pattern=id_pattern)
 
-    # Method: Check whether a single node exists.
+    # Public Method: Check whether a single node exists.
     def exists(self, key: NodeKey) -> bool:
         with self.uow_factory() as uow:
             return uow.nodes.exists(key)
 
-    # Method: Check whether a list of nodes exist.
+    # Public Method: Check whether a list of nodes exist.
     def exists_many(self, key_list: NodeKeyList | list[NodeKey]) -> list[bool]:
         with self.uow_factory() as uow:
             return uow.nodes.exists_many(key_list)
 
-    # Method: Retrieve a single node by key.
+    # Public Method: Retrieve a single node by key.
     def get(self, key: NodeKey) -> Node | None:
         with self.uow_factory() as uow:
             return uow.nodes.get(key)
 
-    # Method: Retrieve a list of nodes by key.
+    # Public Method: Retrieve a list of nodes by key.
     def get_many(self, key_list: NodeKeyList | list[NodeKey]) -> NodeList:
         with self.uow_factory() as uow:
             return uow.nodes.get_many(key_list)
 
-    # Method: Save a single node, retrying transient database errors.
+    # Public Method: Save a single node, retrying transient database errors.
     @retry_on_transient_db_error()
     def save(self, node: Node, actions: ActionSet = ("commit",)) -> Node:
         with self.uow_factory() as uow:
             return uow.nodes.save(node, actions=actions)
 
-    # Method: Save a list of nodes, retrying transient database errors.
+    # Public Method: Save a list of nodes, retrying transient database errors.
     @retry_on_transient_db_error()
     def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ("commit",)) -> NodeList:
         with self.uow_factory() as uow:
             return uow.nodes.save_many(node_list, actions=actions)
 
-    # Method: Delete a single node, retrying transient database errors.
+    # Public Method: Delete a single node, retrying transient database errors.
     @retry_on_transient_db_error()
     def delete(self, key: NodeKey, actions: ActionSet = ("commit",)) -> bool | None:
         with self.uow_factory() as uow:
             return uow.nodes.delete(key, actions=actions)
 
-    # Method: Delete a list of nodes, retrying transient database errors.
+    # Public Method: Delete a list of nodes, retrying transient database errors.
     @retry_on_transient_db_error()
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ("commit",)) -> list[bool | None]:
         with self.uow_factory() as uow:
@@ -153,12 +150,12 @@ class NodeOperations:
     # Method Group: Node diagnostics and special get/save operations #
     #================================================================#
 
-    # Method: Return nodes that have no concepts attached.
+    # Public Method: Return nodes that have no concepts attached.
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
         with self.uow_factory() as uow:
             return uow.nodes.get_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
 
-    # Method: Check whether a node has concepts for the given mapping type.
+    # Public Method: Check whether a node has concepts for the given mapping type.
     def has_concepts(self, node_or_key: Node | NodeKey, map_type: ConceptMapType) -> bool:
 
         # If only a key was provided, load the node from persistence first.
@@ -183,7 +180,7 @@ class NodeOperations:
     # Method Group: Node field enrichment operations                 #
     #================================================================#
 
-    # Method: Detect and attach concepts to one or more nodes.
+    # Public Method: Detect and attach concepts to one or more nodes.
     def enrich_with_concepts(self, nodes: Node | NodeList) -> Node | NodeList:
 
         # Ensure the concept-detection gateway is configured.
@@ -203,13 +200,14 @@ class NodeOperations:
             nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)
 
+        # Return the computed result.
         return nodes
 
     #================================================================#
     # Method Group: Backward-compatible repo accessor                #
     #================================================================#
 
-    # Method: Expose the node repository for callers that still expect it.
+    # Public Method: Expose the node repository for callers that still expect it.
     @property
     def repo(self) -> NodeRepository:
         """Expose the node repository for callers that still expect it.
