@@ -200,7 +200,7 @@ class NodeOperations:
             nodes.concepts.detected = concepts
             self.msg.concepts_detected(nodes.key)
 
-        # Return the computed result.
+        # Return the nodes with detected concepts attached.
         return nodes
 
     #================================================================#

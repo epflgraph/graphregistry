@@ -39,10 +39,10 @@ def api_client() -> TestClient:
         def _get_node_ops():
             return FakeNodeOps()
 
-        # Return the computed result.
+        # Return a factory that injects the fake operations into the app.
         return _get_node_ops
 
-    # Prepare app for the following steps.
+    # Create a fresh app instance for each test.
     app = create_app()
 
     # Internal Function: Build a TestClient configured with the fake node operations.
@@ -50,7 +50,7 @@ def api_client() -> TestClient:
         app.dependency_overrides[get_node_ops] = _make_node_ops(exc)
         return TestClient(app)
 
-    # Continue with the next step.
+    # Yield the client factory and clear overrides afterward.
     yield _client_for
     app.dependency_overrides.clear()
 

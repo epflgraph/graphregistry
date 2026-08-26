@@ -78,7 +78,7 @@ class MySQLNodeRepository(NodeRepository):
         if self._uow is not None:
             return self._uow.get_session(engine_name)
 
-        # Prepare session for the following steps.
+        # No UnitOfWork is active, so open a standalone session for this engine.
         session = MySQLSession(self.db, engine_name)
         session.begin()
         return session
@@ -537,7 +537,7 @@ class MySQLNodeRepository(NodeRepository):
         engine_name, schema_name = self.schema_resolver.for_node(node.key)
         do_commit = "commit" in actions
 
-        # Handle the conditional case.
+        # Persist the node inside a new session when the caller asked for a commit.
         if do_commit:
             session = self._session(engine_name)
             try:
@@ -551,7 +551,7 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
-        # Continue with the next step.
+        # Log the save and return the node for chaining.
         self.msg.saved(node.key)
         return node
 
@@ -560,7 +560,7 @@ class MySQLNodeRepository(NodeRepository):
         nodes = node_list.item_list if isinstance(node_list, NodeList) else list(node_list)
         do_commit = "commit" in actions
 
-        # Handle the conditional case.
+        # Skip persistence when the caller only wants a dry-run evaluation.
         if not do_commit:
             return NodeList(item_list=nodes)
 
@@ -571,7 +571,7 @@ class MySQLNodeRepository(NodeRepository):
             engine_name, schema_name = self.schema_resolver.for_node(node.key)
             groups.setdefault((engine_name, schema_name), []).append(node)
 
-        # Iterate over the collection.
+        # Persist each schema group in its own transaction.
         for (engine_name, schema_name), group_nodes in groups.items():
             session = self._session(engine_name)
             try:
@@ -585,11 +585,11 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
-        # Iterate over the collection.
+        # Emit save logs for every node in the input list.
         for node in nodes:
             self.msg.saved(node.key)
 
-        # Return the computed result.
+        # Return the saved nodes as a NodeList.
         return NodeList(item_list=nodes)
 
     #================================================================#
@@ -602,11 +602,11 @@ class MySQLNodeRepository(NodeRepository):
             self.msg.not_found(key)
             return None
 
-        # Continue with the next step.
+        # Resolve the schema for the node and decide whether to commit.
         engine_name, schema_name = self.schema_resolver.for_node(key)
         do_commit = "commit" in actions
 
-        # Handle the conditional case.
+        # Run the delete inside a new session when a commit was requested.
         if do_commit:
             session = self._session(engine_name)
             try:
@@ -626,7 +626,7 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
-        # Continue with the next step.
+        # Log the deletion and report success to the caller.
         self.msg.deleted(key)
         return True
 
@@ -635,7 +635,7 @@ class MySQLNodeRepository(NodeRepository):
         keys = key_list.item_list if isinstance(key_list, NodeKeyList) else list(key_list)
         do_commit = "commit" in actions
 
-        # Handle the conditional case.
+        # Return early without touching persistence when not committing.
         if not do_commit:
             return [None] * len(keys)
 
@@ -645,14 +645,14 @@ class MySQLNodeRepository(NodeRepository):
             engine_name, schema_name = self.schema_resolver.for_node(key)
             groups.setdefault((engine_name, schema_name), []).append(key)
 
-        # Declare the results data structure.
+        # Track which input keys were actually deleted.
         results: dict[NodeKey, bool] = {}
         for (engine_name, schema_name), group_keys in groups.items():
             # Determine which keys actually exist before deleting, so we can
             # preserve the per-key boolean/None semantics of the port.
             existing_keys = self._filter_existing_keys(engine_name, schema_name, group_keys)
 
-            # Handle the conditional case.
+            # Only touch the database for keys that still exist.
             if existing_keys:
                 session = self._session(engine_name)
                 try:
@@ -672,12 +672,12 @@ class MySQLNodeRepository(NodeRepository):
                 finally:
                     self._close_standalone_session(session)
 
-                # Iterate over the collection.
+                # Record each successful deletion and emit a log entry.
                 for key in existing_keys:
                     results[key] = True
                     self.msg.deleted(key)
 
-        # Return the computed result.
+        # Return per-key deletion results aligned with the original order.
         return [results.get(key) for key in keys]
 
     # Internal Function: filter existing keys
@@ -691,7 +691,7 @@ class MySQLNodeRepository(NodeRepository):
         if not keys:
             return []
 
-        # Continue with the next step.
+        # Build the IN-list predicate for the existence check.
         placeholders, params = self._key_in_list_predicate(keys, prefix="ex")
         sql = f"""
             SELECT object_type, object_id
@@ -705,7 +705,7 @@ class MySQLNodeRepository(NodeRepository):
         finally:
             self._close_standalone_session(session)
 
-        # Prepare existing for the following steps.
+        # Collect the (object_type, object_id) pairs returned by the database.
         existing = {(row[0], row[1]) for row in rows}
         return [key for key in keys if (key.object_type, key.object_id) in existing]
 
@@ -720,7 +720,7 @@ class MySQLNodeRepository(NodeRepository):
         )
         _, airflow_schema_name = self.schema_resolver.for_airflow()
 
-        # Prepare sql_query for the following steps.
+        # Load the SQL query that finds nodes without concept detections.
         sql_query = resolve_sql_query(
             file_path   = sql_queries_paths["registry"]["commit"]["node_get_with_no_concepts"],
             registry    = schema_name,

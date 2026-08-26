@@ -16,7 +16,7 @@ from graphregistry.domain.exceptions import (
     PersistenceError,
 )
 
-# Handle the conditional case.
+# Import type-only GraphDB reference to avoid a runtime dependency.
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
 
@@ -31,7 +31,7 @@ def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
         if args and isinstance(args[0], int):
             dbapi_code = args[0]
 
-    # Handle the conditional case.
+    # Map known MySQL error codes to typed domain exceptions.
     if dbapi_code == 1040:
         return ConnectionExhaustedError(
             "Too many database connections.",
@@ -57,7 +57,7 @@ def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
             dbapi_msg  = dbapi_msg,
         )
 
-    # Return the computed result.
+    # Fall back to a generic persistence error for anything else.
     return PersistenceError(
         f"Database error: {exc}",
         dbapi_code = dbapi_code,
@@ -99,7 +99,7 @@ class MySQLSession:
         if self._connection is None:
             raise PersistenceError("Session is not open. Call begin() before execute().")
 
-        # Execute the operation and handle errors.
+        # Run the query and translate SQLAlchemy errors into domain errors.
         try:
             result = self._connection.execute(text(query), parameters=params or {})
             if result.returns_rows:

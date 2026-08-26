@@ -51,7 +51,7 @@ class CLIContext:
     def db(self) -> "GraphDB":
         from graphregistry.entrypoints.dependencies import build_db
 
-        # Return the computed result.
+        # Construct and cache the GraphDB client from the stored configuration.
         return build_db(config=self.db_config)
 
     # Public Method: Build the Elasticsearch client lazily.
@@ -59,5 +59,5 @@ class CLIContext:
     def es(self) -> "GraphES":
         from graphregistry.adapters.clients.elasticsearch import GraphES
 
-        # Return the computed result.
+        # Construct and cache the Elasticsearch client.
         return GraphES()

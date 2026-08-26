@@ -15,7 +15,7 @@ from graphregistry.application.ports.repositories.prt_node import NodeRepository
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.domain.exceptions import PersistenceError
 
-# Handle the conditional case.
+# Import type-only references to avoid runtime dependencies.
 if TYPE_CHECKING:
     from graphdb.core.graphdb import GraphDB
     from graphregistry.adapters.persistence.mysql.repositories.resolvers import SchemaResolver

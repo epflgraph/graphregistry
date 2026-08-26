@@ -96,7 +96,7 @@ def test_mysql_edge_repository_real_crud_cycle(real_repo: MySQLEdgeRepository, s
     if real_repo.exists(edge_key):
         real_repo.delete(edge_key, actions=("eval", "commit"))
 
-    # Execute the operation and handle errors.
+    # Run the CRUD cycle inside a try block so cleanup always happens.
     try:
         # 1) Initial state
         assert real_repo.exists(edge_key) is False
@@ -130,7 +130,7 @@ def test_mysql_edge_repository_real_crud_cycle(real_repo: MySQLEdgeRepository, s
         assert real_repo.exists(edge_key) is False
         assert real_repo.get(edge_key) is None
 
-    # Declare the finally data structure.
+    # Clean up any leftover edge, even if an assertion failed.
     finally:
         if real_repo.exists(edge_key):
             real_repo.delete(edge_key, actions=("eval", "commit"))
@@ -164,32 +164,32 @@ def test_mysql_edge_repository_real_batch_save_cycle(real_repo: MySQLEdgeReposit
             ]),
         ))
 
-    # Iterate over the collection.
+    # Remove any pre-existing batch edges before the test run.
     for key in keys:
         if real_repo.exists(key):
             real_repo.delete(key, actions=("commit",))
 
-    # Execute the operation and handle errors.
+    # Persist all batch edges and verify the returned count.
     try:
         saved = real_repo.save_many(EdgeList(item_list=edges), actions=("commit",))
         assert len(saved.item_list) == 3
 
-        # Iterate over the collection.
+        # Verify every edge was saved and can be reloaded.
         for key in keys:
             assert real_repo.exists(key) is True
             loaded = real_repo.get(key)
             assert loaded is not None
             assert loaded.key == key
 
-        # Prepare deleted for the following steps.
+        # Delete the batch and confirm every key reported success.
         deleted = real_repo.delete_many(keys, actions=("commit",))
         assert all(result is True for result in deleted)
 
-        # Iterate over the collection.
+        # Confirm every batch edge was removed.
         for key in keys:
             assert real_repo.exists(key) is False
 
-    # Declare the finally data structure.
+    # Clean up any remaining batch edges after the test.
     finally:
         for key in keys:
             if real_repo.exists(key):

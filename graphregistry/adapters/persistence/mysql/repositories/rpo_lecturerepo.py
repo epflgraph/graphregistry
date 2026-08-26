@@ -75,7 +75,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         if self._uow is not None:
             return self._uow.get_session(engine_name)
 
-        # Prepare session for the following steps.
+        # No UnitOfWork is active, so open a standalone session for this engine.
         session = MySQLSession(self.db, engine_name)
         session.begin()
         return session
@@ -621,7 +621,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
                 "image_token" : slide_token,
             })
 
-        # Prepare session for the following steps.
+        # Open a session to write the slide and lecture processing tokens.
         session = self._session(engine_name)
         try:
             if slide_rows:
@@ -633,7 +633,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
                     rows             = slide_rows,
                 )
 
-            # Continue with the next step.
+            # Mark the lecture as having slides detected.
             self._upsert_single_row(
                 session           = session,
                 table_path        = self._qt(schema_name, "Operations_N_Lecture_T_ProcessingTokens"),
@@ -643,7 +643,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
                 upd_column_values = [True],
             )
 
-            # Handle the conditional case.
+            # Commit the standalone session if we created it outside a UnitOfWork.
             if self._uow is None:
                 session.commit()
         except Exception:
@@ -653,7 +653,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         finally:
             self._close_standalone_session(session)
 
-        # Iterate over the collection.
+        # Emit saved notifications for every generated slide key.
         for slide_key in slide_keys:
             self.msg.airflow_saved(slide_key)
 

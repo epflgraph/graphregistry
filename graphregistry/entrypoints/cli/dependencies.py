@@ -73,12 +73,12 @@ def build_lecture_operations(
         node_repo       = node_repo,
     )
 
-    # Prepare video_processing_gateway for the following steps.
+    # Instantiate the requested AI gateways, using None for disabled features.
     video_processing_gateway = GraphAIVideoGateway() if include_video_gateway else None
     concept_detection_gateway = GraphAIConceptDetectionGateway() if include_concept_gateway else None
     lecture_enrichment_gateway = GenAILectureEnrichmentGateway() if include_enrichment_gateway else None
 
-    # Return the computed result.
+    # Assemble the lecture operations with all selected gateways.
     return LectureOperations(
         repo                      = lecture_repo,
         video_processing_gateway  = video_processing_gateway,

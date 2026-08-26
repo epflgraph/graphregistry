@@ -32,16 +32,16 @@ def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | 
     if config is not None and config_path is not None:
         raise ValueError("Provide either config_path= or config=, not both.")
 
-    # Handle the conditional case.
+    # Load the configuration from disk when it was not passed explicitly.
     if config is None:
         if config_path is None:
             from graphregistry.common.paths import CONFIG_DB_PATH
 
-            # Prepare config_path for the following steps.
+            # Fall back to the default database configuration path.
             config_path = CONFIG_DB_PATH
         config = GraphDBConfig.from_file(str(config_path))
 
-    # Return the computed result.
+    # Build or reuse the singleton GraphDB client with the resolved config.
     return GraphDB(config=config)
 
 #================================================================#
@@ -67,5 +67,5 @@ def build_uow_factory(db: GraphDB, engine_name: str) -> Callable[[], UnitOfWork]
     def _factory() -> UnitOfWork:
         return MySQLUnitOfWork(db=db, schema_resolver=schema_resolver)
 
-    # Return the computed result.
+    # Return the closure that creates a fresh UnitOfWork per transaction.
     return _factory

@@ -9,7 +9,7 @@ from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 from graphregistry.domain.types import ActionSet
 
-# Apply the decorator to the following definition.
+# Make the result class immutable and auto-generate its boilerplate.
 @dataclass(frozen=True)
 
 #==================#

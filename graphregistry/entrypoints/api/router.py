@@ -59,7 +59,7 @@ def _make_edge_ops(uow_factory: Callable[[], UnitOfWork]) -> EdgeOperations:
 # Function Group: API config / validation                        #
 #================================================================#
 
-# Declare the _api_config data structure.
+# Hold the lazily loaded API configuration in module state.
 _api_config: APIConfig | None = None
 
 # Internal Function: Lazy-load the API configuration once per process.

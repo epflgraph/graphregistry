@@ -74,7 +74,7 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository, s
     if real_repo.exists(node_key):
         real_repo.delete(node_key, actions=("eval", "commit"))
 
-    # Execute the operation and handle errors.
+    # Run the CRUD cycle inside a try block so cleanup always happens.
     try:
         # 1) Initial state
         assert real_repo.exists(node_key) is False
@@ -116,7 +116,7 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository, s
         simplified = MySQLNodeMapper.to_simplified_dict(loaded)
         rehydrated = MySQLNodeMapper.from_simplified_dict(simplified)
 
-        # Continue with the next step.
+        # Verify the simplified-dict serialization round-trip preserves the node.
         assert rehydrated.key == loaded.key
         assert rehydrated.title == loaded.title
         assert rehydrated.text_source == loaded.text_source
@@ -135,7 +135,7 @@ def test_mysql_node_repository_real_crud_cycle(real_repo: MySQLNodeRepository, s
         assert real_repo.exists(node_key) is False
         assert real_repo.get(node_key) is None
 
-    # Declare the finally data structure.
+    # Clean up any leftover node, even if an assertion failed.
     finally:
         # Always clean up even if an assertion fails
         if real_repo.exists(node_key):
@@ -160,12 +160,12 @@ def test_mysql_node_repository_real_batch_save_cycle(real_repo: MySQLNodeReposit
         if real_repo.exists(key):
             real_repo.delete(key, actions=("commit",))
 
-    # Execute the operation and handle errors.
+    # Persist all batch nodes and verify the returned count.
     try:
         saved = real_repo.save_many(NodeList(item_list=nodes), actions=("commit",))
         assert len(saved.item_list) == 3
 
-        # Iterate over the collection.
+        # Verify every batch node was saved and reloads with expected data.
         for key in keys:
             assert real_repo.exists(key) is True
             loaded = real_repo.get(key)
@@ -174,15 +174,15 @@ def test_mysql_node_repository_real_batch_save_cycle(real_repo: MySQLNodeReposit
             assert loaded.page_profile is not None
             assert loaded.page_profile.short_code == sample_data["page_profile"]["short_code"]
 
-        # Prepare deleted for the following steps.
+        # Delete the batch and confirm every key reported success.
         deleted = real_repo.delete_many(keys, actions=("commit",))
         assert all(result is True for result in deleted)
 
-        # Iterate over the collection.
+        # Confirm every batch node was removed.
         for key in keys:
             assert real_repo.exists(key) is False
 
-    # Declare the finally data structure.
+    # Clean up any remaining batch nodes after the test.
     finally:
         for key in keys:
             if real_repo.exists(key):

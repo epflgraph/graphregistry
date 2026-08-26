@@ -45,7 +45,7 @@ def key_tuple_in_list_predicate(
     if not key_tuples:
         return "FALSE", {}
 
-    # Declare the placeholders data structure.
+    # Build the list of SQL placeholders, one per key-tuple column.
     placeholders: list[str] = []
     params: dict[str, Any] = {}
 
@@ -56,7 +56,7 @@ def key_tuple_in_list_predicate(
         for col, value in zip(key_column_names, key_tuple):
             params[f"{prefix}_{col}_{i}"] = value
 
-    # Return the computed result.
+    # Render the predicate placeholders and return them with their values.
     return ", ".join(placeholders), params
 
 #================================================================#
@@ -84,7 +84,7 @@ def upsert_rows(
     if not rows:
         return
 
-    # Prepare all_column_names for the following steps.
+    # Combine key and update columns so every value has a named slot.
     all_column_names = key_column_names + upd_column_names
     value_placeholders: list[str] = []
     params: dict[str, Any] = {}
@@ -96,7 +96,7 @@ def upsert_rows(
         for col in all_column_names:
             params[f"{col}_{i}"] = row.get(col)
 
-    # Handle the conditional case.
+    # Only emit an UPDATE clause when columns may change on conflict.
     if upd_column_names:
         changed_expr = " OR ".join(
             f"COALESCE({table_path}.{col}, '__null__') != COALESCE(VALUES({col}), '__null__')"
@@ -120,7 +120,7 @@ def upsert_rows(
         ON DUPLICATE KEY UPDATE
             {update_sql}
     """
-    # Continue with the next step.
+    # Run the batch upsert against the database.
     session.execute(sql, params)
 
 #----------------------------------------------------------------#
@@ -139,7 +139,7 @@ def soft_delete_by_key_tuples(
     if not key_tuples:
         return
 
-    # Continue with the next step.
+    # Build the IN-list predicate for the keys being soft-deleted.
     placeholders, params = key_tuple_in_list_predicate(key_tuples, key_column_names, prefix="sd")
     sql = f"""
         UPDATE {qualified_table(schema_name, table_name)}

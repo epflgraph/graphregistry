@@ -11,7 +11,7 @@ from collections.abc import Callable
 from typing import ParamSpec, TypeVar
 from graphregistry.domain.exceptions import ConnectionExhaustedError, LockWaitTimeoutError
 
-# Prepare P for the following steps.
+# Define generic type variables used by the retry decorator signature.
 P = ParamSpec("P")
 T = TypeVar("T")
 
@@ -70,13 +70,13 @@ def retry_on_transient_db_error(
                         continue
                     raise
 
-            # Handle the conditional case.
+            # Guard against an unexpected loop exit by surfacing the last error.
             if last_exception is not None:
                 raise last_exception
             raise RuntimeError("retry loop exited without result or exception")
 
-        # Return the computed result.
+        # Return the retry-aware wrapper to install on the decorated function.
         return wrapper
 
-    # Return the computed result.
+    # Return the decorator factory so it can be used with or without arguments.
     return decorator

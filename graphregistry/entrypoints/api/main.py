@@ -53,20 +53,20 @@ def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str |
     if not errors or not all(_is_object_type_literal_error(e) for e in errors):
         return None
 
-    # Execute the operation and handle errors.
+    # Parse the JSON body so we can inspect the raw field values.
     try:
         payload = json.loads(body.decode("utf-8"))
     except Exception:
         return None
 
-    # Declare the messages data structure.
+    # Collect user-friendly messages for each validation error.
     messages: list[str] = []
     for error in errors:
         loc = error.get("loc", ())
         value = error.get("input")
         field = loc[-1] if loc else None
 
-        # Handle the conditional case.
+        # Map each invalid field to a domain-specific message.
         if field == "type":
             messages.append(f"Node type '{value}' is not an allowed type.")
         elif field in ("from_type", "to_type"):
@@ -89,7 +89,7 @@ def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str |
         else:
             messages.append(f"Type '{value}' is not an allowed type.")
 
-    # Handle the conditional case.
+    # Return None when no object-type literal errors were found.
     if not messages:
         return None
     return messages[0] if len(messages) == 1 else messages
@@ -143,7 +143,7 @@ def create_app() -> FastAPI:
         declared request schema.
         """
 
-        # Prepare body for the following steps.
+        # Read the raw request body to extract type details and support diagnostic logging.
         body = await request.body()
 
         # If the only validation failures are invalid object types, return the
@@ -162,7 +162,7 @@ def create_app() -> FastAPI:
                 content     = {"detail": type_detail},
             )
 
-        # Continue with the next step.
+        # Log the full validation context for operational debugging.
         logger.error(
             "Request validation error: method=%s path=%s",
             request.method,
@@ -171,7 +171,7 @@ def create_app() -> FastAPI:
         logger.error("Errors: %s", exc.errors())
         logger.error("Body: %s", body.decode("utf-8", errors="replace"))
 
-        # Return the computed result.
+        # Return the standard 422 payload with the raw Pydantic error list.
         return JSONResponse(
             status_code = 422,
             content     = {
@@ -190,14 +190,14 @@ def create_app() -> FastAPI:
         failed while building a domain model or response object.
         """
 
-        # Continue with the next step.
+        # Log the internal validation failure with a full traceback.
         logger.exception(
             "Internal Pydantic validation error: method=%s path=%s",
             request.method,
             request.url.path,
         )
 
-        # Return the computed result.
+        # Return a 500 response so the caller knows the failure is server-side.
         return JSONResponse(
             status_code = 500,
             content     = {
@@ -218,7 +218,7 @@ def create_app() -> FastAPI:
         with a custom BadAPIRequestError.
         """
 
-        # Continue with the next step.
+        # Log the bad request with enough context for troubleshooting.
         logger.warning(
             "Invalid API request: method=%s path=%s error=%s",
             request.method,
@@ -227,7 +227,7 @@ def create_app() -> FastAPI:
             exc_info=True,
         )
 
-        # Return the computed result.
+        # Return a 400 response describing why the request was rejected.
         return JSONResponse(
             status_code = 400,
             content     = {
@@ -246,7 +246,7 @@ def create_app() -> FastAPI:
         disallowed.
         """
 
-        # Continue with the next step.
+        # Log the disallowed-type attempt before rejecting it.
         logger.warning(
             "Disallowed type in API request: method=%s path=%s error=%s",
             request.method,
@@ -254,7 +254,7 @@ def create_app() -> FastAPI:
             exc,
         )
 
-        # Return the computed result.
+        # Return the disallowed-type message as a 400 response.
         return JSONResponse(
             status_code = 400,
             content     = {
@@ -343,14 +343,14 @@ def create_app() -> FastAPI:
         are logged with tracebacks and returned as structured 500 responses.
         """
 
-        # Continue with the next step.
+        # Capture the unexpected error with a full traceback for operations.
         logger.exception(
             "Unhandled API error: method=%s path=%s",
             request.method,
             request.url.path,
         )
 
-        # Return the computed result.
+        # Return a generic 500 so endpoint code does not leak internal details.
         return JSONResponse(
             status_code = 500,
             content     = {
@@ -373,7 +373,7 @@ def create_app() -> FastAPI:
         if app.openapi_schema is not None:
             return app.openapi_schema
 
-        # Prepare openapi_schema for the following steps.
+        # Generate the base OpenAPI schema from the registered routes.
         openapi_schema = get_openapi(
             title       = app.title,
             version     = app.version,
@@ -382,7 +382,7 @@ def create_app() -> FastAPI:
             routes      = app.routes,
         )
 
-        # Prepare schemas for the following steps.
+        # Drill into the reusable schema definitions to override their examples.
         schemas = openapi_schema.setdefault("components", {}).setdefault("schemas", {})
 
         # Node examples: first allowed node type.
@@ -433,7 +433,7 @@ def create_app() -> FastAPI:
             if node_save_many_request is not None:
                 node_save_many_request["example"] = {"node_list": [example_node]}
 
-        # Handle the conditional case.
+        # Build a full edge example when the configuration allows edge tuples.
         if api_cfg.allowed_edge_tuples_list:
             from_type, to_type, context = example_edge_tuple
             example_edge = {
@@ -457,11 +457,11 @@ def create_app() -> FastAPI:
             if edge_save_many_request is not None:
                 edge_save_many_request["example"] = {"edge_list": [example_edge]}
 
-        # Continue with the next step.
+        # Cache the customized schema on the app and return it.
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
-    # Continue with the next step.
+    # Replace the default OpenAPI generator with our customized version.
     app.openapi = custom_openapi
 
     #================================================================#
