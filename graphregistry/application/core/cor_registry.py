@@ -524,24 +524,26 @@ class GraphRegistry():
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
                         query_update = f"""UPDATE {schema_name}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                                     USING (object_type, object_id)
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
+                                        ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                     USING (object_type)
+                                        ON p.object_type = tf.object_type
                                        SET  p.to_process = 1
-                                     WHERE fc.to_process = 1
-                                       AND fc.deleted = 0
+                                     WHERE se.to_process = 1
+                                       AND se.deleted = 0
+                                       AND tf.flag_type = 'scores'
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
                         """
                         query_eval = f"""SELECT COUNT(*)
                                            FROM {schema_name}.{table_name} p
-                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                                          USING (object_type, object_id)
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
+                                             ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                          USING (object_type)
-                                          WHERE fc.to_process = 1
-                                            AND fc.deleted = 0
+                                             ON p.object_type = tf.object_type
+                                          WHERE se.to_process = 1
+                                            AND se.deleted = 0
+                                            AND tf.flag_type = 'scores'
                                             AND tf.to_process = 1
                                             AND  p.to_process = 0;
                         """
@@ -606,7 +608,7 @@ class GraphRegistry():
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                         ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                     USING (object_type)
+                                        ON fc.object_type = tf.object_type
                                        SET  p.to_process = 1
                                      WHERE fc.to_process = 1
                                        AND fc.deleted = 0
@@ -618,7 +620,7 @@ class GraphRegistry():
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                              ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                          USING (object_type)
+                                             ON fc.object_type = tf.object_type
                                           WHERE fc.to_process = 1
                                             AND fc.deleted = 0
                                             AND tf.to_process = 1
