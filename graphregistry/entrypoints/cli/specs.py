@@ -40,6 +40,7 @@ from graphregistry.entrypoints.cli.cmd_airflow import (
     cmd_airflow_reset,
     cmd_airflow_expire,
     cmd_airflow_refresh,
+    cmd_airflow_propagate,
     cmd_airflow_rollover,
     cmd_airflow_update_dates
 )
@@ -400,6 +401,17 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config limits.limit_per_type_max).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', default=False, help="Recompute and persist checksums for matching objects.")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
+                ],
+                common_args = []
+            ),
+            'propagate' : dict(
+                help = "Propagate Airflow 'to_process' flags to graph_cache tables.",
+                func = cmd_airflow_propagate,
+                args = [
+                    dict(flags=('--actions',), kwargs=dict(required=False, type=str, default='commit', help="Comma-separated actions: print,eval,commit (default=commit).")),
+                    dict(flags=('--fields', '-f'), kwargs=dict(action='store_true', default=False, help="Propagate fields-changed flags only. If neither --fields nor --scores is passed, both are included.")),
+                    dict(flags=('--scores', '-s'), kwargs=dict(action='store_true', default=False, help="Propagate scores-expired flags only. If neither --fields nor --scores is passed, both are included.")),
+                    dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
                 common_args = []
             ),

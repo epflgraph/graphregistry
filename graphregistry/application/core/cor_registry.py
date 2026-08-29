@@ -483,27 +483,47 @@ class GraphRegistry():
             # Print status
             sysmsg.success("🧹 ✅ Done resetting flags.\n")
 
-        # Propagate flags to cache tables
-        def propagate(self):
+        # Public Method: Propagate Airflow 'to_process' flags to cache tables.
+        def propagate(self, actions=('commit',), include_fields=True, include_scores=True, verbose=False):
+
+            # Normalise actions tuple
+            actions = tuple(actions)
 
             # Print status
             sysmsg.info("⛳️ 📝 Propagate 'to_process' flags throughout the cache.")
 
-            # Build list for updates in nodes and data tables
-            list_of_tables = [
-                (glbcfg.schema_graph_cache_test, 'Data_N_Object_T_PageProfile'),
-                (glbcfg.schema_graph_cache_test, 'Nodes_N_Object_T_DegreeScores')
-            ]
+            # Internal Function: Execute one propagate update/eval/print step.
+            def _run(query_update, query_eval=None, query_id=None):
+                if 'print' in actions:
+                    print_sql(query_update, title=query_id)
+                if 'eval' in actions and query_eval is not None:
+                    out = db.execute_query(engine_name='xaas_coresrv', query=query_eval, query_id=f'{query_id}[eval]')
+                    count = out[0][0] if out and len(out) > 0 and out[0] else 0
+                    sysmsg.trace(f"  ~ {count} rows would be flagged")
+                    return count
+                if 'commit' in actions:
+                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=query_update, verbose=verbose, query_id=query_id)
+                return 0
 
-            # Print status
-            sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' page profile and degree scores tables ...")
+            #------------------#
+            # Fields-changed   #
+            #------------------#
+            if include_fields:
 
-            # Loop over tables and propagate flags
-            with tqdm(list_of_tables, unit='table') as pb:
-                for schema_name, table_name in pb:
-                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                    db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                        query = f"""UPDATE {schema_name}.{table_name} p
+                # Build list for updates in nodes and data tables
+                list_of_tables = [
+                    (glbcfg.schema_graph_cache_test, 'Data_N_Object_T_PageProfile'),
+                    (glbcfg.schema_graph_cache_test, 'Nodes_N_Object_T_DegreeScores')
+                ]
+
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' page profile and degree scores tables ...")
+
+                # Loop over tables and propagate flags
+                with tqdm(list_of_tables, unit='table') as pb:
+                    for schema_name, table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                        query_update = f"""UPDATE {schema_name}.{table_name} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                      USING (object_type, object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
@@ -514,23 +534,33 @@ class GraphRegistry():
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
                         """
-                    , query_id='zv9J4K0r', verbose=False)
+                        query_eval = f"""SELECT COUNT(*)
+                                           FROM {schema_name}.{table_name} p
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
+                                          USING (object_type, object_id)
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                                          USING (object_type)
+                                          WHERE fc.to_process = 1
+                                            AND fc.deleted = 0
+                                            AND tf.to_process = 1
+                                            AND  p.to_process = 0;
+                        """
+                        _run(query_update=query_update, query_eval=query_eval, query_id='zv9J4K0r')
 
-            # Build list for updates in edge tables
-            list_of_tables = [
-                (glbcfg.schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ParentChildSymmetric')
-            ]
+                # Build list for updates in edge tables
+                list_of_tables = [
+                    (glbcfg.schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ParentChildSymmetric')
+                ]
 
-            # Print status
-            sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' parent-child tables ...")
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' parent-child tables ...")
 
-            # Loop over tables and propagate flags
-            with tqdm(list_of_tables, unit='table') as pb:
-                for schema_name, table_name in pb:
-                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                    for d1,d2 in [('from', 'to'), ('to', 'from')]:
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"""UPDATE {schema_name}.{table_name} p
+                # Loop over tables and propagate flags
+                with tqdm(list_of_tables, unit='table') as pb:
+                    for schema_name, table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                        for d1, d2 in [('from', 'to'), ('to', 'from')]:
+                            query_update = f"""UPDATE {schema_name}.{table_name} p
                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                             ON ( p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_object_type, p.{d2}_object_id)
                                              = (fc.from_object_type, fc.from_object_id,  fc.to_object_type,  fc.to_object_id)
@@ -543,51 +573,32 @@ class GraphRegistry():
                                            AND tf.to_process = 1
                                            AND  p.to_process = 0;
                             """
-                        , query_id='ct6y8Gz2', verbose=False)
-
-           # Build list for updates in edge tables
-            list_of_tables = [
-                (glbcfg.schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS'),
-                (glbcfg.schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ScoresMatrix_Research_AS'),
-                (glbcfg.schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ScoresMatrix_Education_GBC'),
-                (glbcfg.schema_graph_cache_test, 'Edges_N_Object_N_Object_T_ScoresMatrix_Research_GBC')
-            ]
-
-            # Print status
-            sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' score matrix tables ...")
-
-            # Loop over tables and propagate flags
-            with tqdm(list_of_tables, unit='table') as pb:
-                for schema_name, table_name in pb:
-                    pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                    for d in ['from', 'to']:
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"""UPDATE {schema_name}.{table_name} p
-                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                            ON (p.{d}_object_type, p.{d}_object_id) = (se.object_type, se.object_id)
-                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                            ON ( p.from_object_type,  p.to_object_type)
-                                             = (tf.from_object_type, tf.to_object_type)
-                                           SET  p.to_process = 1
-                                         WHERE se.to_process = 1
-                                           AND se.deleted = 0
-                                           AND tf.to_process = 1
-                                           AND  p.to_process = 0;
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM {schema_name}.{table_name} p
+                                         INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
+                                                 ON ( p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_object_type, p.{d2}_object_id)
+                                                  = (fc.from_object_type, fc.from_object_id,  fc.to_object_type,  fc.to_object_id)
+                                         INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                                 ON ( p.{d1}_object_type, p.{d2}_object_type)
+                                                  = (tf.from_object_type,  tf.to_object_type)
+                                                WHERE fc.to_process = 1
+                                                  AND fc.deleted = 0
+                                                  AND tf.to_process = 1
+                                                  AND  p.to_process = 0;
                             """
-                        , query_id='yzm93BqQ', verbose=False)
+                            _run(query_update=query_update, query_eval=query_eval, query_id='ct6y8Gz2')
 
-            # Print status
-            sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc tables ...")
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc tables ...")
 
-            # Fetch list from index config
-            list_of_doc_types = idxcfg.settings['doc_types']
+                # Fetch list from index config
+                list_of_doc_types = idxcfg.settings['doc_types']
 
-            # Propagate flags on index buildup tables
-            with tqdm(list_of_doc_types, unit='doc type') as pb:
-                for dummy, doc_type in pb:
-                    pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    db.execute_query_in_shell(engine_name = 'xaas_coresrv',
-                        query = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
+                # Propagate flags on index buildup tables
+                with tqdm(list_of_doc_types, unit='doc type') as pb:
+                    for dummy, doc_type in pb:
+                        pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                         ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
@@ -597,22 +608,33 @@ class GraphRegistry():
                                        AND fc.deleted = 0
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
-                        """)
+                        """
+                        query_eval = f"""SELECT COUNT(*)
+                                           FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
+                                             ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                                          USING (object_type)
+                                          WHERE fc.to_process = 1
+                                            AND fc.deleted = 0
+                                            AND tf.to_process = 1
+                                            AND  p.to_process = 0;
+                        """
+                        _run(query_update=query_update, query_eval=query_eval, query_id='RjDjz3fW')
 
-            # Print status
-            sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc-Link tables ...")
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc-Link tables ...")
 
-            # Fetch list from index config
-            list_of_p2c_doclink_types = list(set([sorted([d, l])
-                for d in idxcfg.settings['graphsearch']['fields']['links']['parent_child']
-                for l in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][d]]))
+                # Fetch list from index config
+                list_of_p2c_doclink_types = list(set([tuple(sorted([d, l]))
+                    for d in idxcfg.settings['graphsearch']['fields']['links']['parent_child']
+                    for l in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][d]]))
 
-            # Propagate flags on index buildup tables
-            with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
-                for source_doc_type, target_doc_type in pb:
-                    pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                    db.execute_query_in_shell(engine_name='xaas_coresrv',
-                        query = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
+                # Propagate flags on index buildup tables
+                with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
+                    for source_doc_type, target_doc_type in pb:
+                        pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                         ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
                                          = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
@@ -625,13 +647,117 @@ class GraphRegistry():
                                        AND tf.to_process = 1
                                        AND  p.to_process = 0;
                         """
-                    , query_id='J4Djz3fW', verbose=False)
+                        query_eval = f"""SELECT COUNT(*)
+                                           FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
+                                             ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
+                                              = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                             ON (p.doc_type, p.link_type)
+                                              = (tf.from_object_type, tf.to_object_type)
+                                            WHERE fc.to_process = 1
+                                              AND fc.deleted = 0
+                                              AND tf.to_process = 1
+                                              AND  p.to_process = 0;
+                        """
+                        _run(query_update=query_update, query_eval=query_eval, query_id='J4Djz3fW')
 
-            # # Truncate table: Operations/ Object / ToProcess
-            # db.execute_query_in_shell(engine_name='xaas_coresrv', query=f"TRUNCATE TABLE {glbcfg.schema_graph_cache_test}.Operations_N_Object_T_ToProcess;")
+            #------------------#
+            # Scores-expired   #
+            #------------------#
+            if include_scores:
+
+                # Build list of edge tables (all object-to-object scores matrices)
+                list_of_tables = sorted([
+                    (glbcfg.schema_graph_cache_test, table_name)
+                    for table_name in db.get_tables_in_schema(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graph_cache_test,
+                        use_regex   = [r'^Edges_N_Object_N_Object_T_ScoresMatrix_.*_(AS|GBC)$']
+                    )
+                    if not table_name.startswith('_')
+                ])
+
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' score matrix tables ...")
+
+                # Loop over tables and propagate flags
+                with tqdm(list_of_tables, unit='table') as pb:
+                    for schema_name, table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                        for d in ['from', 'to']:
+                            query_update = f"""UPDATE {schema_name}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                            ON (p.{d}_object_type, p.{d}_object_id) = (se.object_type, se.object_id)
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                            ON ( p.from_object_type,  p.to_object_type)
+                                             = (tf.from_object_type, tf.to_object_type)
+                                           SET  p.to_process = 1
+                                         WHERE se.to_process = 1
+                                           AND se.deleted = 0
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
+                            """
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM {schema_name}.{table_name} p
+                                         INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                                 ON (p.{d}_object_type, p.{d}_object_id) = (se.object_type, se.object_id)
+                                         INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                                 ON ( p.from_object_type,  p.to_object_type)
+                                                  = (tf.from_object_type, tf.to_object_type)
+                                                WHERE se.to_process = 1
+                                                  AND se.deleted = 0
+                                                  AND tf.to_process = 1
+                                                  AND  p.to_process = 0;
+                            """
+                            _run(query_update=query_update, query_eval=query_eval, query_id='yzm93BqQ')
+
+                # Build list of final-scores tables (object-to-ontology scores for SEM patches)
+                list_of_tables = sorted([
+                    (glbcfg.schema_graph_cache_test, table_name)
+                    for table_name in db.get_tables_in_schema(
+                        engine_name = 'xaas_coresrv',
+                        schema_name = glbcfg.schema_graph_cache_test,
+                        use_regex   = [r'^Edges_N_Object_N_.*_T_FinalScores$']
+                    )
+                    if not table_name.startswith('_')
+                ])
+
+                # Print status
+                sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' final scores tables ...")
+
+                # Loop over tables and propagate flags
+                with tqdm(list_of_tables, unit='table') as pb:
+                    for schema_name, table_name in pb:
+                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                        query_update = f"""UPDATE {schema_name}.{table_name} p
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                        ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
+                                     USING (object_type)
+                                       SET  p.to_process = 1
+                                     WHERE se.to_process = 1
+                                       AND se.deleted = 0
+                                       AND tf.flag_type = 'scores'
+                                       AND tf.to_process = 1
+                                       AND  p.to_process = 0;
+                        """
+                        query_eval = f"""SELECT COUNT(*)
+                                           FROM {schema_name}.{table_name} p
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                             ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
+                                          USING (object_type)
+                                          WHERE se.to_process = 1
+                                            AND se.deleted = 0
+                                            AND tf.flag_type = 'scores'
+                                            AND tf.to_process = 1
+                                            AND  p.to_process = 0;
+                        """
+                        _run(query_update=query_update, query_eval=query_eval, query_id='q7n3P9xY')
 
             # Print status
-            sysmsg.success("⛳️ ✅ All 'to_process' flags have been propagated throughout cache.\n")
+            sysmsg.success("⛳️ ✅ Done propagating 'to_process' flags throughout cache.\n")
 
         # Sync new objects to operations table
         def sync(self, to_process=1, include_lectures=False, include_ontology=False, verbose=False):

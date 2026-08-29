@@ -326,6 +326,49 @@ def cmd_airflow_refresh(args):
     # Print footers
     print("🖥️  ~ Done.")
 
+#--------------------------------------------------#
+# Handler: Propagate to_process flags to cache     #
+#--------------------------------------------------#
+def cmd_airflow_propagate(args):
+    """
+    Handle:
+      graphregistry airflow propagate [--actions=...] [--fields] [--scores] [--verbose]
+    """
+
+    # Fetch context objects
+    registry = args.ctx.registry
+
+    # Get input options
+    actions = tuple(args.actions.split(',')) if args.actions else ('commit',)
+    verbose = args.verbose
+
+    # Resolve scope flags (same convention as airflow expire)
+    include_fields = args.fields or not args.scores
+    include_scores = args.scores or not args.fields
+
+    # Print headers
+    print("🖥️  ~ Graph Registry CLI. Propagate 'to_process' flags to cache tables.")
+
+    if args.fields or args.scores or args.verbose:
+        print("\nInput options:")
+        print(f"  fields ............... {include_fields}")
+        print(f"  scores ............... {include_scores}")
+        if args.verbose:
+            print(f"  verbose .............. {args.verbose}")
+        print('')
+
+    # Execute command:
+    # - Propagate flags from Airflow tables to graph_cache tables.
+    registry.orchestrator.propagate(
+        actions        = actions,
+        include_fields = include_fields,
+        include_scores = include_scores,
+        verbose        = verbose
+    )
+
+    # Print footers
+    print("🖥️  ~ Done.")
+
 #-----------------------------------------#
 # Handler: Operations on to_process flags #
 #-----------------------------------------#
