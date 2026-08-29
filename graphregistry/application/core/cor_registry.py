@@ -596,9 +596,13 @@ class GraphRegistry():
 
                 # Propagate flags on index buildup tables
                 with tqdm(list_of_doc_types, unit='doc type') as pb:
-                    for dummy, doc_type in pb:
+                    for doc_type in pb:
                         pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
+                        table_name = f"IndexBuildup_Fields_Docs_{doc_type}"
+                        if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
+                            sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
+                            continue
+                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                         ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
@@ -610,7 +614,7 @@ class GraphRegistry():
                                        AND  p.to_process = 0;
                         """
                         query_eval = f"""SELECT COUNT(*)
-                                           FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Docs_{doc_type} p
+                                           FROM {glbcfg.schema_graph_cache_test}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                              ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
@@ -634,7 +638,11 @@ class GraphRegistry():
                 with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
                     for source_doc_type, target_doc_type in pb:
                         pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
+                        table_name = f"IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type}"
+                        if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
+                            sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
+                            continue
+                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                         ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
                                          = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
@@ -648,7 +656,7 @@ class GraphRegistry():
                                        AND  p.to_process = 0;
                         """
                         query_eval = f"""SELECT COUNT(*)
-                                           FROM {glbcfg.schema_graph_cache_test}.IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type} p
+                                           FROM {glbcfg.schema_graph_cache_test}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                              ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
                                               = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
@@ -1523,9 +1531,8 @@ class GraphRegistry():
                         sql_query = f"""
                             SELECT object_type, object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
-                             WHERE (object_type)
+                             WHERE (object_type, object_id)
                                  = ("{object_key[0]}", "{object_key[1]}")
-                               AND deleted = 0
                         """
 
                     elif len(object_key) == 3:
@@ -1534,16 +1541,14 @@ class GraphRegistry():
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                              WHERE (object_type, object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")
-                               AND deleted = 0
                         """
 
                     elif len(object_key) == 4:
                         sql_query = f"""
-                            SELECT from_object_type, to_object_type, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
+                            SELECT from_object_type, from_object_id, to_object_type, to_object_id, checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
-                             WHERE (from_object_type, to_object_type)
+                             WHERE (from_object_type, from_object_id, to_object_type, to_object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}")
-                               AND deleted = 0
                         """
 
                     elif len(object_key) == 6:
@@ -1552,7 +1557,6 @@ class GraphRegistry():
                               FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                              WHERE (from_object_type, from_object_id, to_object_type, to_object_id)
                                  = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}", "{object_key[3]}", "{object_key[4]}", "{object_key[5]}")
-                               AND deleted = 0
                         """
 
                     else:
@@ -1571,7 +1575,6 @@ class GraphRegistry():
                         SELECT object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                          WHERE to_process = 1
-                           AND deleted = 0
                       GROUP BY object_type
                     """, query_id='TDgw7fYz')
                     df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
@@ -1582,7 +1585,6 @@ class GraphRegistry():
                         SELECT from_object_type, to_object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                          WHERE to_process = 1
-                           AND deleted = 0
                       GROUP BY from_object_type, to_object_type
                     """, query_id='EqpDtL34')
                     df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
@@ -2416,10 +2418,10 @@ class GraphRegistry():
                     sql_query = f"""
                         SELECT object_type, object_id, last_date_cached, has_expired, to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
-                        WHERE deleted = 0
+                        WHERE TRUE
                     """
                     if len(object_key) == 2:
-                        sql_query += f"""  AND (object_type) = ("{object_key[0]}", "{object_key[1]}")"""
+                        sql_query += f"""  AND (object_type, object_id) = ("{object_key[0]}", "{object_key[1]}")"""
                     elif len(object_key) == 3:
                         sql_query += f"""  AND (object_type, object_id) = ("{object_key[0]}", "{object_key[1]}", "{object_key[2]}")"""
                     else:
@@ -2435,7 +2437,6 @@ class GraphRegistry():
                         SELECT object_type, COUNT(*) AS n_to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                         WHERE to_process = 1
-                          AND deleted = 0
                      GROUP BY object_type
                     """, query_id='ts8NQExF')
                     df = pd.DataFrame(out, columns=['object_type', 'n_to_process'])
