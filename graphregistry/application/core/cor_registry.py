@@ -493,15 +493,15 @@ class GraphRegistry():
             sysmsg.info("⛳️ 📝 Propagate 'to_process' flags throughout the cache.")
 
             # Internal Function: Execute one propagate update/eval/print step.
-            def _run(query_update, query_eval=None, query_id=None):
-                if 'print' in actions:
+            def _run(query_update=None, query_eval=None, query_id=None):
+                if 'print' in actions and query_update is not None:
                     print_sql(query_update, title=query_id)
                 if 'eval' in actions and query_eval is not None:
                     out = db.execute_query(engine_name='xaas_coresrv', query=query_eval, query_id=f'{query_id}[eval]')
                     count = out[0][0] if out and len(out) > 0 and out[0] else 0
                     sysmsg.trace(f"  ~ {count} rows would be flagged")
                     return count
-                if 'commit' in actions:
+                if 'commit' in actions and query_update is not None:
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=query_update, verbose=verbose, query_id=query_id)
                 return 0
 
@@ -693,33 +693,70 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        query_update = f"""UPDATE {schema_name}.{table_name} p
+
+                        # Shared WHERE clause
+                        where_clause = f"""WHERE se.to_process = 1
+                                             AND se.deleted = 0
+                                             AND tf.to_process = 1
+                                             AND  p.to_process = 0"""
+
+                        # FROM-side queries (fast, index-friendly equality join)
+                        query_update_from = f"""UPDATE {schema_name}.{table_name} p
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                        ON (se.object_type, se.object_id)
-                                        IN ((p.from_object_type, p.from_object_id), (p.to_object_type, p.to_object_id))
+                                        ON p.from_object_type = se.object_type
+                                       AND p.from_object_id = se.object_id
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
                                         ON ( p.from_object_type,  p.to_object_type)
                                          = (tf.from_object_type, tf.to_object_type)
                                        SET  p.to_process = 1
-                                     WHERE se.to_process = 1
-                                       AND se.deleted = 0
-                                       AND tf.to_process = 1
-                                       AND  p.to_process = 0;
+                                     {where_clause};
                         """
-                        query_eval = f"""SELECT COUNT(*)
-                                           FROM {schema_name}.{table_name} p
+                        query_eval_from = f"""SELECT 1
+                                                 FROM {schema_name}.{table_name} p
+                                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                               ON p.from_object_type = se.object_type
+                                              AND p.from_object_id = se.object_id
+                                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                               ON ( p.from_object_type,  p.to_object_type)
+                                                = (tf.from_object_type, tf.to_object_type)
+                                              {where_clause}"""
+
+                        # TO-side queries (second pass only touches rows not flagged by the first pass)
+                        query_update_to = f"""UPDATE {schema_name}.{table_name} p
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                        ON p.to_object_type = se.object_type
+                                       AND p.to_object_id = se.object_id
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                        ON ( p.from_object_type,  p.to_object_type)
+                                         = (tf.from_object_type, tf.to_object_type)
+                                       SET  p.to_process = 1
+                                     {where_clause};
+                        """
+                        query_eval_to = f"""SELECT 1
+                                               FROM {schema_name}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                             ON (se.object_type, se.object_id)
-                                             IN ((p.from_object_type, p.from_object_id), (p.to_object_type, p.to_object_id))
+                                             ON p.to_object_type = se.object_type
+                                            AND p.to_object_id = se.object_id
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
                                              ON ( p.from_object_type,  p.to_object_type)
                                               = (tf.from_object_type, tf.to_object_type)
-                                            WHERE se.to_process = 1
-                                              AND se.deleted = 0
-                                              AND tf.to_process = 1
-                                              AND  p.to_process = 0;
-                        """
-                        _run(query_update=query_update, query_eval=query_eval, query_id='yzm93BqQ')
+                                            {where_clause}"""
+
+                        # Eval: union both directions to avoid double-counting edges whose
+                        # from- and to- endpoints are both expired.
+                        if 'eval' in actions:
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM (
+                                                    {query_eval_from}
+                                                    UNION
+                                                    {query_eval_to}
+                                               ) t"""
+                            _run(query_update=None, query_eval=query_eval, query_id='yzm93BqQ')
+
+                        # Commit: run both directional updates; p.to_process = 0 keeps them idempotent.
+                        if 'commit' in actions:
+                            _run(query_update=query_update_from, query_id='yzm93BqQ-from')
+                            _run(query_update=query_update_to, query_id='yzm93BqQ-to')
 
                 # Build list of final-scores tables (object-to-ontology scores for SEM patches)
                 list_of_tables = sorted([
