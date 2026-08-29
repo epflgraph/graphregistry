@@ -493,17 +493,168 @@ class GraphRegistry():
             sysmsg.info("⛳️ 📝 Propagate 'to_process' flags throughout the cache.")
 
             # Internal Function: Execute one propagate update/eval/print step.
-            def _run(query_update=None, query_eval=None, query_id=None):
+            def _run(query_update=None, query_eval=None, query_id=None, do_commit=None):
+                if do_commit is None:
+                    do_commit = 'commit' in actions
                 if 'print' in actions and query_update is not None:
                     print_sql(query_update, title=query_id)
+                count = 0
                 if 'eval' in actions and query_eval is not None:
                     out = db.execute_query(engine_name='xaas_coresrv', query=query_eval, query_id=f'{query_id}[eval]')
                     count = out[0][0] if out and len(out) > 0 and out[0] else 0
                     sysmsg.trace(f"  ~ {count} rows would be flagged")
-                    return count
-                if 'commit' in actions and query_update is not None:
+                if do_commit and query_update is not None:
                     db.execute_query_in_shell(engine_name='xaas_coresrv', query=query_update, verbose=verbose, query_id=query_id)
-                return 0
+                return count
+
+            # Internal helper: build an IN (...) string of active object types from TypeFlags.
+            def _sql_escape(value):
+                if value is None:
+                    return 'NULL'
+                # Object types are short identifiers; simple single-quote doubling is sufficient.
+                return str(value).replace("'", "''")
+
+            def _active_types_clause(flag_type=None, object_object=False, column='object_type', from_column='from_object_type', to_column='to_object_type'):
+                if object_object:
+                    # Fetch pairs (from_object_type, to_object_type) that are active.
+                    query = f"""SELECT DISTINCT from_object_type, to_object_type
+                                  FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                                 WHERE to_process = 1"""
+                    rows = db.execute_query(engine_name='xaas_coresrv', query=query, query_id='active-edge-types')
+                    if not rows:
+                        return None
+                    pairs = ", ".join(f"('{_sql_escape(ft)}', '{_sql_escape(tt)}')" for ft, tt in rows)
+                    return f"(p.{from_column}, p.{to_column}) IN ({pairs})"
+                else:
+                    flag_filter = f"AND flag_type = '{flag_type}'" if flag_type else ""
+                    query = f"""SELECT DISTINCT object_type
+                                  FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
+                                 WHERE to_process = 1 {flag_filter}"""
+                    rows = db.execute_query(engine_name='xaas_coresrv', query=query, query_id='active-node-types')
+                    if not rows:
+                        return None
+                    types = ", ".join(f"'{_sql_escape(r[0])}'" for r in rows)
+                    return f"p.{column} IN ({types})"
+
+            # Internal helper: check whether a cache table has a row_id column.
+            def _table_has_row_id(schema_name, table_name):
+                query = f"""SELECT 1
+                              FROM information_schema.COLUMNS
+                             WHERE TABLE_SCHEMA = '{_sql_escape(schema_name)}'
+                               AND TABLE_NAME = '{_sql_escape(table_name)}'
+                               AND COLUMN_NAME = 'row_id'"""
+                rows = db.execute_query(engine_name='xaas_coresrv', query=query, query_id='has-row-id')
+                return bool(rows)
+
+            # Internal helper: execute a propagate UPDATE in row_id chunks when possible,
+            # otherwise fall back to per-type (or per-edge-pair) batches.
+            def _execute_propagate_query(
+                query_update,
+                query_eval,
+                schema_name,
+                table_name,
+                query_id,
+                is_edge=False,
+                node_type_col='object_type',
+                from_col='from_object_type',
+                to_col='to_object_type',
+            ):
+                # Eval: run the count query once and report.
+                if 'eval' in actions:
+                    _run(query_update=None, query_eval=query_eval, query_id=query_id, do_commit=False)
+
+                # Commit: use chunked updates when row_id exists, otherwise batch by type/pair.
+                if 'commit' not in actions:
+                    return
+
+                has_row_id = _table_has_row_id(schema_name, table_name)
+
+                if has_row_id:
+                    # Build a dense chunk filter that selects exactly the row_ids the
+                    # update would touch. Convert the UPDATE into a SELECT p.row_id
+                    # subquery so all joins/where conditions are preserved.
+                    select_for_chunk = re.sub(
+                        r'UPDATE\s+(\S+\.\S+)\s+p\s+',
+                        r'SELECT p.row_id FROM \1 p ',
+                        query_update,
+                        count=1,
+                        flags=re.IGNORECASE,
+                    )
+                    select_for_chunk = re.sub(
+                        r'\s+SET\s+p\.to_process\s*=\s*1\s*',
+                        ' ',
+                        select_for_chunk,
+                        count=1,
+                        flags=re.IGNORECASE,
+                    )
+                    if 'SELECT p.row_id FROM' in select_for_chunk.upper():
+                        select_for_chunk = select_for_chunk.rstrip().rstrip(';')
+                        chunk_filter = f"p.row_id IN ({select_for_chunk})"
+                    else:
+                        # Fallback: scan the whole table by row_id ranges.
+                        chunk_filter = None
+
+                    db.execute_query_in_chunks(
+                        engine_name='xaas_coresrv',
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        query=query_update,
+                        chunk_filter=chunk_filter,
+                        row_id_name='p.row_id',
+                        chunk_size=100000,
+                        show_progress=True,
+                        verbose=verbose,
+                        query_id=query_id,
+                        desc=f"{schema_name}.{table_name}",
+                    )
+                else:
+                    # No row_id: batch by active object type (node) or edge pair.
+                    if is_edge:
+                        active_pairs = db.execute_query(
+                            engine_name='xaas_coresrv',
+                            query=f"""SELECT DISTINCT from_object_type, to_object_type
+                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                                       WHERE to_process = 1""",
+                            query_id=f'{query_id}-active-pairs',
+                        )
+                        for ft, tt in active_pairs or []:
+                            q = re.sub(
+                                r'\bWHERE\b',
+                                f"WHERE p.{from_col} = '{_sql_escape(ft)}' AND p.{to_col} = '{_sql_escape(tt)}' AND ",
+                                query_update,
+                                count=1,
+                                flags=re.IGNORECASE,
+                            )
+                            db.execute_query_in_shell(
+                                engine_name='xaas_coresrv',
+                                query=q,
+                                verbose=verbose,
+                                query_id=f'{query_id}-{ft}-{tt}',
+                            )
+                    else:
+                        flag_type = 'scores' if 'ScoresExpired' in query_update else 'fields'
+                        active_types = db.execute_query(
+                            engine_name='xaas_coresrv',
+                            query=f"""SELECT DISTINCT object_type
+                                        FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
+                                       WHERE to_process = 1
+                                         AND flag_type = '{flag_type}'""",
+                            query_id=f'{query_id}-active-types',
+                        )
+                        for (ot,) in active_types or []:
+                            q = re.sub(
+                                r'\bWHERE\b',
+                                f"WHERE p.{node_type_col} = '{_sql_escape(ot)}' AND ",
+                                query_update,
+                                count=1,
+                                flags=re.IGNORECASE,
+                            )
+                            db.execute_query_in_shell(
+                                engine_name='xaas_coresrv',
+                                query=q,
+                                verbose=verbose,
+                                query_id=f'{query_id}-{ot}',
+                            )
 
             #------------------#
             # Fields-changed   #
@@ -519,35 +670,50 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' page profile and degree scores tables ...")
 
-                # Loop over tables and propagate flags
-                with tqdm(list_of_tables, unit='table') as pb:
-                    for schema_name, table_name in pb:
-                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        query_update = f"""UPDATE {schema_name}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
-                                        ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                        ON p.object_type = tf.object_type
-                                       SET  p.to_process = 1
-                                     WHERE se.to_process = 1
-                                       AND se.deleted = 0
-                                       AND tf.flag_type = 'scores'
-                                       AND tf.to_process = 1
-                                       AND  p.to_process = 0;
-                        """
-                        query_eval = f"""SELECT COUNT(*)
-                                           FROM {schema_name}.{table_name} p
+                # Pre-filter: only scan object types whose scores flag is active.
+                active_scores_types = _active_types_clause(flag_type='scores', column='object_type')
+                if active_scores_types is None:
+                    sysmsg.trace("  ~ No active scores type flags; skipping page profile / degree scores tables.")
+                else:
+                    # Loop over tables and propagate flags
+                    with tqdm(list_of_tables, unit='table') as pb:
+                        for schema_name, table_name in pb:
+                            pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                            query_update = f"""UPDATE {schema_name}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
+                                            ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                                            ON p.object_type = tf.object_type
+                                           SET  p.to_process = 1
+                                         WHERE {active_scores_types}
+                                           AND se.to_process = 1
+                                           AND se.deleted = 0
+                                           AND tf.flag_type = 'scores'
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
+                            """
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM {schema_name}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
                                              ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
                                              ON p.object_type = tf.object_type
-                                          WHERE se.to_process = 1
+                                          WHERE {active_scores_types}
+                                            AND se.to_process = 1
                                             AND se.deleted = 0
                                             AND tf.flag_type = 'scores'
                                             AND tf.to_process = 1
                                             AND  p.to_process = 0;
-                        """
-                        _run(query_update=query_update, query_eval=query_eval, query_id='zv9J4K0r')
+                            """
+                            _execute_propagate_query(
+                                query_update=query_update,
+                                query_eval=query_eval,
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                query_id='zv9J4K0r',
+                                is_edge=False,
+                                node_type_col='object_type',
+                            )
 
                 # Build list for updates in edge tables
                 list_of_tables = [
@@ -557,38 +723,52 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' parent-child tables ...")
 
-                # Loop over tables and propagate flags
-                with tqdm(list_of_tables, unit='table') as pb:
-                    for schema_name, table_name in pb:
-                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        for d1, d2 in [('from', 'to'), ('to', 'from')]:
-                            query_update = f"""UPDATE {schema_name}.{table_name} p
-                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
-                                            ON ( p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_object_type, p.{d2}_object_id)
-                                             = (fc.from_object_type, fc.from_object_id,  fc.to_object_type,  fc.to_object_id)
-                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                            ON ( p.{d1}_object_type, p.{d2}_object_type)
-                                             = (tf.from_object_type,  tf.to_object_type)
-                                           SET  p.to_process = 1
-                                         WHERE fc.to_process = 1
-                                           AND fc.deleted = 0
-                                           AND tf.to_process = 1
-                                           AND  p.to_process = 0;
-                            """
-                            query_eval = f"""SELECT COUNT(*)
-                                               FROM {schema_name}.{table_name} p
+                # Pre-filter: only scan edge type pairs whose fields flag is active.
+                active_edge_types = _active_types_clause(object_object=True)
+                if active_edge_types is None:
+                    sysmsg.trace("  ~ No active edge type flags; skipping parent-child tables.")
+                else:
+                    # Loop over tables and propagate flags
+                    with tqdm(list_of_tables, unit='table') as pb:
+                        for schema_name, table_name in pb:
+                            pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                            for d1, d2 in [('from', 'to'), ('to', 'from')]:
+                                query_update = f"""UPDATE {schema_name}.{table_name} p
+                                        INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
+                                                ON ( p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_object_type, p.{d2}_object_id)
+                                                 = (fc.from_object_type, fc.from_object_id,  fc.to_object_type,  fc.to_object_id)
+                                        INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                                ON ( p.{d1}_object_type, p.{d2}_object_type)
+                                                 = (tf.from_object_type,  tf.to_object_type)
+                                               SET  p.to_process = 1
+                                             WHERE {active_edge_types}
+                                               AND fc.to_process = 1
+                                               AND fc.deleted = 0
+                                               AND tf.to_process = 1
+                                               AND  p.to_process = 0;
+                                """
+                                query_eval = f"""SELECT COUNT(*)
+                                                   FROM {schema_name}.{table_name} p
                                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                                  ON ( p.{d1}_object_type,  p.{d1}_object_id, p.{d2}_object_type, p.{d2}_object_id)
                                                   = (fc.from_object_type, fc.from_object_id,  fc.to_object_type,  fc.to_object_id)
                                          INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
                                                  ON ( p.{d1}_object_type, p.{d2}_object_type)
                                                   = (tf.from_object_type,  tf.to_object_type)
-                                                WHERE fc.to_process = 1
+                                                WHERE {active_edge_types}
+                                                  AND fc.to_process = 1
                                                   AND fc.deleted = 0
                                                   AND tf.to_process = 1
                                                   AND  p.to_process = 0;
-                            """
-                            _run(query_update=query_update, query_eval=query_eval, query_id='ct6y8Gz2')
+                                """
+                                _execute_propagate_query(
+                                    query_update=query_update,
+                                    query_eval=query_eval,
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    query_id='ct6y8Gz2',
+                                    is_edge=True,
+                                )
 
                 # Print status
                 sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc tables ...")
@@ -596,37 +776,54 @@ class GraphRegistry():
                 # Fetch list from index config
                 list_of_doc_types = idxcfg.settings['doc_types']
 
-                # Propagate flags on index buildup tables
-                with tqdm(list_of_doc_types, unit='doc type') as pb:
-                    for doc_type in pb:
-                        pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                        table_name = f"IndexBuildup_Fields_Docs_{doc_type}"
-                        if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
-                            sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
-                            continue
-                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
-                                        ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
-                                        ON fc.object_type = tf.object_type
-                                       SET  p.to_process = 1
-                                     WHERE fc.to_process = 1
-                                       AND fc.deleted = 0
-                                       AND tf.to_process = 1
-                                       AND  p.to_process = 0;
-                        """
-                        query_eval = f"""SELECT COUNT(*)
-                                           FROM {glbcfg.schema_graph_cache_test}.{table_name} p
+                # Pre-filter: only scan doc types whose fields flag is active.
+                active_fields_types = _active_types_clause(flag_type='fields', column='doc_type')
+                if active_fields_types is None:
+                    sysmsg.trace("  ~ No active fields type flags; skipping IndexBuildup Doc tables.")
+                else:
+                    # Propagate flags on index buildup tables
+                    with tqdm(list_of_doc_types, unit='doc type') as pb:
+                        for doc_type in pb:
+                            pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                            table_name = f"IndexBuildup_Fields_Docs_{doc_type}"
+                            if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
+                                sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
+                                continue
+                            query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
+                                            ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
+                                            ON fc.object_type = tf.object_type
+                                           SET  p.to_process = 1
+                                         WHERE {active_fields_types}
+                                           AND fc.to_process = 1
+                                           AND fc.deleted = 0
+                                           AND tf.flag_type = 'fields'
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
+                            """
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM {glbcfg.schema_graph_cache_test}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged fc
                                              ON (p.doc_type, p.doc_id) = (fc.object_type, fc.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags tf
                                              ON fc.object_type = tf.object_type
-                                          WHERE fc.to_process = 1
+                                          WHERE {active_fields_types}
+                                            AND fc.to_process = 1
                                             AND fc.deleted = 0
+                                            AND tf.flag_type = 'fields'
                                             AND tf.to_process = 1
                                             AND  p.to_process = 0;
-                        """
-                        _run(query_update=query_update, query_eval=query_eval, query_id='RjDjz3fW')
+                            """
+                            _execute_propagate_query(
+                                query_update=query_update,
+                                query_eval=query_eval,
+                                schema_name=glbcfg.schema_graph_cache_test,
+                                table_name=table_name,
+                                query_id='RjDjz3fW',
+                                is_edge=False,
+                                node_type_col='doc_type',
+                            )
 
                 # Print status
                 sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' IndexBuildup Doc-Link tables ...")
@@ -636,41 +833,59 @@ class GraphRegistry():
                     for d in idxcfg.settings['graphsearch']['fields']['links']['parent_child']
                     for l in idxcfg.settings['graphsearch']['fields']['links']['parent_child'][d]]))
 
-                # Propagate flags on index buildup tables
-                with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
-                    for source_doc_type, target_doc_type in pb:
-                        pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
-                        table_name = f"IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type}"
-                        if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
-                            sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
-                            continue
-                        query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
-                                        ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
-                                         = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                        ON (p.doc_type, p.link_type)
-                                         = (tf.from_object_type, tf.to_object_type)
-                                       SET  p.to_process = 1
-                                     WHERE fc.to_process = 1
-                                       AND fc.deleted = 0
-                                       AND tf.to_process = 1
-                                       AND  p.to_process = 0;
-                        """
-                        query_eval = f"""SELECT COUNT(*)
-                                           FROM {glbcfg.schema_graph_cache_test}.{table_name} p
+                # Pre-filter: only scan doc-link type pairs whose fields flag is active.
+                active_doclink_types = _active_types_clause(
+                    object_object=True, from_column='doc_type', to_column='link_type'
+                )
+                if active_doclink_types is None:
+                    sysmsg.trace("  ~ No active edge type flags; skipping IndexBuildup Doc-Link tables.")
+                else:
+                    # Propagate flags on index buildup tables
+                    with tqdm(list_of_p2c_doclink_types, unit='doc-link type') as pb:
+                        for source_doc_type, target_doc_type in pb:
+                            pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                            table_name = f"IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type}"
+                            if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
+                                sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
+                                continue
+                            query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
+                                            ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
+                                             = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                            ON (p.doc_type, p.link_type)
+                                             = (tf.from_object_type, tf.to_object_type)
+                                           SET  p.to_process = 1
+                                         WHERE {active_doclink_types}
+                                           AND fc.to_process = 1
+                                           AND fc.deleted = 0
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
+                            """
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM {glbcfg.schema_graph_cache_test}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged AS fc
                                              ON (p.doc_type, p.doc_id, p.link_type, p.link_id)
                                               = (fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
                                              ON (p.doc_type, p.link_type)
                                               = (tf.from_object_type, tf.to_object_type)
-                                            WHERE fc.to_process = 1
+                                            WHERE {active_doclink_types}
+                                              AND fc.to_process = 1
                                               AND fc.deleted = 0
                                               AND tf.to_process = 1
                                               AND  p.to_process = 0;
-                        """
-                        _run(query_update=query_update, query_eval=query_eval, query_id='J4Djz3fW')
+                            """
+                            _execute_propagate_query(
+                                query_update=query_update,
+                                query_eval=query_eval,
+                                schema_name=glbcfg.schema_graph_cache_test,
+                                table_name=table_name,
+                                query_id='J4Djz3fW',
+                                is_edge=True,
+                                from_col='doc_type',
+                                to_col='link_type',
+                            )
 
             #------------------#
             # Scores-expired   #
@@ -691,74 +906,94 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' score matrix tables ...")
 
-                # Loop over tables and propagate flags
-                with tqdm(list_of_tables, unit='table') as pb:
-                    for schema_name, table_name in pb:
-                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                # Pre-filter: only scan edge type pairs whose scores flag is active.
+                active_edge_scores_types = _active_types_clause(object_object=True)
+                if active_edge_scores_types is None:
+                    sysmsg.trace("  ~ No active edge type flags; skipping score matrix tables.")
+                else:
+                    # Loop over tables and propagate flags
+                    with tqdm(list_of_tables, unit='table') as pb:
+                        for schema_name, table_name in pb:
+                            pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Shared WHERE clause
-                        where_clause = f"""WHERE se.to_process = 1
-                                             AND se.deleted = 0
-                                             AND tf.to_process = 1
-                                             AND  p.to_process = 0"""
+                            # Shared WHERE clause
+                            where_clause = f"""WHERE {active_edge_scores_types}
+                                                 AND se.to_process = 1
+                                                 AND se.deleted = 0
+                                                 AND tf.to_process = 1
+                                                 AND  p.to_process = 0"""
 
-                        # FROM-side queries (fast, index-friendly equality join)
-                        query_update_from = f"""UPDATE {schema_name}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                        ON p.from_object_type = se.object_type
-                                       AND p.from_object_id = se.object_id
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                        ON ( p.from_object_type,  p.to_object_type)
-                                         = (tf.from_object_type, tf.to_object_type)
-                                       SET  p.to_process = 1
-                                     {where_clause};
-                        """
-                        query_eval_from = f"""SELECT 1
-                                                 FROM {schema_name}.{table_name} p
-                                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                               ON p.from_object_type = se.object_type
-                                              AND p.from_object_id = se.object_id
-                                       INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                               ON ( p.from_object_type,  p.to_object_type)
-                                                = (tf.from_object_type, tf.to_object_type)
-                                              {where_clause}"""
+                            # FROM-side queries (fast, index-friendly equality join)
+                            query_update_from = f"""UPDATE {schema_name}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                            ON p.from_object_type = se.object_type
+                                           AND p.from_object_id = se.object_id
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                            ON ( p.from_object_type,  p.to_object_type)
+                                             = (tf.from_object_type, tf.to_object_type)
+                                           SET  p.to_process = 1
+                                         {where_clause};
+                            """
+                            query_eval_from = f"""SELECT 1
+                                                     FROM {schema_name}.{table_name} p
+                                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                                   ON p.from_object_type = se.object_type
+                                                  AND p.from_object_id = se.object_id
+                                           INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                                   ON ( p.from_object_type,  p.to_object_type)
+                                                    = (tf.from_object_type, tf.to_object_type)
+                                                  {where_clause}"""
 
-                        # TO-side queries (second pass only touches rows not flagged by the first pass)
-                        query_update_to = f"""UPDATE {schema_name}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                        ON p.to_object_type = se.object_type
-                                       AND p.to_object_id = se.object_id
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                        ON ( p.from_object_type,  p.to_object_type)
-                                         = (tf.from_object_type, tf.to_object_type)
-                                       SET  p.to_process = 1
-                                     {where_clause};
-                        """
-                        query_eval_to = f"""SELECT 1
-                                               FROM {schema_name}.{table_name} p
-                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                             ON p.to_object_type = se.object_type
-                                            AND p.to_object_id = se.object_id
-                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                             ON ( p.from_object_type,  p.to_object_type)
-                                              = (tf.from_object_type, tf.to_object_type)
-                                            {where_clause}"""
+                            # TO-side queries (second pass only touches rows not flagged by the first pass)
+                            query_update_to = f"""UPDATE {schema_name}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                            ON p.to_object_type = se.object_type
+                                           AND p.to_object_id = se.object_id
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                            ON ( p.from_object_type,  p.to_object_type)
+                                             = (tf.from_object_type, tf.to_object_type)
+                                           SET  p.to_process = 1
+                                         {where_clause};
+                            """
+                            query_eval_to = f"""SELECT 1
+                                                    FROM {schema_name}.{table_name} p
+                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                              ON p.to_object_type = se.object_type
+                                             AND p.to_object_id = se.object_id
+                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                              ON ( p.from_object_type,  p.to_object_type)
+                                               = (tf.from_object_type, tf.to_object_type)
+                                             {where_clause}"""
 
-                        # Eval: union both directions to avoid double-counting edges whose
-                        # from- and to- endpoints are both expired.
-                        if 'eval' in actions:
-                            query_eval = f"""SELECT COUNT(*)
-                                               FROM (
-                                                    {query_eval_from}
-                                                    UNION
-                                                    {query_eval_to}
-                                               ) t"""
-                            _run(query_update=None, query_eval=query_eval, query_id='yzm93BqQ')
+                            # Eval: union both directions to avoid double-counting edges whose
+                            # from- and to- endpoints are both expired.
+                            if 'eval' in actions:
+                                query_eval = f"""SELECT COUNT(*)
+                                                   FROM (
+                                                        {query_eval_from}
+                                                        UNION
+                                                        {query_eval_to}
+                                                   ) t"""
+                                _run(query_update=None, query_eval=query_eval, query_id='yzm93BqQ', do_commit=False)
 
-                        # Commit: run both directional updates; p.to_process = 0 keeps them idempotent.
-                        if 'commit' in actions:
-                            _run(query_update=query_update_from, query_id='yzm93BqQ-from')
-                            _run(query_update=query_update_to, query_id='yzm93BqQ-to')
+                            # Commit: run both directional updates in row_id chunks.
+                            if 'commit' in actions:
+                                _execute_propagate_query(
+                                    query_update=query_update_from,
+                                    query_eval=None,
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    query_id='yzm93BqQ-from',
+                                    is_edge=True,
+                                )
+                                _execute_propagate_query(
+                                    query_update=query_update_to,
+                                    query_eval=None,
+                                    schema_name=schema_name,
+                                    table_name=table_name,
+                                    query_id='yzm93BqQ-to',
+                                    is_edge=True,
+                                )
 
                 # Build list of final-scores tables (object-to-ontology scores for SEM patches)
                 list_of_tables = sorted([
@@ -774,35 +1009,50 @@ class GraphRegistry():
                 # Print status
                 sysmsg.trace(f"Processing '{glbcfg.schema_graph_cache_test}' final scores tables ...")
 
-                # Loop over tables and propagate flags
-                with tqdm(list_of_tables, unit='table') as pb:
-                    for schema_name, table_name in pb:
-                        pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        query_update = f"""UPDATE {schema_name}.{table_name} p
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                        ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
-                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
-                                        ON p.object_type = tf.object_type
-                                       SET  p.to_process = 1
-                                     WHERE se.to_process = 1
-                                       AND se.deleted = 0
-                                       AND tf.flag_type = 'scores'
-                                       AND tf.to_process = 1
-                                       AND  p.to_process = 0;
-                        """
-                        query_eval = f"""SELECT COUNT(*)
-                                           FROM {schema_name}.{table_name} p
+                # Pre-filter: only scan object types whose scores flag is active.
+                active_scores_types_2 = _active_types_clause(flag_type='scores', column='object_type')
+                if active_scores_types_2 is None:
+                    sysmsg.trace("  ~ No active scores type flags; skipping final scores tables.")
+                else:
+                    # Loop over tables and propagate flags
+                    with tqdm(list_of_tables, unit='table') as pb:
+                        for schema_name, table_name in pb:
+                            pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
+                            query_update = f"""UPDATE {schema_name}.{table_name} p
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                            ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
+                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
+                                            ON p.object_type = tf.object_type
+                                           SET  p.to_process = 1
+                                         WHERE {active_scores_types_2}
+                                           AND se.to_process = 1
+                                           AND se.deleted = 0
+                                           AND tf.flag_type = 'scores'
+                                           AND tf.to_process = 1
+                                           AND  p.to_process = 0;
+                            """
+                            query_eval = f"""SELECT COUNT(*)
+                                               FROM {schema_name}.{table_name} p
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
                                              ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
                                              ON p.object_type = tf.object_type
-                                          WHERE se.to_process = 1
+                                          WHERE {active_scores_types_2}
+                                            AND se.to_process = 1
                                             AND se.deleted = 0
                                             AND tf.flag_type = 'scores'
                                             AND tf.to_process = 1
                                             AND  p.to_process = 0;
-                        """
-                        _run(query_update=query_update, query_eval=query_eval, query_id='q7n3P9xY')
+                            """
+                            _execute_propagate_query(
+                                query_update=query_update,
+                                query_eval=query_eval,
+                                schema_name=schema_name,
+                                table_name=table_name,
+                                query_id='q7n3P9xY',
+                                is_edge=False,
+                                node_type_col='object_type',
+                            )
 
             # Print status
             sysmsg.success("⛳️ ✅ Done propagating 'to_process' flags throughout cache.\n")
