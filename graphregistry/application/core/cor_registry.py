@@ -587,7 +587,7 @@ class GraphRegistry():
                         count=1,
                         flags=re.IGNORECASE,
                     )
-                    if 'SELECT p.row_id FROM' in select_for_chunk.upper():
+                    if 'SELECT P.ROW_ID FROM' in select_for_chunk.upper():
                         select_for_chunk = select_for_chunk.rstrip().rstrip(';')
                         chunk_filter = f"p.row_id IN ({select_for_chunk})"
                     else:
