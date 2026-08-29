@@ -693,32 +693,33 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        for d in ['from', 'to']:
-                            query_update = f"""UPDATE {schema_name}.{table_name} p
-                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                            ON (p.{d}_object_type, p.{d}_object_id) = (se.object_type, se.object_id)
-                                    INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                            ON ( p.from_object_type,  p.to_object_type)
-                                             = (tf.from_object_type, tf.to_object_type)
-                                           SET  p.to_process = 1
-                                         WHERE se.to_process = 1
-                                           AND se.deleted = 0
-                                           AND tf.to_process = 1
-                                           AND  p.to_process = 0;
-                            """
-                            query_eval = f"""SELECT COUNT(*)
-                                               FROM {schema_name}.{table_name} p
-                                         INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
-                                                 ON (p.{d}_object_type, p.{d}_object_id) = (se.object_type, se.object_id)
-                                         INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
-                                                 ON ( p.from_object_type,  p.to_object_type)
-                                                  = (tf.from_object_type, tf.to_object_type)
-                                                WHERE se.to_process = 1
-                                                  AND se.deleted = 0
-                                                  AND tf.to_process = 1
-                                                  AND  p.to_process = 0;
-                            """
-                            _run(query_update=query_update, query_eval=query_eval, query_id='yzm93BqQ')
+                        query_update = f"""UPDATE {schema_name}.{table_name} p
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                        ON (se.object_type, se.object_id)
+                                        IN ((p.from_object_type, p.from_object_id), (p.to_object_type, p.to_object_id))
+                                INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                        ON ( p.from_object_type,  p.to_object_type)
+                                         = (tf.from_object_type, tf.to_object_type)
+                                       SET  p.to_process = 1
+                                     WHERE se.to_process = 1
+                                       AND se.deleted = 0
+                                       AND tf.to_process = 1
+                                       AND  p.to_process = 0;
+                        """
+                        query_eval = f"""SELECT COUNT(*)
+                                           FROM {schema_name}.{table_name} p
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
+                                             ON (se.object_type, se.object_id)
+                                             IN ((p.from_object_type, p.from_object_id), (p.to_object_type, p.to_object_id))
+                                     INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags AS tf
+                                             ON ( p.from_object_type,  p.to_object_type)
+                                              = (tf.from_object_type, tf.to_object_type)
+                                            WHERE se.to_process = 1
+                                              AND se.deleted = 0
+                                              AND tf.to_process = 1
+                                              AND  p.to_process = 0;
+                        """
+                        _run(query_update=query_update, query_eval=query_eval, query_id='yzm93BqQ')
 
                 # Build list of final-scores tables (object-to-ontology scores for SEM patches)
                 list_of_tables = sorted([
@@ -742,7 +743,7 @@ class GraphRegistry():
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
                                         ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
                                 INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
-                                     USING (object_type)
+                                        ON p.object_type = tf.object_type
                                        SET  p.to_process = 1
                                      WHERE se.to_process = 1
                                        AND se.deleted = 0
@@ -755,7 +756,7 @@ class GraphRegistry():
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired AS se
                                              ON (p.object_type, p.object_id) = (se.object_type, se.object_id)
                                      INNER JOIN {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags AS tf
-                                          USING (object_type)
+                                             ON p.object_type = tf.object_type
                                           WHERE se.to_process = 1
                                             AND se.deleted = 0
                                             AND tf.flag_type = 'scores'
