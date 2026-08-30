@@ -5559,39 +5559,34 @@ class GraphRegistry():
                     else:
                         continue
 
-                    # Execute evaluation query to count the number of loose ends in the current table and print the results if 'eval' action is specified
-                    if 'eval' in actions:
+                    # Execute the evaluation query to count loose ends. We always
+                    # need the count so that 'commit' without 'eval' only runs
+                    # DELETEs on tables that actually have rows to remove.
+                    out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='DFSHG4tf', verbose='print' in actions)
 
-                        # Execute the evaluation query
-                        out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='DFSHG4tf', verbose='print' in actions)
+                    # Determine columns based on the type of table (object, object-to-object, doc, or doclink) and create a DataFrame to display the results
+                    if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
+                        df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_delete'])
+                    elif len(set(['doc_type', 'doc_id', 'link_type', 'link_id']) & set(list_of_columns))==4:
+                        df = pd.DataFrame(out, columns=['doc_type', 'link_type', 'n_to_delete'])
+                    elif len(set(['object_type', 'object_id']) & set(list_of_columns))==2:
+                        df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
+                    elif len(set(['doc_type', 'doc_id']) & set(list_of_columns))==2:
+                        df = pd.DataFrame(out, columns=['doc_type', 'n_to_delete'])
+                    else:
+                        df = pd.DataFrame(out, columns=['n_to_delete'])
 
-                        # Determine columns based on the type of table (object, object-to-object, doc, or doclink) and create a DataFrame to display the results
-                        if len(set(['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']) & set(list_of_columns))==4:
-                            df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_delete'])
-                        elif len(set(['doc_type', 'doc_id', 'link_type', 'link_id']) & set(list_of_columns))==4:
-                            df = pd.DataFrame(out, columns=['doc_type', 'link_type', 'n_to_delete'])
-                        elif len(set(['object_type', 'object_id']) & set(list_of_columns))==2:
-                            df = pd.DataFrame(out, columns=['object_type', 'n_to_delete'])
-                        elif len(set(['doc_type', 'doc_id']) & set(list_of_columns))==2:
-                            df = pd.DataFrame(out, columns=['doc_type', 'n_to_delete'])
-                        else:
-                            df = pd.DataFrame(out, columns=['n_to_delete'])
+                    table_rows_to_delete = int(df['n_to_delete'].sum()) if len(df) > 0 else 0
+                    schema_rows_to_delete += table_rows_to_delete
 
-                        # Print the DataFrame if it contains any rows and delete loose ends from the current table if 'commit' action is specified
-                        if len(df) > 0:
-                            schema_rows_to_delete += int(df['n_to_delete'].sum())
+                    # Print the DataFrame if 'eval' was requested and the table has loose ends
+                    if 'eval' in actions and table_rows_to_delete > 0:
+                        print_dataframe(df, title=f'🔍 Evaluation results for table: "{schema_name}.{table_name}"')
 
-                            # Print the DataFrame with a title indicating the evaluation results for the current table
-                            print_dataframe(df, title=f'🔍 Evaluation results for table: "{schema_name}.{table_name}"')
-
-                            # Execute commit query to delete loose ends if 'commit' action is specified
-                            if 'commit' in actions:
-
-                                # Trace message
-                                print(f"🔥 Deleting loose ends from table: '{schema_name}.{table_name}'.")
-
-                                # Execute the commit query
-                                db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
+                    # Execute commit query to delete loose ends if 'commit' was requested
+                    if 'commit' in actions and table_rows_to_delete > 0:
+                        print(f"🔥 Deleting {table_rows_to_delete:,} loose ends from table: '{schema_name}.{table_name}'.")
+                        db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
 
                 if 'eval' in actions:
                     sysmsg.trace(f"Schema '{schema_name}' evaluation complete: {schema_rows_to_delete:,} rows to delete.")
@@ -5659,17 +5654,18 @@ class GraphRegistry():
                            )
                     """
 
-                    if 'eval' in actions:
-                        out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='dicidxeval')
-                        n = out[0][0] if out else 0
-                        if n > 0:
-                            print_dataframe(
-                                pd.DataFrame([(table_name, n)], columns=['table_name', 'n_to_delete']),
-                                title=f'🔍 Missing doc-index refs in: "{schema_name}.{table_name}"'
-                            )
-                            schema_rows_to_delete += n
+                    # Always count so 'commit' without 'eval' can skip no-op DELETEs.
+                    out = db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='dicidxeval')
+                    n = out[0][0] if out else 0
+                    schema_rows_to_delete += n
 
-                    if 'commit' in actions:
+                    if 'eval' in actions and n > 0:
+                        print_dataframe(
+                            pd.DataFrame([(table_name, n)], columns=['table_name', 'n_to_delete']),
+                            title=f'🔍 Missing doc-index refs in: "{schema_name}.{table_name}"'
+                        )
+
+                    if 'commit' in actions and n > 0:
                         db.execute_query_in_shell(
                             engine_name=engine_name,
                             query=sql_query_commit,
