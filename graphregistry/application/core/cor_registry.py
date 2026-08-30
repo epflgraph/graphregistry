@@ -492,6 +492,25 @@ class GraphRegistry():
             # Print status
             sysmsg.info("⛳️ 📝 Propagate 'to_process' flags throughout the cache.")
 
+            # Context manager to suppress the generic "Discovering chunk boundaries"
+            # INFO log from graphdb unless the print action was requested.
+            from contextlib import contextmanager
+            @contextmanager
+            def _quiet_chunk_discovery():
+                if 'print' in actions:
+                    yield
+                    return
+                original_info = sysmsg.info
+                def _filtered_info(message, *args, **kwargs):
+                    if isinstance(message, str) and message.startswith('Discovering chunk boundaries for'):
+                        return
+                    return original_info(message, *args, **kwargs)
+                sysmsg.info = _filtered_info
+                try:
+                    yield
+                finally:
+                    sysmsg.info = original_info
+
             # Internal Function: Execute one propagate update/eval/print step.
             def _run(query_update=None, query_eval=None, query_id=None, do_commit=None):
                 if do_commit is None:
@@ -589,24 +608,27 @@ class GraphRegistry():
                     )
                     if 'SELECT P.ROW_ID FROM' in select_for_chunk.upper():
                         select_for_chunk = select_for_chunk.rstrip().rstrip(';')
-                        chunk_filter = f"p.row_id IN ({select_for_chunk})"
+                        # Use unqualified row_id at the CTE level; the subquery
+                        # itself aliases the table as p and is fine.
+                        chunk_filter = f"row_id IN ({select_for_chunk})"
                     else:
                         # Fallback: scan the whole table by row_id ranges.
                         chunk_filter = None
 
-                    db.execute_query_in_chunks(
-                        engine_name='xaas_coresrv',
-                        schema_name=schema_name,
-                        table_name=table_name,
-                        query=query_update,
-                        chunk_filter=chunk_filter,
-                        row_id_name='p.row_id',
-                        chunk_size=100000,
-                        show_progress=True,
-                        verbose=verbose,
-                        query_id=query_id,
-                        desc=f"{schema_name}.{table_name}",
-                    )
+                    with _quiet_chunk_discovery():
+                        db.execute_query_in_chunks(
+                            engine_name='xaas_coresrv',
+                            schema_name=schema_name,
+                            table_name=table_name,
+                            query=query_update,
+                            chunk_filter=chunk_filter,
+                            row_id_name='p.row_id',
+                            chunk_size=100000,
+                            show_progress=True,
+                            verbose=verbose,
+                            query_id=query_id,
+                            desc=f"{schema_name}.{table_name}",
+                        )
                 else:
                     # No row_id: batch by active object type (node) or edge pair.
                     if is_edge:
@@ -978,6 +1000,7 @@ class GraphRegistry():
 
                             # Commit: run both directional updates in row_id chunks.
                             if 'commit' in actions:
+                                sysmsg.trace(f"  ~ {table_name}: from-side pass")
                                 _execute_propagate_query(
                                     query_update=query_update_from,
                                     query_eval=None,
@@ -986,6 +1009,7 @@ class GraphRegistry():
                                     query_id='yzm93BqQ-from',
                                     is_edge=True,
                                 )
+                                sysmsg.trace(f"  ~ {table_name}: to-side pass")
                                 _execute_propagate_query(
                                     query_update=query_update_to,
                                     query_eval=None,
