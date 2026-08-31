@@ -7696,15 +7696,15 @@ class GraphRegistry():
 
                 if 'print' in actions:
                     if SQLQuery_Delete:
-                        print_sql(SQLQuery_Delete, name='EHT42tk[del]')
+                        print_sql(SQLQuery_Delete, title='EHT42tk[del]')
                     if SQLQuery1:
-                        print_sql(SQLQuery1, name='EHT42tk[1]')
+                        print_sql(SQLQuery1, title='EHT42tk[1]')
                     if SQLQuery2:
-                        print_sql(SQLQuery2, name='EHT42tk[2]')
+                        print_sql(SQLQuery2, title='EHT42tk[2]')
                     if SQLQuery_Insert_Forward:
-                        print_sql(SQLQuery_Insert_Forward, name='EHT42tk[fwd]')
+                        print_sql(SQLQuery_Insert_Forward, title='EHT42tk[fwd]')
                     if SQLQuery_Insert_Flipped:
-                        print_sql(SQLQuery_Insert_Flipped, name='EHT42tk[flp]')
+                        print_sql(SQLQuery_Insert_Flipped, title='EHT42tk[flp]')
 
                 #-------------------------------#
                 # Evaluate the commit operation #
