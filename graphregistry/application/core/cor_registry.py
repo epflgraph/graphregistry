@@ -6863,14 +6863,14 @@ class GraphRegistry():
                      WHERE b.to_process = 1;
                 """
 
+                # Print the evaluation query
+                if 'print' in actions:
+                    print_sql(sql_query_eval, title='hLdNx8Hb')
+
                 # Execute the evaluation query.
                 # In this case, we execute the query regardless of the 'eval' action,
                 # in order to reduce the execution time of the patch operation on 'commit'.
                 if 'commit' in actions or 'eval' in actions:
-
-                    # Print the evaluation query
-                    if 'print' in actions:
-                        print_sql(sql_query_eval, title='hLdNx8Hb')
 
                     # Execute and validate the evaluation query
                     out = db.execute_query(engine_name=self.engine_name, query=sql_query_eval, query_id='hLdNx8Hb')
@@ -6885,10 +6885,6 @@ class GraphRegistry():
 
                 # Evaluate the patch operation
                 if 'eval' in actions:
-
-                    # Print the evaluation query
-                    if 'print' in actions:
-                        print_sql(sql_query_eval)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -7014,6 +7010,10 @@ class GraphRegistry():
                      WHERE b.to_process = 1;
                 """
 
+                # Print the evaluation query
+                if 'print' in actions:
+                    print_sql(sql_query_eval, title='Kwrgj34')
+
                 # Execute the evaluation query.
                 # In this case, we execute the query regardless of the 'eval' action,
                 # in order to reduce the execution time of the patch operation on 'commit'.
@@ -7052,6 +7052,10 @@ class GraphRegistry():
                        AND        ({' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in self.graphsearch_obj_fields])}){' OR ' if ec else ''}
                 {'(' if ec else ''}{' OR '.join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in self.graphsearch_obj2obj_fields])}{')' if ec else ''};
                 """
+
+                # Print the commit query
+                if 'print' in actions:
+                    print_sql(sql_query_commit, title='sxUZ7wER')
 
                 # Execute the commit query
                 if 'commit' in actions:
@@ -7116,6 +7120,10 @@ class GraphRegistry():
                          AND (p.to_process = 1 OR l.to_process = 1)
                 """
 
+                # Print the evaluation query
+                if 'print' in actions:
+                    print_sql(sql_query_eval, title='AFSGljr')  # Print
+
                 # Execute the evaluation query.
                 # In this case, we execute the query regardless of the 'eval' action,
                 # in order to reduce the execution time of the patch operation on 'commit'.
@@ -7134,10 +7142,6 @@ class GraphRegistry():
 
                 # Evaluate the patch operation
                 if 'eval' in actions:
-
-                    # Print the evaluation query
-                    if 'print' in actions:
-                        print_sql(sql_query_eval)
 
                     # Print the evaluation results
                     if rows_to_process + rows_to_patch > 0:
@@ -7623,52 +7627,56 @@ class GraphRegistry():
                            AND row_rank <= {row_rank_thr}
                         """
 
+                #-----------------------------#
+                # Generate evaluation queries #
+                #-----------------------------#
+
+                # Generate evaluation query (#1)
+                if SQLQuery1 is not None:
+                    sql_query_no_replace_1 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
+                    sql_query_eval_1 = f"""
+                        SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                        FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                    """
+                elif SQLQuery_Insert_Forward is not None:
+                    sql_query_no_replace_1 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery_Insert_Forward)
+                    sql_query_eval_1 = f"""
+                        SELECT COUNT(*) AS rows_to_insert, COALESCE(SUM(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'} IS NOT NULL AND ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                        FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                    """
+                else:
+                    sql_query_eval_1 = f"""
+                        SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
+                    """
+
+                # Generate evaluation query (#2)
+                if SQLQuery2 is not None:
+                    sql_query_no_replace_2 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery2)
+                    sql_query_eval_2 = f"""
+                        SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                        FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                    """
+                elif SQLQuery_Insert_Flipped is not None:
+                    sql_query_no_replace_2 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery_Insert_Flipped)
+                    sql_query_eval_2 = f"""
+                        SELECT COUNT(*) AS rows_to_insert, COALESCE(SUM(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'} IS NOT NULL AND ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
+                        FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
+                    """
+                else:
+                    sql_query_eval_2 = f"""
+                        SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
+                    """
+
+                # Print the evaluation queries
+                if 'print' in actions:
+                    print(f"\n🔍 Evaluation queries for {target_table_path}:")
+                    print_sql(sql_query_eval_1, title='z0rFNfM5')
+                    print_sql(sql_query_eval_2, title='oxyoF81R')
+
                 #------------------------------#
                 # Evaluate the patch operation #
                 #------------------------------#
                 if 'eval' in actions:
-
-                    # Generate evaluation query (#1)
-                    if SQLQuery1 is not None:
-                        sql_query_no_replace_1 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery1)
-                        sql_query_eval_1 = f"""
-                            SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
-                            FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
-                        """
-                    elif SQLQuery_Insert_Forward is not None:
-                        sql_query_no_replace_1 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery_Insert_Forward)
-                        sql_query_eval_1 = f"""
-                            SELECT COUNT(*) AS rows_to_insert, COALESCE(SUM(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'} IS NOT NULL AND ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
-                            FROM ({sql_query_no_replace_1}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
-                        """
-                    else:
-                        sql_query_eval_1 = f"""
-                            SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
-                        """
-
-                    # Generate evaluation query (#2)
-                    if SQLQuery2 is not None:
-                        sql_query_no_replace_2 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery2)
-                        sql_query_eval_2 = f"""
-                            SELECT COALESCE(SUM(ISNULL(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})),0) AS rows_to_insert, COALESCE(SUM(ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
-                            FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
-                        """
-                    elif SQLQuery_Insert_Flipped is not None:
-                        sql_query_no_replace_2 = re.sub(r'(?:REPLACE|INSERT)\s+INTO[^\(\)]*\([^\(\)]*\)', '', SQLQuery_Insert_Flipped)
-                        sql_query_eval_2 = f"""
-                            SELECT COUNT(*) AS rows_to_insert, COALESCE(SUM(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'} IS NOT NULL AND ABS(e.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'}-t.{'semantic_score' if self.link_subtype.upper()=='SEM' else 'degree_score'})>0.01),0) AS rows_to_re_score
-                            FROM ({sql_query_no_replace_2}) t LEFT JOIN {target_table_path} e USING (doc_id, link_id)
-                        """
-                    else:
-                        sql_query_eval_2 = f"""
-                            SELECT 0 AS rows_to_insert, 0 AS rows_to_re_score
-                        """
-
-                    # Print the evaluation queries
-                    if 'print' in actions:
-                        print(f"\n🔍 Evaluation queries for {target_table_path}:")
-                        print_sql(sql_query_eval_1, title='z0rFNfM5')
-                        print_sql(sql_query_eval_2, title='oxyoF81R')
 
                     # Execute the evaluation queries
                     out_1 = db.execute_query(engine_name=self.engine_name, query=sql_query_eval_1, query_id='z0rFNfM5')
@@ -7681,6 +7689,26 @@ class GraphRegistry():
                     if np.sum(out) > 0:
                         df = pd.DataFrame(out, columns=['rows to insert/replace', 'rows to re-score'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for {target_table_path}:')
+
+                #--------------------------#
+                # Print the commit queries #
+                #--------------------------#
+
+                if 'print' in actions:
+                    if SQLQuery_Delete:
+                        print_sql(SQLQuery_Delete, name='EHT42tk[del]')
+                    if SQLQuery1:
+                        print_sql(SQLQuery1, name='EHT42tk[1]')
+                    if SQLQuery2:
+                        print_sql(SQLQuery2, name='EHT42tk[2]')
+                    if SQLQuery_Insert_Forward:
+                        print_sql(SQLQuery_Insert_Forward, name='EHT42tk[fwd]')
+                    if SQLQuery_Insert_Flipped:
+                        print_sql(SQLQuery_Insert_Flipped, name='EHT42tk[flp]')
+
+                #-------------------------------#
+                # Evaluate the commit operation #
+                #-------------------------------#
 
                 # Execute SQL query
                 if 'commit' in actions and not ('eval' in actions and np.sum(out)==0):
