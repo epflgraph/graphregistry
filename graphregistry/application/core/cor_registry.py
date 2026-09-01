@@ -7281,6 +7281,19 @@ class GraphRegistry():
                     # order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_fields'][o]]%o+' '+d for o,d in order_by_rules_list]) + f', {order_by}'
                     order_by = ', '.join([ cast_mapping[sql_data_type_mapping[idxcfg.settings['data_types'][o]]] % o + ' ' + d for o,d in order_by_rules_list ]) + f', {order_by}'
 
+                # Build IS NOT NULL filters for config-driven ORDER BY columns.
+                # The source alias differs per query variant (buildup doc/link tables).
+                order_by_config_columns = [o for o, _ in order_by_rules_list]
+
+                def _config_order_by_null_filter(prefix, obj2obj_prefix=None):
+                    conditions = []
+                    for col in order_by_config_columns:
+                        if obj2obj_prefix and col in self.graphsearch_obj2obj_fields:
+                            conditions.append(f"{obj2obj_prefix}.{col} IS NOT NULL")
+                        else:
+                            conditions.append(f"{prefix}.{col} IS NOT NULL")
+                    return ' AND '.join(conditions) if conditions else '1=1'
+
                 #---------------------------#
                 #---------------------------#
 
@@ -7311,6 +7324,12 @@ class GraphRegistry():
                 SQLQuery_Delete = None
                 SQLQuery_Insert_Forward = None
                 SQLQuery_Insert_Flipped = None
+
+                # Optional scratch table for affected doc ids (used by SEM non-ontology edges)
+                uses_temp_affected_docs_table = False
+                temp_table_path = None
+                temp_table_create_query = None
+                temp_table_drop_query = None
 
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
@@ -7376,16 +7395,19 @@ class GraphRegistry():
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                           INNER JOIN affected_docs ad
                                   ON p.from_object_id {colate_correct} = ad.doc_id
-                               WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                 AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.context          {colate_correct} = '{edge_context}'
-                                 AND p.deleted = 0
-                        )
-                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
-                          FROM ranked
-                         WHERE degree_score >= 0.1
-                           AND row_rank <= {row_rank_thr}
-                        """
+                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
+                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
+                                  AND p.context          {colate_correct} = '{edge_context}'
+                                  AND p.deleted = 0
+                                  AND bd.degree_score IS NOT NULL
+                                  AND p.to_object_id IS NOT NULL
+                                  AND {_config_order_by_null_filter('bd', 'bl')}
+                         )
+                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
+                           FROM ranked
+                          WHERE degree_score >= 0.1
+                            AND row_rank <= {row_rank_thr}
+                         """
 
                     # No buildup table
                     else:
@@ -7409,16 +7431,19 @@ class GraphRegistry():
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                           INNER JOIN affected_docs ad
                                   ON p.from_object_id {colate_correct} = ad.doc_id
-                               WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                 AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                 AND p.context        {colate_correct} = '{edge_context}'
-                                 AND p.deleted = 0
-                        )
-                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
-                          FROM ranked
-                         WHERE degree_score >= 0.1
-                           AND row_rank <= {row_rank_thr}
-                        """
+                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
+                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
+                                  AND p.context        {colate_correct} = '{edge_context}'
+                                  AND p.deleted = 0
+                                  AND bd.degree_score IS NOT NULL
+                                  AND p.to_object_id IS NOT NULL
+                                  AND {_config_order_by_null_filter('bd')}
+                         )
+                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
+                           FROM ranked
+                          WHERE degree_score >= 0.1
+                            AND row_rank <= {row_rank_thr}
+                         """
 
                 # Semantic table?
                 elif self.link_subtype.upper() == 'SEM':
@@ -7482,14 +7507,17 @@ class GraphRegistry():
                                       ON {link_join_condition}
                               INNER JOIN affected_docs ad
                                       ON fs.{ontology_id_col} {colate_correct} = ad.doc_id
-                                   WHERE fs.object_type = '{object_type}'
-                                     AND fs.deleted = 0
-                            )
-                            SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                              FROM ranked
-                             WHERE semantic_score >= 0.1
-                               AND row_rank <= {row_rank_thr}
-                            """
+                                    WHERE fs.object_type = '{object_type}'
+                                      AND fs.deleted = 0
+                                      AND fs.score IS NOT NULL
+                                      AND fs.object_id IS NOT NULL
+                                      AND {_config_order_by_null_filter('i')}
+                             )
+                             SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                               FROM ranked
+                              WHERE semantic_score >= 0.1
+                                AND row_rank <= {row_rank_thr}
+                             """
                         else:
                             # Forward: object as doc, ontology as link
                             SQLQuery_Insert_Forward = f"""
@@ -7510,14 +7538,17 @@ class GraphRegistry():
                                       ON {link_join_condition}
                               INNER JOIN affected_docs ad
                                       ON fs.object_id {colate_correct} = ad.doc_id
-                                   WHERE fs.object_type = '{object_type}'
-                                     AND fs.deleted = 0
-                            )
-                            SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                              FROM ranked
-                             WHERE semantic_score >= 0.1
-                               AND row_rank <= {row_rank_thr}
-                            """
+                                    WHERE fs.object_type = '{object_type}'
+                                      AND fs.deleted = 0
+                                      AND fs.score IS NOT NULL
+                                      AND fs.{ontology_id_col} IS NOT NULL
+                                      AND {_config_order_by_null_filter('i')}
+                             )
+                             SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                               FROM ranked
+                              WHERE semantic_score >= 0.1
+                                AND row_rank <= {row_rank_thr}
+                             """
 
                     else:
 
@@ -7586,15 +7617,18 @@ class GraphRegistry():
                                   ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                           INNER JOIN affected_docs ad
                                   ON s.from_object_id {colate_correct} = ad.doc_id
-                               WHERE s.from_object_type {colate_correct} = "{self.doc_type}"
-                                 AND s.to_object_type   {colate_correct} = "{self.link_type}"
-                                 AND s.deleted = 0
-                        )
-                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                          FROM ranked
-                         WHERE semantic_score >= 0.1
-                           AND row_rank <= {row_rank_thr}
-                        """
+                                WHERE s.from_object_type {colate_correct} = "{self.doc_type}"
+                                  AND s.to_object_type   {colate_correct} = "{self.link_type}"
+                                  AND s.deleted = 0
+                                  AND s.score IS NOT NULL
+                                  AND s.to_object_id IS NOT NULL
+                                  AND {_config_order_by_null_filter('i')}
+                         )
+                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                           FROM ranked
+                          WHERE semantic_score >= 0.1
+                            AND row_rank <= {row_rank_thr}
+                         """
 
                         # Insert freshly ranked flipped rows from the source
                         SQLQuery_Insert_Flipped = f"""
@@ -7615,15 +7649,18 @@ class GraphRegistry():
                                   ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                           INNER JOIN affected_docs ad
                                   ON s.to_object_id {colate_correct} = ad.doc_id
-                               WHERE s.to_object_type   {colate_correct} = "{self.doc_type}"
-                                 AND s.from_object_type {colate_correct} = "{self.link_type}"
-                                 AND s.deleted = 0
-                        )
-                        SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                          FROM ranked
-                         WHERE semantic_score >= 0.1
-                           AND row_rank <= {row_rank_thr}
-                        """
+                                WHERE s.to_object_type   {colate_correct} = "{self.doc_type}"
+                                  AND s.from_object_type {colate_correct} = "{self.link_type}"
+                                  AND s.deleted = 0
+                                  AND s.score IS NOT NULL
+                                  AND s.from_object_id IS NOT NULL
+                                  AND {_config_order_by_null_filter('i')}
+                         )
+                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
+                           FROM ranked
+                          WHERE semantic_score >= 0.1
+                            AND row_rank <= {row_rank_thr}
+                         """
 
                 #-----------------------------#
                 # Generate evaluation queries #
