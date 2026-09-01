@@ -7592,6 +7592,33 @@ class GraphRegistry():
                                                         AND deleted = 0
                         """
 
+                        # Materialize affected doc ids into a scratch table so DELETE/INSERT
+                        # subqueries are simple lookups instead of repeated UNION scans.
+                        temp_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}._tmp_hp_{self.doc_type}_{self.link_type}"
+
+                        # Match the temp table's doc_id collation to the target index table
+                        # so DELETE ... IN (SELECT ...) comparisons do not fail on collation mismatch.
+                        target_doc_id_collation = db.execute_query(
+                            engine_name=self.engine_name,
+                            query=f"""
+                                SELECT COLLATION_NAME
+                                  FROM INFORMATION_SCHEMA.COLUMNS
+                                 WHERE TABLE_SCHEMA = '{glbcfg.mysql_schema_names[self.engine_name]['graphsearch']}'
+                                   AND TABLE_NAME   = '{self.index_table_name}'
+                                   AND COLUMN_NAME  = 'doc_id'
+                            """,
+                            query_id='ColHpLookup'
+                        )[0][0]
+
+                        temp_table_create_query = f"""
+                        DROP TABLE IF EXISTS {temp_table_path};
+                        CREATE TABLE {temp_table_path} (doc_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {target_doc_id_collation} NOT NULL PRIMARY KEY) AS
+                        {doc_id_subquery};
+                        """
+                        temp_table_drop_query = f"DROP TABLE IF EXISTS {temp_table_path};"
+                        doc_id_subquery = f"SELECT doc_id FROM {temp_table_path}"
+                        uses_temp_affected_docs_table = True
+
                         # Delete existing rows for affected doc ids
                         SQLQuery_Delete = f"""
                         DELETE FROM {target_table_path}
@@ -7719,6 +7746,10 @@ class GraphRegistry():
                     print_sql(sql_query_eval_1, title='z0rFNfM5')
                     print_sql(sql_query_eval_2, title='oxyoF81R')
 
+                # Create scratch table for affected doc ids when needed by eval/commit.
+                if uses_temp_affected_docs_table and ('eval' in actions or 'commit' in actions):
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=temp_table_create_query, verbose='print' in actions, query_id='TmpHpCreate')
+
                 #------------------------------#
                 # Evaluate the patch operation #
                 #------------------------------#
@@ -7741,6 +7772,8 @@ class GraphRegistry():
                 #--------------------------#
 
                 if 'print' in actions:
+                    if uses_temp_affected_docs_table and temp_table_create_query:
+                        print_sql(temp_table_create_query, title='EHT42tk[tmp-create]')
                     if SQLQuery_Delete:
                         print_sql(SQLQuery_Delete, title='EHT42tk[del]')
                     if SQLQuery1:
@@ -7751,6 +7784,8 @@ class GraphRegistry():
                         print_sql(SQLQuery_Insert_Forward, title='EHT42tk[fwd]')
                     if SQLQuery_Insert_Flipped:
                         print_sql(SQLQuery_Insert_Flipped, title='EHT42tk[flp]')
+                    if uses_temp_affected_docs_table and temp_table_drop_query:
+                        print_sql(temp_table_drop_query, title='EHT42tk[tmp-drop]')
 
                 #-------------------------------#
                 # Evaluate the commit operation #
@@ -7769,6 +7804,10 @@ class GraphRegistry():
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Insert_Forward, verbose='print' in actions, query_id='InsFwdKuT')
                     if SQLQuery_Insert_Flipped:
                         db.execute_query_in_shell(engine_name=self.engine_name, query=SQLQuery_Insert_Flipped, verbose='print' in actions, query_id='InsFlippedT1B')
+
+                # Drop scratch table for affected doc ids when one was created.
+                if uses_temp_affected_docs_table and ('eval' in actions or 'commit' in actions):
+                    db.execute_query_in_shell(engine_name=self.engine_name, query=temp_table_drop_query, verbose='print' in actions, query_id='TmpHpDrop')
 
             # Index > Doc-Links > Horizontal patching > Insert new, replace existing, re-rank (elasticseach_cache)
             def horizontal_patch_elasticsearch(self, row_rank_thr=16, actions=()):
