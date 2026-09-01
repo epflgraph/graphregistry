@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.adapters.persistence.mysql.mappers.map_lecture import MySQLLectureEnrichmentTaskMapper
-from graphregistry.adapters.persistence.mysql.repositories._helpers import qualified_table, upsert_rows
+from graphregistry.adapters.persistence.mysql.repositories.helpers import qualified_table, upsert_rows
 from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.application.ports.repositories.prt_lecture import LectureRepository
@@ -69,9 +69,11 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     # Function Group: Internal helpers                               #
     #================================================================#
 
-    # Internal Function: Return a session for engine_name, creating a standalone one if
+    # Internal Function: Return a session for engine_name, creating a standalone one if needed.
     def _session(self, engine_name: str) -> MySQLSession:
         """Return a session for engine_name, creating a standalone one if needed."""
+
+        # If a UnitOfWork is active, return a session from it.
         if self._uow is not None:
             return self._uow.get_session(engine_name)
 
@@ -100,35 +102,22 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     def _qt(schema_name: str, table_name: str) -> str:
         return qualified_table(schema_name, table_name)
 
-    # Internal Function: upsert single row
+    # Internal Function: Upsert single row
     @staticmethod
-    def _upsert_single_row(
-        session: MySQLSession,
-        table_path: str,
-        key_column_names: list[str],
-        key_column_values: list[Any],
-        upd_column_names: list[str],
-        upd_column_values: list[Any],
-    ) -> None:
-    #----------------------------------------------------------------#
+    def _upsert_single_row(session: MySQLSession, table_path: str, key_column_names: list[str], key_column_values: list[Any], upd_column_names: list[str], upd_column_values: list[Any]) -> None:
         """Upsert a single row using the shared batch upsert helper."""
         row = dict(zip(key_column_names, key_column_values))
         row.update(dict(zip(upd_column_names, upd_column_values)))
         upsert_rows(session, table_path, key_column_names, upd_column_names, [row])
 
-    # Internal Function: commit single row
-    def _commit_single_row(
-        self,
-        engine_name: str,
-        table_path: str,
-        key_column_names: list[str],
-        key_column_values: list[Any],
-        upd_column_names: list[str],
-        upd_column_values: list[Any],
-    ) -> None:
-    #----------------------------------------------------------------#
+    # Internal Function: Commit single row
+    def _commit_single_row(self, engine_name: str, table_path: str, key_column_names: list[str], key_column_values: list[Any], upd_column_names: list[str], upd_column_values: list[Any]) -> None:
         """Open a session, upsert one row, and commit if running standalone."""
+
+        # Open a session for the given engine.
         session = self._session(engine_name)
+
+        # Upsert the row and commit if running standalone.
         try:
             self._upsert_single_row(
                 session           = session,
@@ -151,7 +140,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     # Method Group: Content processing operations                    #
     #================================================================#
 
-    # Public Method: get undownloaded
+    # Public Method: Get undownloaded
     def get_undownloaded(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -178,7 +167,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the list of undownloaded lecture keys
         return undownloaded_lecture_keys
 
-    # Public Method: get file url
+    # Public Method: Get file url
     def get_file_url(self, lecture_key: NodeKey) -> str:
 
         # Check if lecture exists first (return None if not found)
@@ -232,7 +221,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return node for chaining
         return lecture_key
 
-    # Public Method: get video download task id
+    # Public Method: Get video download task id
     def get_video_download_task_id(self, lecture_key: NodeKey) -> str:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -259,7 +248,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the video download task ID
         return task_id
 
-    # Public Method: get unfinished video download tasks
+    # Public Method: Get unfinished video download tasks
     def get_unfinished_video_download_tasks(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -308,7 +297,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return node for chaining
         return lecture_key
 
-    # Public Method: get video token
+    # Public Method: Get video token
     def get_video_token(self, lecture_key: NodeKey) -> str:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -339,7 +328,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     # Method Group: Audio extraction operations                      #
     #================================================================#
 
-    # Public Method: get with unextracted audio
+    # Public Method: Get with unextracted audio
     def get_with_unextracted_audio(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -366,7 +355,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the list of lecture keys with unextracted audio
         return lecture_keys_with_unextracted_audio
 
-    # Public Method: save audio extraction task id
+    # Public Method: Save audio extraction task id
     def save_audio_extraction_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -388,7 +377,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return node for chaining
         return lecture_key
 
-    # Public Method: get audio extraction task id
+    # Public Method: Get audio extraction task id
     def get_audio_extraction_task_id(self, lecture_key: NodeKey) -> str:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -415,7 +404,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the audio extraction task ID
         return task_id
 
-    # Public Method: get unfinished audio extraction tasks
+    # Public Method: Get unfinished audio extraction tasks
     def get_unfinished_audio_extraction_tasks(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -442,7 +431,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the list of lecture keys with unfinished audio extraction tasks
         return unfinished_audio_task_keys
 
-    # Public Method: save audio token
+    # Public Method: Save audio token
     def save_audio_token(self, lecture_key: NodeKey, audio_token: str) -> NodeKey:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -464,7 +453,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return node for chaining
         return lecture_key
 
-    # Public Method: get audio token
+    # Public Method: Get audio token
     def get_audio_token(self, lecture_key: NodeKey) -> str:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -495,7 +484,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     # Method Group: Slide detection operations                       #
     #================================================================#
 
-    # Public Method: get with undetected slides
+    # Public Method: Get with undetected slides
     def get_with_undetected_slides(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -522,7 +511,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the list of lecture keys with undetected slides
         return lecture_keys_with_undetected_slides
 
-    # Public Method: save slide detection task id
+    # Public Method: Save slide detection task id
     def save_slide_detection_task_id(self, lecture_key: NodeKey, task_id: str) -> NodeKey:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -544,7 +533,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return node for chaining
         return lecture_key
 
-    # Public Method: get slide detection task id
+    # Public Method: Get slide detection task id
     def get_slide_detection_task_id(self, lecture_key: NodeKey) -> str:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -571,7 +560,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the slide detection task ID
         return task_id
 
-    # Public Method: get unfinished slide detection tasks
+    # Public Method: Get unfinished slide detection tasks
     def get_unfinished_slide_detection_tasks(self, limit: int | None = 16) -> NodeKeyList:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -598,7 +587,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the list of lecture keys with unfinished slide detection tasks
         return unfinished_slide_task_keys
 
-    # Public Method: save slide tokens
+    # Public Method: Save slide tokens
     def save_slide_tokens(self, lecture_key: NodeKey, slide_num_and_tokens: list[tuple[int, str]]) -> NodeKey:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -663,7 +652,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return node for chaining
         return lecture_key
 
-    # Public Method: get slide tokens
+    # Public Method: Get slide tokens
     def get_slide_tokens(self, lecture_key: NodeKey) -> list[str]:
 
         # Get schema name for Lecture object type using the schema resolver
@@ -694,7 +683,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     # Method Group: Lecture field enrichment operations              #
     #================================================================#
 
-    # Public Method: get enrichment task
+    # Public Method: Get enrichment task
     def get_enrichment_task(self, key: NodeKey) -> LectureEnrichmentTask | None:
 
         # Check if lecture exists first (return None if not found)
@@ -732,7 +721,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         # Return the constructed enrichment task object
         return enrich_task
 
-    # Public Method: save enrichment result
+    # Public Method: Save enrichment result
     def save_enrichment_result(self, result: LectureEnrichmentResult, actions: ActionSet = ("commit",)) -> NodeKey:
 
         #======================#

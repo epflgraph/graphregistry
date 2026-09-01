@@ -111,14 +111,10 @@ def get_node_factory() -> NodeFactory:
     gtw = GraphAIConceptDetectionGateway(debug=True)
     return NodeFactory(concept_gateway=gtw)
 
-#================================================================#
-# Class Definition                                               #
-#================================================================#
-@dataclass(frozen=True)
-
 #==================#
 # Class Definition #
 #==================#
+@dataclass(frozen=True)
 class RegistryOps:
     """
     Operations that share one UnitOfWork.
@@ -172,8 +168,7 @@ def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations =
     """
     List existing nodes for one object type.
     """
-    # Fetch list of nodes from the database for the given object type and optional id
-    # pattern
+    # Fetch list of nodes from the database for the given object type and optional id pattern
     rows = node_ops.list(object_type=request.type, id_pattern=request.id_pattern)
 
     # Convert list of tuples returned by the repository to list of NodeKey objects
@@ -208,12 +203,10 @@ def nodes_exists_many(request: apispecs.APINodesExistsManyRequest, node_ops: Nod
     # Covert the API request key list to a list of domain model node keys
     node_key_list = SpecMapper.from_node_key_list_spec(request.key_list)
 
-    # Check if the nodes exist in the database by key, and get list of boolean results for
-    # each key
+    # Check if the nodes exist in the database by key, and get list of boolean results for each key
     exist_keys = node_ops.exists_many(node_key_list)
 
-    # Return the existence results in the response, including list of individual results and
-    # count
+    # Return the existence results in the response, including list of individual results and count
     return apispecs.APINodesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
 # API Endpoint: /api/nodes/get
@@ -543,35 +536,3 @@ def edges_delete_many(request: apispecs.APIEdgesDeleteManyRequest, edge_ops: Edg
         results   = bool_results,
         n_deleted = sum(bool_results)
     )
-
-# #====================#
-# # Subgraph endpoints #
-# #====================#
-
-# @router.post("/subgraphs/save", response_model=apispecs.SubGraphSaveResponse,
-# tags=["subgraphs"])
-# def save_subgraph(request: apispecs.SubGraphSaveRequest, ops: RegistryOps =
-# Depends(get_registry_ops)) -> apispecs.SubGraphSaveResponse:
-#     """
-#     Save a subgraph: first nodes, then edges.
-
-#     Node and edge operations share the same GraphDB client for this request.
-#     """
-#     actions = ('commit',)
-
-#     saved_nodes = ops.node_ops.save_many(
-#         request.subgraph.nodes,
-#         actions=actions,
-#     )
-
-#     saved_edges = ops.edge_ops.save_many(
-#         request.subgraph.edges,
-#         actions=actions,
-#     )
-
-#     return apispecs.SubGraphSaveResponse(
-#         success=True,
-#         nodes_saved=len(saved_nodes),
-#         edges_saved=len(saved_edges),
-#         subgraph=request.subgraph,
-#     )

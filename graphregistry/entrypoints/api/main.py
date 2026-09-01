@@ -9,8 +9,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
-
-# import global config
 from graphregistry.common.config import APIConfig, GlobalConfig
 from graphregistry.common.version import REGISTRY_API_VERSION
 from graphregistry.domain.exceptions import (
@@ -41,15 +39,15 @@ def _is_object_type_literal_error(error: dict[str, Any]) -> bool:
     loc = error.get("loc")
     return bool(loc) and loc[-1] in _OBJECT_TYPE_FIELDS
 
-# Internal Function: Convert object-type literal errors into unified 'not an allowed type'
-# messages.
-# Internal Function: Returns a single message when there is one invalid type, a list...
+# Internal Function: Convert object-type literal errors into unified 'not an allowed type' messages.
 def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str | list[str] | None:
     """Convert object-type literal errors into unified 'not an allowed type' messages.
 
     Returns a single message when there is one invalid type, a list otherwise.
     Returns ``None`` when the errors are not purely object-type literal errors.
     """
+
+    # If any error is not a literal_error on an object-type field, return None
     if not errors or not all(_is_object_type_literal_error(e) for e in errors):
         return None
 

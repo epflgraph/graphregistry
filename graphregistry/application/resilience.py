@@ -21,19 +21,17 @@ _TRANSIENT_DB_ERRORS: tuple[type[Exception], ...] = (
     LockWaitTimeoutError,
 )
 
-#----------------------------------------------------------------#
-# Internal Function: Build a decorator that retries a function on transient
-# database errors.
-#----------------------------------------------------------------#
-# Public Method: retry on transient db error
+#-----------------------------------------------------------------------#
+# Public Method: Build a decorator that retries a function on transient #
+#-----------------------------------------------------------------------#
 def retry_on_transient_db_error(
     *,
-    max_retries: int = 3,
-    retry_delay: float = 1.0,
-    backoff_factor: float = 2.0,
-    on_retry: Callable[[Exception, int], None] | None = None,
+    max_retries    : int = 3,
+    retry_delay    : float = 1.0,
+    backoff_factor : float = 2.0,
+    on_retry       : Callable[[Exception, int], None] | None = None,
 ) -> Callable[[Callable[P, T]], Callable[P, T]]:
-#----------------------------------------------------------------#
+#-----------------------------------------------------------------------#
     """Retry a function when a transient database error occurs.
 
     The retry boundary is the decorated function call. Because a MySQL lock
@@ -48,11 +46,14 @@ def retry_on_transient_db_error(
             before each retry.
     """
 
-    # Public Method: decorator
+    # Validate configuration early to fail fast on bad inputs.
     def decorator(fn: Callable[P, T]) -> Callable[P, T]:
-        # Public Method: wrapper
+
+        # Preserve the original function's metadata on the wrapper.
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+
+            # Track the last exception so we can re-raise it if retries run out.
             last_exception: Exception | None = None
 
             # Retry the decorated function up to max_retries times after the

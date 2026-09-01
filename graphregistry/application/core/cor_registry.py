@@ -929,6 +929,50 @@ class GraphRegistry():
                     # Extract the IN-list once so we can reuse it for from/to columns.
                     active_scores_in_list = active_scores_types.split(' IN ', 1)[1].strip()
 
+                    # Materialize expired score nodes into a scratch table so each score-matrix
+                    # UPDATE does not re-scan the airflow table.
+                    temp_table_path_scores = f"{glbcfg.schema_graph_cache_test}._tmp_prop_scores_expired"
+                    sample_score_matrix_table = list_of_tables[0][1] if list_of_tables else None
+                    if sample_score_matrix_table:
+                        temp_col_type, temp_col_id = db.execute_query(
+                            engine_name='xaas_coresrv',
+                            query=f"""
+                                SELECT MAX(CASE WHEN COLUMN_NAME = 'from_object_type' THEN COLLATION_NAME END),
+                                       MAX(CASE WHEN COLUMN_NAME = 'from_object_id'   THEN COLLATION_NAME END)
+                                  FROM INFORMATION_SCHEMA.COLUMNS
+                                 WHERE TABLE_SCHEMA = '{glbcfg.schema_graph_cache_test}'
+                                   AND TABLE_NAME   = '{sample_score_matrix_table}'
+                                   AND COLUMN_NAME  IN ('from_object_type', 'from_object_id')
+                            """,
+                            query_id='PropScoresTmpCollation'
+                        )[0]
+                    else:
+                        temp_col_type, temp_col_id = 'utf8mb4_unicode_ci', 'utf8mb4_unicode_ci'
+
+                    temp_table_create_scores = f"""
+                    DROP TABLE IF EXISTS {temp_table_path_scores};
+                    CREATE TABLE {temp_table_path_scores} (
+                        object_type VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {temp_col_type} NOT NULL,
+                        object_id   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {temp_col_id} NOT NULL,
+                        PRIMARY KEY (object_type, object_id)
+                    ) AS
+                    SELECT se.object_type, se.object_id
+                      FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
+                     WHERE se.to_process = 1
+                       AND se.deleted = 0;
+                    """
+                    temp_table_drop_scores = f"DROP TABLE IF EXISTS {temp_table_path_scores};"
+
+                    if 'eval' in actions or 'commit' in actions:
+                        if 'print' in actions:
+                            print_sql(temp_table_create_scores, title='PropScoresTmpCreate')
+                        db.execute_query_in_shell(
+                            engine_name='xaas_coresrv',
+                            query=temp_table_create_scores,
+                            verbose=verbose,
+                            query_id='PropScoresTmpCreate',
+                        )
+
                     # Loop over tables and propagate flags
                     with tqdm(list_of_tables, unit='table') as pb:
                         for schema_name, table_name in pb:
@@ -938,10 +982,8 @@ class GraphRegistry():
                             # Use a placeholder so per-type batches can replace it cleanly.
                             where_from_template = f"""WHERE p.from_object_type __TYPE_FILTER__
                                                 AND (p.from_object_type, p.from_object_id) IN (
-                                                    SELECT se.object_type, se.object_id
-                                                      FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
-                                                     WHERE se.to_process = 1
-                                                       AND se.deleted = 0
+                                                    SELECT object_type, object_id
+                                                      FROM {temp_table_path_scores}
                                                 )
                                                 AND  p.to_process = 0"""
                             where_from = where_from_template.replace('__TYPE_FILTER__', f"IN ({active_scores_in_list})")
@@ -957,10 +999,8 @@ class GraphRegistry():
                             # TO-side: to endpoint is the expired node.
                             where_to_template = f"""WHERE p.to_object_type __TYPE_FILTER__
                                               AND (p.to_object_type, p.to_object_id) IN (
-                                                  SELECT se.object_type, se.object_id
-                                                    FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired se
-                                                   WHERE se.to_process = 1
-                                                     AND se.deleted = 0
+                                                  SELECT object_type, object_id
+                                                    FROM {temp_table_path_scores}
                                               )
                                               AND  p.to_process = 0"""
                             where_to = where_to_template.replace('__TYPE_FILTER__', f"IN ({active_scores_in_list})")
@@ -1020,6 +1060,17 @@ class GraphRegistry():
                                         verbose=verbose,
                                         query_id=f'yzm93BqQ-to-{ot}',
                                     )
+
+                    # Drop scratch table of expired score nodes.
+                    if 'eval' in actions or 'commit' in actions:
+                        if 'print' in actions:
+                            print_sql(temp_table_drop_scores, title='PropScoresTmpDrop')
+                        db.execute_query_in_shell(
+                            engine_name='xaas_coresrv',
+                            query=temp_table_drop_scores,
+                            verbose=verbose,
+                            query_id='PropScoresTmpDrop',
+                        )
 
                 # Build list of final-scores tables (object-to-ontology scores for SEM patches)
                 list_of_tables = sorted([

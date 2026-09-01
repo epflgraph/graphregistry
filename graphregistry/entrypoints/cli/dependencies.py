@@ -49,24 +49,28 @@ def build_edge_operations(*, uow_factory: Callable[[], UnitOfWork]) -> EdgeOpera
     """Build edge operations wired to a UnitOfWork factory."""
     return EdgeOperations(uow_factory=uow_factory)
 
-#----------------------------------------------------------------#
-# Internal Function: Build lecture operations wired to the MySQL repository
-# and AI gateways.
-#----------------------------------------------------------------#
-# Public Method: build lecture operations
+#---------------------------------------------------------------------------------------#
+# Internal Function: Build lecture operations wired to MySQL repository and AI gateways #
+#---------------------------------------------------------------------------------------#
 def build_lecture_operations(
     *,
-    db: GraphDB,
-    engine_name: str,
-    global_config: GlobalConfig,
-    include_video_gateway: bool = True,
-    include_concept_gateway: bool = True,
-    include_enrichment_gateway: bool = True,
+    db : GraphDB,
+    engine_name   : str,
+    global_config : GlobalConfig,
+    include_video_gateway      : bool = True,
+    include_concept_gateway    : bool = True,
+    include_enrichment_gateway : bool = True,
 ) -> LectureOperations:
-#----------------------------------------------------------------#
+#---------------------------------------------------------------------------------------#
     """Build lecture operations wired to the MySQL repository and AI gateways."""
+
+    # Build the schema resolver for the target registry environment.
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
+
+    # The node repository is required by the lecture repository to resolve
     node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
+
+    # The lecture repository needs the node repository to resolve and persist
     lecture_repo = MySQLLectureRepository(
         db              = db,
         schema_resolver = schema_resolver,
@@ -80,10 +84,10 @@ def build_lecture_operations(
 
     # Assemble the lecture operations with all selected gateways.
     return LectureOperations(
-        repo                      = lecture_repo,
-        video_processing_gateway  = video_processing_gateway,
-        concept_detection_gateway = concept_detection_gateway,
-        lecture_enrichment_gateway= lecture_enrichment_gateway,
+        repo                       = lecture_repo,
+        video_processing_gateway   = video_processing_gateway,
+        concept_detection_gateway  = concept_detection_gateway,
+        lecture_enrichment_gateway = lecture_enrichment_gateway,
     )
 
 # Public Method: Build lecture operations for enrichment workflows (no video gateway).
@@ -115,8 +119,6 @@ def build_edge_operations_from_args(args) -> EdgeOperations:
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
     return build_edge_operations(uow_factory=uow_factory)
 
-# Public Method: Build node operations with a GraphAI concept-detection gateway from CLI
-# args.
 # Public Method: Build node operations with a GraphAI concept-detection gateway
 def build_node_operations_with_concept_detection_from_args(args) -> NodeOperations:
     """Build node operations with a GraphAI concept-detection gateway."""
@@ -126,10 +128,7 @@ def build_node_operations_with_concept_detection_from_args(args) -> NodeOperatio
         concept_detection_gateway = GraphAIConceptDetectionGateway(),
     )
 
-# Internal Function: Build node and edge operations from a CLI args namespace, sharing one
-# UnitOfWork
-# factory.
-# Public Method: Build node and edge operations from a CLI args namespace, sharing one...
+# Public Method: Build node and edge operations from a CLI args namespace
 def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOperations]:
     """Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory."""
     uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
@@ -138,24 +137,23 @@ def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOpera
         build_edge_operations(uow_factory=uow_factory),
     )
 
-#----------------------------------------------------------------#
-# Internal Function: Build lecture operations from a CLI args namespace.
-#----------------------------------------------------------------#
-# Public Method: build lecture operations from args
+#-------------------------------------------------------------------#
+# Public Method: Build lecture operations from a CLI args namespace #
+#-------------------------------------------------------------------#
 def build_lecture_operations_from_args(
     args,
     *,
-    include_video_gateway: bool = True,
-    include_concept_gateway: bool = True,
-    include_enrichment_gateway: bool = True,
+    include_video_gateway      : bool = True,
+    include_concept_gateway    : bool = True,
+    include_enrichment_gateway : bool = True,
 ) -> LectureOperations:
-#----------------------------------------------------------------#
+#-------------------------------------------------------------------#
     """Build lecture operations from a CLI args namespace."""
     return build_lecture_operations(
-        db                        = args.ctx.db,
-        engine_name               = args.env,
-        global_config             = args.ctx.global_config,
-        include_video_gateway     = include_video_gateway,
-        include_concept_gateway   = include_concept_gateway,
-        include_enrichment_gateway= include_enrichment_gateway,
+        db                         = args.ctx.db,
+        engine_name                = args.env,
+        global_config              = args.ctx.global_config,
+        include_video_gateway      = include_video_gateway,
+        include_concept_gateway    = include_concept_gateway,
+        include_enrichment_gateway = include_enrichment_gateway,
     )

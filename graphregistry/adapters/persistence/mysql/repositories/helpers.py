@@ -1,4 +1,4 @@
-# graphregistry/adapters/persistence/mysql/repositories/_helpers.py
+# graphregistry/adapters/persistence/mysql/repositories/helpers.py
 """Shared SQL helpers for MySQL repository adapters.
 
 These functions are intentionally low-level and stateless so they can be reused
@@ -10,7 +10,7 @@ from typing import Any
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 
 #================================================================#
-# Function Group: SQL identifier helpers                         #
+# Method Group: SQL identifier helpers                           #
 #================================================================#
 
 # Public Method: Backtick-quote a single SQL identifier safely.
@@ -24,24 +24,17 @@ def qualified_table(schema_name: str, table_name: str) -> str:
     return f"{quote_identifier(schema_name)}.{quote_identifier(table_name)}"
 
 #================================================================#
-# Function Group: Key predicate helpers                          #
+# Method Group: Key predicate helpers                            #
 #================================================================#
 
-#----------------------------------------------------------------#
-# Internal Function: Build a parameterized ``(col1, col2, ...) IN (...)``
-# clause.
-#----------------------------------------------------------------#
-# Public Method: key tuple in list predicate
-def key_tuple_in_list_predicate(
-    key_tuples: list[tuple[Any, ...]],
-    key_column_names: list[str],
-    prefix: str = "key",
-) -> tuple[str, dict[str, Any]]:
-#----------------------------------------------------------------#
+# Public Method: Build a parameterized (col1, col2, ...) IN (...) clause.
+def key_tuple_in_list_predicate(key_tuples: list[tuple[Any, ...]], key_column_names: list[str], prefix: str = "key") -> tuple[str, dict[str, Any]]:
     """Build a parameterized ``(col1, col2, ...) IN (...)`` clause.
 
     Returns a tuple of (placeholders_sql, params_dict).
     """
+
+    # Validate input key tuples.
     if not key_tuples:
         return "FALSE", {}
 
@@ -60,27 +53,19 @@ def key_tuple_in_list_predicate(
     return ", ".join(placeholders), params
 
 #================================================================#
-# Function Group: Batch write helpers                            #
+# Method Group: Batch write helpers                              #
 #================================================================#
 
-#----------------------------------------------------------------#
-# Internal Function: Insert or update a batch of rows in a single statement.
-#----------------------------------------------------------------#
-# Public Method: upsert rows
-def upsert_rows(
-    session: MySQLSession,
-    table_path: str,
-    key_column_names: list[str],
-    upd_column_names: list[str],
-    rows: list[dict[str, Any]],
-) -> None:
-#----------------------------------------------------------------#
+# Public Method: Insert or update a batch of rows in a single statement.
+def upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[str], upd_column_names: list[str], rows: list[dict[str, Any]]) -> None:
     """Insert or update a batch of rows in a single statement.
 
     Mirrors the safe-upsert semantics used by the legacy graphdb client:
     unchanged columns keep their value and ``record_updated_date`` is only
     touched when at least one column changes.
     """
+
+    # Validate that rows are provided.
     if not rows:
         return
 
@@ -123,19 +108,11 @@ def upsert_rows(
     # Run the batch upsert against the database.
     session.execute(sql, params)
 
-#----------------------------------------------------------------#
-# Internal Function: Soft-delete rows whose key columns match the given tuples.
-#----------------------------------------------------------------#
-# Public Method: soft delete by key tuples
-def soft_delete_by_key_tuples(
-    session: MySQLSession,
-    schema_name: str,
-    table_name: str,
-    key_column_names: list[str],
-    key_tuples: list[tuple[Any, ...]],
-) -> None:
-#----------------------------------------------------------------#
+# Public Method: Soft-delete rows whose key columns match the given tuples.
+def soft_delete_by_key_tuples(session: MySQLSession, schema_name: str, table_name: str, key_column_names: list[str], key_tuples: list[tuple[Any, ...]]) -> None:
     """Soft-delete rows whose key columns match the given tuples."""
+
+    # Validate that key columns are provided.
     if not key_tuples:
         return
 

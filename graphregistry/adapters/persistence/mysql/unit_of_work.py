@@ -97,8 +97,7 @@ class MySQLUnitOfWork(UnitOfWork):
     def __enter__(self) -> MySQLUnitOfWork:
         return self
 
-    # Internal Function: Exit the unit-of-work context, committing or rolling back as
-    # needed.
+    # Internal Function: Exit the unit-of-work context, committing or rolling back as needed.
     def __exit__(self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: object | None) -> None:
         try:
             if exc_val is None:

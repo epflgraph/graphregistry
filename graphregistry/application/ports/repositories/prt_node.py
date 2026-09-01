@@ -5,20 +5,11 @@ from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeList
 from graphregistry.domain.types import ActionSet
 
-#================================================================#
-# Class Definition                                               #
-#================================================================#
-@runtime_checkable
-
 #==================#
 # Class Definition #
 #==================#
+@runtime_checkable
 class NodeRepository(Protocol):
-    """Port for node persistence operations.
-
-    Implementations must provide atomic save/save_many/delete/delete_many
-    semantics when 'commit' is in actions.
-    """
 
     # Public Method: List nodes of a given object type and optional ID pattern.
     def list(self, object_type: str, id_pattern: str | None) -> list[tuple[str, str]]:
@@ -42,21 +33,10 @@ class NodeRepository(Protocol):
 
     # Public Method: Save a single node.
     def save(self, node: Node, actions: ActionSet = ('commit',)) -> Node:
-        """Save a single node.
-
-        Implementations must execute all related inserts/updates atomically
-        within the same transaction when 'commit' is in actions.
-        """
         ...
 
     # Public Method: Save a list of nodes.
     def save_many(self, node_list: NodeList | list[Node], actions: ActionSet = ('commit',)) -> NodeList:
-        """Save many nodes efficiently.
-
-        Implementations must provide a first-class batch implementation; they
-        must not simply loop over save(). All writes for the whole batch should
-        share one transaction when 'commit' is in actions.
-        """
         ...
 
     # Public Method: Delete a single node.
@@ -65,12 +45,6 @@ class NodeRepository(Protocol):
 
     # Public Method: Delete a list of nodes.
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
-        """Delete many nodes efficiently.
-
-        Implementations must provide a first-class batch implementation; they
-        must not simply loop over delete(). All deletes for the whole batch
-        should share one transaction when 'commit' is in actions.
-        """
         ...
 
     # Public Method: Return nodes that have no concepts attached.

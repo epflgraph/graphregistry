@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.adapters.persistence.mysql.mappers.map_edge import MySQLEdgeMapper
-from graphregistry.adapters.persistence.mysql.repositories._helpers import key_tuple_in_list_predicate, qualified_table, soft_delete_by_key_tuples, upsert_rows
+from graphregistry.adapters.persistence.mysql.repositories.helpers import key_tuple_in_list_predicate, qualified_table, soft_delete_by_key_tuples, upsert_rows
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
@@ -74,10 +74,12 @@ class MySQLEdgeRepository(EdgeRepository):
     # Internal Function: Return a session for engine_name, creating one if needed.
     def _session(self, engine_name: str) -> MySQLSession:
         """Return a session for engine_name, creating a standalone one if needed."""
+
+        # If a UnitOfWork is active, return its session for the given engine.
         if self._uow is not None:
             return self._uow.get_session(engine_name)
 
-        # No UnitOfWork is active, so create and begin a standalone session.
+        # Else, no UnitOfWork is active, so create and begin a standalone session.
         session = MySQLSession(self.db, engine_name)
         session.begin()
         return session
@@ -425,6 +427,8 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Public Method: Delete a single edge.
     def delete(self, key: EdgeKey, actions: ActionSet = ("commit",)) -> bool | None:
+
+        # Check if the edge exists; if not, log and return None.
         if not self.exists(key):
             self.msg.not_found(key)
             return None
@@ -457,7 +461,11 @@ class MySQLEdgeRepository(EdgeRepository):
 
     # Public Method: Delete a list of edges.
     def delete_many(self, key_list: EdgeKeyList | list[EdgeKey], actions: ActionSet = ("commit",)) -> list[bool | None]:
+
+        # Normalize the input to a plain list of keys.
         keys = key_list.item_list if isinstance(key_list, EdgeKeyList) else list(key_list)
+
+        # Determine whether the caller requested an explicit commit.
         do_commit = "commit" in actions
 
         # Skip persistence when the caller did not request a commit.
@@ -473,6 +481,8 @@ class MySQLEdgeRepository(EdgeRepository):
         # Track deletion results for each input key.
         results: dict[EdgeKey, bool] = {}
         for (engine_name, schema_name), group_keys in groups.items():
+
+            # Determine which keys in this group still exist in the database.
             existing_keys = self._filter_existing_keys(engine_name, schema_name, group_keys)
 
             # Delete only the keys that still exist in the database.
@@ -502,18 +512,17 @@ class MySQLEdgeRepository(EdgeRepository):
         return [results.get(key) for key in keys]
 
     # Internal Function: Filter keys that exist and are not soft-deleted.
-    def _filter_existing_keys(
-        self,
-        engine_name: str,
-        schema_name: str,
-        keys: list[EdgeKey],
-    ) -> list[EdgeKey]:
+    def _filter_existing_keys(self, engine_name: str, schema_name: str, keys: list[EdgeKey]) -> list[EdgeKey]:
         """Return the subset of keys that currently exist and are not soft-deleted."""
+
+        # If the list of keys is empty, return an empty list immediately.
         if not keys:
             return []
 
         # Build an IN-list predicate and query the database for the given keys.
         placeholders, params = self._key_in_list_predicate(keys, prefix="ex")
+
+        # Query the database for the given keys, filtering out soft-deleted records.
         sql = f"""
             SELECT from_object_type, from_object_id, to_object_type, to_object_id, context
               FROM {self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent")}

@@ -27,12 +27,12 @@ class CLIContext:
     def __init__(
         self,
         *,
-        global_config: "GlobalConfig",
-        index_config: "IndexConfig",
-        scores_config: "ScoresConfig",
-        db_config: "GraphDBConfig",
-        registry: "GraphRegistry | None",
-        ai: "Any | None",
+        global_config : "GlobalConfig",
+        index_config  : "IndexConfig",
+        scores_config : "ScoresConfig",
+        db_config     : "GraphDBConfig",
+        registry      : "GraphRegistry | None",
+        ai            : "Any | None",
     ) -> None:
     #----------------------------------------------------------------#
         # Process-wide configuration objects.
