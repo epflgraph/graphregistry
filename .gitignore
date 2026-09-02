@@ -241,7 +241,7 @@ add_doc_rank_link_index.py
 add_institution_defaults.py
 airflow_config.json
 config.ini
-config/
+/config/
 config/_DELETE_config_index.prod.json
 config/config_db.yaml
 config/config_es.yaml
