@@ -1,0 +1,6 @@
+{
+  "host": "https://graphai.example.com",
+  "port": PORT,
+  "user": "USERNAME",
+  "password": "PASSWORD"
+}

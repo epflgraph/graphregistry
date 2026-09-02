@@ -57,9 +57,9 @@
 - 👉 investigate startups not showing in ES search
 - 👉 check Execises out-of-date data
 - 👨🏻‍💻 fix repeated `row_rank` values bug after re-ranking query
-- 👨🏻‍💻 check 404 errors in API
+- 👨🏻‍💻 check 404 errors in API: fix with
 - 👨🏻‍💻 clean out object-to-link tables (eg, graph_cache.Edges_N_Object_N_Concept_T_ScoringMatrix) by object_id before updating
 - 👉 change all tables charset/collates to `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
 - 👉 add missing concepts in ontology that come from exoset
 - 👉 propagate `record_deleted` flags from `graph_registry` downstream to `graph_cache`. NOTE: current queries are way too slow; need to execute in chunks
-
+- weird video length bug in https://graphsearch.epfl.ch/en/lecture/0_r6l7tub3

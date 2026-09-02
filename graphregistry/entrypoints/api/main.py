@@ -2,28 +2,36 @@
 from __future__ import annotations
 import json
 import logging
+from contextlib import asynccontextmanager
 from typing import Any
-
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
-from graphregistry.entrypoints.api.router import router
-
-# import global config
 from graphregistry.common.config import APIConfig, GlobalConfig
 from graphregistry.common.version import REGISTRY_API_VERSION
-from graphregistry.domain.exceptions import DisallowedTypeError
+from graphregistry.domain.exceptions import (
+    ConnectionExhaustedError,
+    DisallowedTypeError,
+    DuplicateKeyError,
+    LockWaitTimeoutError,
+    PersistenceError,
+)
+from graphregistry.entrypoints.api.router import router
+from graphregistry.entrypoints.dependencies import build_db
 
 # Set up logging
 logger = logging.getLogger("uvicorn.error")
 
-
 # Fields that carry node/edge object types in the request schemas.
 _OBJECT_TYPE_FIELDS = {"type", "from_type", "to_type"}
 
+#================================================================#
+# Function Group: Validation error helpers                       #
+#================================================================#
 
+# Internal Function: Detect Pydantic literal errors on object-type fields.
 def _is_object_type_literal_error(error: dict[str, Any]) -> bool:
     """Detect Pydantic literal errors on object-type fields."""
     if error.get("type") != "literal_error":
@@ -31,27 +39,32 @@ def _is_object_type_literal_error(error: dict[str, Any]) -> bool:
     loc = error.get("loc")
     return bool(loc) and loc[-1] in _OBJECT_TYPE_FIELDS
 
-
+# Internal Function: Convert object-type literal errors into unified 'not an allowed type' messages.
 def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str | list[str] | None:
     """Convert object-type literal errors into unified 'not an allowed type' messages.
 
     Returns a single message when there is one invalid type, a list otherwise.
     Returns ``None`` when the errors are not purely object-type literal errors.
     """
+
+    # If any error is not a literal_error on an object-type field, return None
     if not errors or not all(_is_object_type_literal_error(e) for e in errors):
         return None
 
+    # Parse the JSON body so we can inspect the raw field values.
     try:
         payload = json.loads(body.decode("utf-8"))
     except Exception:
         return None
 
+    # Collect user-friendly messages for each validation error.
     messages: list[str] = []
     for error in errors:
         loc = error.get("loc", ())
         value = error.get("input")
         field = loc[-1] if loc else None
 
+        # Map each invalid field to a domain-specific message.
         if field == "type":
             messages.append(f"Node type '{value}' is not an allowed type.")
         elif field in ("from_type", "to_type"):
@@ -74,12 +87,25 @@ def _build_type_error_detail(body: bytes, errors: list[dict[str, Any]]) -> str |
         else:
             messages.append(f"Type '{value}' is not an allowed type.")
 
+    # Return None when no object-type literal errors were found.
     if not messages:
         return None
     return messages[0] if len(messages) == 1 else messages
 
+# Internal Function: Initialize process-scoped resources and clean them up on shutdown.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize process-scoped resources and clean them up on shutdown."""
+    app.state.db = build_db()
+    yield
+    # The GraphDB engine pool is cleaned up automatically when the process
+    # exits. Explicit disposal can be added here later if needed.
 
-# Create the FastAPI application
+#================================================================#
+# Function Group: Application factory                            #
+#================================================================#
+
+# Public Method: Create and configure the FastAPI application.
 def create_app() -> FastAPI:
 
     # Load configuration when the app is created, not at import time.
@@ -94,15 +120,17 @@ def create_app() -> FastAPI:
         docs_url    = "/docs",
         redoc_url   = "/redoc",
         openapi_url = "/openapi.json",
+        lifespan    = lifespan,
     )
 
     # Include the API router which contains all the endpoint definitions
     app.include_router(router)
 
-    #====================#
-    # Exception handlers #
-    #====================#
+    #================================================================#
+    # Function Group: Exception handlers                             #
+    #================================================================#
 
+    # Internal Function: Handle FastAPI request validation errors.
     @app.exception_handler(RequestValidationError)
     async def request_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
         """
@@ -113,6 +141,7 @@ def create_app() -> FastAPI:
         declared request schema.
         """
 
+        # Read the raw request body to extract type details and support diagnostic logging.
         body = await request.body()
 
         # If the only validation failures are invalid object types, return the
@@ -127,10 +156,11 @@ def create_app() -> FastAPI:
                 type_detail,
             )
             return JSONResponse(
-                status_code=400,
-                content={"detail": type_detail},
+                status_code = 400,
+                content     = {"detail": type_detail},
             )
 
+        # Log the full validation context for operational debugging.
         logger.error(
             "Request validation error: method=%s path=%s",
             request.method,
@@ -139,13 +169,15 @@ def create_app() -> FastAPI:
         logger.error("Errors: %s", exc.errors())
         logger.error("Body: %s", body.decode("utf-8", errors="replace"))
 
+        # Return the standard 422 payload with the raw Pydantic error list.
         return JSONResponse(
-            status_code=422,
-            content={
+            status_code = 422,
+            content     = {
                 "detail": exc.errors(),
             },
         )
 
+    # Internal Function: Handle Pydantic validation errors raised inside endpoint code.
     @app.exception_handler(ValidationError)
     async def pydantic_validation_exception_handler(request: Request, exc: ValidationError) -> JSONResponse:
         """
@@ -156,19 +188,22 @@ def create_app() -> FastAPI:
         failed while building a domain model or response object.
         """
 
+        # Log the internal validation failure with a full traceback.
         logger.exception(
             "Internal Pydantic validation error: method=%s path=%s",
             request.method,
             request.url.path,
         )
 
+        # Return a 500 response so the caller knows the failure is server-side.
         return JSONResponse(
-            status_code=500,
-            content={
+            status_code = 500,
+            content     = {
                 "detail": f"Internal validation error: {type(exc).__name__}: {exc}",
             },
         )
 
+    # Internal Function: Handle expected ValueError exceptions as bad API requests.
     @app.exception_handler(ValueError)
     async def value_error_exception_handler(request: Request, exc: ValueError) -> JSONResponse:
         """
@@ -181,6 +216,7 @@ def create_app() -> FastAPI:
         with a custom BadAPIRequestError.
         """
 
+        # Log the bad request with enough context for troubleshooting.
         logger.warning(
             "Invalid API request: method=%s path=%s error=%s",
             request.method,
@@ -189,13 +225,15 @@ def create_app() -> FastAPI:
             exc_info=True,
         )
 
+        # Return a 400 response describing why the request was rejected.
         return JSONResponse(
-            status_code=400,
-            content={
+            status_code = 400,
+            content     = {
                 "detail": f"Invalid request: {type(exc).__name__}: {exc}",
             },
         )
 
+    # Internal Function: Handle attempts to save disallowed node or edge types.
     @app.exception_handler(DisallowedTypeError)
     async def disallowed_type_exception_handler(request: Request, exc: DisallowedTypeError) -> JSONResponse:
         """
@@ -206,6 +244,7 @@ def create_app() -> FastAPI:
         disallowed.
         """
 
+        # Log the disallowed-type attempt before rejecting it.
         logger.warning(
             "Disallowed type in API request: method=%s path=%s error=%s",
             request.method,
@@ -213,13 +252,86 @@ def create_app() -> FastAPI:
             exc,
         )
 
+        # Return the disallowed-type message as a 400 response.
         return JSONResponse(
-            status_code=400,
-            content={
+            status_code = 400,
+            content     = {
                 "detail": str(exc),
             },
         )
 
+    # Internal Function: Handle database connection exhaustion (MySQL 1040).
+    @app.exception_handler(ConnectionExhaustedError)
+    async def connection_exhausted_exception_handler(request: Request, exc: ConnectionExhaustedError) -> JSONResponse:
+        """Handle database connection exhaustion (MySQL 1040)."""
+        logger.warning(
+            "Database connection exhausted: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code = 503,
+            headers     = {"Retry-After": "10"},
+            content     = {
+                "detail": "Database is temporarily overloaded. Please retry after a short delay.",
+            },
+        )
+
+    # Internal Function: Handle lock wait timeouts (MySQL 1205).
+    @app.exception_handler(LockWaitTimeoutError)
+    async def lock_wait_timeout_exception_handler(request: Request, exc: LockWaitTimeoutError) -> JSONResponse:
+        """Handle lock wait timeouts (MySQL 1205)."""
+        logger.warning(
+            "Lock wait timeout in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code = 503,
+            headers     = {"Retry-After": "5"},
+            content     = {
+                "detail": "Database lock wait timeout. Please retry after a short delay.",
+            },
+        )
+
+    # Internal Function: Handle duplicate key violations (MySQL 1062).
+    @app.exception_handler(DuplicateKeyError)
+    async def duplicate_key_exception_handler(request: Request, exc: DuplicateKeyError) -> JSONResponse:
+        """Handle duplicate key violations (MySQL 1062)."""
+        logger.warning(
+            "Duplicate key in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code = 409,
+            content     = {
+                "detail": f"Duplicate key: {exc}",
+            },
+        )
+
+    # Internal Function: Handle generic persistence errors not matched above.
+    @app.exception_handler(PersistenceError)
+    async def persistence_error_exception_handler(request: Request, exc: PersistenceError) -> JSONResponse:
+        """Handle generic persistence errors that were not matched above."""
+        logger.error(
+            "Persistence error in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+            exc_info=True,
+        )
+        return JSONResponse(
+            status_code = 500,
+            content     = {
+                "detail": f"Persistence error: {exc}",
+            },
+        )
+
+    # Internal Function: Handle unexpected errors as structured 500 responses.
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
         """
@@ -229,23 +341,26 @@ def create_app() -> FastAPI:
         are logged with tracebacks and returned as structured 500 responses.
         """
 
+        # Capture the unexpected error with a full traceback for operations.
         logger.exception(
             "Unhandled API error: method=%s path=%s",
             request.method,
             request.url.path,
         )
 
+        # Return a generic 500 so endpoint code does not leak internal details.
         return JSONResponse(
-            status_code=500,
-            content={
+            status_code = 500,
+            content     = {
                 "detail": f"Internal server error: {type(exc).__name__}: {exc}",
             },
         )
 
-    #===============================#
-    # OpenAPI / Swagger customisation #
-    #===============================#
+    #================================================================#
+    # Function Group: OpenAPI / Swagger customisation                #
+    #================================================================#
 
+    # Public Method: The default Pydantic examples come from the ObjectType literal, whose
     def custom_openapi() -> dict[str, Any]:
         """Generate the OpenAPI schema and override object-type examples.
 
@@ -256,14 +371,16 @@ def create_app() -> FastAPI:
         if app.openapi_schema is not None:
             return app.openapi_schema
 
+        # Generate the base OpenAPI schema from the registered routes.
         openapi_schema = get_openapi(
-            title=app.title,
-            version=app.version,
-            summary=app.summary,
-            description=app.description,
-            routes=app.routes,
+            title       = app.title,
+            version     = app.version,
+            summary     = app.summary,
+            description = app.description,
+            routes      = app.routes,
         )
 
+        # Drill into the reusable schema definitions to override their examples.
         schemas = openapi_schema.setdefault("components", {}).setdefault("schemas", {})
 
         # Node examples: first allowed node type.
@@ -292,18 +409,18 @@ def create_app() -> FastAPI:
         # example, so also set full request-level examples for the save endpoints.
         if api_cfg.allowed_node_types_list:
             example_node = {
-                "type": example_node_type,
-                "subtype": "string",
-                "id": "string",
-                "short_code": "string",
-                "title": "string",
-                "description": "string",
-                "url": "string",
-                "custom_fields": [
+                "type"          : example_node_type,
+                "subtype"       : "string",
+                "id"            : "string",
+                "short_code"    : "string",
+                "title"         : "string",
+                "description"   : "string",
+                "url"           : "string",
+                "custom_fields" : [
                     {
-                        "field_language": "n/a",
-                        "field_name": "string",
-                        "field_value": "string",
+                        "field_language" : "n/a",
+                        "field_name"     : "string",
+                        "field_value"    : "string",
                     }
                 ],
             }
@@ -314,19 +431,20 @@ def create_app() -> FastAPI:
             if node_save_many_request is not None:
                 node_save_many_request["example"] = {"node_list": [example_node]}
 
+        # Build a full edge example when the configuration allows edge tuples.
         if api_cfg.allowed_edge_tuples_list:
             from_type, to_type, context = example_edge_tuple
             example_edge = {
-                "from_type": from_type,
-                "from_id": "string",
-                "to_type": to_type,
-                "to_id": "string",
-                "context": context,
-                "custom_fields": [
+                "from_type"     : from_type,
+                "from_id"       : "string",
+                "to_type"       : to_type,
+                "to_id"         : "string",
+                "context"       : context,
+                "custom_fields" : [
                     {
-                        "field_language": "n/a",
-                        "field_name": "string",
-                        "field_value": "string",
+                        "field_language" : "n/a",
+                        "field_name"     : "string",
+                        "field_value"    : "string",
                     }
                 ],
             }
@@ -337,22 +455,23 @@ def create_app() -> FastAPI:
             if edge_save_many_request is not None:
                 edge_save_many_request["example"] = {"edge_list": [example_edge]}
 
+        # Cache the customized schema on the app and return it.
         app.openapi_schema = openapi_schema
         return app.openapi_schema
 
+    # Replace the default OpenAPI generator with our customized version.
     app.openapi = custom_openapi
 
-    #==================#
-    # Utility routes   #
-    #==================#
+    #================================================================#
+    # Function Group: Utility routes                                 #
+    #================================================================#
 
-    # Define a root endpoint that redirects to the API documentation for easy access
+    # Public Method: Redirect the root path to the API documentation.
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
         return RedirectResponse(url="/docs")
 
-    # Define a health check endpoint that returns a simple status message
-    # to indicate the service is running
+    # Public Method: Return a simple health-check response.
     @app.get("/health", tags=["system"])
     def healthcheck() -> dict[str, str]:
         return {"status": "ok"}
@@ -372,7 +491,7 @@ if __name__ == "__main__":
     # Run the Uvicorn server using the application factory.
     uvicorn.run(
         "graphregistry.entrypoints.api.main:create_app",
-        host="0.0.0.0",
-        port=8000,
-        factory=True,
+        host    = "0.0.0.0",
+        port    = 8000,
+        factory = True,
     )

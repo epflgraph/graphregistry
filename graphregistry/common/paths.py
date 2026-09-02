@@ -72,7 +72,9 @@ CONFIG_GRAPHAI_CLIENT_PATH = CONFIG_DIR / "config_graphai.json"
 
 DATABASE_QUERIES_DIR = DATABASE_DIR / "queries"
 DATABASE_INIT_DIR = DATABASE_DIR / "init"
-DATABASE_CONFIG_DATATYPES_PATH = DATABASE_INIT_DIR / "config" / "config_datatypes.json"
+DATABASE_SYSTEM_DATATYPES_PATH = DATABASE_INIT_DIR / "config" / "system_datatypes.json"
+# Deprecated: kept temporarily for callers that have not migrated yet.
+DATABASE_CONFIG_DATATYPES_PATH = DATABASE_SYSTEM_DATATYPES_PATH
 
 
 def repo_path(*parts: str | Path) -> Path:

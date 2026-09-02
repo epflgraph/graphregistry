@@ -1,22 +1,18 @@
 # graphregistry/entrypoints/api/router.py
 from __future__ import annotations
-import os
 from dataclasses import dataclass
-from fastapi import APIRouter, Depends
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
-from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
-from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import MySQLNodeRepository
-from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
+import os
+from typing import Callable
+from fastapi import APIRouter, Depends, Request
+from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.application.factories.fct_node import NodeFactory
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.application.policies.pol_graphunits import GraphUnitsValidator
+from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import APIConfig, GlobalConfig
-from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
-from graphregistry.application.ports.repositories.prt_node import NodeRepository
-from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList, EdgeKey, EdgeKeyList
-from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
-from graphregistry.application.factories.fct_node import NodeFactory
+from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList, NodeKey, NodeKeyList
+from graphregistry.entrypoints.dependencies import build_uow_factory
 from graphregistry.entrypoints.mappers import SpecMapper
 import graphregistry.entrypoints.api.schemas as apispecs
 
@@ -26,14 +22,15 @@ DEFAULT_API_ENV = "xaas_coresrv"
 
 # Router object
 router = APIRouter(
-    prefix="/api",
-    responses={404: {"description": "Not found"}},
+    prefix    = "/api",
+    responses = {404: {"description": "Not found"}},
 )
 
-#=================#
-# Helper methods  #
-#=================#
+#================================================================#
+# Function Group: Helper functions                               #
+#================================================================#
 
+# Internal Function: Return the single environment used by this API instance.
 def _get_api_env() -> str:
     """
     Return the single environment used by this API instance.
@@ -43,63 +40,29 @@ def _get_api_env() -> str:
     """
     return os.getenv(API_ENV_VAR, DEFAULT_API_ENV)
 
-def _make_db() -> GraphDB:
-    """
-    Build the GraphDB client.
-    """
-    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
-    from graphregistry.common.paths import CONFIG_DB_PATH
-    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-    return GraphDB(config=db_config)
+# Internal Function: Build a UnitOfWork factory backed by the process-scoped GraphDB client.
+def _get_uow_factory(request: Request) -> Callable[[], UnitOfWork]:
+    """Build a UnitOfWork factory backed by the process-scoped GraphDB client."""
+    return build_uow_factory(db=request.app.state.db, engine_name=_get_api_env())
 
-def _make_schema_resolver() -> DefaultSchemaResolver:
-    """
-    Build the default schema resolver for the configured API environment.
-    """
-    env = _get_api_env()
+# Internal Function: Build node operations wired to a UnitOfWork factory.
+def _make_node_ops(uow_factory: Callable[[], UnitOfWork]) -> NodeOperations:
+    """Build node operations wired to a UnitOfWork factory."""
+    return NodeOperations(uow_factory=uow_factory)
 
-    global_config = GlobalConfig()
-    from graphregistry.common.paths import CONFIG_DB_PATH
-    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-    # db_config = GraphDBConfig.from_file("config/config_db.yaml")
+# Internal Function: Build edge operations wired to a UnitOfWork factory.
+def _make_edge_ops(uow_factory: Callable[[], UnitOfWork]) -> EdgeOperations:
+    """Build edge operations wired to a UnitOfWork factory."""
+    return EdgeOperations(uow_factory=uow_factory)
 
-    if env not in db_config.environments:
-        available_envs = ", ".join(db_config.environments.keys())
-        raise ValueError(
-            f"Unknown API env '{env}'. "
-            f"Set {API_ENV_VAR} to one of: {available_envs}"
-        )
+#================================================================#
+# Function Group: API config / validation                        #
+#================================================================#
 
-    return DefaultSchemaResolver(
-        engine_name=env,
-        glbcfg=global_config,
-    )
-
-def _make_node_repo(db: GraphDB | None = None) -> NodeRepository:
-    """
-    Build node repository.
-    """
-    return MySQLNodeRepository(
-        db=db if db is not None else _make_db(),
-        schema_resolver=_make_schema_resolver(),
-    )
-
-def _make_edge_repo(db: GraphDB | None = None) -> EdgeRepository:
-    """
-    Build edge repository.
-    """
-    return MySQLEdgeRepository(
-        db=db if db is not None else _make_db(),
-        schema_resolver=_make_schema_resolver(),
-    )
-
-#-------------------------#
-# API config / validation #
-#-------------------------#
-
+# Hold the lazily loaded API configuration in module state.
 _api_config: APIConfig | None = None
 
-
+# Internal Function: Lazy-load the API configuration once per process.
 def _get_api_config() -> APIConfig:
     """Lazy-load the API configuration once per process."""
     global _api_config
@@ -107,39 +70,40 @@ def _get_api_config() -> APIConfig:
         _api_config = APIConfig()
     return _api_config
 
-
+# Public Method: Build the graph-units validator from the API configuration.
 def get_graph_units_validator() -> GraphUnitsValidator:
     """Build the graph-units validator from the API configuration."""
     cfg = _get_api_config()
     return GraphUnitsValidator(
-        allowed_node_types=cfg.allowed_node_types,
-        allowed_edge_tuples=cfg.allowed_edge_tuples,
+        allowed_node_types  = cfg.allowed_node_types,
+        allowed_edge_tuples = cfg.allowed_edge_tuples,
     )
 
-#======================#
-# FastAPI dependencies #
-#======================#
+#================================================================#
+# Function Group: FastAPI dependencies                           #
+#================================================================#
 
-def get_node_ops() -> NodeOperations:
+# Public Method: Build NodeOperations for one request.
+def get_node_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> NodeOperations:
     """
     Build NodeOperations for one request.
 
-    This function is registered as a FastAPI dependency so tests can override
-    it with a fake repository via `app.dependency_overrides`.
+    Tests can override `_get_uow_factory` via `app.dependency_overrides` to
+    inject a fake UnitOfWork.
     """
-    node_repo: NodeRepository = _make_node_repo()
-    return NodeOperations(repo=node_repo)
+    return _make_node_ops(uow_factory)
 
-def get_edge_ops() -> EdgeOperations:
+# Public Method: Build EdgeOperations for one request.
+def get_edge_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> EdgeOperations:
     """
     Build EdgeOperations for one request.
 
-    This function is registered as a FastAPI dependency so tests can override
-    it with a fake repository via `app.dependency_overrides`.
+    Tests can override `_get_uow_factory` via `app.dependency_overrides` to
+    inject a fake UnitOfWork.
     """
-    edge_repo: EdgeRepository = _make_edge_repo()
-    return EdgeOperations(repo=edge_repo)
+    return _make_edge_ops(uow_factory)
 
+# Public Method: Build NodeFactory for one request.
 def get_node_factory() -> NodeFactory:
     """
     Build NodeFactory for one request.
@@ -147,35 +111,38 @@ def get_node_factory() -> NodeFactory:
     gtw = GraphAIConceptDetectionGateway(debug=True)
     return NodeFactory(concept_gateway=gtw)
 
+#==================#
+# Class Definition #
+#==================#
 @dataclass(frozen=True)
 class RegistryOps:
     """
-    Operations that share one database client.
+    Operations that share one UnitOfWork.
 
     Useful for operations that need to coordinate node and edge persistence
-    in the same request.
+    atomically in the same request.
     """
+    # Node operations that share the UnitOfWork factory.
     node_ops: NodeOperations
+    # Edge operations that share the UnitOfWork factory.
     edge_ops: EdgeOperations
 
-def get_registry_ops() -> RegistryOps:
+# Public Method: Build node and edge operations sharing the same UnitOfWork factory.
+def get_registry_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> RegistryOps:
     """
-    Build node and edge operations sharing the same GraphDB client.
+    Build node and edge operations sharing the same UnitOfWork factory.
     """
-    db = _make_db()
-
-    node_repo: NodeRepository = _make_node_repo(db=db)
-    edge_repo: EdgeRepository = _make_edge_repo(db=db)
-
     return RegistryOps(
-        node_ops=NodeOperations(repo=node_repo),
-        edge_ops=EdgeOperations(repo=edge_repo),
+        node_ops=_make_node_ops(uow_factory),
+        edge_ops=_make_edge_ops(uow_factory),
     )
 
-#==================#
-# System endpoints #
-#==================#
+#================================================================#
+# API Endpoint Group: System endpoints                           #
+#================================================================#
 
+# API Endpoint: Check that the registry API is reachable.
+# Public Method: Check that the registry API is reachable
 @router.get("", response_model=apispecs.StatusResponse, tags=["system"])
 def registry_status() -> apispecs.StatusResponse:
     """
@@ -190,13 +157,12 @@ def registry_status() -> apispecs.StatusResponse:
         ),
     )
 
-#=====================================#
-# API Endpoint Group: Node operations #
-#=====================================#
+#================================================================#
+# API Endpoint Group: Node operations                            #
+#================================================================#
 
-#-------------------------------#
-# API Endpoint: /api/nodes/list #
-#-------------------------------#
+# API Endpoint: /api/nodes/list
+# Public Method: List existing nodes for one object type
 @router.post("/nodes/list", response_model=apispecs.APINodesListResponse, tags=["nodes"])
 def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesListResponse:
     """
@@ -214,9 +180,8 @@ def nodes_list(request: apispecs.APINodesListRequest, node_ops: NodeOperations =
     # Return the list of node key specs and the count in the response
     return apispecs.APINodesListResponse(nodes=node_key_specs, count=len(node_key_specs))
 
-#---------------------------------#
-# API Endpoint: /api/nodes/exists #
-#---------------------------------#
+# API Endpoint: /api/nodes/exists
+# Public Method: Check whether one node exists
 @router.post("/nodes/exists", response_model=apispecs.APINodesExistsResponse, tags=["nodes"])
 def nodes_exists(request: apispecs.APINodesExistsRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesExistsResponse:
     """
@@ -228,9 +193,8 @@ def nodes_exists(request: apispecs.APINodesExistsRequest, node_ops: NodeOperatio
     # Return the existence result in the response
     return apispecs.APINodesExistsResponse(exists=exists)
 
-#--------------------------------------#
-# API Endpoint: /api/nodes/exists_many #
-# -------------------------------------#
+# API Endpoint: /api/nodes/exists_many
+# Public Method: Check whether a list of nodes exist
 @router.post("/nodes/exists_many", response_model=apispecs.APINodesExistsManyResponse, tags=["nodes"])
 def nodes_exists_many(request: apispecs.APINodesExistsManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesExistsManyResponse:
     """
@@ -245,9 +209,8 @@ def nodes_exists_many(request: apispecs.APINodesExistsManyRequest, node_ops: Nod
     # Return the existence results in the response, including list of individual results and count
     return apispecs.APINodesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
-#------------------------------#
-# API Endpoint: /api/nodes/get #
-#------------------------------#
+# API Endpoint: /api/nodes/get
+# Public Method: Get one node by key
 @router.post("/nodes/get", response_model=apispecs.APINodesGetResponse, response_model_exclude_none=True, tags=["nodes"])
 def nodes_get(request: apispecs.APINodesGetRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesGetResponse:
     """
@@ -266,9 +229,8 @@ def nodes_get(request: apispecs.APINodesGetRequest, node_ops: NodeOperations = D
     # Return the node data in the response
     return apispecs.APINodesGetResponse(found=True, node=node_spec.model_dump(exclude_none=True))
 
-#-----------------------------------#
-# API Endpoint: /api/nodes/get_many #
-#-----------------------------------#
+# API Endpoint: /api/nodes/get_many
+# Public Method: Get a list of nodes by key
 @router.post("/nodes/get_many", response_model=apispecs.APINodesGetManyResponse, tags=["nodes"])
 def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesGetManyResponse:
     """
@@ -287,19 +249,14 @@ def nodes_get_many(request: apispecs.APINodesGetManyRequest, node_ops: NodeOpera
     # list of node data (or None if not found), and count
     return apispecs.APINodesGetManyResponse(
         found_keys = [node is not None for node in node_list_spec.item_list],
-        nodes = [node.model_dump(exclude_none=True) if node is not None else None for node in node_list_spec.item_list],
-        count = len(node_list_spec.item_list)
+        nodes      = [node.model_dump(exclude_none=True) if node is not None else None for node in node_list_spec.item_list],
+        count      = len(node_list_spec.item_list)
     )
 
-#-------------------------------#
-# API Endpoint: /api/nodes/save #
-#-------------------------------#
+# API Endpoint: /api/nodes/save
+# Public Method: Save one node
 @router.post("/nodes/save", response_model=apispecs.APINodesSaveResponse, tags=["nodes"])
-def nodes_save(
-    request: apispecs.APINodesSaveRequest,
-    node_ops: NodeOperations = Depends(get_node_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APINodesSaveResponse:
+def nodes_save(request: apispecs.APINodesSaveRequest, node_ops: NodeOperations = Depends(get_node_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APINodesSaveResponse:
     """
     Save one node.
     """
@@ -321,15 +278,10 @@ def nodes_save(
         saved_key = saved_key_spec.model_dump()
     )
 
-#------------------------------------#
-# API Endpoint: /api/nodes/save_many #
-#------------------------------------#
+# API Endpoint: /api/nodes/save_many
+# Public Method: Save a list of nodes
 @router.post("/nodes/save_many", response_model=apispecs.APINodesSaveManyResponse, tags=["nodes"])
-def nodes_save_many(
-    request: apispecs.APINodesSaveManyRequest,
-    node_ops: NodeOperations = Depends(get_node_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APINodesSaveManyResponse:
+def nodes_save_many(request: apispecs.APINodesSaveManyRequest, node_ops: NodeOperations = Depends(get_node_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APINodesSaveManyResponse:
     """
     Save a list of nodes.
     """
@@ -352,9 +304,8 @@ def nodes_save_many(
         count      = len(saved_nodes.item_list)
     )
 
-#---------------------------------#
-# API Endpoint: /api/nodes/delete #
-#---------------------------------#
+# API Endpoint: /api/nodes/delete
+# Public Method: Delete one node
 @router.post("/nodes/delete", response_model=apispecs.APINodesDeleteResponse, tags=["nodes"])
 def nodes_delete(request: apispecs.APINodesDeleteRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesDeleteResponse:
     """
@@ -369,9 +320,8 @@ def nodes_delete(request: apispecs.APINodesDeleteRequest, node_ops: NodeOperatio
     # Return the deletion result in the response
     return apispecs.APINodesDeleteResponse(success=bool(deleted))
 
-#--------------------------------------#
-# API Endpoint: /api/nodes/delete_many #
-#--------------------------------------#
+# API Endpoint: /api/nodes/delete_many
+# Public Method: Delete a list of nodes
 @router.post("/nodes/delete_many", response_model=apispecs.APINodesDeleteManyResponse, tags=["nodes"])
 def nodes_delete_many(request: apispecs.APINodesDeleteManyRequest, node_ops: NodeOperations = Depends(get_node_ops)) -> apispecs.APINodesDeleteManyResponse:
     """
@@ -394,19 +344,19 @@ def nodes_delete_many(request: apispecs.APINodesDeleteManyRequest, node_ops: Nod
         n_deleted = sum(bool_results)
     )
 
-#=====================================#
-# API Endpoint Group: Edge operations #
-#=====================================#
+#================================================================#
+# API Endpoint Group: Edge operations                            #
+#================================================================#
 
-#-------------------------------#
-# API Endpoint: /api/edges/list #
-#-------------------------------#
+# API Endpoint: /api/edges/list
+# Public Method: List existing edges for one pair of object types
 @router.post("/edges/list", response_model=apispecs.APIEdgesListResponse, tags=["edges"])
 def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesListResponse:
     """
     List existing edges for one pair of object types.
     """
-    # Fetch list of edges from the database for the given pair of object types and optional id pattern
+    # Fetch list of edges from the database for the given pair of object types and optional
+    # id pattern
     rows = edge_ops.list(object_type=(request.from_type, request.to_type), id_pattern=request.id_pattern)
 
     # Convert list of tuples returned by the repository to list of EdgeKey objects
@@ -416,11 +366,13 @@ def edges_list(request: apispecs.APIEdgesListRequest, edge_ops: EdgeOperations =
     edge_key_specs = [SpecMapper.to_edge_key_spec(key) for key in edge_keys]
 
     # Return the list of edge key specs and the count in the response
-    return apispecs.APIEdgesListResponse(edges=edge_key_specs, count=len(edge_key_specs))
+    return apispecs.APIEdgesListResponse(
+        edges = edge_key_specs,
+        count = len(edge_key_specs)
+    )
 
-#---------------------------------#
-# API Endpoint: /api/edges/exists #
-#---------------------------------#
+# API Endpoint: /api/edges/exists
+# Public Method: Check whether one edge exists
 @router.post("/edges/exists", response_model=apispecs.APIEdgesExistsResponse, tags=["edges"])
 def edges_exists(request: apispecs.APIEdgesExistsRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesExistsResponse:
     """
@@ -432,9 +384,8 @@ def edges_exists(request: apispecs.APIEdgesExistsRequest, edge_ops: EdgeOperatio
     # Return the existence result in the response
     return apispecs.APIEdgesExistsResponse(exists=exists)
 
-#--------------------------------------#
-# API Endpoint: /api/edges/exists_many #
-# -------------------------------------#
+# API Endpoint: /api/edges/exists_many
+# Public Method: Check whether a list of edges exist
 @router.post("/edges/exists_many", response_model=apispecs.APIEdgesExistsManyResponse, tags=["edges"])
 def edges_exists_many(request: apispecs.APIEdgesExistsManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesExistsManyResponse:
     """
@@ -443,15 +394,16 @@ def edges_exists_many(request: apispecs.APIEdgesExistsManyRequest, edge_ops: Edg
     # Covert the API request key list to a list of domain model edge keys
     edge_key_list = SpecMapper.from_edge_key_list_spec(request.key_list)
 
-    # Check if the edges exist in the database by key, and get list of boolean results for each key
+    # Check if the edges exist in the database by key, and get list of boolean results for
+    # each key
     exist_keys = edge_ops.exists_many(edge_key_list)
 
-    # Return the existence results in the response, including list of individual results and count
+    # Return the existence results in the response, including list of individual results and
+    # count
     return apispecs.APIEdgesExistsManyResponse(exist_keys=exist_keys, count=len(exist_keys))
 
-#------------------------------#
-# API Endpoint: /api/edges/get #
-#------------------------------#
+# API Endpoint: /api/edges/get
+# Public Method: get one edge by key
 @router.post("/edges/get", response_model=apispecs.APIEdgesGetResponse, response_model_exclude_none=True, tags=["edges"])
 def edges_get(request: apispecs.APIEdgesGetRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesGetResponse:
     """
@@ -470,9 +422,8 @@ def edges_get(request: apispecs.APIEdgesGetRequest, edge_ops: EdgeOperations = D
     # Return the edge data in the response
     return apispecs.APIEdgesGetResponse(found=True, edge=edge_spec.model_dump(exclude_none=True))
 
-#-----------------------------------#
-# API Endpoint: /api/edges/get_many #
-#-----------------------------------#
+# API Endpoint: /api/edges/get_many
+# Public Method: Get a list of edges by key
 @router.post("/edges/get_many", response_model=apispecs.APIEdgesGetManyResponse, tags=["edges"])
 def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesGetManyResponse:
     """
@@ -491,19 +442,14 @@ def edges_get_many(request: apispecs.APIEdgesGetManyRequest, edge_ops: EdgeOpera
     # list of edge data (or None if not found), and count
     return apispecs.APIEdgesGetManyResponse(
         found_keys = [edge is not None for edge in edge_list.item_list],
-        edges = [edge.model_dump(exclude_none=True) if edge is not None else None for edge in edge_list_spec.item_list],
-        count = len(edge_list_spec.item_list)
+        edges      = [edge.model_dump(exclude_none=True) if edge is not None else None for edge in edge_list_spec.item_list],
+        count      = len(edge_list_spec.item_list)
     )
 
-#-------------------------------#
-# API Endpoint: /api/edges/save #
-#-------------------------------#
+# API Endpoint: /api/edges/save
+# Public Method: Save one edge
 @router.post("/edges/save", response_model=apispecs.APIEdgesSaveResponse, tags=["edges"])
-def edges_save(
-    request: apispecs.APIEdgesSaveRequest,
-    edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APIEdgesSaveResponse:
+def edges_save(request: apispecs.APIEdgesSaveRequest, edge_ops: EdgeOperations = Depends(get_edge_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APIEdgesSaveResponse:
     """
     Save one edge.
     """
@@ -525,15 +471,10 @@ def edges_save(
         saved_key = saved_key_spec.model_dump()
     )
 
-#------------------------------------#
-# API Endpoint: /api/edges/save_many #
-#------------------------------------#
+# API Endpoint: /api/edges/save_many
+# Public Method: Save a list of edges
 @router.post("/edges/save_many", response_model=apispecs.APIEdgesSaveManyResponse, tags=["edges"])
-def edges_save_many(
-    request: apispecs.APIEdgesSaveManyRequest,
-    edge_ops: EdgeOperations = Depends(get_edge_ops),
-    validator: GraphUnitsValidator = Depends(get_graph_units_validator),
-) -> apispecs.APIEdgesSaveManyResponse:
+def edges_save_many(request: apispecs.APIEdgesSaveManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops), validator: GraphUnitsValidator = Depends(get_graph_units_validator)) -> apispecs.APIEdgesSaveManyResponse:
     """
     Save a list of edges.
     """
@@ -543,7 +484,7 @@ def edges_save_many(
     # Enforce the configured allow-list before persisting
     validator.validate_edges(edge_list)
 
-    # Save the edges and return the saved edge objects``
+    # Save the edges and return the saved edge objects
     saved_edges = edge_ops.save_many(edge_list, actions=('commit',))
 
     # Get saved keys (spec format)
@@ -556,9 +497,8 @@ def edges_save_many(
         count      = len(saved_edges.item_list)
     )
 
-#---------------------------------#
-# API Endpoint: /api/edges/delete #
-#---------------------------------#
+# API Endpoint: /api/edges/delete
+# Public Method: Delete one edge
 @router.post("/edges/delete", response_model=apispecs.APIEdgesDeleteResponse, tags=["edges"])
 def edges_delete(request: apispecs.APIEdgesDeleteRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesDeleteResponse:
     """
@@ -573,9 +513,8 @@ def edges_delete(request: apispecs.APIEdgesDeleteRequest, edge_ops: EdgeOperatio
     # Return the deletion result in the response
     return apispecs.APIEdgesDeleteResponse(success=bool(deleted))
 
-#--------------------------------------#
-# API Endpoint: /api/edges/delete_many #
-#--------------------------------------#
+# API Endpoint: /api/edges/delete_many
+# Public Method: Delete a list of edges
 @router.post("/edges/delete_many", response_model=apispecs.APIEdgesDeleteManyResponse, tags=["edges"])
 def edges_delete_many(request: apispecs.APIEdgesDeleteManyRequest, edge_ops: EdgeOperations = Depends(get_edge_ops)) -> apispecs.APIEdgesDeleteManyResponse:
     """
@@ -597,33 +536,3 @@ def edges_delete_many(request: apispecs.APIEdgesDeleteManyRequest, edge_ops: Edg
         results   = bool_results,
         n_deleted = sum(bool_results)
     )
-
-# #====================#
-# # Subgraph endpoints #
-# #====================#
-
-# @router.post("/subgraphs/save", response_model=apispecs.SubGraphSaveResponse, tags=["subgraphs"])
-# def save_subgraph(request: apispecs.SubGraphSaveRequest, ops: RegistryOps = Depends(get_registry_ops)) -> apispecs.SubGraphSaveResponse:
-#     """
-#     Save a subgraph: first nodes, then edges.
-
-#     Node and edge operations share the same GraphDB client for this request.
-#     """
-#     actions = ('commit',)
-
-#     saved_nodes = ops.node_ops.save_many(
-#         request.subgraph.nodes,
-#         actions=actions,
-#     )
-
-#     saved_edges = ops.edge_ops.save_many(
-#         request.subgraph.edges,
-#         actions=actions,
-#     )
-
-#     return apispecs.SubGraphSaveResponse(
-#         success=True,
-#         nodes_saved=len(saved_nodes),
-#         edges_saved=len(saved_edges),
-#         subgraph=request.subgraph,
-#     )
