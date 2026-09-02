@@ -319,3 +319,5 @@ test_delete_orphans.py
 update_institution_columns.py
 update_object_type_columns.py
 update_table_collations.py
+nohup_lectures.out
+notes_new_agent.txt
