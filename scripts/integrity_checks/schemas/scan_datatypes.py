@@ -68,6 +68,8 @@ def normalize_type(data_type: str) -> str:
     - Normalize tinyint(N) to tinyint(1)
     - Preserve unsigned, enum values, character sets, etc.
     """
+    return data_type
+
     data_type = data_type.lower().strip()
 
     # Convert square brackets to parentheses.
@@ -333,6 +335,27 @@ def print_verbose_report(
                 console.print(f"     [green]expected: {expected}[/green]")
 
 
+# Public Method: Print a histogram of actual vs expected datatype mismatches.
+def print_mismatch_histogram(type_mismatches: list[dict]) -> None:
+    """Print a histogram of how often each actual/expected datatype pair occurs."""
+    if not type_mismatches:
+        return
+
+    counts: dict[tuple[str, str], int] = defaultdict(int)
+    for m in type_mismatches:
+        counts[(m["actual"], m["expected"])] += 1
+
+    # Sort by frequency descending, then by actual/expected text for stability.
+    sorted_pairs = sorted(counts.items(), key=lambda item: (-item[1], item[0][0], item[0][1]))
+
+    console.print("\n📊 [bold]Mismatch histogram[/bold] (actual → expected)")
+    for (actual, expected), count in sorted_pairs:
+        console.print(
+            f"  [red]{count:>3}[/red] × "
+            f"[red]{actual}[/red]  →  [green]{expected}[/green]"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=(
@@ -404,8 +427,8 @@ def main():
                 print('Script aborted by request.')
                 exit()
 
-            if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
-                continue
+            # if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
+            #     continue
 
             # Index tables also inherit the abstract datatypes from config_index.json.
             # System datatypes take precedence when a field exists in both sources.
@@ -550,6 +573,9 @@ def main():
             print()
     else:
         print("All defined columns match the canonical definitions and table collation is utf8mb4_bin.")
+
+    # Always print the mismatch histogram when there are datatype mismatches.
+    print_mismatch_histogram(type_mismatches)
 
 
 if __name__ == "__main__":

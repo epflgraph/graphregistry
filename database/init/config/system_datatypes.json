@@ -99,6 +99,7 @@
     "has_changed"                              : "tinyint(1) NULL DEFAULT '0'",
     "has_expired"                              : "tinyint(1) NULL DEFAULT '0'",
     "image_token"                              : "varchar(255) NULL DEFAULT NULL",
+    "include_code_in_name"                     : "tinyint(1) NOT NULL DEFAULT '0'",
     "is_visible"                               : "tinyint(1) NOT NULL DEFAULT '1'",
     "last_date_cached"                         : "date NULL DEFAULT NULL",
     "link_id"                                  : "varchar(255) NOT NULL",
