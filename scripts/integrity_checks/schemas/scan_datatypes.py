@@ -14,15 +14,24 @@ control definition verbatim.
 """
 import argparse
 import json
+import os
 import re
 from collections import defaultdict
 from pathlib import Path
-import rich, os
+import rich
+from rich.console import Console
 from graphdb.core.graphdb import GraphDB
 from graphdb.models.sqlquery import print_sql
+from graphregistry.common.dbstruct import sql_data_type_mapping
+
+# Console for colored verbose output.
+console = Console()
 
 # Datatypes path in database/init/config/system_datatypes.json
 CONTROL_PATH = Path(__file__).parent.parent.parent.parent / "database/init/config/system_datatypes.json"
+
+# Index-specific abstract datatypes from config/config_index.json
+INDEX_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config/config_index.json"
 
 # Special sentinel column that can be suppressed with -nr.
 ROW_ID_COLUMN = "row_id"
@@ -176,6 +185,37 @@ def load_control() -> dict[str, str]:
     return control
 
 
+# Public Method: Load and convert config_index.json abstract datatypes into SQL definitions.
+def load_index_control() -> dict[str, str]:
+    """Load config_index.json data-types and map them to SQL column types."""
+    with INDEX_CONFIG_PATH.open("r", encoding="utf-8") as f:
+        index_config = json.load(f)
+    abstract_types = index_config.get("data-types", {})
+    if not isinstance(abstract_types, dict):
+        raise ValueError("config_index.json 'data-types' must be a flat object")
+
+    control: dict[str, str] = {}
+    for field_name, abstract_type in abstract_types.items():
+        if abstract_type not in sql_data_type_mapping:
+            raise ValueError(
+                f"Unknown abstract datatype '{abstract_type}' for field '{field_name}'"
+            )
+        control[field_name] = sql_data_type_mapping[abstract_type]
+    return control
+
+
+# Public Method: Decide whether a table should also be checked against index datatypes.
+def table_uses_index_datatypes(schema_name: str, table_name: str) -> bool:
+    """Index-specific datatypes apply to graphsearch_test, elasticsearch_cache,
+    and graph_cache IndexBuildup_* tables.
+    """
+    if schema_name in {"graphsearch_test", "elasticsearch_cache"}:
+        return True
+    if schema_name == "graph_cache" and table_name.startswith("IndexBuildup_"):
+        return True
+    return False
+
+
 def fetch_column_metadata(db, engine_name, schema_name, table_name):
     """Return column metadata from INFORMATION_SCHEMA.COLUMNS."""
     query = f"""
@@ -260,37 +300,94 @@ def build_modify_clause(column_name: str, control_definition: str) -> str:
     return f"`{column_name}` {clean_definition_for_sql(control_definition)}"
 
 
+# Public Method: Print a colorful per-table comparison of actual vs expected column types.
+def print_verbose_report(
+    verbose_log: dict[tuple[str, str], list[dict]],
+    errors_only: bool = False,
+) -> None:
+    """Print a per-table, per-column comparison of actual vs expected definitions.
+
+    When errors_only is True, only mismatched columns are shown.
+    """
+    if not verbose_log:
+        return
+
+    for (schema, table), columns in sorted(verbose_log.items()):
+        if errors_only:
+            columns = [c for c in columns if not c["match"]]
+            if not columns:
+                continue
+
+        console.print(f"\n📋 [bold]{schema}.{table}[/bold]")
+        for col in columns:
+            column_name = col["column"]
+            actual = col["actual"]
+            expected = col["expected"]
+            if col["match"]:
+                console.print(f"  [green]✅ {column_name}[/green]")
+                console.print(f"     actual:   {actual}")
+                console.print(f"     expected: {expected}")
+            else:
+                console.print(f"  [red]❌ {column_name}[/red]")
+                console.print(f"     [red]actual:   {actual}[/red]")
+                console.print(f"     [green]expected: {expected}[/green]")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Compare live MySQL columns against datatypes.json, check "
-            "utf8mb4_bin collation, and generate or execute remediation SQL."
+            "Compare live MySQL columns against system_datatypes.json and "
+            "config_index.json data-types, check utf8mb4_bin collation, "
+            "and generate or execute remediation SQL."
         )
     )
     parser.add_argument(
         "-nr",
         "--no-row-id-only",
-        action="store_true",
-        help="Do not print ALTER TABLE statements that only change the row_id column.",
+        action = "store_true",
+        help   = "Do not print ALTER TABLE statements that only change the row_id column.",
     )
     parser.add_argument(
         "-x",
         "--execute",
-        action="store_true",
-        help="Execute the generated ALTER TABLE statements. DDL is auto-committed.",
+        action = "store_true",
+        help   = "Execute the generated ALTER TABLE statements. DDL is auto-committed.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action = "store_true",
+        help   = "Print a per-table, per-column comparison of actual vs expected definitions.",
+    )
+    parser.add_argument(
+        "-e",
+        "--errors-only",
+        action = "store_true",
+        help   = "With --verbose, show only columns whose actual type does not match the config.",
     )
     args = parser.parse_args()
+
+    # --errors-only is meaningless without the comparison report, so imply --verbose.
+    if args.errors_only:
+        args.verbose = True
 
     db = GraphDB()
     engine_name = "xaas_coresrv"
 
     control = load_control()
+    index_control = load_index_control()
+
+    # Normalized lookups for the two control sources.
     control_normalized = {
         col: normalize_definition(defn) for col, defn in control.items()
+    }
+    index_control_normalized = {
+        col: normalize_definition(defn) for col, defn in index_control.items()
     }
 
     type_mismatches = []
     table_collation_mismatches = []
+    verbose_log: dict[tuple[str, str], list[dict]] = defaultdict(list)
 
     for schema_name in SCHEMAS:
         tables = [
@@ -307,8 +404,17 @@ def main():
                 print('Script aborted by request.')
                 exit()
 
-            # if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
-            #     continue
+            if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
+                continue
+
+            # Index tables also inherit the abstract datatypes from config_index.json.
+            # System datatypes take precedence when a field exists in both sources.
+            if table_uses_index_datatypes(schema_name, table_name):
+                table_control = {**index_control, **control}
+                table_control_normalized = {**index_control_normalized, **control_normalized}
+            else:
+                table_control = control
+                table_control_normalized = control_normalized
 
             metadata = fetch_column_metadata(
                 db, engine_name, schema_name, table_name
@@ -331,22 +437,34 @@ def main():
                     )
 
             for column_name, col_meta in metadata.items():
-                # Only evaluate columns defined in the control JSON.
-                if column_name not in control:
+                # Only evaluate columns defined in the table-specific control.
+                if column_name not in table_control:
                     continue
 
                 actual_definition = build_actual_definition(col_meta)
                 actual_normalized = normalize_definition(actual_definition)
-                expected_normalized = control_normalized[column_name]
+                expected_definition = table_control[column_name]
+                expected_normalized = table_control_normalized[column_name]
+                is_match = actual_normalized == expected_normalized
 
-                if actual_normalized != expected_normalized:
+                if args.verbose:
+                    verbose_log[(schema_name, table_name)].append(
+                        {
+                            "column"   : column_name,
+                            "actual"   : actual_definition,
+                            "expected" : expected_definition,
+                            "match"    : is_match,
+                        }
+                    )
+
+                if not is_match:
                     type_mismatches.append(
                         {
-                            "schema": schema_name,
-                            "table": table_name,
-                            "column": column_name,
-                            "actual": actual_definition,
-                            "expected": control[column_name],
+                            "schema"   : schema_name,
+                            "table"    : table_name,
+                            "column"   : column_name,
+                            "actual"   : actual_definition,
+                            "expected" : expected_definition,
                         }
                     )
 
@@ -383,7 +501,7 @@ def main():
             for m in columns:
                 modifications.append(
                     "    MODIFY COLUMN "
-                    + build_modify_clause(m["column"], control[m["column"]])
+                    + build_modify_clause(m["column"], m["expected"])
                 )
 
             if not modifications:
@@ -401,13 +519,17 @@ def main():
     # Report results.
     # --------------------------------------------------
 
+    if args.verbose:
+        print_verbose_report(verbose_log, errors_only=args.errors_only)
+
     if type_mismatches or table_collation_mismatches:
         if args.no_row_id_only and type_mismatches:
             print("-- -nr enabled: hiding ALTER TABLE statements that only change row_id.\n")
         if args.execute:
             print("-- EXECUTING generated ALTER TABLE statements. DDL is auto-committed.\n")
         else:
-            print("-- Review before running. Definitions are taken verbatim from datatypes.json.")
+            print("-- Review before running. Definitions are taken verbatim from system_datatypes.json")
+            print("-- and config_index.json data-types.")
             print("-- Expected table collation: CHARACTER SET utf8mb4 COLLATE utf8mb4_bin.\n")
 
         statements = build_combined_statements(

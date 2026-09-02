@@ -46,13 +46,13 @@ CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
-    'char'     : 'VARCHAR(255)',
-    'text'     : 'MEDIUMTEXT',
-    'longtext' : 'LONGTEXT',
-    'int'      : 'MEDIUMINT UNSIGNED',
-    'bool'     : 'TINYINT(1)',
-    'date'     : 'DATE',
-    'datetime' : 'DATETIME'
+    'bool'     :         'tinyint(1) NULL DEFAULT NULL',
+    'char'     :       'varchar(255) NULL DEFAULT NULL',
+    'date'     :               'date NULL DEFAULT NULL',
+    'datetime' :           'datetime NULL DEFAULT NULL',
+    'int'      : 'mediumint unsigned NULL DEFAULT NULL',
+    'longtext' :           'longtext NULL DEFAULT NULL',
+    'text'     :         'mediumtext NULL DEFAULT NULL'
 }
 
 # Define mapping from field datatypes onto "castable" types
