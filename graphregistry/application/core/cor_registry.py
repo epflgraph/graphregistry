@@ -30,7 +30,6 @@ scrcfg = ScoresConfig()
 # db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
 from graphregistry.common.paths import (
     CONFIG_DB_PATH,
-    DATABASE_CONFIG_DATATYPES_PATH,
     REPO_ROOT as PROJECT_ROOT,
 )
 db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
@@ -87,14 +86,6 @@ SQL_FORMULAS_FOLDER_ALIASES = {
 # Resolve Elasticsearch export path
 ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_export_path"])
 
-
-#------------------------------#
-# Index field datatypes config #
-#------------------------------#
-
-# Fetch index field datatypes from config file
-with open(DATABASE_CONFIG_DATATYPES_PATH, 'r', encoding="utf-8") as f:
-    datatypes_config = json.load(f)
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -7329,7 +7320,6 @@ class GraphRegistry():
 
                 # If additional fields are included in ordering rules, prepend them
                 if len(order_by_rules_list)>0:
-                    # order_by = ', '.join([cast_mapping[datatypes_config['data-types']['index_fields'][o]]%o+' '+d for o,d in order_by_rules_list]) + f', {order_by}'
                     order_by = ', '.join([ cast_mapping[sql_data_type_mapping[idxcfg.settings['data_types'][o]]] % o + ' ' + d for o,d in order_by_rules_list ]) + f', {order_by}'
 
                 # Build IS NOT NULL filters for config-driven ORDER BY columns.

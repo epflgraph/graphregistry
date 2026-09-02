@@ -7,6 +7,7 @@ import json, re
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from graphregistry.common.paths import DATABASE_SYSTEM_DATATYPES_PATH
 
 # TODO: Check presence of column name "context" in all edge definitions
 # TODO: Some keys are not being created in elasticsearch cache schemas
@@ -109,46 +110,10 @@ def resolve_sql_query(file_path, **kwargs):
     # Return resolved query
     return query_template
 
-# Function to flatten config schema and remove duplicates
-def flatten_schema_remove_duplicates(schema: dict) -> dict:
-    """
-    Takes a schema dict with top-level sections like "data-types" and "data-keys",
-    removes the 2nd-level table names ("from_to_edges", "object", ...), and returns:
-      {section_name: {field_name: value, ...}, ...}
-    If a field name appears multiple times within the same section, it is kept once
-    (first occurrence wins).
-    """
-    out: dict[str, dict[str, str]] = {}
-
-    # Iterate through top-level sections (e.g. "data-types", "data-keys")
-    for section_name, tables in schema.items():
-        if not isinstance(tables, dict):
-            continue
-
-        # Iterate through 2nd-level tables and flatten into single dict of field_name: value pairs
-        flat: dict[str, str] = {}
-        for _, fields in tables.items():          # drop table name
-            if not isinstance(fields, dict):
-                continue
-            for k, v in fields.items():          # dedupe by field name
-                if k not in flat:
-                    flat[k] = v
-
-        # Add flattened section to output
-        out[section_name] = flat
-
-    # Return flattened and deduped schema
-    return out
-
-# Fetch index field datatypes from config file
-with open(Path(__file__).resolve().parents[2] / 'database/init/config/config_datatypes.json', 'r', encoding="utf-8") as f:
-    core_datatypes_config = json.load(f)
-
-# Flatten config schema and remove duplicates
-core_datatypes_config_flat = flatten_schema_remove_duplicates(core_datatypes_config)
-
-# Print flattened config for verification
-# rich.print_json(data=core_datatypes_config_flat)
+# Load system-wide field -> SQL datatype mapping.
+# system_datatypes.json is a flat {field_name: sql_type} file, so no flattening is needed.
+with open(DATABASE_SYSTEM_DATATYPES_PATH, "r", encoding="utf-8") as f:
+    system_datatypes_config = json.load(f)
 
 #============================================#
 # Class definition: Graph Database Structure #
@@ -452,8 +417,8 @@ class DynamicSQL:
     def get_datatypes_from_fields(self, fields_list):
         datatypes_list = []
         for field_name in fields_list:
-            if core_datatypes_config_flat['data-types'].get(field_name) is not None:
-                datatypes_list += [core_datatypes_config_flat['data-types'][field_name]]
+            if system_datatypes_config.get(field_name) is not None:
+                datatypes_list += [system_datatypes_config[field_name]]
             elif get_index_config().settings['data_types'].get(field_name) is not None:
                 datatypes_list += [sql_data_type_mapping[get_index_config().settings['data_types'][field_name]]]
             else:
