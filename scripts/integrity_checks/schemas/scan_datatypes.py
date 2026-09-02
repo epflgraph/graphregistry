@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Compare live MySQL column definitions against the canonical definitions in
-scripts/integrity_check/datatypes.json.
+scripts/integrity_checks/schemas/datatypes.json and verify that tables use the
+expected collation (utf8mb4_bin).
 
 The JSON values are full column definitions, e.g.:
     "row_id": "bigint(20) unsigned NOT NULL AUTO_INCREMENT"
@@ -16,9 +17,9 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
-
-import rich
+import rich, os
 from graphdb.core.graphdb import GraphDB
+from graphdb.models.sqlquery import print_sql
 
 
 CONTROL_PATH = Path(__file__).parent / "datatypes.json"
@@ -39,6 +40,15 @@ SCHEMAS = [
     "graphsearch_test",
     "elasticsearch_cache",
 ]
+
+# Expected charset/collation for tables and text columns.
+EXPECTED_CHARSET = "utf8mb4"
+EXPECTED_COLLATION = "utf8mb4_bin"
+
+# Schemas to skip in collation checks (e.g. read-only or external indexes).
+SKIP_COLLATION_SCHEMAS = {
+    "graphsearch_test",
+}
 
 
 def normalize_type(data_type: str) -> str:
@@ -185,6 +195,19 @@ def fetch_column_metadata(db, engine_name, schema_name, table_name):
     return metadata
 
 
+# Public Method: Return the table-level collation from INFORMATION_SCHEMA.TABLES.
+def fetch_table_collation(db, engine_name, schema_name, table_name):
+    """Return the table-level collation from INFORMATION_SCHEMA.TABLES."""
+    query = f"""
+        SELECT TABLE_COLLATION
+        FROM INFORMATION_SCHEMA.TABLES
+        WHERE TABLE_SCHEMA = '{schema_name}'
+          AND TABLE_NAME = '{table_name}'
+    """
+    rows = list(db.execute_query(engine_name=engine_name, query=query))
+    return rows[0][0] if rows else None
+
+
 def build_actual_definition(metadata: dict) -> str:
     """Build a full definition string from column metadata."""
     parts = [metadata["column_type"]]
@@ -239,13 +262,22 @@ def build_modify_clause(column_name: str, control_definition: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare live MySQL columns against datatypes.json and generate remediation SQL."
+        description=(
+            "Compare live MySQL columns against datatypes.json, check "
+            "utf8mb4_bin collation, and generate or execute remediation SQL."
+        )
     )
     parser.add_argument(
         "-nr",
         "--no-row-id-only",
         action="store_true",
         help="Do not print ALTER TABLE statements that only change the row_id column.",
+    )
+    parser.add_argument(
+        "-x",
+        "--execute",
+        action="store_true",
+        help="Execute the generated ALTER TABLE statements. DDL is auto-committed.",
     )
     args = parser.parse_args()
 
@@ -258,6 +290,7 @@ def main():
     }
 
     type_mismatches = []
+    table_collation_mismatches = []
 
     for schema_name in SCHEMAS:
         tables = [
@@ -269,9 +302,33 @@ def main():
         ]
 
         for table_name in tables:
+
+            if os.path.exists('abort'):
+                print('Script aborted by request.')
+                exit()
+
+            if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
+                continue
+
             metadata = fetch_column_metadata(
                 db, engine_name, schema_name, table_name
             )
+
+            # Detect tables that do not use the case- and accent-sensitive
+            # utf8mb4_bin collation, which can cause incorrect lookups or duplicate keys.
+            if schema_name not in SKIP_COLLATION_SCHEMAS:
+                table_collation = fetch_table_collation(
+                    db, engine_name, schema_name, table_name
+                )
+                if table_collation and table_collation.lower() != EXPECTED_COLLATION:
+                    table_collation_mismatches.append(
+                        {
+                            "schema"   : schema_name,
+                            "table"    : table_name,
+                            "actual"   : table_collation,
+                            "expected" : EXPECTED_COLLATION,
+                        }
+                    )
 
             for column_name, col_meta in metadata.items():
                 # Only evaluate columns defined in the control JSON.
@@ -296,23 +353,42 @@ def main():
     # --------------------------------------------------
     # Generate remediation SQL.
     # --------------------------------------------------
-    def build_alter_statements(
-        mismatches: list[dict], skip_row_id_only: bool
+    # Public Method: Build a single ALTER TABLE per table combining type and collation fixes.
+    def build_combined_statements(
+        type_mismatches: list[dict],
+        table_collation_mismatches: list[dict],
+        skip_row_id_only: bool,
     ) -> list[str]:
-        grouped = defaultdict(list)
-        for m in mismatches:
-            grouped[(m["schema"], m["table"])].append(m)
+        """Build a single ALTER TABLE per table combining type and collation fixes."""
+        type_grouped = defaultdict(list)
+        for m in type_mismatches:
+            type_grouped[(m["schema"], m["table"])].append(m)
+
+        collation_set = {(m["schema"], m["table"]) for m in table_collation_mismatches}
 
         statements = []
-        for (schema, table), columns in grouped.items():
+        for schema, table in sorted(set(type_grouped.keys()) | collation_set):
+            modifications = []
+
+            if (schema, table) in collation_set:
+                modifications.append(
+                    f"    CONVERT TO CHARACTER SET {EXPECTED_CHARSET} COLLATE {EXPECTED_COLLATION}"
+                )
+
+            columns = type_grouped[(schema, table)]
             if skip_row_id_only and {m["column"] for m in columns} == {ROW_ID_COLUMN}:
+                if not modifications:
+                    continue
+
+            for m in columns:
+                modifications.append(
+                    "    MODIFY COLUMN "
+                    + build_modify_clause(m["column"], control[m["column"]])
+                )
+
+            if not modifications:
                 continue
 
-            modifications = [
-                "    MODIFY COLUMN "
-                + build_modify_clause(m["column"], control[m["column"]])
-                for m in columns
-            ]
             stmt = (
                 f"ALTER TABLE `{schema}`.`{table}`\n"
                 + ",\n".join(modifications)
@@ -324,39 +400,34 @@ def main():
     # --------------------------------------------------
     # Report results.
     # --------------------------------------------------
-    # print(f"\nChecked columns across schemas: {', '.join(SCHEMAS)}\n")
-    # print(f"Type mismatches: {len(type_mismatches)}\n")
 
-    if type_mismatches:
-        # print("=" * 60)
-        # print("TYPE MISMATCHES")
-        # print("=" * 60)
-        # rich.print(
-        #     [
-        #         {
-        #             "schema": m["schema"],
-        #             "table": m["table"],
-        #             "column": m["column"],
-        #             "actual": m["actual"],
-        #             "expected": m["expected"],
-        #         }
-        #         for m in type_mismatches
-        #     ]
-        # )
-
-        # print("\n" + "=" * 60)
-        # print("REMEDIATION SQL (MariaDB)")
-        # print("=" * 60)
-        if args.no_row_id_only:
+    if type_mismatches or table_collation_mismatches:
+        if args.no_row_id_only and type_mismatches:
             print("-- -nr enabled: hiding ALTER TABLE statements that only change row_id.\n")
-        print("-- Review before running. Definitions are taken verbatim from datatypes.json.\n")
-        for stmt in build_alter_statements(
-            type_mismatches, skip_row_id_only=args.no_row_id_only
-        ):
-            print(stmt)
+        if args.execute:
+            print("-- EXECUTING generated ALTER TABLE statements. DDL is auto-committed.\n")
+        else:
+            print("-- Review before running. Definitions are taken verbatim from datatypes.json.")
+            print("-- Expected table collation: CHARACTER SET utf8mb4 COLLATE utf8mb4_bin.\n")
+
+        statements = build_combined_statements(
+            type_mismatches,
+            table_collation_mismatches,
+            skip_row_id_only=args.no_row_id_only,
+        )
+        total = len(statements)
+        for idx, stmt in enumerate(statements, start=1):
+            print(f"-- [{idx}/{total}]")
+            print_sql(stmt, title="Remediation")
+            if args.execute:
+                try:
+                    db.execute_query(engine_name=engine_name, query=stmt)
+                    print("  -> OK")
+                except Exception as exc:
+                    print(f"  -> FAILED: {exc}")
             print()
     else:
-        print("All defined columns match the canonical definitions.")
+        print("All defined columns match the canonical definitions and table collation is utf8mb4_bin.")
 
 
 if __name__ == "__main__":

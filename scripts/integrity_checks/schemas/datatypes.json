@@ -99,7 +99,6 @@
     "has_changed"                              : "tinyint(1) NULL DEFAULT '0'",
     "has_expired"                              : "tinyint(1) NULL DEFAULT '0'",
     "image_token"                              : "varchar(255) NULL DEFAULT NULL",
-    "institution_id"                           : "enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL",
     "is_visible"                               : "tinyint(1) NOT NULL DEFAULT '1'",
     "last_date_cached"                         : "date NULL DEFAULT NULL",
     "link_id"                                  : "varchar(255) NOT NULL",
