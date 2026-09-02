@@ -21,8 +21,8 @@ import rich, os
 from graphdb.core.graphdb import GraphDB
 from graphdb.models.sqlquery import print_sql
 
-
-CONTROL_PATH = Path(__file__).parent / "datatypes.json"
+# Datatypes path in database/init/config/system_datatypes.json
+CONTROL_PATH = Path(__file__).parent.parent.parent.parent / "database/init/config/system_datatypes.json"
 
 # Special sentinel column that can be suppressed with -nr.
 ROW_ID_COLUMN = "row_id"
@@ -307,8 +307,8 @@ def main():
                 print('Script aborted by request.')
                 exit()
 
-            if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
-                continue
+            # if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
+            #     continue
 
             metadata = fetch_column_metadata(
                 db, engine_name, schema_name, table_name
