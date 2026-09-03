@@ -938,7 +938,7 @@ class GraphRegistry():
                             query_id='PropScoresTmpCollation'
                         )[0]
                     else:
-                        temp_col_type, temp_col_id = 'utf8mb4_unicode_ci', 'utf8mb4_unicode_ci'
+                        temp_col_type, temp_col_id = 'utf8mb4_bin', 'utf8mb4_bin'
 
                     temp_table_create_scores = f"""
                     DROP TABLE IF EXISTS {temp_table_path_scores};
@@ -5158,10 +5158,10 @@ class GraphRegistry():
                 query=f"""
                     DROP TABLE IF EXISTS {valid_nodes_source_table};
                     CREATE TABLE {valid_nodes_source_table} (
-                        object_type VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                        object_id   VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                        PRIMARY KEY (object_type, object_id)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                        object_type VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
+                        object_id   VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
+
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
                     INSERT INTO {valid_nodes_source_table} (object_type, object_id)
                         SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
                         UNION ALL
@@ -7354,7 +7354,7 @@ class GraphRegistry():
                 buildup_table_exists = buildup_table_exists_direct or buildup_table_exists_flipped
 
                 # Cross-engine collate correction
-                colate_correct = 'COLLATE utf8mb4_unicode_ci' if self.engine_name=='prod' else ''
+                colate_correct = 'COLLATE utf8mb4_bin'
 
                 #--------------------------#
                 # Build commit SQL queries #
