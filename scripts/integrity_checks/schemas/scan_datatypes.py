@@ -1,18 +1,16 @@
 # graphregistry/scripts/integrity_checks/schemas/scan_datatypes.py
 """
 Compare live MySQL column definitions against the canonical definitions in
-scripts/integrity_checks/schemas/datatypes.json and verify that tables use the
-expected collation (utf8mb4_bin).
+database/init/config/system_datatypes.json and config/config_index.json, and
+verify that tables use the expected collation (utf8mb4_bin).
 
 The JSON values are full column definitions, e.g.:
     "row_id": "bigint(20) unsigned NOT NULL AUTO_INCREMENT"
     "object_type": "varchar(32) NOT NULL"
 
-For comparison, integer display widths are normalized away (they are
-semantically meaningless and deprecated in MySQL 8). Remediation SQL uses the
-control definition verbatim.
-
-EDIT: Normalisation has been deprecated in this version
+Actual column definitions are extracted verbatim from SHOW CREATE TABLE, with
+no reconstruction or normalization. Remediation SQL uses the control definition
+verbatim (only the CURRENT_TIMESTAMP quoting is normalised so MySQL accepts it).
 """
 import argparse
 import json
@@ -60,34 +58,6 @@ EXPECTED_COLLATION = "utf8mb4_bin"
 SKIP_COLLATION_SCHEMAS = {
     # No schemas are currently skipped; all index tables must use utf8mb4_bin.
 }
-
-# Public Method: Split a full column definition into (type, attributes)
-def split_definition(definition: str) -> tuple[str, str]:
-    """
-    Split a full column definition into (type, attributes).
-
-    Attributes include NULL/NOT NULL, DEFAULT, AUTO_INCREMENT, ON UPDATE, etc.
-    """
-    tokens = definition.strip().split()
-    attribute_keywords = {
-        "not", "null", "default", "auto_increment",
-        "character", "collate", "comment", "on",
-    }
-
-    # Prepare type_tokens for the following steps.
-    type_tokens = []
-    attr_tokens = []
-    for token in tokens:
-        lower = token.lower()
-        if lower in attribute_keywords and not attr_tokens:
-            attr_tokens.append(token)
-        elif attr_tokens:
-            attr_tokens.append(token)
-        else:
-            type_tokens.append(token)
-
-    # Return the computed result.
-    return " ".join(type_tokens), " ".join(attr_tokens)
 
 # Public Method: Ensure the control definition for row_id includes AUTO_INCREMENT
 def assert_row_id_auto_increment(control: dict[str, str]) -> None:
@@ -138,65 +108,78 @@ def table_uses_index_datatypes(schema_name: str, table_name: str) -> bool:
         return True
     return False
 
-# Public Method: Return column metadata from INFORMATION_SCHEMA
-def fetch_column_metadata(db, engine_name, schema_name, table_name):
-    """Return column metadata from INFORMATION_SCHEMA.COLUMNS."""
-    query = f"""
-        SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = '{schema_name}'
-          AND TABLE_NAME = '{table_name}'
-    """
-    metadata = {}
-    for row in db.execute_query(engine_name=engine_name, query=query):
-        metadata[row[0]] = {
-            "column_type"    : row[1],
-            "is_nullable"    : row[2],
-            "column_default" : row[3],
-            "extra"          : row[4] or "",
-        }
-    return metadata
-
-# Public Method: Return the table-level collation from INFORMATION_SCHEMA.TABLES.
-def fetch_table_collation(db, engine_name, schema_name, table_name):
-    """Return the table-level collation from INFORMATION_SCHEMA.TABLES."""
-    query = f"""
-        SELECT TABLE_COLLATION
-        FROM INFORMATION_SCHEMA.TABLES
-        WHERE TABLE_SCHEMA = '{schema_name}'
-          AND TABLE_NAME = '{table_name}'
-    """
+# Public Method: Fetch the raw CREATE TABLE statement from MySQL.
+def fetch_create_table(db, engine_name, schema_name, table_name) -> str | None:
+    """Return the raw CREATE TABLE statement for a single table."""
+    query = f"SHOW CREATE TABLE `{schema_name}`.`{table_name}`"
     rows = list(db.execute_query(engine_name=engine_name, query=query))
-    return rows[0][0] if rows else None
+    return rows[0][1] if rows else None
 
-# Public Method: Build a full definition string from column metadata
-def build_actual_definition(metadata: dict) -> str:
-    """Build a full definition string from column metadata."""
-    parts = [metadata["column_type"]]
+# Public Method: Parse raw column definitions and table collation from CREATE TABLE SQL.
+def parse_create_table(create_table_sql: str) -> tuple[dict[str, str], str | None]:
+    """
+    Extract column definitions and table collation from SHOW CREATE TABLE output.
 
-    # Handle the conditional case.
-    if metadata["is_nullable"] == "NO":
-        parts.append("NOT NULL")
-    else:
-        parts.append("NULL")
+    Column definitions are returned exactly as MySQL renders them, with no
+    reconstruction or normalization.
+    """
+    if not create_table_sql:
+        return {}, None
 
-    # Prepare default for the following steps.
-    default = metadata["column_default"]
-    if default is not None:
-        if isinstance(default, str) and default.upper() == "NULL":
-            parts.append("DEFAULT NULL")
-        elif isinstance(default, str) and default.upper() not in ("CURRENT_TIMESTAMP",):
-            parts.append(f"DEFAULT '{default}'")
-        else:
-            parts.append(f"DEFAULT {default}")
+    # Locate the parenthesised column/constraint list and find its matching ')'.
+    start = create_table_sql.find("(")
+    if start == -1:
+        return {}, None
 
-    # Prepare extra for the following steps.
-    extra = metadata["extra"].strip()
-    if extra:
-        parts.append(extra.upper())
+    # Walk forward to the matching ')' so partitioned tables are handled correctly.
+    depth = 1
+    end = start + 1
+    while end < len(create_table_sql) and depth > 0:
+        if create_table_sql[end] == "(":
+            depth += 1
+        elif create_table_sql[end] == ")":
+            depth -= 1
+        end += 1
+    if depth != 0:
+        return {}, None
 
-    # Return the computed result.
-    return " ".join(parts)
+    # Work with the content between the outermost parentheses.
+    body = create_table_sql[start + 1:end - 1]
+
+    # Extract table collation from the table options after the column list ')'.
+    collation_match = re.search(r"COLLATE=([^\s]+)", create_table_sql[end:])
+    collation = collation_match.group(1) if collation_match else None
+
+    # Split the body on commas that are at the top level (not inside parentheses).
+    depth = 0
+    part_start = 0
+    parts: list[str] = []
+    for i, char in enumerate(body):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "," and depth == 0:
+            parts.append(body[part_start:i])
+            part_start = i + 1
+    if part_start < len(body):
+        parts.append(body[part_start:])
+
+    # Keep only the column definitions, discarding keys and constraints.
+    columns: dict[str, str] = {}
+    for part in parts:
+        part = part.strip()
+        # Column definitions start with a backtick; constraints/keys do not.
+        if part.startswith("`"):
+            close = part.find("`", 1)
+            if close == -1:
+                continue
+            column_name = part[1:close]
+            definition = part[close + 1:].strip()
+            columns[column_name] = definition
+
+    # Return the verbatim column definitions and the table collation.
+    return columns, collation
 
 # Public Method: Fix control definitions so MySQL accepts them
 def clean_definition_for_sql(definition: str) -> str:
@@ -328,61 +311,50 @@ def main():
     control = load_control()
     index_control = load_index_control()
 
-    # Normalized lookups for the two control sources.
-    control_normalized = {
-        col: defn for col, defn in control.items()
-    }
-    index_control_normalized = {
-        col: defn for col, defn in index_control.items()
-    }
-
-    # Prepare type_mismatches for the following steps.
-    type_mismatches = []
-    table_collation_mismatches = []
+    # Accumulate mismatches and per-table comparison details across schemas.
+    type_mismatches: list[dict] = []
+    table_collation_mismatches: list[dict] = []
+    # verbose_log records every checked column when --verbose is requested.
     verbose_log: dict[tuple[str, str], list[dict]] = defaultdict(list)
 
-    # Iterate over the collection.
+    # Scan every configured schema and its tables.
     for schema_name in SCHEMAS:
+        # Skip tables whose names start with an underscore (internal/temp tables).
         tables = [
             t
             for t in db.get_tables_in_schema(
                 engine_name=engine_name, schema_name=schema_name
             )
+            # Internal tables begin with '_' and are not part of the canonical schema.
             if not t.startswith("_")
         ]
 
-        # Iterate over the collection.
+        # Scan every table in the current schema.
         for table_name in tables:
 
-            # Handle the conditional case.
+            # Allow the operator to abort a long-running scan via a sentinel file.
             if os.path.exists('abort'):
                 print('Script aborted by request.')
                 exit()
-
-            # if '_AS' in table_name or '_GBC' in table_name or 'score' in table_name.lower():
-            #     continue
 
             # Index tables also inherit the abstract datatypes from config_index.json.
             # System datatypes take precedence when a field exists in both sources.
             if table_uses_index_datatypes(schema_name, table_name):
                 table_control = {**index_control, **control}
-                table_control_normalized = {**index_control_normalized, **control_normalized}
             else:
                 table_control = control
-                table_control_normalized = control_normalized
 
-            # Prepare metadata for the following steps.
-            metadata = fetch_column_metadata(
+            # Fetch the raw CREATE TABLE statement and parse it verbatim.
+            create_table_sql = fetch_create_table(
                 db, engine_name, schema_name, table_name
             )
+            if not create_table_sql:
+                continue
+            actual_columns, table_collation = parse_create_table(create_table_sql)
 
-            # Detect tables that do not use the case- and accent-sensitive
-            # utf8mb4_bin collation, which can cause incorrect lookups or duplicate keys.
+            # Detect tables that do not use the expected collation.
             if schema_name not in SKIP_COLLATION_SCHEMAS:
-                table_collation = fetch_table_collation(
-                    db, engine_name, schema_name, table_name
-                )
-                if table_collation and table_collation.lower() != EXPECTED_COLLATION:
+                if table_collation and table_collation != EXPECTED_COLLATION:
                     table_collation_mismatches.append(
                         {
                             "schema"   : schema_name,
@@ -392,20 +364,19 @@ def main():
                         }
                     )
 
-            # Iterate over the collection.
-            for column_name, col_meta in metadata.items():
-                # Only evaluate columns defined in the table-specific control.
+            # Compare every column MySQL reports against the control definition.
+            for column_name, actual_definition in actual_columns.items():
+                # Ignore columns that are not defined in the canonical configs.
                 if column_name not in table_control:
                     continue
 
-                # Prepare actual_definition for the following steps.
-                actual_definition = build_actual_definition(col_meta)
-                actual_normalized = actual_definition
+                # Look up the expected definition and make it comparable to MySQL's output.
                 expected_definition = table_control[column_name]
-                expected_normalized = table_control_normalized[column_name]
-                is_match = actual_normalized == expected_normalized
+                # Clean the expected definition only so MySQL accepts it in ALTER TABLE.
+                expected_for_compare = clean_definition_for_sql(expected_definition)
+                is_match = actual_definition == expected_for_compare
 
-                # Handle the conditional case.
+                # Record the comparison when verbose output is requested.
                 if args.verbose:
                     verbose_log[(schema_name, table_name)].append(
                         {
@@ -416,7 +387,7 @@ def main():
                         }
                     )
 
-                # Handle the conditional case.
+                # Keep mismatches for remediation SQL and the histogram.
                 if not is_match:
                     type_mismatches.append(
                         {
