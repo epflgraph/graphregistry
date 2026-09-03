@@ -488,6 +488,7 @@ def main():
         print_verbose_report(verbose_log, errors_only=args.errors_only)
 
     # Print remediation SQL when any mismatch was detected.
+    if type_mismatches or table_collation_mismatches:
         if args.no_row_id_only and type_mismatches:
             print("-- -nr enabled: hiding ALTER TABLE statements that only change row_id.\n")
         if args.execute:
