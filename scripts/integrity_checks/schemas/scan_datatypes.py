@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# graphregistry/scripts/integrity_checks/schemas/scan_datatypes.py
 """
 Compare live MySQL column definitions against the canonical definitions in
 scripts/integrity_checks/schemas/datatypes.json and verify that tables use the
@@ -11,6 +11,8 @@ The JSON values are full column definitions, e.g.:
 For comparison, integer display widths are normalized away (they are
 semantically meaningless and deprecated in MySQL 8). Remediation SQL uses the
 control definition verbatim.
+
+EDIT: Normalisation has been deprecated in this version
 """
 import argparse
 import json
@@ -56,51 +58,10 @@ EXPECTED_COLLATION = "utf8mb4_bin"
 
 # Schemas to skip in collation checks (e.g. read-only or external indexes).
 SKIP_COLLATION_SCHEMAS = {
-    "graphsearch_test",
+    # No schemas are currently skipped; all index tables must use utf8mb4_bin.
 }
 
-
-def normalize_type(data_type: str) -> str:
-    """
-    Normalize the type portion of a column definition for comparison.
-
-    - Strip display width from integer types (bigint(20), int(10), etc.)
-    - Normalize tinyint(N) to tinyint(1)
-    - Preserve unsigned, enum values, character sets, etc.
-    """
-    return data_type
-
-    data_type = data_type.lower().strip()
-
-    # Convert square brackets to parentheses.
-    data_type = re.sub(r"\[(\d+)\]", r"(\1)", data_type)
-
-    # tinyint(4) -> tinyint(1)
-    data_type = re.sub(r"tinyint\(\d+\)", "tinyint(1)", data_type)
-
-    # bigint(20) unsigned -> bigint unsigned
-    data_type = re.sub(r"bigint\(\d+\) unsigned", "bigint unsigned", data_type)
-    # bigint(20) -> bigint
-    data_type = re.sub(r"bigint\(\d+\)", "bigint", data_type)
-
-    # int(10) unsigned -> int unsigned, int(11) -> int
-    data_type = re.sub(r"int\(\d+\) unsigned", "int unsigned", data_type)
-    data_type = re.sub(r"int\(\d+\)", "int", data_type)
-
-    # smallint(5) unsigned -> smallint unsigned, etc.
-    data_type = re.sub(r"smallint\(\d+\) unsigned", "smallint unsigned", data_type)
-    data_type = re.sub(r"smallint\(\d+\)", "smallint", data_type)
-
-    # mediumint
-    data_type = re.sub(r"mediumint\(\d+\) unsigned", "mediumint unsigned", data_type)
-    data_type = re.sub(r"mediumint\(\d+\)", "mediumint", data_type)
-
-    # Collapse multiple spaces.
-    data_type = re.sub(r"\s+", " ", data_type)
-
-    return data_type
-
-
+# Public Method: Split a full column definition into (type, attributes)
 def split_definition(definition: str) -> tuple[str, str]:
     """
     Split a full column definition into (type, attributes).
@@ -113,6 +74,7 @@ def split_definition(definition: str) -> tuple[str, str]:
         "character", "collate", "comment", "on",
     }
 
+    # Prepare type_tokens for the following steps.
     type_tokens = []
     attr_tokens = []
     for token in tokens:
@@ -124,50 +86,10 @@ def split_definition(definition: str) -> tuple[str, str]:
         else:
             type_tokens.append(token)
 
+    # Return the computed result.
     return " ".join(type_tokens), " ".join(attr_tokens)
 
-
-def normalize_default(default_clause: str) -> str:
-    """Normalize a DEFAULT clause to avoid false positives."""
-    default_clause = default_clause.strip()
-    lower = default_clause.lower()
-
-    # 'current_timestamp()' and CURRENT_TIMESTAMP are equivalent.
-    if lower in ("'current_timestamp()'", "current_timestamp()", "current_timestamp"):
-        return "DEFAULT CURRENT_TIMESTAMP"
-
-    # Unquote numeric defaults ('0' -> 0, '1' -> 1).
-    if re.fullmatch(r"'\d+'", default_clause):
-        return f"DEFAULT {default_clause[1:-1]}"
-
-    return f"DEFAULT {default_clause}"
-
-
-def normalize_definition(definition: str) -> str:
-    """Normalize a full column definition for comparison."""
-    type_part, attr_part = split_definition(definition)
-    normalized_type = normalize_type(type_part)
-    # Normalize attribute order: NOT NULL / NULL, DEFAULT, AUTO_INCREMENT, rest.
-    attr_lower = attr_part.lower()
-    parts = []
-    if "not null" in attr_lower:
-        parts.append("NOT NULL")
-    elif "null" in attr_lower:
-        parts.append("NULL")
-    else:
-        # MySQL default is nullable when neither NULL nor NOT NULL is specified.
-        parts.append("NULL")
-    if "default" in attr_lower:
-        match = re.search(
-            r"default\s+(.+?)(?=(?:\s+(?:auto_increment|on|comment))|$)", attr_lower
-        )
-        if match:
-            parts.append(normalize_default(match.group(1).strip()))
-    if "auto_increment" in attr_lower:
-        parts.append("AUTO_INCREMENT")
-    return f"{normalized_type} {' '.join(parts)}".strip()
-
-
+# Public Method: Ensure the control definition for row_id includes AUTO_INCREMENT
 def assert_row_id_auto_increment(control: dict[str, str]) -> None:
     """Ensure the control definition for row_id includes AUTO_INCREMENT."""
     if "row_id" not in control:
@@ -177,7 +99,7 @@ def assert_row_id_auto_increment(control: dict[str, str]) -> None:
             "Assertion failed: 'row_id' in datatypes.json must be defined as AUTO_INCREMENT"
         )
 
-
+# Public Method: load control
 def load_control() -> dict[str, str]:
     with CONTROL_PATH.open("r", encoding="utf-8") as f:
         control = json.load(f)
@@ -185,7 +107,6 @@ def load_control() -> dict[str, str]:
         raise ValueError("datatypes.json must be a flat object")
     assert_row_id_auto_increment(control)
     return control
-
 
 # Public Method: Load and convert config_index.json abstract datatypes into SQL definitions.
 def load_index_control() -> dict[str, str]:
@@ -196,6 +117,7 @@ def load_index_control() -> dict[str, str]:
     if not isinstance(abstract_types, dict):
         raise ValueError("config_index.json 'data-types' must be a flat object")
 
+    # Declare the control data structure.
     control: dict[str, str] = {}
     for field_name, abstract_type in abstract_types.items():
         if abstract_type not in sql_data_type_mapping:
@@ -204,7 +126,6 @@ def load_index_control() -> dict[str, str]:
             )
         control[field_name] = sql_data_type_mapping[abstract_type]
     return control
-
 
 # Public Method: Decide whether a table should also be checked against index datatypes.
 def table_uses_index_datatypes(schema_name: str, table_name: str) -> bool:
@@ -217,7 +138,7 @@ def table_uses_index_datatypes(schema_name: str, table_name: str) -> bool:
         return True
     return False
 
-
+# Public Method: Return column metadata from INFORMATION_SCHEMA
 def fetch_column_metadata(db, engine_name, schema_name, table_name):
     """Return column metadata from INFORMATION_SCHEMA.COLUMNS."""
     query = f"""
@@ -229,13 +150,12 @@ def fetch_column_metadata(db, engine_name, schema_name, table_name):
     metadata = {}
     for row in db.execute_query(engine_name=engine_name, query=query):
         metadata[row[0]] = {
-            "column_type": row[1],
-            "is_nullable": row[2],
-            "column_default": row[3],
-            "extra": row[4] or "",
+            "column_type"    : row[1],
+            "is_nullable"    : row[2],
+            "column_default" : row[3],
+            "extra"          : row[4] or "",
         }
     return metadata
-
 
 # Public Method: Return the table-level collation from INFORMATION_SCHEMA.TABLES.
 def fetch_table_collation(db, engine_name, schema_name, table_name):
@@ -249,16 +169,18 @@ def fetch_table_collation(db, engine_name, schema_name, table_name):
     rows = list(db.execute_query(engine_name=engine_name, query=query))
     return rows[0][0] if rows else None
 
-
+# Public Method: Build a full definition string from column metadata
 def build_actual_definition(metadata: dict) -> str:
     """Build a full definition string from column metadata."""
     parts = [metadata["column_type"]]
 
+    # Handle the conditional case.
     if metadata["is_nullable"] == "NO":
         parts.append("NOT NULL")
     else:
         parts.append("NULL")
 
+    # Prepare default for the following steps.
     default = metadata["column_default"]
     if default is not None:
         if isinstance(default, str) and default.upper() == "NULL":
@@ -268,13 +190,15 @@ def build_actual_definition(metadata: dict) -> str:
         else:
             parts.append(f"DEFAULT {default}")
 
+    # Prepare extra for the following steps.
     extra = metadata["extra"].strip()
     if extra:
         parts.append(extra.upper())
 
+    # Return the computed result.
     return " ".join(parts)
 
-
+# Public Method: Fix control definitions so MySQL accepts them
 def clean_definition_for_sql(definition: str) -> str:
     """
     Fix control definitions so MySQL accepts them.
@@ -296,11 +220,10 @@ def clean_definition_for_sql(definition: str) -> str:
     )
     return definition
 
-
+# Public Method: Build a MODIFY COLUMN clause using the cleaned control definition
 def build_modify_clause(column_name: str, control_definition: str) -> str:
     """Build a MODIFY COLUMN clause using the cleaned control definition."""
     return f"`{column_name}` {clean_definition_for_sql(control_definition)}"
-
 
 # Public Method: Print a colorful per-table comparison of actual vs expected column types.
 def print_verbose_report(
@@ -314,12 +237,14 @@ def print_verbose_report(
     if not verbose_log:
         return
 
+    # Iterate over the collection.
     for (schema, table), columns in sorted(verbose_log.items()):
         if errors_only:
             columns = [c for c in columns if not c["match"]]
             if not columns:
                 continue
 
+        # Continue with the next step.
         console.print(f"\n📋 [bold]{schema}.{table}[/bold]")
         for col in columns:
             column_name = col["column"]
@@ -334,13 +259,13 @@ def print_verbose_report(
                 console.print(f"     [red]actual:   {actual}[/red]")
                 console.print(f"     [green]expected: {expected}[/green]")
 
-
 # Public Method: Print a histogram of actual vs expected datatype mismatches.
 def print_mismatch_histogram(type_mismatches: list[dict]) -> None:
     """Print a histogram of how often each actual/expected datatype pair occurs."""
     if not type_mismatches:
         return
 
+    # Declare the counts data structure.
     counts: dict[tuple[str, str], int] = defaultdict(int)
     for m in type_mismatches:
         counts[(m["actual"], m["expected"])] += 1
@@ -348,6 +273,7 @@ def print_mismatch_histogram(type_mismatches: list[dict]) -> None:
     # Sort by frequency descending, then by actual/expected text for stability.
     sorted_pairs = sorted(counts.items(), key=lambda item: (-item[1], item[0][0], item[0][1]))
 
+    # Continue with the next step.
     console.print("\n📊 [bold]Mismatch histogram[/bold] (actual → expected)")
     for (actual, expected), count in sorted_pairs:
         console.print(
@@ -355,7 +281,7 @@ def print_mismatch_histogram(type_mismatches: list[dict]) -> None:
             f"[red]{actual}[/red]  →  [green]{expected}[/green]"
         )
 
-
+# Public Method: main
 def main():
     parser = argparse.ArgumentParser(
         description=(
@@ -394,24 +320,28 @@ def main():
     if args.errors_only:
         args.verbose = True
 
+    # Prepare db for the following steps.
     db = GraphDB()
     engine_name = "xaas_coresrv"
 
+    # Prepare control for the following steps.
     control = load_control()
     index_control = load_index_control()
 
     # Normalized lookups for the two control sources.
     control_normalized = {
-        col: normalize_definition(defn) for col, defn in control.items()
+        col: defn for col, defn in control.items()
     }
     index_control_normalized = {
-        col: normalize_definition(defn) for col, defn in index_control.items()
+        col: defn for col, defn in index_control.items()
     }
 
+    # Prepare type_mismatches for the following steps.
     type_mismatches = []
     table_collation_mismatches = []
     verbose_log: dict[tuple[str, str], list[dict]] = defaultdict(list)
 
+    # Iterate over the collection.
     for schema_name in SCHEMAS:
         tables = [
             t
@@ -421,8 +351,10 @@ def main():
             if not t.startswith("_")
         ]
 
+        # Iterate over the collection.
         for table_name in tables:
 
+            # Handle the conditional case.
             if os.path.exists('abort'):
                 print('Script aborted by request.')
                 exit()
@@ -439,6 +371,7 @@ def main():
                 table_control = control
                 table_control_normalized = control_normalized
 
+            # Prepare metadata for the following steps.
             metadata = fetch_column_metadata(
                 db, engine_name, schema_name, table_name
             )
@@ -459,17 +392,20 @@ def main():
                         }
                     )
 
+            # Iterate over the collection.
             for column_name, col_meta in metadata.items():
                 # Only evaluate columns defined in the table-specific control.
                 if column_name not in table_control:
                     continue
 
+                # Prepare actual_definition for the following steps.
                 actual_definition = build_actual_definition(col_meta)
-                actual_normalized = normalize_definition(actual_definition)
+                actual_normalized = actual_definition
                 expected_definition = table_control[column_name]
                 expected_normalized = table_control_normalized[column_name]
                 is_match = actual_normalized == expected_normalized
 
+                # Handle the conditional case.
                 if args.verbose:
                     verbose_log[(schema_name, table_name)].append(
                         {
@@ -480,6 +416,7 @@ def main():
                         }
                     )
 
+                # Handle the conditional case.
                 if not is_match:
                     type_mismatches.append(
                         {
@@ -491,9 +428,6 @@ def main():
                         }
                     )
 
-    # --------------------------------------------------
-    # Generate remediation SQL.
-    # --------------------------------------------------
     # Public Method: Build a single ALTER TABLE per table combining type and collation fixes.
     def build_combined_statements(
         type_mismatches: list[dict],
@@ -505,31 +439,38 @@ def main():
         for m in type_mismatches:
             type_grouped[(m["schema"], m["table"])].append(m)
 
+        # Prepare collation_set for the following steps.
         collation_set = {(m["schema"], m["table"]) for m in table_collation_mismatches}
 
+        # Prepare statements for the following steps.
         statements = []
         for schema, table in sorted(set(type_grouped.keys()) | collation_set):
             modifications = []
 
+            # Handle the conditional case.
             if (schema, table) in collation_set:
                 modifications.append(
                     f"    CONVERT TO CHARACTER SET {EXPECTED_CHARSET} COLLATE {EXPECTED_COLLATION}"
                 )
 
+            # Prepare columns for the following steps.
             columns = type_grouped[(schema, table)]
             if skip_row_id_only and {m["column"] for m in columns} == {ROW_ID_COLUMN}:
                 if not modifications:
                     continue
 
+            # Iterate over the collection.
             for m in columns:
                 modifications.append(
                     "    MODIFY COLUMN "
                     + build_modify_clause(m["column"], m["expected"])
                 )
 
+            # Skip tables that have no modifications to apply.
             if not modifications:
                 continue
 
+            # Compose a single ALTER TABLE statement for this schema.table.
             stmt = (
                 f"ALTER TABLE `{schema}`.`{table}`\n"
                 + ",\n".join(modifications)
@@ -542,10 +483,11 @@ def main():
     # Report results.
     # --------------------------------------------------
 
+    # Print the per-table comparison when verbose mode is enabled.
     if args.verbose:
         print_verbose_report(verbose_log, errors_only=args.errors_only)
 
-    if type_mismatches or table_collation_mismatches:
+    # Print remediation SQL when any mismatch was detected.
         if args.no_row_id_only and type_mismatches:
             print("-- -nr enabled: hiding ALTER TABLE statements that only change row_id.\n")
         if args.execute:
@@ -555,6 +497,7 @@ def main():
             print("-- and config_index.json data-types.")
             print("-- Expected table collation: CHARACTER SET utf8mb4 COLLATE utf8mb4_bin.\n")
 
+        # Build and optionally execute remediation ALTER TABLE statements.
         statements = build_combined_statements(
             type_mismatches,
             table_collation_mismatches,
@@ -577,6 +520,6 @@ def main():
     # Always print the mismatch histogram when there are datatype mismatches.
     print_mismatch_histogram(type_mismatches)
 
-
+# Run the scan when this script is executed directly.
 if __name__ == "__main__":
     main()
