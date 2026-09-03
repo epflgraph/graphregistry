@@ -69,7 +69,7 @@ def assert_row_id_auto_increment(control: dict[str, str]) -> None:
             "Assertion failed: 'row_id' in datatypes.json must be defined as AUTO_INCREMENT"
         )
 
-# Public Method: load control
+# Public Method: Load the flat system datatype definitions from system_datatypes.json.
 def load_control() -> dict[str, str]:
     with CONTROL_PATH.open("r", encoding="utf-8") as f:
         control = json.load(f)
@@ -264,7 +264,7 @@ def print_mismatch_histogram(type_mismatches: list[dict]) -> None:
             f"[red]{actual}[/red]  →  [green]{expected}[/green]"
         )
 
-# Public Method: main
+# Public Method: Parse arguments and run the datatype/collation scan.
 def main():
     parser = argparse.ArgumentParser(
         description=(

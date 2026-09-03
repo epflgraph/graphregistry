@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
   KEY record_deleted (record_deleted),
   KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY context (context)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
   object_type varchar(32) NOT NULL,
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
   KEY field_name (field_name),
   KEY record_deleted (record_deleted),
   KEY object_key (object_type,object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   object_type varchar(32) NOT NULL,
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   KEY is_visible (is_visible),
   KEY numeric_id_en (numeric_id_en),
   KEY record_deleted (record_deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ConceptDetection (
   object_type varchar(32) NOT NULL,
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ConceptDetection (
   KEY type_src (object_type,text_source),
   KEY record_deleted (record_deleted),
   KEY obj_ccp (object_id,concept_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_LLMPostValidated (
   object_type varchar(32) NOT NULL,
@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ManualMapping (
   KEY text_source (text_source),
   KEY record_deleted (record_deleted),
   KEY concept_name (concept_name)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
   from_object_type varchar(32) NOT NULL,
@@ -258,7 +258,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
   KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY edge_from_key (from_object_type,from_object_id,to_object_type,context),
   KEY edge_to_key (from_object_type,to_object_type,to_object_id,context)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_IdMap (
   from_object_type varchar(32) NOT NULL,
@@ -316,4 +316,4 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Object (
   KEY object_id (object_id),
   KEY object_type_id (object_type,object_id),
   KEY record_deleted (record_deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

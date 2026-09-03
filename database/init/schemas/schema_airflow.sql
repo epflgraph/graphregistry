@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
   KEY has_expired (has_expired),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_TypeFlags (
   from_object_type varchar(32) NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
   KEY to_process (to_process),
   KEY deleted (deleted),
   KEY type_proc_del_id (object_type,to_process,deleted,object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ScoresExpired (
   object_type varchar(32) NOT NULL,
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ScoresExpired (
   KEY to_process_type_object (to_process,object_type,object_id),
   KEY deleted (deleted),
   KEY type_proc_del_id (object_type,to_process,deleted,object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_TypeFlags (
   object_type varchar(32) NOT NULL,

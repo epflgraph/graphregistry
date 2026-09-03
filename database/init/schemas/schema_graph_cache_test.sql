@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_AllFieldsSymmetric (
   KEY object_type_and_id (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   from_object_type varchar(32) NOT NULL,
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   KEY object_type_and_id (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
   object_type varchar(32) NOT NULL,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_AllFields (
   KEY object_type_and_id (object_type,object_id),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CalculatedFields (
   object_type varchar(32) NOT NULL,
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CalculatedFields (
   KEY object_type_and_id (object_type,object_id),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   object_type varchar(32) NOT NULL,
@@ -201,7 +201,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   KEY deleted (deleted),
   KEY object_type_process_id (object_type,to_process,object_id),
   KEY object_type_id_process (object_type,object_id,to_process)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Category_T_CalculatedScores (
   object_type varchar(32) NOT NULL,
@@ -287,7 +287,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_FinalScores (
   KEY object_type_concept_process (object_type,concept_id,to_process),
   KEY deleted (deleted),
   KEY type_id_process (object_type,object_id,to_process)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(object_type)
 (PARTITION p_category VALUES IN ('Category') ENGINE = InnoDB,
  PARTITION p_course VALUES IN ('Course') ENGINE = InnoDB,
@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ScoringMatrix (
   KEY to_process (to_process),
   KEY object_type_and_id (object_type,object_id),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_UnionAllScores (
   object_type varchar(32) NOT NULL,
@@ -341,7 +341,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_UnionAllScores (
   KEY to_process (to_process),
   KEY object_type_and_id (object_type,object_id),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_CuratedArea_T_CalculatedScores (
   object_type varchar(32) NOT NULL,
@@ -391,7 +391,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_DegreeCombinations (
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_MaxLogDegrees (
   from_object_type varchar(32) NOT NULL,
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ParentChildSymmetric (
   KEY object_type_and_id (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY object_type_process_id (from_object_type,to_object_type,to_process,from_object_id,to_object_id),
   KEY object_type_id_process (from_object_type,to_object_type,from_object_id,to_object_id,to_process)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_AVG (
   from_object_type varchar(32) NOT NULL,
@@ -466,7 +466,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Education_AS (
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(from_object_type,to_object_type)
 (PARTITION p_category_category VALUES IN (('Category','Category')) ENGINE = InnoDB,
  PARTITION p_category_concept VALUES IN (('Category','Concept')) ENGINE = InnoDB,
@@ -536,7 +536,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Education_GBC 
   KEY type_key (from_object_type,to_object_type),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(from_object_type,to_object_type)
 (PARTITION p_category_category VALUES IN (('Category','Category')) ENGINE = InnoDB,
  PARTITION p_category_concept VALUES IN (('Category','Concept')) ENGINE = InnoDB,
@@ -610,7 +610,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_AS (
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(from_object_type,to_object_type)
 (PARTITION p_category_category VALUES IN (('Category','Category')) ENGINE = InnoDB,
  PARTITION p_category_concept VALUES IN (('Category','Concept')) ENGINE = InnoDB,
@@ -680,7 +680,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_GBC (
   KEY type_key (from_object_type,to_object_type),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(from_object_type,to_object_type)
 (PARTITION p_category_category VALUES IN (('Category','Category')) ENGINE = InnoDB,
  PARTITION p_category_concept VALUES IN (('Category','Concept')) ENGINE = InnoDB,
@@ -754,7 +754,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_AS (
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(from_object_type,to_object_type)
 (PARTITION p_category_category VALUES IN (('Category','Category')) ENGINE = InnoDB,
  PARTITION p_category_concept VALUES IN (('Category','Concept')) ENGINE = InnoDB,
@@ -824,7 +824,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_Research_GBC (
   KEY type_key (from_object_type,to_object_type),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
  PARTITION BY LIST  COLUMNS(from_object_type,to_object_type)
 (PARTITION p_category_category VALUES IN (('Category','Category')) ENGINE = InnoDB,
  PARTITION p_category_concept VALUES IN (('Category','Concept')) ENGINE = InnoDB,
@@ -895,7 +895,7 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Object_T_DegreeScores (
   KEY object_id (object_id),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_Checksums (
   from_object_type varchar(32) NOT NULL,
@@ -947,7 +947,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_AllEdgesInKG (
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY unique_key (from_type,from_id,to_type,to_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_Checksums (
   object_type varchar(32) NOT NULL,
@@ -997,7 +997,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_LargestConnectedGraph (
   UNIQUE KEY uid (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_NoLooseEnds (
   object_type varchar(32) NOT NULL,
@@ -1007,4 +1007,4 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_NoLooseEnds (
   UNIQUE KEY uid (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

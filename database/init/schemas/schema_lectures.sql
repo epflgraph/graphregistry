@@ -13,16 +13,17 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CustomFields (
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,context,field_language,field_name),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,field_language,field_name,context),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY context (context),
+  KEY idx_cf_person_unit_nam_val (from_object_type,to_object_type,field_name,field_value(255)),
   KEY record_deleted (record_deleted),
-  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id)
+  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
+  KEY context (context)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
@@ -42,7 +43,8 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CustomFields (
   KEY object_id (object_id),
   KEY field_language (field_language),
   KEY field_name (field_name),
-  KEY record_deleted (record_deleted)
+  KEY record_deleted (record_deleted),
+  KEY object_key (object_type,object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
@@ -152,17 +154,17 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_PageProfile (
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (object_type,object_id),
+  UNIQUE KEY object_key (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY short_code (short_code),
+  KEY numeric_id_fr (numeric_id_fr),
+  KEY numeric_id_de (numeric_id_de),
+  KEY numeric_id_it (numeric_id_it),
   KEY subtype_en (subtype_en),
   KEY subtype_fr (subtype_fr),
   KEY subtype_de (subtype_de),
   KEY subtype_it (subtype_it),
-  KEY numeric_id_fr (numeric_id_fr),
-  KEY numeric_id_de (numeric_id_de),
-  KEY numeric_id_it (numeric_id_it),
   KEY is_visible (is_visible),
   KEY numeric_id_en (numeric_id_en),
   KEY record_deleted (record_deleted)
@@ -186,11 +188,12 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ConceptDetection (
   KEY object_type (object_type),
   KEY text_source (text_source),
   KEY type_src (object_type,text_source),
-  KEY idx_cd_object_concept_score (object_type,object_id,concept_id,score),
-  KEY record_deleted (record_deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+  KEY record_deleted (record_deleted),
+  KEY obj_ccp (object_id,concept_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_LLMPostValidated (
+  institution_id enum('Ont','EPFL','ETHZ','PSI','Empa','Eawag','WSL') NOT NULL,
   object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   concept_id varchar(10) NOT NULL,
@@ -201,11 +204,14 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_LLMPostValidated (
   record_deleted tinyint(1) NOT NULL DEFAULT 0,
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  UNIQUE KEY unique_key (object_type,object_id,concept_id,text_source),
+  UNIQUE KEY row_id (row_id),
+  UNIQUE KEY unique_key (institution_id,object_type,object_id,concept_id,text_source),
   KEY object_id (object_id),
   KEY concept_id (concept_id),
+  KEY institution_id (institution_id),
   KEY object_type (object_type),
   KEY text_source (text_source),
+  KEY obj_ccp (institution_id,object_id,concept_id),
   KEY type_src (object_type,text_source),
   KEY record_deleted (record_deleted)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
@@ -239,8 +245,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ManualMapping (
   KEY concept_id (concept_id),
   KEY object_type (object_type),
   KEY text_source (text_source),
-  KEY record_deleted (record_deleted),
-  KEY concept_name (concept_name)
+  KEY record_deleted (record_deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
@@ -261,8 +266,10 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
   KEY to_object_type (to_object_type),
   KEY to_object_id (to_object_id),
   KEY context (context),
-  KEY idx_cp_reverse_type_id (to_object_type,from_object_type,to_object_id,from_object_id),
-  KEY record_deleted (record_deleted)
+  KEY record_deleted (record_deleted),
+  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
+  KEY edge_from_key (from_object_type,from_object_id,to_object_type,context),
+  KEY edge_to_key (from_object_type,to_object_type,to_object_id,context)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Nodes_N_Object (
@@ -277,8 +284,9 @@ CREATE TABLE IF NOT EXISTS Nodes_N_Object (
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY unique_key (object_type,object_id),
+  UNIQUE KEY object_key (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
+  KEY object_type_id (object_type,object_id),
   KEY record_deleted (record_deleted)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
