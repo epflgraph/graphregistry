@@ -487,11 +487,14 @@ class DynamicSQL:
         # Generate SQL create table statement with field datatype definitions
         sql_create_table = f"CREATE TABLE {sql_table_name} (\n  " + ",\n  ".join(field_definitions)
 
-        # Get id fields for unique key definition
+        # Get id fields for unique key definition. GraphSearch and Elasticsearch
+        # doc-link tables store link_subtype as an ID column so that ORG and SEM
+        # links can coexist in the same table, so the unique key must include it.
         if link_type is None:
             id_fields = self.get_doc_id_fields(convention='doc-link')
         else:
-            id_fields = self.get_doclink_id_fields(convention='doc-link')
+            include_link_subtype = index_group in ('graphsearch', 'elasticsearch')
+            id_fields = self.get_doclink_id_fields(convention='doc-link', include_link_subtype=include_link_subtype)
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
@@ -572,11 +575,14 @@ class DynamicSQL:
             field_name = field_definition.split()[0]
             sql_alter_table += f"  MODIFY COLUMN {field_definition},\n"
 
-        # Get id fields for unique key definition
+        # Get id fields for unique key definition. GraphSearch and Elasticsearch
+        # doc-link tables store link_subtype as an ID column so that ORG and SEM
+        # links can coexist in the same table, so the unique key must include it.
         if link_type is None:
             id_fields = self.get_doc_id_fields(convention='doc-link')
         else:
-            id_fields = self.get_doclink_id_fields(convention='doc-link')
+            include_link_subtype = index_group in ('graphsearch', 'elasticsearch')
+            id_fields = self.get_doclink_id_fields(convention='doc-link', include_link_subtype=include_link_subtype)
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)

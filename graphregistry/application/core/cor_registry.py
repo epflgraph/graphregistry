@@ -6913,14 +6913,55 @@ class GraphRegistry():
 
                 # Ensure the doc-rank-link index exists on the graphsearch doc-link
                 # table. The horizontal Elasticsearch patch query forces this index.
-                db.execute_query_in_shell(
+                # A key-exists check avoids the shell-spawn overhead when the index
+                # is already present.
+                if not db.key_exists(
                     engine_name = self.engine_name,
-                    query       = f"CREATE INDEX IF NOT EXISTS idx_doc_rank_link "
-                                  f"ON {glbcfg.schema_graphsearch_test}.{self.index_table_name} "
-                                  f"(doc_type, doc_id, row_rank, link_type, link_id, link_subtype);",
-                    verbose     = False,
-                    query_id    = 'doclink-idx-doc-rank-link'
-                )
+                    schema_name = glbcfg.schema_graphsearch_test,
+                    table_name  = self.index_table_name,
+                    key_name    = 'idx_doc_rank_link'
+                ):
+                    db.execute_query_in_shell(
+                        engine_name = self.engine_name,
+                        query       = f"CREATE INDEX IF NOT EXISTS idx_doc_rank_link "
+                                      f"ON {glbcfg.schema_graphsearch_test}.{self.index_table_name} "
+                                      f"(doc_type, doc_id, row_rank, link_type, link_id, link_subtype);",
+                        verbose     = False,
+                        query_id    = 'doclink-idx-doc-rank-link'
+                    )
+
+                # Ensure the unique key includes link_subtype on graphsearch doc-link
+                # tables. Older tables were created with uid(doc_type,doc_id,link_type,
+                # link_id), which allows ORG and SEM rows to collide. The correct key
+                # is uid(doc_type,doc_id,link_type,link_subtype,link_id).
+                expected_uid_columns = ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
+                actual_uid_columns = [
+                    row[0] for row in db.execute_query(
+                        engine_name = self.engine_name,
+                        query       = f"""
+                            SELECT COLUMN_NAME
+                              FROM INFORMATION_SCHEMA.STATISTICS
+                             WHERE TABLE_SCHEMA = '{glbcfg.schema_graphsearch_test}'
+                               AND TABLE_NAME   = '{self.index_table_name}'
+                               AND INDEX_NAME   = 'uid'
+                             ORDER BY SEQ_IN_INDEX
+                        """,
+                        query_id    = 'doclink-uid-columns'
+                    )
+                ]
+                if actual_uid_columns and actual_uid_columns != expected_uid_columns:
+                    sysmsg.warning(
+                        f"Unique key on '{glbcfg.schema_graphsearch_test}.{self.index_table_name}' "
+                        f"does not include link_subtype. Rebuilding unique key ..."
+                    )
+                    db.execute_query_in_shell(
+                        engine_name = self.engine_name,
+                        query       = f"ALTER TABLE {glbcfg.schema_graphsearch_test}.{self.index_table_name} "
+                                      f"DROP INDEX uid, "
+                                      f"ADD UNIQUE KEY uid ({', '.join(expected_uid_columns)});",
+                        verbose     = False,
+                        query_id    = 'doclink-uid-rebuild'
+                    )
 
                 # Fetch doclink settings from index config
                 self.graphsearch_obj_fields     = idxcfg.settings['graphsearch'  ]['fields' ]['links']['default'].get(self.link_type, [])
@@ -7810,10 +7851,17 @@ class GraphRegistry():
                                   AND {_config_order_by_null_filter('i')}
                          )
                          SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                           FROM ranked
-                          WHERE semantic_score >= 0.1
-                            AND row_rank <= {row_rank_thr}
-                         """
+                            FROM ranked
+                           WHERE semantic_score >= 0.1
+                             AND row_rank <= {row_rank_thr}
+                          """
+
+                        # Self-loop semantic edges (e.g. Category --> Category [SEM]) have
+                        # identical source and target types. The flipped insert is identical
+                        # to the forward insert, so it would violate the unique key. Keep only
+                        # the forward insert.
+                        if self.doc_type == self.link_type:
+                            SQLQuery_Insert_Flipped = None
 
                 #-----------------------------#
                 # Generate evaluation queries #
