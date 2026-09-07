@@ -4804,11 +4804,15 @@ class GraphRegistry():
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
-            # Fetch typeflags config JSON
+            # Fetch typeflags config JSON. Vertical patch is primarily field-driven,
+            # but SEM ontology-object edges (Concept/Category <-> object) must also
+            # be processed when the object type has scores active.
             doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
+            doc_types_in_config_scores, _ = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='scores', return_symmetric=True)
+            doc_types_in_config_all = sorted(list(set(doc_types_in_config + doc_types_in_config_scores)))
 
             # Check if empty
-            if len(doc_types_in_config)==0 and len(doclink_types_in_config)==0:
+            if len(doc_types_in_config_all)==0 and len(doclink_types_in_config)==0:
                 sysmsg.warning(f"No type flags found for 'docs' nor 'doc-links'.")
                 sysmsg.info(f"🚜 Nothing to do.\n")
                 return
@@ -4824,6 +4828,19 @@ class GraphRegistry():
 
                 # Append doclinks for which links equal doc types to be processed
                 doclink_types_to_process += [t for t in doclink_types_available if t[1] in doc_types_in_config]
+
+                # Ensure SEM ontology-object edges are processed when the object
+                # counterpart is active (scores or fields). This covers pairs like
+                # Category-Course SEM even when they are not explicit typeflags edges.
+                ontology_types = {'Concept', 'Category'}
+                for t in doclink_types_available:
+                    if t[2] != 'SEM':
+                        continue
+                    doc_type, link_type = t[:2]
+                    if (doc_type in ontology_types) != (link_type in ontology_types):
+                        object_type = link_type if doc_type in ontology_types else doc_type
+                        if object_type in doc_types_in_config_all:
+                            doclink_types_to_process.append(t)
 
                 # Process links in both directions
                 doclink_types_to_process += [(t[1], t[0], t[2]) for t in doclink_types_to_process if (t[1], t[0], t[2]) in doclink_types_available]
@@ -4930,6 +4947,19 @@ class GraphRegistry():
 
                 # Append doclinks for which links equal doc types to be processed
                 doclink_types_to_process += [t for t in doclink_types_available if t[1] in doc_types_in_config]
+
+                # Ensure SEM ontology-object edges are processed when the object
+                # counterpart is active. This covers pairs like Category-Course SEM
+                # even when they are not explicit typeflags edges.
+                ontology_types = {'Concept', 'Category'}
+                for t in doclink_types_available:
+                    if t[2] != 'SEM':
+                        continue
+                    doc_type, link_type = t[:2]
+                    if (doc_type in ontology_types) != (link_type in ontology_types):
+                        object_type = link_type if doc_type in ontology_types else doc_type
+                        if object_type in doc_types_in_config:
+                            doclink_types_to_process.append(t)
 
                 # Process links in both directions
                 doclink_types_to_process += [(t[1], t[0], t[2]) for t in doclink_types_to_process if (t[1], t[0], t[2]) in doclink_types_available]
