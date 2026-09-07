@@ -24,19 +24,24 @@ def cmd_ai_detect_concepts(args) -> None:
     for node in node_list.item_list:
 
         # Detect concepts for the node
-        # enriched_node = node_ops.enrich_with_concepts(node)
+        enriched_node = node_ops.enrich_with_concepts(node)
 
-        import pickle
-        # # save as pickle file
-        # with open(f"enriched_node_{enriched_node.key}.pkl", "wb") as f:
-        #     pickle.dump(enriched_node, f)
+        ###############################################
+        ################## TO DELETE ##################
+        ###############################################
+        # import pickle
+        # # # save as pickle file
+        # # with open(f"enriched_node_{enriched_node.key}.pkl", "wb") as f:
+        # #     pickle.dump(enriched_node, f)
 
-        # Load from pickle file
-        with open(f"enriched_node_{node.key}.pkl", "rb") as f:
-            enriched_node = pickle.load(f)
+        # # Load from pickle file
+        # with open(f"enriched_node_{node.key}.pkl", "rb") as f:
+        #     enriched_node = pickle.load(f)
 
-        rich.print(enriched_node)
-        exit()
+        # rich.print(enriched_node)
+        # exit()
+        ###############################################
+        ###############################################
 
         # Save the enriched node back to the repository
         node_ops.save(enriched_node)

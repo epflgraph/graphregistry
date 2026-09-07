@@ -281,13 +281,13 @@ class DynamicSQL:
     def get_all_doclink_fields(self, doc_type, link_type, link_subtype, index_group):
 
         # Decide whether the physical table stores link_subtype as an ID column.
-        # Index-buildup/rollback and ES cache doc-link tables do not; GraphSearch
-        # doc-link tables (ORG/SEM) still do.
+        # Index-buildup/rollback tables do not; GraphSearch and Elasticsearch
+        # doc-link tables include it so that ORG and SEM links can coexist.
         include_link_subtype_by_group = {
             'indexbuildup'  : False,
             'indexrollback' : False,
             'graphsearch'   : True,
-            'elasticsearch' : False,
+            'elasticsearch' : True,
         }
         include_link_subtype = include_link_subtype_by_group.get(index_group, link_subtype is not None)
 
@@ -522,6 +522,11 @@ class DynamicSQL:
             # MySQL does not allow indexing of TEXT fields without a subset length
             subset = "(255)" if datatypes_list[fields_list.index(custom_field)] in ['MEDIUMTEXT', 'LONGTEXT'] else ""  # Add subset length for TEXT fields to allow indexing  
             sql_create_table += f",\n  KEY ({custom_field}{subset})"
+
+        # Add doc-rank-link index for graphsearch doc-link tables to support
+        # horizontal Elasticsearch patch queries that force this index.
+        if index_group == 'graphsearch' and link_type is not None:
+            sql_create_table += ",\n  KEY idx_doc_rank_link (doc_type, doc_id, row_rank, link_type, link_id, link_subtype)"
 
         # Make row_id the primary key if it is included in the fields list
         if 'row_id' in fields_list:

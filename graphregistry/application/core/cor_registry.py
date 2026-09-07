@@ -243,6 +243,15 @@ def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
 # Auxiliary function: Check if table exists and create it if not exists
 def create_table_if_not_exists(engine_name, schema_name, table_name):
 
+    # Ensure the target database/schema exists before attempting to create a table.
+    if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
+        sysmsg.warning(f"Target database '{schema_name}' does not exist. Creating database ...")
+        db.create_database(engine_name=engine_name, schema_name=schema_name)
+        if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
+            sysmsg.critical(f"❌ Failed to create database '{schema_name}'.")
+            exit()
+        sysmsg.trace("☑️ Database created successfully.")
+
     # Check if table exists
     if not db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
 
@@ -259,6 +268,32 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
         else:
             sysmsg.critical(f"❌ Failed to create table '{schema_name}.{table_name}'.")
             exit()
+
+    # Migrate existing Elasticsearch doc-link tables that were created without
+    # the link_subtype column. The correct schema includes link_subtype so ORG
+    # and SEM links can coexist.
+    elif (
+        schema_name == glbcfg.mysql_schema_names.get(engine_name, {}).get('es_cache')
+        and table_name.startswith('Index_D_')
+        and '_L_' in table_name
+        and not db.column_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name, column_name='link_subtype')
+    ):
+        sysmsg.warning(
+            f"Elasticsearch doc-link table '{schema_name}.{table_name}' is missing 'link_subtype'. "
+            f"Recreating table with corrected schema ..."
+        )
+        db.execute_query_in_shell(
+            engine_name = engine_name,
+            query       = f"DROP TABLE {schema_name}.{table_name}",
+            verbose     = False,
+            query_id    = 'es-doclink-drop-missing-subtype'
+        )
+        tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
+        db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=False, query_id='v29zYeaA')
+        if not db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
+            sysmsg.critical(f"❌ Failed to recreate table '{schema_name}.{table_name}'.")
+            exit()
+        sysmsg.trace("☑️ Table recreated successfully.")
 
 #==================================#
 # Class definition: Graph Registry #
@@ -6183,6 +6218,45 @@ class GraphRegistry():
                 self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process', 'deleted']]
                 # Exclude 'deleted': the target graphsearch table uses record_deleted, not deleted.
 
+                # Ensure the target table exists in graphsearch. The graphsearch
+                # schema does not have a static CREATE TABLE for PageProfile, so
+                # we derive it from the graph_cache table when it is missing.
+                target_schema_name = glbcfg.mysql_schema_names[self.engine_name]['graphsearch']
+
+                # Ensure the target database exists first.
+                if not db.database_exists(engine_name=self.engine_name, schema_name=target_schema_name):
+                    sysmsg.warning(f"Target database '{target_schema_name}' does not exist. Creating database ...")
+                    db.create_database(engine_name=self.engine_name, schema_name=target_schema_name)
+                    if not db.database_exists(engine_name=self.engine_name, schema_name=target_schema_name):
+                        sysmsg.critical(f"❌ Failed to create database '{target_schema_name}'.")
+                        exit()
+                    sysmsg.trace("☑️ Database created successfully.")
+
+                if not db.table_exists(
+                    engine_name = self.engine_name,
+                    schema_name = target_schema_name,
+                    table_name  = self.table_name
+                ):
+                    sysmsg.warning(
+                        f"Target table '{target_schema_name}.{self.table_name}' does not exist. "
+                        f"Creating table from graph_cache template ..."
+                    )
+                    db.execute_query_in_shell(
+                        engine_name = self.engine_name,
+                        query       = f"CREATE TABLE IF NOT EXISTS {target_schema_name}.{self.table_name} "
+                                      f"LIKE {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{self.table_name}",
+                        verbose     = False,
+                        query_id    = 'pageprofile-create-target'
+                    )
+                    if not db.table_exists(
+                        engine_name = self.engine_name,
+                        schema_name = target_schema_name,
+                        table_name  = self.table_name
+                    ):
+                        sysmsg.critical(f"❌ Failed to create table '{target_schema_name}.{self.table_name}'.")
+                        exit()
+                    sysmsg.trace("☑️ Target PageProfile table created successfully.")
+
             # ...
             def info(self):
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
@@ -6836,6 +6910,17 @@ class GraphRegistry():
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_doc_table_name)
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_link_table_name)
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graphsearch_test, table_name=self.index_table_name)
+
+                # Ensure the doc-rank-link index exists on the graphsearch doc-link
+                # table. The horizontal Elasticsearch patch query forces this index.
+                db.execute_query_in_shell(
+                    engine_name = self.engine_name,
+                    query       = f"CREATE INDEX IF NOT EXISTS idx_doc_rank_link "
+                                  f"ON {glbcfg.schema_graphsearch_test}.{self.index_table_name} "
+                                  f"(doc_type, doc_id, row_rank, link_type, link_id, link_subtype);",
+                    verbose     = False,
+                    query_id    = 'doclink-idx-doc-rank-link'
+                )
 
                 # Fetch doclink settings from index config
                 self.graphsearch_obj_fields     = idxcfg.settings['graphsearch'  ]['fields' ]['links']['default'].get(self.link_type, [])
