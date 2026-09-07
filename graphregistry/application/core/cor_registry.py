@@ -953,7 +953,9 @@ class GraphRegistry():
                     sysmsg.trace("  ~ No active scores type flags; skipping score matrix tables.")
                 else:
                     # Extract the IN-list once so we can reuse it for from/to columns.
-                    active_scores_in_list = active_scores_types.split(' IN ', 1)[1].strip()
+                    # Strip the surrounding parentheses because the template wraps
+                    # the list in its own IN (...).
+                    active_scores_in_list = active_scores_types.split(' IN ', 1)[1].strip().strip('()')
 
                     # Materialize expired score nodes into a scratch table so each score-matrix
                     # UPDATE does not re-scan the airflow table.
@@ -1695,12 +1697,15 @@ class GraphRegistry():
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
 
-                # Print object-to-object type flags
+                # Print object-to-object type flags. Collapse symmetric pairs to
+                # the alphabetically ordered direction so each edge is shown once.
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                    SELECT from_object_type, to_object_type, to_process
+                    SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
+                                    GREATEST(from_object_type, to_object_type) AS to_object_type,
+                                    1 AS to_process
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                      WHERE to_process = 1
-                  ORDER BY from_object_type, to_object_type;
+                   ORDER BY from_object_type, to_object_type;
                 """, query_id='NRWbEw5o')
                 df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'to_process'])
                 if not df.empty:
@@ -1815,13 +1820,27 @@ class GraphRegistry():
                         if process_scores:
                             self.set(object_type_key=(node_type,), flag_type='scores', to_process=1)
 
-                # Edge types
+                # Edge types. For each configured edge (A,B) we always activate
+                # both directions, because the indexing convention treats the
+                # alphabetical pair as the unit of activation. Use INSERT ... ON
+                # DUPLICATE KEY UPDATE so the reverse row is created if it does
+                # not already exist (set_cells only updates existing rows).
                 if 'edges' in config_json:
                     for d in config_json['edges']:
                         from_node_type, to_node_type, process_fields = d
                         if process_fields:
-                            self.set(object_type_key=(from_node_type, to_node_type), to_process=1)
-                            self.set(object_type_key=(to_node_type, from_node_type), to_process=1)
+                            db.execute_query_in_shell(
+                                engine_name = 'xaas_coresrv',
+                                query       = f"""
+                                    INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                                                (from_object_type, to_object_type, to_process)
+                                         VALUES ('{from_node_type}', '{to_node_type}', 1),
+                                                ('{to_node_type}', '{from_node_type}', 1)
+                                    ON DUPLICATE KEY UPDATE to_process = 1;
+                                """,
+                                verbose     = False,
+                                query_id    = 'typeflags-edge-upsert'
+                            )
 
             # Get airflow typeflags config JSON
             def get_config_json(self):
@@ -7570,11 +7589,10 @@ class GraphRegistry():
                                   AND p.to_object_id IS NOT NULL
                                   AND {_config_order_by_null_filter('bd', 'bl')}
                          )
-                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
-                           FROM ranked
-                          WHERE degree_score >= 0.1
-                            AND row_rank <= {row_rank_thr}
-                         """
+                          SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
+                            FROM ranked
+                           WHERE row_rank <= {row_rank_thr}
+                          """
 
                     # No buildup table
                     else:
@@ -7606,11 +7624,10 @@ class GraphRegistry():
                                   AND p.to_object_id IS NOT NULL
                                   AND {_config_order_by_null_filter('bd')}
                          )
-                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
-                           FROM ranked
-                          WHERE degree_score >= 0.1
-                            AND row_rank <= {row_rank_thr}
-                         """
+                          SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
+                            FROM ranked
+                           WHERE row_rank <= {row_rank_thr}
+                          """
 
                 # Semantic table?
                 elif self.link_subtype.upper() == 'SEM':
