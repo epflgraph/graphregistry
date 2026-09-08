@@ -15,5 +15,4 @@ SELECT DISTINCT n.object_type, n.object_id
             AND n.raw_text    IS NOT NULL
             AND n.record_deleted = 0
             AND c.concept_id  IS NULL
-            AND fc.to_process = 1
             AND tf.to_process = 1
