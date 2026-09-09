@@ -20,7 +20,9 @@ Registry |
 [Chat](https://github.com/epflgraph/graphchatbot) |
 [Dash](https://github.com/epflgraph/graphdashboard) |
 [DB client](https://github.com/epflgraph/graphdb-client) |
-[ES client](https://github.com/epflgraph/graphes-client)
+[ES client](https://github.com/epflgraph/graphes-client) |
+[SDK](https://github.com/epflgraph/graph-sdk) |
+[Agents](https://github.com/epflgraph/graphagents)
 
 Graph Registry
 ==============
