@@ -1,4 +1,4 @@
-<img src="assets/icon.png" alt="Project logo" height="64">
+<img src="assets/icon-a0a7c0c9.png" alt="Project logo" height="64">
 
 [![License](https://img.shields.io/github/license/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
 [![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver)](https://github.com/epflgraph/graphregistry/releases/latest)
