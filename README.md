@@ -7,24 +7,25 @@
 [![Last Commit](https://img.shields.io/github/last-commit/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/commits/master)
 [![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
 [![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
+=
 
-🏠 [Graph Project](https://github.com/epflgraph/graphproject) > Registry
+🏠 [Project Home](https://github.com/epflgraph/graphproject) > Registry
 
-Why Graph?
-==========
-The *Graph Data Platform* - developed by the AI engineering team at the [EPFL Center for Digital Education](https://www.epfl.ch/education/educational-initiatives/cede/) - is an open-source alternative to proprietary research information systems like Elsevier Pure. It federates educational and institutional data into a semantically interconnected knowledge graph of people, publications, labs, startups, courses, video lectures, and other educational resources. The [GraphSearch](https://graphsearch.epfl.ch/en) application provides lightning-fast search and discovery of the knowledge graph, as well as LLM-powered [chatbot](https://graphsearch.epfl.ch/en/chatbot) interaction with the indexed resources.
-
-**List of Graph services:**<br/>
+**List of core services:**<br/>
 Registry |
-[AI](https://github.com/epflgraph/graphai) |
+[AI](https://github.com/epflgraph/graphai/tree/rcp_deployment) |
 [Ontology](https://github.com/epflgraph/graphontology) |
 [Search](https://github.com/epflgraph/graphsearch_ui) |
-[Chat](https://github.com/epflgraph/graphchatbot) |
+[Chat](https://github.com/epflgraph/graphchatbot)
+
+**List of utilities:**<br/>
 [Dash](https://github.com/epflgraph/graphdashboard) |
 [DB client](https://github.com/epflgraph/graphdb-client) |
 [ES client](https://github.com/epflgraph/graphes-client) |
 [SDK](https://github.com/epflgraph/graph-sdk) |
 [Agents](https://github.com/epflgraph/graphagents)
+
+<br />
 
 Graph Registry
 ==============
