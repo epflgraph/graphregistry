@@ -73,3 +73,6 @@ elasticsearch:
 api:
   title: "GraphRegistry API"
   summary: "HTTP API for Graph data management."
+
+limits:
+  limit_per_type_max: 10000

@@ -1,8 +1,25 @@
 
-# Step 1: Data ingestion sequence
+# Step 0: Initialisation
 graphregistry setup init
-graphregistry data save --node_list examples/sample_sets/sample_epfl_node_list.json
-graphregistry data save --edge_list examples/sample_sets/sample_epfl_edge_list.json
+
+# Step 1(a): Data ingestion sequence (CLI method)
+# graphregistry data save --node_list examples/sample_sets/sample_epfl_node_list.json
+# graphregistry data save --edge_list examples/sample_sets/sample_epfl_edge_list.json
+
+# Step 1(b): Data ingestion sequence (API method)
+jq '.' examples/sample_sets/sample_epfl_node_list.json \
+| curl -sS -X POST 'http://127.0.0.1:9999/api/nodes/save_many' \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d @- \
+| jq '.'
+
+jq '.' examples/sample_sets/sample_epfl_edge_list.json \
+| curl -sS -X POST 'http://127.0.0.1:9999/api/edges/save_many' \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d @- \
+| jq '.'
 
 # Step 2: Sync new data
 graphregistry airflow sync --include_ontology
@@ -17,8 +34,8 @@ graphregistry ai detect_concepts
 
 # Step 5: Decide what to process
 graphregistry airflow update_checksums
-graphregistry airflow expire
-graphregistry airflow refresh --limit_per_type 100000
+# graphregistry airflow expire
+graphregistry airflow refresh --limit_per_type 10000
 graphregistry airflow status
 
 # Step 6: Knowledge graph generation sequence

@@ -409,7 +409,7 @@ class GraphRegistry():
             if 'airflow' in options:
 
                 # Print status
-                sysmsg.info("🧹 📝 Reset 'to_process' flags in graph_airflow tables.")
+                sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
 
                 # Get list of tables in 'graph_airflow' schema to process
                 list_of_tables = [
@@ -431,12 +431,24 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;"
+
+                        # Build SET clause for the flags present on this table
+                        set_parts = ["to_process = 0"]
+                        where_parts = ["to_process = 1"]
+                        if db.has_column(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name, column_name='has_changed'):
+                            set_parts.append("has_changed = 0")
+                            where_parts.append("has_changed = 1")
+                        if db.has_column(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
+                            set_parts.append("has_expired = 0")
+                            where_parts.append("has_expired = 1")
+                        set_clause = f"SET {', '.join(set_parts)} WHERE {' OR '.join(where_parts)}"
+
+                        db.execute_query_in_shell(engine_name='xaas_coresrv',
+                            query=f"UPDATE {schema_name}.{table_name} {set_clause};"
                         , query_id='5LEjczg5', verbose=verbose)
 
                 # Print status
-                sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_airflow}' tables.")
+                sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{glbcfg.schema_airflow}' tables.")
 
             # Reset flags on graph_cache
             if 'cache' in options:
@@ -1210,8 +1222,8 @@ class GraphRegistry():
                 )
 
         # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-        def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
-            self.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, limit_per_type=limit_per_type, verbose=verbose)
+        def refresh(self, doc_type=None, limit_per_type=None, verbose=False):
+            self.fieldschanged.refresh(doc_type=doc_type, limit_per_type=limit_per_type, verbose=verbose)
             self.scoresexpired.refresh(doc_type=doc_type, limit_per_type=limit_per_type, verbose=verbose)
 
         # Rollover checksums (replace previous one with current)
@@ -2486,7 +2498,7 @@ class GraphRegistry():
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'FieldsChanged' airflow tables.\n")
 
             # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-            def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
+            def refresh(self, doc_type=None, limit_per_type=None, verbose=False):
 
                 # Apply defaults
                 limit_per_type = limit_per_type if limit_per_type!=None else 100
