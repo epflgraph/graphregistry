@@ -234,7 +234,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Concept_T_ManualMapping (
   KEY text_source (text_source),
   KEY record_deleted (record_deleted),
   KEY concept_name (concept_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ChildToParent (
   from_object_type varchar(32) NOT NULL,

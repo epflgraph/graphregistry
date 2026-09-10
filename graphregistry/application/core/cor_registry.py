@@ -5243,8 +5243,7 @@ class GraphRegistry():
                     DROP TABLE IF EXISTS {valid_nodes_source_table};
                     CREATE TABLE {valid_nodes_source_table} (
                         object_type VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
-                        object_id   VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
-
+                        object_id   VARCHAR(255) COLLATE utf8mb4_bin NOT NULL
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
                     INSERT INTO {valid_nodes_source_table} (object_type, object_id)
                         SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
@@ -5911,29 +5910,41 @@ class GraphRegistry():
                         # Extract object types from the table name for further verification
                         doc_type, link_type = re.findall(r'Index_D_([^_]+)_L_([^_]+)', table_name)[0]
 
-                        # Execute SQL query to verify that all edges have a corresponding doc index entry - forward direction
-                        n_with_no_doc_index_1 = db.execute_query(
-                            engine_name = 'xaas_coresrv',
-                            schema_name = schema_name,
-                            query = f"""
-                                  SELECT COUNT(*)
-                                    FROM {schema_name}.{table_name} t
-                               LEFT JOIN {schema_name}.Index_D_{doc_type} d
-                                      ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
-                                   WHERE d.doc_id IS NULL
-                            """)[0][0]
+                        # Verify that all edges have a corresponding doc index entry - forward direction.
+                        # Skip if the target doc table does not exist (some object types are not
+                        # indexed in every schema, e.g. Exercise in elasticsearch_cache).
+                        doc_table_forward = f"Index_D_{doc_type}"
+                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=doc_table_forward):
+                            n_with_no_doc_index_1 = db.execute_query(
+                                engine_name = 'xaas_coresrv',
+                                schema_name = schema_name,
+                                query = f"""
+                                      SELECT COUNT(*)
+                                        FROM {schema_name}.{table_name} t
+                                   LEFT JOIN {schema_name}.{doc_table_forward} d
+                                          ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
+                                       WHERE d.doc_id IS NULL
+                                """)[0][0]
+                        else:
+                            sysmsg.trace(f"Doc table '{schema_name}.{doc_table_forward}' does not exist; skipping forward doc-index check for '{table_name}'.")
+                            n_with_no_doc_index_1 = 0
 
-                        # Execute SQL query to verify that all edges have a corresponding doc index entry - reverse direction
-                        n_with_no_doc_index_2 = db.execute_query(
-                            engine_name = 'xaas_coresrv',
-                            schema_name = schema_name,
-                            query = f"""
-                                  SELECT COUNT(*)
-                                    FROM {schema_name}.{table_name} t
-                               LEFT JOIN {schema_name}.Index_D_{link_type} d
-                                      ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
-                                   WHERE d.doc_id IS NULL
-                            """)[0][0]
+                        # Verify that all edges have a corresponding doc index entry - reverse direction.
+                        doc_table_reverse = f"Index_D_{link_type}"
+                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=doc_table_reverse):
+                            n_with_no_doc_index_2 = db.execute_query(
+                                engine_name = 'xaas_coresrv',
+                                schema_name = schema_name,
+                                query = f"""
+                                      SELECT COUNT(*)
+                                        FROM {schema_name}.{table_name} t
+                                   LEFT JOIN {schema_name}.{doc_table_reverse} d
+                                          ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
+                                       WHERE d.doc_id IS NULL
+                                """)[0][0]
+                        else:
+                            sysmsg.trace(f"Doc table '{schema_name}.{doc_table_reverse}' does not exist; skipping reverse doc-index check for '{table_name}'.")
+                            n_with_no_doc_index_2 = 0
 
                         # Sum the counts of edges with no corresponding doc index entry from both directions
                         n_with_no_doc_index = n_with_no_doc_index_1 + n_with_no_doc_index_2

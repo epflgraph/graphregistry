@@ -947,7 +947,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_AllEdgesInKG (
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY unique_key (from_type,from_id,to_type,to_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_Checksums (
   object_type varchar(32) NOT NULL,
@@ -997,7 +997,7 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_LargestConnectedGraph (
   UNIQUE KEY uid (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_NoLooseEnds (
   object_type varchar(32) NOT NULL,
@@ -1007,4 +1007,4 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_NoLooseEnds (
   UNIQUE KEY uid (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

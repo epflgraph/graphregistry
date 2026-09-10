@@ -25,6 +25,7 @@ def normalise_create_statement(statement: str) -> str:
 # The logical key is what GlobalConfig exposes in mysql_schema_names;
 # the suffix is used for the output file schema_<suffix>.sql.
 SCHEMA_EXPORTS = [
+    ("ontology", "ontology"),
     ("registry", "registry"),
     ("lectures", "lectures"),
     ("airflow", "airflow"),

@@ -38,10 +38,12 @@ ROW_ID_COLUMN = "row_id"
 
 # Schemas to scan.
 SCHEMAS = [
+    "graph_ontology",
     "graph_airflow",
     "graph_registry",
     "graph_lectures",
     "graph_cache",
+    "_1_DEV_graph_ontology",
     "_1_DEV_graph_airflow",
     "_1_DEV_graph_registry",
     "_1_DEV_graph_lectures",
