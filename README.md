@@ -27,9 +27,9 @@ Registry |
 
 <br />
 
-Graph Registry
-==============
-*Graph Registry* is the first layer in the Graph Data Platform. It ingests data in JSON format through an ETL pipeline, and generates a knowledge graph that feeds the GraphSearch and GraphChat applications.
+Overview
+========
+**Graph Registry** is the first layer in the Graph Platform. It ingests data in JSON format through an ETL pipeline, and generates a knowledge graph that feeds the GraphSearch and GraphChat applications.
 
 Data can be added to the registry through direct JSON file imports, or through a REST API. The actions steps in the knowledge graph construction are executed through a command line interface (CLI).
 
