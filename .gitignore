@@ -321,3 +321,5 @@ update_object_type_columns.py
 update_table_collations.py
 nohup_lectures.out
 notes_new_agent.txt
+/scripts/integrity_checks/data/
+notes.txt

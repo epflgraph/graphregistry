@@ -243,6 +243,15 @@ def get_scores_matrix_table_name(from_object_type, to_object_type, gbc_or_as):
 # Auxiliary function: Check if table exists and create it if not exists
 def create_table_if_not_exists(engine_name, schema_name, table_name):
 
+    # Ensure the target database/schema exists before attempting to create a table.
+    if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
+        sysmsg.warning(f"Target database '{schema_name}' does not exist. Creating database ...")
+        db.create_database(engine_name=engine_name, schema_name=schema_name)
+        if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
+            sysmsg.critical(f"❌ Failed to create database '{schema_name}'.")
+            exit()
+        sysmsg.trace("☑️ Database created successfully.")
+
     # Check if table exists
     if not db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
 
@@ -259,6 +268,32 @@ def create_table_if_not_exists(engine_name, schema_name, table_name):
         else:
             sysmsg.critical(f"❌ Failed to create table '{schema_name}.{table_name}'.")
             exit()
+
+    # Migrate existing Elasticsearch doc-link tables that were created without
+    # the link_subtype column. The correct schema includes link_subtype so ORG
+    # and SEM links can coexist.
+    elif (
+        schema_name == glbcfg.mysql_schema_names.get(engine_name, {}).get('es_cache')
+        and table_name.startswith('Index_D_')
+        and '_L_' in table_name
+        and not db.column_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name, column_name='link_subtype')
+    ):
+        sysmsg.warning(
+            f"Elasticsearch doc-link table '{schema_name}.{table_name}' is missing 'link_subtype'. "
+            f"Recreating table with corrected schema ..."
+        )
+        db.execute_query_in_shell(
+            engine_name = engine_name,
+            query       = f"DROP TABLE {schema_name}.{table_name}",
+            verbose     = False,
+            query_id    = 'es-doclink-drop-missing-subtype'
+        )
+        tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
+        db.execute_query_in_shell(engine_name=engine_name, query=tb.create_table_sql, verbose=False, query_id='v29zYeaA')
+        if not db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
+            sysmsg.critical(f"❌ Failed to recreate table '{schema_name}.{table_name}'.")
+            exit()
+        sysmsg.trace("☑️ Table recreated successfully.")
 
 #==================================#
 # Class definition: Graph Registry #
@@ -374,7 +409,7 @@ class GraphRegistry():
             if 'airflow' in options:
 
                 # Print status
-                sysmsg.info("🧹 📝 Reset 'to_process' flags in graph_airflow tables.")
+                sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
 
                 # Get list of tables in 'graph_airflow' schema to process
                 list_of_tables = [
@@ -396,12 +431,24 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv', 
-                            query = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;"
+
+                        # Build SET clause for the flags present on this table
+                        set_parts = ["to_process = 0"]
+                        where_parts = ["to_process = 1"]
+                        if db.has_column(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name, column_name='has_changed'):
+                            set_parts.append("has_changed = 0")
+                            where_parts.append("has_changed = 1")
+                        if db.has_column(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
+                            set_parts.append("has_expired = 0")
+                            where_parts.append("has_expired = 1")
+                        set_clause = f"SET {', '.join(set_parts)} WHERE {' OR '.join(where_parts)}"
+
+                        db.execute_query_in_shell(engine_name='xaas_coresrv',
+                            query=f"UPDATE {schema_name}.{table_name} {set_clause};"
                         , query_id='5LEjczg5', verbose=verbose)
 
                 # Print status
-                sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{glbcfg.schema_airflow}' tables.")
+                sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{glbcfg.schema_airflow}' tables.")
 
             # Reset flags on graph_cache
             if 'cache' in options:
@@ -918,7 +965,9 @@ class GraphRegistry():
                     sysmsg.trace("  ~ No active scores type flags; skipping score matrix tables.")
                 else:
                     # Extract the IN-list once so we can reuse it for from/to columns.
-                    active_scores_in_list = active_scores_types.split(' IN ', 1)[1].strip()
+                    # Strip the surrounding parentheses because the template wraps
+                    # the list in its own IN (...).
+                    active_scores_in_list = active_scores_types.split(' IN ', 1)[1].strip().strip('()')
 
                     # Materialize expired score nodes into a scratch table so each score-matrix
                     # UPDATE does not re-scan the airflow table.
@@ -938,7 +987,7 @@ class GraphRegistry():
                             query_id='PropScoresTmpCollation'
                         )[0]
                     else:
-                        temp_col_type, temp_col_id = 'utf8mb4_unicode_ci', 'utf8mb4_unicode_ci'
+                        temp_col_type, temp_col_id = 'utf8mb4_bin', 'utf8mb4_bin'
 
                     temp_table_create_scores = f"""
                     DROP TABLE IF EXISTS {temp_table_path_scores};
@@ -1173,8 +1222,8 @@ class GraphRegistry():
                 )
 
         # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-        def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
-            self.fieldschanged.refresh(doc_type=doc_type, refresh_checksums=refresh_checksums, limit_per_type=limit_per_type, verbose=verbose)
+        def refresh(self, doc_type=None, limit_per_type=None, verbose=False):
+            self.fieldschanged.refresh(doc_type=doc_type, limit_per_type=limit_per_type, verbose=verbose)
             self.scoresexpired.refresh(doc_type=doc_type, limit_per_type=limit_per_type, verbose=verbose)
 
         # Rollover checksums (replace previous one with current)
@@ -1660,12 +1709,15 @@ class GraphRegistry():
                 if not df.empty:
                     print_dataframe(df, title='⛳️ TYPE FLAGS: Object')
 
-                # Print object-to-object type flags
+                # Print object-to-object type flags. Collapse symmetric pairs to
+                # the alphabetically ordered direction so each edge is shown once.
                 out = db.execute_query(engine_name='xaas_coresrv', query=f"""
-                    SELECT from_object_type, to_object_type, to_process
+                    SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
+                                    GREATEST(from_object_type, to_object_type) AS to_object_type,
+                                    1 AS to_process
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                      WHERE to_process = 1
-                  ORDER BY from_object_type, to_object_type;
+                   ORDER BY from_object_type, to_object_type;
                 """, query_id='NRWbEw5o')
                 df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'to_process'])
                 if not df.empty:
@@ -1780,13 +1832,27 @@ class GraphRegistry():
                         if process_scores:
                             self.set(object_type_key=(node_type,), flag_type='scores', to_process=1)
 
-                # Edge types
+                # Edge types. For each configured edge (A,B) we always activate
+                # both directions, because the indexing convention treats the
+                # alphabetical pair as the unit of activation. Use INSERT ... ON
+                # DUPLICATE KEY UPDATE so the reverse row is created if it does
+                # not already exist (set_cells only updates existing rows).
                 if 'edges' in config_json:
                     for d in config_json['edges']:
                         from_node_type, to_node_type, process_fields = d
                         if process_fields:
-                            self.set(object_type_key=(from_node_type, to_node_type), to_process=1)
-                            self.set(object_type_key=(to_node_type, from_node_type), to_process=1)
+                            db.execute_query_in_shell(
+                                engine_name = 'xaas_coresrv',
+                                query       = f"""
+                                    INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
+                                                (from_object_type, to_object_type, to_process)
+                                         VALUES ('{from_node_type}', '{to_node_type}', 1),
+                                                ('{to_node_type}', '{from_node_type}', 1)
+                                    ON DUPLICATE KEY UPDATE to_process = 1;
+                                """,
+                                verbose     = False,
+                                query_id    = 'typeflags-edge-upsert'
+                            )
 
             # Get airflow typeflags config JSON
             def get_config_json(self):
@@ -2432,7 +2498,7 @@ class GraphRegistry():
                 sysmsg.success("⌛️ ✅ Done updating 'has_expired' flags in 'FieldsChanged' airflow tables.\n")
 
             # Refresh to_process flags based on changed checksums, expired dates, and never processed objects
-            def refresh(self, doc_type=None, refresh_checksums=False, limit_per_type=None, verbose=False):
+            def refresh(self, doc_type=None, limit_per_type=None, verbose=False):
 
                 # Apply defaults
                 limit_per_type = limit_per_type if limit_per_type!=None else 100
@@ -4750,11 +4816,15 @@ class GraphRegistry():
             elif 'eval' in actions and 'commit' not in actions:
                 sysmsg.warning(f"Executing in evaluation mode only.")
 
-            # Fetch typeflags config JSON
+            # Fetch typeflags config JSON. Vertical patch is primarily field-driven,
+            # but SEM ontology-object edges (Concept/Category <-> object) must also
+            # be processed when the object type has scores active.
             doc_types_in_config, doclink_types_in_config = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='fields', return_symmetric=True)
+            doc_types_in_config_scores, _ = GraphRegistry.Orchestration.TypeFlags().get_types_to_process(fields_or_scores='scores', return_symmetric=True)
+            doc_types_in_config_all = sorted(list(set(doc_types_in_config + doc_types_in_config_scores)))
 
             # Check if empty
-            if len(doc_types_in_config)==0 and len(doclink_types_in_config)==0:
+            if len(doc_types_in_config_all)==0 and len(doclink_types_in_config)==0:
                 sysmsg.warning(f"No type flags found for 'docs' nor 'doc-links'.")
                 sysmsg.info(f"🚜 Nothing to do.\n")
                 return
@@ -4770,6 +4840,19 @@ class GraphRegistry():
 
                 # Append doclinks for which links equal doc types to be processed
                 doclink_types_to_process += [t for t in doclink_types_available if t[1] in doc_types_in_config]
+
+                # Ensure SEM ontology-object edges are processed when the object
+                # counterpart is active (scores or fields). This covers pairs like
+                # Category-Course SEM even when they are not explicit typeflags edges.
+                ontology_types = {'Concept', 'Category'}
+                for t in doclink_types_available:
+                    if t[2] != 'SEM':
+                        continue
+                    doc_type, link_type = t[:2]
+                    if (doc_type in ontology_types) != (link_type in ontology_types):
+                        object_type = link_type if doc_type in ontology_types else doc_type
+                        if object_type in doc_types_in_config_all:
+                            doclink_types_to_process.append(t)
 
                 # Process links in both directions
                 doclink_types_to_process += [(t[1], t[0], t[2]) for t in doclink_types_to_process if (t[1], t[0], t[2]) in doclink_types_available]
@@ -4876,6 +4959,19 @@ class GraphRegistry():
 
                 # Append doclinks for which links equal doc types to be processed
                 doclink_types_to_process += [t for t in doclink_types_available if t[1] in doc_types_in_config]
+
+                # Ensure SEM ontology-object edges are processed when the object
+                # counterpart is active. This covers pairs like Category-Course SEM
+                # even when they are not explicit typeflags edges.
+                ontology_types = {'Concept', 'Category'}
+                for t in doclink_types_available:
+                    if t[2] != 'SEM':
+                        continue
+                    doc_type, link_type = t[:2]
+                    if (doc_type in ontology_types) != (link_type in ontology_types):
+                        object_type = link_type if doc_type in ontology_types else doc_type
+                        if object_type in doc_types_in_config:
+                            doclink_types_to_process.append(t)
 
                 # Process links in both directions
                 doclink_types_to_process += [(t[1], t[0], t[2]) for t in doclink_types_to_process if (t[1], t[0], t[2]) in doclink_types_available]
@@ -5158,10 +5254,9 @@ class GraphRegistry():
                 query=f"""
                     DROP TABLE IF EXISTS {valid_nodes_source_table};
                     CREATE TABLE {valid_nodes_source_table} (
-                        object_type VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                        object_id   VARCHAR(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-                        PRIMARY KEY (object_type, object_id)
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+                        object_type VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
+                        object_id   VARCHAR(255) COLLATE utf8mb4_bin NOT NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
                     INSERT INTO {valid_nodes_source_table} (object_type, object_id)
                         SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
                         UNION ALL
@@ -5827,29 +5922,41 @@ class GraphRegistry():
                         # Extract object types from the table name for further verification
                         doc_type, link_type = re.findall(r'Index_D_([^_]+)_L_([^_]+)', table_name)[0]
 
-                        # Execute SQL query to verify that all edges have a corresponding doc index entry - forward direction
-                        n_with_no_doc_index_1 = db.execute_query(
-                            engine_name = 'xaas_coresrv',
-                            schema_name = schema_name,
-                            query = f"""
-                                  SELECT COUNT(*)
-                                    FROM {schema_name}.{table_name} t
-                               LEFT JOIN {schema_name}.Index_D_{doc_type} d
-                                      ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
-                                   WHERE d.doc_id IS NULL
-                            """)[0][0]
+                        # Verify that all edges have a corresponding doc index entry - forward direction.
+                        # Skip if the target doc table does not exist (some object types are not
+                        # indexed in every schema, e.g. Exercise in elasticsearch_cache).
+                        doc_table_forward = f"Index_D_{doc_type}"
+                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=doc_table_forward):
+                            n_with_no_doc_index_1 = db.execute_query(
+                                engine_name = 'xaas_coresrv',
+                                schema_name = schema_name,
+                                query = f"""
+                                      SELECT COUNT(*)
+                                        FROM {schema_name}.{table_name} t
+                                   LEFT JOIN {schema_name}.{doc_table_forward} d
+                                          ON (t.doc_type, t.doc_id) = (d.doc_type, d.doc_id)
+                                       WHERE d.doc_id IS NULL
+                                """)[0][0]
+                        else:
+                            sysmsg.trace(f"Doc table '{schema_name}.{doc_table_forward}' does not exist; skipping forward doc-index check for '{table_name}'.")
+                            n_with_no_doc_index_1 = 0
 
-                        # Execute SQL query to verify that all edges have a corresponding doc index entry - reverse direction
-                        n_with_no_doc_index_2 = db.execute_query(
-                            engine_name = 'xaas_coresrv',
-                            schema_name = schema_name,
-                            query = f"""
-                                  SELECT COUNT(*)
-                                    FROM {schema_name}.{table_name} t
-                               LEFT JOIN {schema_name}.Index_D_{link_type} d
-                                      ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
-                                   WHERE d.doc_id IS NULL
-                            """)[0][0]
+                        # Verify that all edges have a corresponding doc index entry - reverse direction.
+                        doc_table_reverse = f"Index_D_{link_type}"
+                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=doc_table_reverse):
+                            n_with_no_doc_index_2 = db.execute_query(
+                                engine_name = 'xaas_coresrv',
+                                schema_name = schema_name,
+                                query = f"""
+                                      SELECT COUNT(*)
+                                        FROM {schema_name}.{table_name} t
+                                   LEFT JOIN {schema_name}.{doc_table_reverse} d
+                                          ON (t.link_type, t.link_id) = (d.doc_type, d.doc_id)
+                                       WHERE d.doc_id IS NULL
+                                """)[0][0]
+                        else:
+                            sysmsg.trace(f"Doc table '{schema_name}.{doc_table_reverse}' does not exist; skipping reverse doc-index check for '{table_name}'.")
+                            n_with_no_doc_index_2 = 0
 
                         # Sum the counts of edges with no corresponding doc index entry from both directions
                         n_with_no_doc_index = n_with_no_doc_index_1 + n_with_no_doc_index_2
@@ -6182,6 +6289,45 @@ class GraphRegistry():
                 )
                 self.upd_column_names = [c for c in out if c not in self.key_column_names+['row_id', 'to_process', 'deleted']]
                 # Exclude 'deleted': the target graphsearch table uses record_deleted, not deleted.
+
+                # Ensure the target table exists in graphsearch. The graphsearch
+                # schema does not have a static CREATE TABLE for PageProfile, so
+                # we derive it from the graph_cache table when it is missing.
+                target_schema_name = glbcfg.mysql_schema_names[self.engine_name]['graphsearch']
+
+                # Ensure the target database exists first.
+                if not db.database_exists(engine_name=self.engine_name, schema_name=target_schema_name):
+                    sysmsg.warning(f"Target database '{target_schema_name}' does not exist. Creating database ...")
+                    db.create_database(engine_name=self.engine_name, schema_name=target_schema_name)
+                    if not db.database_exists(engine_name=self.engine_name, schema_name=target_schema_name):
+                        sysmsg.critical(f"❌ Failed to create database '{target_schema_name}'.")
+                        exit()
+                    sysmsg.trace("☑️ Database created successfully.")
+
+                if not db.table_exists(
+                    engine_name = self.engine_name,
+                    schema_name = target_schema_name,
+                    table_name  = self.table_name
+                ):
+                    sysmsg.warning(
+                        f"Target table '{target_schema_name}.{self.table_name}' does not exist. "
+                        f"Creating table from graph_cache template ..."
+                    )
+                    db.execute_query_in_shell(
+                        engine_name = self.engine_name,
+                        query       = f"CREATE TABLE IF NOT EXISTS {target_schema_name}.{self.table_name} "
+                                      f"LIKE {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.{self.table_name}",
+                        verbose     = False,
+                        query_id    = 'pageprofile-create-target'
+                    )
+                    if not db.table_exists(
+                        engine_name = self.engine_name,
+                        schema_name = target_schema_name,
+                        table_name  = self.table_name
+                    ):
+                        sysmsg.critical(f"❌ Failed to create table '{target_schema_name}.{self.table_name}'.")
+                        exit()
+                    sysmsg.trace("☑️ Target PageProfile table created successfully.")
 
             # ...
             def info(self):
@@ -6837,6 +6983,58 @@ class GraphRegistry():
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graph_cache_test, table_name=self.buildup_link_table_name)
                 create_table_if_not_exists(engine_name=self.engine_name, schema_name=glbcfg.schema_graphsearch_test, table_name=self.index_table_name)
 
+                # Ensure the doc-rank-link index exists on the graphsearch doc-link
+                # table. The horizontal Elasticsearch patch query forces this index.
+                # A key-exists check avoids the shell-spawn overhead when the index
+                # is already present.
+                if not db.key_exists(
+                    engine_name = self.engine_name,
+                    schema_name = glbcfg.schema_graphsearch_test,
+                    table_name  = self.index_table_name,
+                    key_name    = 'idx_doc_rank_link'
+                ):
+                    db.execute_query_in_shell(
+                        engine_name = self.engine_name,
+                        query       = f"CREATE INDEX IF NOT EXISTS idx_doc_rank_link "
+                                      f"ON {glbcfg.schema_graphsearch_test}.{self.index_table_name} "
+                                      f"(doc_type, doc_id, row_rank, link_type, link_id, link_subtype);",
+                        verbose     = False,
+                        query_id    = 'doclink-idx-doc-rank-link'
+                    )
+
+                # Ensure the unique key includes link_subtype on graphsearch doc-link
+                # tables. Older tables were created with uid(doc_type,doc_id,link_type,
+                # link_id), which allows ORG and SEM rows to collide. The correct key
+                # is uid(doc_type,doc_id,link_type,link_subtype,link_id).
+                expected_uid_columns = ['doc_type', 'doc_id', 'link_type', 'link_subtype', 'link_id']
+                actual_uid_columns = [
+                    row[0] for row in db.execute_query(
+                        engine_name = self.engine_name,
+                        query       = f"""
+                            SELECT COLUMN_NAME
+                              FROM INFORMATION_SCHEMA.STATISTICS
+                             WHERE TABLE_SCHEMA = '{glbcfg.schema_graphsearch_test}'
+                               AND TABLE_NAME   = '{self.index_table_name}'
+                               AND INDEX_NAME   = 'uid'
+                             ORDER BY SEQ_IN_INDEX
+                        """,
+                        query_id    = 'doclink-uid-columns'
+                    )
+                ]
+                if actual_uid_columns and actual_uid_columns != expected_uid_columns:
+                    sysmsg.warning(
+                        f"Unique key on '{glbcfg.schema_graphsearch_test}.{self.index_table_name}' "
+                        f"does not include link_subtype. Rebuilding unique key ..."
+                    )
+                    db.execute_query_in_shell(
+                        engine_name = self.engine_name,
+                        query       = f"ALTER TABLE {glbcfg.schema_graphsearch_test}.{self.index_table_name} "
+                                      f"DROP INDEX uid, "
+                                      f"ADD UNIQUE KEY uid ({', '.join(expected_uid_columns)});",
+                        verbose     = False,
+                        query_id    = 'doclink-uid-rebuild'
+                    )
+
                 # Fetch doclink settings from index config
                 self.graphsearch_obj_fields     = idxcfg.settings['graphsearch'  ]['fields' ]['links']['default'].get(self.link_type, [])
                 self.graphsearch_obj2obj_fields = idxcfg.settings['graphsearch'  ]['fields' ]['links']['parent_child'].get(self.doc_type, {}).get(self.link_type, []) if link_subtype.upper() == 'ORG' else []
@@ -7354,7 +7552,7 @@ class GraphRegistry():
                 buildup_table_exists = buildup_table_exists_direct or buildup_table_exists_flipped
 
                 # Cross-engine collate correction
-                colate_correct = 'COLLATE utf8mb4_unicode_ci' if self.engine_name=='prod' else ''
+                colate_correct = 'COLLATE utf8mb4_bin'
 
                 #--------------------------#
                 # Build commit SQL queries #
@@ -7444,11 +7642,10 @@ class GraphRegistry():
                                   AND p.to_object_id IS NOT NULL
                                   AND {_config_order_by_null_filter('bd', 'bl')}
                          )
-                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
-                           FROM ranked
-                          WHERE degree_score >= 0.1
-                            AND row_rank <= {row_rank_thr}
-                         """
+                          SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '}{', '.join(self.graphsearch_obj2obj_fields)}{',' if len(self.graphsearch_obj2obj_fields)>0 else ''} degree_score, row_score, row_rank
+                            FROM ranked
+                           WHERE row_rank <= {row_rank_thr}
+                          """
 
                     # No buildup table
                     else:
@@ -7480,11 +7677,10 @@ class GraphRegistry():
                                   AND p.to_object_id IS NOT NULL
                                   AND {_config_order_by_null_filter('bd')}
                          )
-                         SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
-                           FROM ranked
-                          WHERE degree_score >= 0.1
-                            AND row_rank <= {row_rank_thr}
-                         """
+                          SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{', ' if len(self.graphsearch_obj_fields)>0 else ' '} degree_score, row_score, row_rank
+                            FROM ranked
+                           WHERE row_rank <= {row_rank_thr}
+                          """
 
                 # Semantic table?
                 elif self.link_subtype.upper() == 'SEM':
@@ -7725,10 +7921,17 @@ class GraphRegistry():
                                   AND {_config_order_by_null_filter('i')}
                          )
                          SELECT doc_type, doc_id, link_type, link_subtype, link_id, {', '.join(self.graphsearch_obj_fields)}{',' if len(self.graphsearch_obj_fields)>0 else ''} semantic_score, row_score, row_rank
-                           FROM ranked
-                          WHERE semantic_score >= 0.1
-                            AND row_rank <= {row_rank_thr}
-                         """
+                            FROM ranked
+                           WHERE semantic_score >= 0.1
+                             AND row_rank <= {row_rank_thr}
+                          """
+
+                        # Self-loop semantic edges (e.g. Category --> Category [SEM]) have
+                        # identical source and target types. The flipped insert is identical
+                        # to the forward insert, so it would violate the unique key. Keep only
+                        # the forward insert.
+                        if self.doc_type == self.link_type:
+                            SQLQuery_Insert_Flipped = None
 
                 #-----------------------------#
                 # Generate evaluation queries #

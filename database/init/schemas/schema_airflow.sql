@@ -1,9 +1,31 @@
+CREATE TABLE IF NOT EXISTS Operations_N_Lecture_T_ProcessingTokens (
+  object_type varchar(32) NOT NULL,
+  object_id varchar(255) NOT NULL,
+  video_download_task_id varchar(255) DEFAULT NULL,
+  video_token varchar(255) DEFAULT NULL,
+  audio_extraction_task_id varchar(255) DEFAULT NULL,
+  audio_token varchar(255) DEFAULT NULL,
+  slide_detection_task_id varchar(255) DEFAULT NULL,
+  slides_detected tinyint(1) NOT NULL DEFAULT 0,
+  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (object_type,object_id),
+  KEY object_type (object_type),
+  KEY object_id (object_id),
+  KEY video_download_task_id (video_download_task_id),
+  KEY video_token (video_token),
+  KEY audio_extraction_task_id (audio_extraction_task_id),
+  KEY audio_token (audio_token),
+  KEY slide_detection_task_id (slide_detection_task_id),
+  KEY slides_detected (slides_detected)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
   from_object_type varchar(32) NOT NULL,
   from_object_id varchar(255) NOT NULL,
   to_object_type varchar(32) NOT NULL,
   to_object_id varchar(255) NOT NULL,
-  context varchar(32) NOT NULL DEFAULT '0',
+  context varchar(32) NOT NULL,
   checksum_current char(32) DEFAULT NULL,
   checksum_previous char(32) DEFAULT NULL,
   has_changed tinyint(1) DEFAULT 0,
@@ -11,11 +33,10 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
   has_expired tinyint(1) DEFAULT 0,
   to_process tinyint(1) NOT NULL DEFAULT 0,
   deleted tinyint(1) NOT NULL DEFAULT 0,
-  row_id bigint unsigned NOT NULL AUTO_INCREMENT,
+  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY object_key (from_object_type,from_object_id,to_object_type,to_object_id),
-  UNIQUE KEY uid (from_object_type,from_object_id,to_object_type,to_object_id,context),
+  UNIQUE KEY object_type_and_id (from_object_type,from_object_id,to_object_type,to_object_id),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
@@ -23,17 +44,11 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_FieldsChanged (
   KEY fields_checksum_current (checksum_current),
   KEY fields_checksum_previous (checksum_previous),
   KEY fields_have_changed (has_changed),
-  KEY edge_key (from_object_type,from_object_id,to_object_type,to_object_id),
-  KEY full_type (from_object_type,to_object_type),
-  KEY from_full_type (from_object_type),
-  KEY from_full_id (from_object_type,from_object_id),
-  KEY to_full_type (to_object_type),
-  KEY to_full_id (to_object_type,to_object_id),
   KEY last_date_calculated (last_date_cached),
   KEY has_expired (has_expired),
   KEY to_process (to_process),
   KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_TypeFlags (
   from_object_type varchar(32) NOT NULL,
@@ -42,9 +57,8 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_TypeFlags (
   PRIMARY KEY (from_object_type,to_object_type),
   KEY from_object_type (from_object_type),
   KEY to_object_type (to_object_type),
-  KEY to_process (to_process),
-  KEY full_type (from_object_type,to_object_type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY to_process (to_process)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
   object_type varchar(32) NOT NULL,
@@ -56,10 +70,10 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
   has_expired tinyint(1) DEFAULT 0,
   to_process tinyint(1) NOT NULL DEFAULT 0,
   deleted tinyint(1) NOT NULL DEFAULT 0,
-  row_id bigint unsigned NOT NULL AUTO_INCREMENT,
+  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY object_key (object_type,object_id),
+  UNIQUE KEY object_type_and_id (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY fields_checksum_current (checksum_current),
@@ -68,31 +82,32 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_FieldsChanged (
   KEY last_date_calculated (last_date_cached),
   KEY has_expired (has_expired),
   KEY to_process (to_process),
-  KEY deleted (deleted)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY deleted (deleted),
+  KEY type_proc_del_id (object_type,to_process,deleted,object_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_ScoresExpired (
   object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   last_date_cached date DEFAULT NULL,
-  has_expired tinyint(1) DEFAULT NULL,
+  has_expired tinyint(1) DEFAULT 0,
   to_process tinyint(1) NOT NULL DEFAULT 0,
   deleted tinyint(1) NOT NULL DEFAULT 0,
-  row_id bigint unsigned NOT NULL AUTO_INCREMENT,
+  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
   UNIQUE KEY row_id (row_id),
-  UNIQUE KEY object_key (object_type,object_id),
+  UNIQUE KEY object_type_and_id (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY last_date_cached (last_date_cached),
   KEY has_expired (has_expired),
   KEY to_process (to_process),
-  KEY deleted (deleted),
-  KEY idx_se_objectkey_to (object_type,object_id,to_process),
   KEY idx_se_type_to (object_type,to_process),
-  KEY idx_se_type_to_inst_obj (object_type,to_process,object_id),
-  KEY key2 (object_type,to_process)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  KEY idx_se_type_process_object (object_type,to_process,object_id),
+  KEY to_process_type_object (to_process,object_type,object_id),
+  KEY deleted (deleted),
+  KEY type_proc_del_id (object_type,to_process,deleted,object_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_TypeFlags (
   object_type varchar(32) NOT NULL,
@@ -102,41 +117,20 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_TypeFlags (
   KEY object_type (object_type),
   KEY to_process (to_process),
   KEY flag_type (flag_type),
-  KEY full_type (object_type),
-  KEY idx_tf_filters (object_type,flag_type,to_process),
-  KEY key2 (object_type,flag_type,to_process),
   KEY idx_tf_to_process_object_type (to_process,object_type),
   KEY idx_tf_object_type_to_process (object_type,to_process)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS Operations_N_Lecture_T_ProcessingTokens (
-  object_type varchar(32) NOT NULL,
-  object_id varchar(255) NOT NULL,
-  video_download_task_id varchar(255) DEFAULT NULL,
-  video_token varchar(255) DEFAULT NULL,
-  audio_extraction_task_id varchar(255) DEFAULT NULL,
-  audio_token varchar(255) DEFAULT NULL,
-  slide_detection_task_id varchar(255) DEFAULT NULL,
-  slides_detected tinyint(1) NOT NULL DEFAULT 0,
-  PRIMARY KEY (object_type,object_id),
-  KEY object_type (object_type),
-  KEY object_id (object_id),
-  KEY video_download_task_id (video_download_task_id),
-  KEY video_token (video_token),
-  KEY audio_extraction_task_id (audio_extraction_task_id),
-  KEY audio_token (audio_token),
-  KEY slide_detection_task_id (slide_detection_task_id),
-  KEY slides_detected (slides_detected)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS Operations_N_Slide_T_ProcessingTokens (
   object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
   video_token varchar(255) DEFAULT NULL,
   image_token varchar(255) DEFAULT NULL,
-  PRIMARY KEY (object_type,object_id),
+  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (row_id),
+  UNIQUE KEY uid (object_type,object_id),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY video_token (video_token),
   KEY image_token (image_token)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

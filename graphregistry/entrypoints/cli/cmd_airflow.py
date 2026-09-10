@@ -294,7 +294,6 @@ def cmd_airflow_refresh(args):
     # Fetch context objects
     registry = args.ctx.registry
     glbcfg = args.ctx.global_config
-    r = args.refresh_checksums
     v = args.verbose
 
     # Validate safety limits
@@ -318,7 +317,6 @@ def cmd_airflow_refresh(args):
     # - Set 'has_expired' flag to 1 for objects based on date when they were last cached.
     registry.orchestrator.refresh(
         doc_type = args.doc_type,
-        refresh_checksums = r,
         limit_per_type = args.limit_per_type,
         verbose = v
     )

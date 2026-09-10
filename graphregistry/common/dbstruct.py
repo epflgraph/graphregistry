@@ -1,9 +1,7 @@
 # graphregistry/common/dbstruct.py
 from functools import lru_cache
 from pathlib import Path
-
 import json, re
-
 from graphdb.core.config import GraphDBConfig
 from graphdb.core.graphdb import GraphDB
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
@@ -12,47 +10,50 @@ from graphregistry.common.paths import DATABASE_SYSTEM_DATATYPES_PATH
 # TODO: Check presence of column name "context" in all edge definitions
 # TODO: Some keys are not being created in elasticsearch cache schemas
 
-
+# Public Method: Return the global application configuration, loading it on first call.
 @lru_cache(maxsize=1)
 def get_global_config() -> GlobalConfig:
     """Lazy loader for the global configuration."""
     return GlobalConfig.from_file()
 
-
+# Public Method: Return the index schema configuration, loading it on first call.
 @lru_cache(maxsize=1)
 def get_index_config() -> IndexConfig:
     """Lazy loader for the index configuration."""
     return IndexConfig.from_file()
 
-
+# Public Method: Return the edge-scoring configuration, loading it on first call.
 @lru_cache(maxsize=1)
 def get_scores_config() -> ScoresConfig:
     """Lazy loader for the scores configuration."""
     return ScoresConfig.from_file()
 
-
+# Internal Function: Walk up the filesystem to locate the repository root.
 def _find_repo_root(start: Path | None = None) -> Path:
     start = (start or Path(__file__)).resolve()
 
+    # Search the start directory and every ancestor for the repository root.
     for parent in [start, *start.parents]:
         if (parent / "graphregistry").is_dir() and (parent / "config").is_dir():
             return parent
 
+    # No ancestor contained both required directories.
     raise RuntimeError(f"Could not find repository root from: {start}")
 
-
+# Resolve repository paths once at import time.
 REPO_ROOT = _find_repo_root()
 CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
-    'char'     : 'VARCHAR(255)',
-    'text'     : 'MEDIUMTEXT',
-    'longtext' : 'LONGTEXT',
-    'int'      : 'MEDIUMINT UNSIGNED',
-    'bool'     : 'TINYINT(1)',
-    'date'     : 'DATE',
-    'datetime' : 'DATETIME'
+    'bool'     :            'tinyint(1) DEFAULT NULL',
+    'char'     :          'varchar(255) DEFAULT NULL',
+    'date'     :                  'date DEFAULT NULL',
+    'datetime' :              'datetime DEFAULT NULL',
+    'float'    :                 'float DEFAULT NULL',
+    'int'      : 'mediumint(8) unsigned DEFAULT NULL',
+    'longtext' :              'longtext DEFAULT NULL',
+    'text'     :            'mediumtext DEFAULT NULL'
 }
 
 # Define mapping from field datatypes onto "castable" types
@@ -95,7 +96,7 @@ for file_path in (Path(__file__).resolve().parents[2] / 'database/queries').rglo
 # Auxiliary functions #
 #---------------------#
 
-# Function that takes a query template with placeholders and replaces them with values from kwargs
+# Public Method: Replace [[placeholder]] tokens in a SQL template file with kwargs.
 def resolve_sql_query(file_path, **kwargs):
 
     # Open SQL query template file and read as string
@@ -120,7 +121,7 @@ with open(DATABASE_SYSTEM_DATATYPES_PATH, "r", encoding="utf-8") as f:
 #============================================#
 class DynamicSQL:
 
-    # Constructor
+    # Method: Initialise a DynamicSQL instance bound to the given GraphDB client.
     def __init__(self, db: "GraphDB") -> None:
 
         # Store the GraphDB client explicitly. Each caller owns its instance,
@@ -197,18 +198,22 @@ class DynamicSQL:
     # Method group: Instance methods   #
     #----------------------------------#
 
+    # Public Method: Return the SQL field list for a document or document-link type.
     def get_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None):
         if link_type is None:
             return self.get_all_doc_fields(doc_type=doc_type, index_group=index_group)
         else:
             return self.get_all_doclink_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
 
+    # Public Method: Build and return the CREATE TABLE SQL for a document or document-link type.
     def get_create_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
         return self.get_sql_create_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
+    # Public Method: Build and return the ALTER TABLE SQL that brings a live table in sync.
     def get_alter_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
         return self.get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
+    # Public Method: Compare configured fields against a live table and report differences.
     def compare_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
         return self.compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
 
@@ -216,7 +221,7 @@ class DynamicSQL:
     # Method group: Table diagnostics #
     #---------------------------------#
 
-    # Compare list of fields with the one currently in the table and return missing and extra fields
+    # Public Method: Compare configured fields for a type against an existing table by name.
     def compare_fields_with_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
 
         # Get list of fields based on doc type, link type, link subtype, and index group
@@ -248,7 +253,7 @@ class DynamicSQL:
 
     #===== All fields =====#
 
-    # General simplified method to get all combined fields
+    # Public Method: Return the full field list for a document type, including IDs and custom fields.
     def get_all_doc_fields(self, doc_type, index_group):
 
         # Get field list helpers
@@ -272,17 +277,17 @@ class DynamicSQL:
         else:
             return []
 
-    # General simplified method to get all combined fields
+    # Public Method: Return the full field list for a document-link type, including IDs and custom fields.
     def get_all_doclink_fields(self, doc_type, link_type, link_subtype, index_group):
 
         # Decide whether the physical table stores link_subtype as an ID column.
-        # Index-buildup/rollback and ES cache doc-link tables do not; GraphSearch
-        # doc-link tables (ORG/SEM) still do.
+        # Index-buildup/rollback tables do not; GraphSearch and Elasticsearch
+        # doc-link tables include it so that ORG and SEM links can coexist.
         include_link_subtype_by_group = {
-            'indexbuildup': False,
-            'indexrollback': False,
-            'graphsearch': True,
-            'elasticsearch': False,
+            'indexbuildup'  : False,
+            'indexrollback' : False,
+            'graphsearch'   : True,
+            'elasticsearch' : True,
         }
         include_link_subtype = include_link_subtype_by_group.get(index_group, link_subtype is not None)
 
@@ -309,7 +314,7 @@ class DynamicSQL:
 
     #===== ID fields =====#
 
-    # General simplified method to get id-defining fields
+    # Public Method: Return the id field names for a node or edge according to the chosen convention.
     def get_id_fields(self, unit_type, convention, include_link_subtype=False):
         if   unit_type=='node':
             return self.get_doc_id_fields(convention=convention)
@@ -319,7 +324,7 @@ class DynamicSQL:
             print("❌ Critical error [je42J1]: DynamicSQL.get_id_fields()")
             exit()
 
-    # Export graphsearch doc id-defining fields for docs
+    # Public Method: Return id field names for a document using the selected node-edge convention.
     def get_doc_id_fields(self, convention):
         if convention=='node-edge':
             return ['object_type', 'object_id']
@@ -329,7 +334,7 @@ class DynamicSQL:
             print("❌ Critical error [F32gh3]: DynamicSQL.get_doc_id_fields()")
             exit()
 
-    # Export graphsearch doc id-defining fields for doclinks
+    # Public Method: Return id field names for a document link using the selected convention.
     def get_doclink_id_fields(self, convention, include_link_subtype=False):
         if convention=='node-edge':
             return ['from_object_type', 'from_object_id', 'to_object_type', 'to_object_id']
@@ -344,7 +349,7 @@ class DynamicSQL:
 
     #===== Custom fields =====#
 
-    # General simplified method to get custom fields
+    # Public Method: Return custom fields for a document or document-link type and index group.
     def get_custom_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None):
         if link_type is None:
             if index_group in ('indexbuildup', 'indexrollback', 'graphsearch'):
@@ -373,22 +378,22 @@ class DynamicSQL:
                 print("index_group ......", index_group)
                 exit()
 
-    # Export graphsearch doc fields for a given doc type
+    # Public Method: Return graphsearch-specific custom fields for a document type.
     def get_doc_custom_fields_graphsearch(self, doc_type):
         return self.docs[doc_type].graphsearch_obj_fields
 
-    # Export elasticsearch doc fields for a given doc type
+    # Public Method: Return elasticsearch-specific custom fields for a document type.
     def get_doc_custom_fields_elasticsearch(self, doc_type):
         return self.docs[doc_type].elasticsearch_obj_fields
 
-    # Export graphsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
+    # Public Method: Return index-buildup custom fields for a document link.
     def get_doclink_custom_fields_indexbuildup(self, doc_type, link_type, link_subtype):
         fields_list = []
         if link_subtype.upper() == 'ORG':
             fields_list = self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields
         return fields_list
 
-    # Export graphsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
+    # Public Method: Return graphsearch custom fields for a document link.
     def get_doclink_custom_fields_graphsearch(self, doc_type, link_type, link_subtype):
         fields_list = []
         if link_subtype.upper() == 'SEM':
@@ -399,7 +404,7 @@ class DynamicSQL:
                 fields_list += [x for x in self.doclinks_org[(doc_type, link_type)].graphsearch_obj2obj_fields if x not in fields_list]
         return fields_list
 
-    # Export elasticsearch doclink fields for a given doc type, link type, and link subtype (semantic or organisational)
+    # Public Method: Return elasticsearch custom fields for a document link.
     def get_doclink_custom_fields_elasticsearch(self, doc_type, link_type):
         if (doc_type, link_type) in self.doclinks_org:
             if (doc_type, link_type) in self.doclinks_org:
@@ -413,7 +418,7 @@ class DynamicSQL:
     # Method group: Export dynamic SQL #
     #----------------------------------#
 
-    # Convert list of fields into list of datatypes using config file
+    # Public Method: Map a list of field names to their canonical SQL datatype strings.
     def get_datatypes_from_fields(self, fields_list):
         datatypes_list = []
         for field_name in fields_list:
@@ -425,7 +430,7 @@ class DynamicSQL:
                 raise Exception(f"❌ No datatype found in config: {field_name}")
         return datatypes_list
 
-    # Get SQL table name for a given doc type, link type, link subtype, and index group
+    # Public Method: Return the physical table name for a document or document-link type.
     def get_sql_table_name(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
         if link_type is None:
             if index_group in ('graphsearch', 'elasticsearch'):
@@ -453,7 +458,7 @@ class DynamicSQL:
                 print("❌ Critical error [91JdA]: DynamicSQL.get_sql_table_name()")
                 exit()
 
-    # Generate SQL create table
+    # Public Method: Generate the full CREATE TABLE statement for a configured type.
     def get_sql_create_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
 
         # Get fields list based on node or edge type
@@ -482,11 +487,14 @@ class DynamicSQL:
         # Generate SQL create table statement with field datatype definitions
         sql_create_table = f"CREATE TABLE {sql_table_name} (\n  " + ",\n  ".join(field_definitions)
 
-        # Get id fields for unique key definition
+        # Get id fields for unique key definition. GraphSearch and Elasticsearch
+        # doc-link tables store link_subtype as an ID column so that ORG and SEM
+        # links can coexist in the same table, so the unique key must include it.
         if link_type is None:
             id_fields = self.get_doc_id_fields(convention='doc-link')
         else:
-            id_fields = self.get_doclink_id_fields(convention='doc-link')
+            include_link_subtype = index_group in ('graphsearch', 'elasticsearch')
+            id_fields = self.get_doclink_id_fields(convention='doc-link', include_link_subtype=include_link_subtype)
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
@@ -518,18 +526,22 @@ class DynamicSQL:
             subset = "(255)" if datatypes_list[fields_list.index(custom_field)] in ['MEDIUMTEXT', 'LONGTEXT'] else ""  # Add subset length for TEXT fields to allow indexing  
             sql_create_table += f",\n  KEY ({custom_field}{subset})"
 
+        # Add doc-rank-link index for graphsearch doc-link tables to support
+        # horizontal Elasticsearch patch queries that force this index.
+        if index_group == 'graphsearch' and link_type is not None:
+            sql_create_table += ",\n  KEY idx_doc_rank_link (doc_type, doc_id, row_rank, link_type, link_id, link_subtype)"
 
         # Make row_id the primary key if it is included in the fields list
         if 'row_id' in fields_list:
             sql_create_table += ",\n  PRIMARY KEY (row_id)"
 
         # Finish SQL statement
-        sql_create_table += "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+        sql_create_table += "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;"
 
         # Return comple SQL statement
         return sql_create_table
 
-    # Generate SQL create table
+    # Public Method: Generate DROP PRIMARY KEY and ALTER TABLE statements to sync a table.
     def get_sql_alter_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, include_schema=False):
 
         # Get fields list based on node or edge type
@@ -563,11 +575,14 @@ class DynamicSQL:
             field_name = field_definition.split()[0]
             sql_alter_table += f"  MODIFY COLUMN {field_definition},\n"
 
-        # Get id fields for unique key definition
+        # Get id fields for unique key definition. GraphSearch and Elasticsearch
+        # doc-link tables store link_subtype as an ID column so that ORG and SEM
+        # links can coexist in the same table, so the unique key must include it.
         if link_type is None:
             id_fields = self.get_doc_id_fields(convention='doc-link')
         else:
-            id_fields = self.get_doclink_id_fields(convention='doc-link')
+            include_link_subtype = index_group in ('graphsearch', 'elasticsearch')
+            id_fields = self.get_doclink_id_fields(convention='doc-link', include_link_subtype=include_link_subtype)
 
         # Include key creation
         doc_custom_fields = self.get_custom_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
@@ -601,9 +616,13 @@ class DynamicSQL:
     #----------------------------------#
     # Sub-class definition: Doc object #
     #----------------------------------#
+
+#==================#
+# Class Definition #
+#==================#
     class Doc():
 
-        # Constructor
+        # Method: Initialise a Doc descriptor for the given document type.
         def __init__(self, doc_type):
             self.doc_type = doc_type
             self.options = {}
@@ -615,9 +634,13 @@ class DynamicSQL:
     #--------------------------------------#
     # Sub-class definition: DocLink object #
     #--------------------------------------#
+
+#==================#
+# Class Definition #
+#==================#
     class DocLink():
 
-        # Constructor
+        # Method: Initialise a DocLink descriptor for the given link configuration.
         def __init__(self, doc_type, link_type, link_subtype):
             self.doc_type     = doc_type
             self.link_type    = link_type
@@ -629,9 +652,13 @@ class DynamicSQL:
 #===============================#
 # Class definition: Graph Table #
 #===============================#
+
+#==================#
+# Class Definition #
+#==================#
 class GraphTable():
 
-    # Constructor
+    # Method: Initialise a GraphTable descriptor from doc/link metadata or an explicit table name.
     def __init__(self, db: "GraphDB", doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
 
         # Initialise input parameters
@@ -711,24 +738,24 @@ class GraphTable():
     # Basic export methods #
     #----------------------#
 
-    # Method: Get table name (with or without path)
+    # Public Method: Return this table's name, optionally prefixed with its schema.
     def get_table_name(self, include_path=False):
         if self.schema_name is not None:
             return f"{self.schema_name+'.' if include_path else ''}{self.table_name}"
 
-    # Method: Get list of table fields
+    # Public Method: Return the list of fields configured for this table.
     def get_fields(self):
         return self.table_fields
 
-    # Method: Get SQL create table statement
+    # Public Method: Return the precomputed CREATE TABLE SQL for this table.
     def get_create_table(self):
         return self.create_table_sql
 
-    # Method: Get SQL drop primary key statement
+    # Public Method: Return the precomputed DROP PRIMARY KEY statement for this table.
     def get_drop_primary_key(self):
         return self.drop_primary_key_sql
 
-    # Method: Get SQL alter table statement
+    # Public Method: Return the precomputed ALTER TABLE statement for this table.
     def get_alter_table(self):
         return self.alter_table_sql
 
@@ -743,18 +770,17 @@ if __name__ == "__main__":
     # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
     # for t in list_of_tables:
     #     if '_L_' in t:
-    #         print(f"SELECT * FROM elasticsearch_cache.{t} WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG);")
+    #         print(f"SELECT * FROM elasticsearch_cache.{t} WHERE (doc_id, link_id) NOT IN (SELECT doc_id,
+    # link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG);")
 
     # exit()
-
-
 
     # CHANGE THIS
     which_cache = 'elasticsearch'
 
     # Mapping
     mapping_for_which_cache = {
-        'graphsearch' : ['graphsearch', 'graphsearch_test'],
+        'graphsearch'   : ['graphsearch', 'graphsearch_test'],
         'elasticsearch' : ['es_cache', 'elasticsearch_cache']
     }
 
@@ -772,8 +798,6 @@ if __name__ == "__main__":
             FROM graph_cache.{t};
         """.replace(' (\n', '_TEMP (\n').replace(', row_id\n', '\n'))
         print('\n\n')
-
-
 
     # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Notebook_L_Category')
     # print('\n\n',tb.create_table_sql,'\n\n')
@@ -796,16 +820,16 @@ if __name__ == "__main__":
     # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Concept_L_Exercise')
     # print('\n\n',tb.create_table_sql,'\n\n')
 
+    # Example: print the CREATE TABLE SQL for another index table.
     # tb = GraphTable(schema_name=schema_name, table_name='Index_D_Concept_L_Notebook')
     # print('\n\n',tb.create_table_sql,'\n\n')
 
-
-
-
+    # Stop here in the current debug invocation; the code below is template scaffolding.
     exit()
 
     # Get list of tables in schema
-    # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name, use_regex=[r"IndexBuildup_Fields_Docs_[^_]*"])
+    # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name,
+    # use_regex=[r"IndexBuildup_Fields_Docs_[^_]*"])
     list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name)
 
     # Loop over list of tables
@@ -814,18 +838,14 @@ if __name__ == "__main__":
         # if table_name != 'Index_D_Lecture_L_Lecture_T_SEM':
         #     continue
 
-        # Display status
-        # print(f"Processing table: {table_name}")
-
+        # Skip tables that are not part of the standard index rebuild.
         if 'PageProfile' in table_name or table_name=='Index_D_Lecture_L_Concept_T_ORG' or table_name=='Index_D_Lecture_L_Concept_T_ORG_Search' or table_name=='Index_D_Lecture_L_Person_T_ORG':
             continue
 
         # Initialise table
         tb = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
 
-        # print(tb.get_drop_primary_key(), '\n' )
-        # print(tb.get_alter_table(), '\n\n' )
-
+        # Compare this table's configured fields against its live definition.
         missing_fields, fields_to_drop = DynamicSQL(db=db).compare_fields_with_table(
             doc_type     = tb.doc_type,
             link_type    = tb.link_type,
@@ -835,18 +855,22 @@ if __name__ == "__main__":
             schema_name  = tb.schema_name
         )
 
+        # Skip tables whose structure already matches the configuration.
         if not missing_fields and not fields_to_drop:
             continue
 
+        # Print a header so the table results are easy to scan.
         print("\n================================================================")
         print(f"Results for {tb.schema_name}.{table_name}")
         print("================================================================\n")
 
+        # Report missing fields, or confirm there are none.
         if missing_fields:
             print(f"⚠️ Missing fields to add: {missing_fields}")
         else:
             print("✅ No missing fields to add.")
 
+        # Report extra fields and emit the corresponding DROP COLUMN statement.
         if fields_to_drop:
             print(f"⚠️ Extra fields to drop: {fields_to_drop}")
 

@@ -69,11 +69,14 @@ def test_dynamic_sql_resolves_system_datatypes() -> None:
     """Fields defined in system_datatypes.json are converted to SQL types."""
     dynsql = DynamicSQL(db=None)
 
-    # Core id fields come from system_datatypes.json.
-    datatypes = dynsql.get_datatypes_from_fields(["doc_type", "doc_id", "row_id"])
+    # Core id fields and index flags come from system_datatypes.json.
+    datatypes = dynsql.get_datatypes_from_fields(
+        ["doc_type", "doc_id", "row_id", "include_code_in_name"]
+    )
     assert "varchar(32) NOT NULL" in datatypes
     assert "varchar(255) NOT NULL" in datatypes
     assert "bigint(20) unsigned NOT NULL AUTO_INCREMENT" in datatypes
+    assert "tinyint(1) NULL DEFAULT NULL" in datatypes
 
 # Public Method: Verify fallback to config_index.json for undefined system types.
 def test_dynamic_sql_falls_back_to_index_datatypes() -> None:

@@ -18,7 +18,7 @@
     but `NULL` fields in Nodes are being set as `None`. [FIXED]
 - ✅ Edge custom fields are not being imported. [FIXED]
 - ✅ Test full run with new structure [DONE]
-- 👉 Think about where to store custom print functions (eg, print_node_saved(), print_edge_saved()) [DONE 1st version]
+- ✅ Think about where to store custom print functions (eg, print_node_saved(), print_edge_saved()) [DONE 1st version]
 - 👉 Implement data file structure analyser/inspector
 - ✅ Add `list` function to workflows/operations [DONE]
 - ✅ Fix CLI to use mappers [DONE]
@@ -42,24 +42,24 @@
 
 ### June
 - ✅ Create a lecture sample set for dev
-- 👉 execute all operations with the operations object, not with the repo class directly
-- 👉 centralize initalization of operations object in a single function
-- 👉 implement handling of "file not found" in graphai endpoints
+- ✅ execute all operations with the operations object, not with the repo class directly
+- ✅ centralize initalization of operations object in a single function
+- ✅ implement handling of "file not found" in graphai endpoints
 - 👉 make db exports always overwrite the export folder, or at least ask for confirmation
 
 ### July
-- 👉 `avg_scores` and `log_degrees` formulas take a long time even with no active flags
-- 👉 make distinction between typeflags and airflow in reset cache operation
-- 👨🏻‍💻 implement soft delete throughout cache updates
+- ✅ `avg_scores` and `log_degrees` formulas take a long time even with no active flags
+- ✅ make distinction between typeflags and airflow in reset cache operation
+- ✅ implement soft delete throughout cache updates
 
 ### August
 - 👉 create nodes patching table on registry, to apply on every update cycle. Start with C***a L***t request
 - 👉 investigate startups not showing in ES search
 - 👉 check Execises out-of-date data
-- 👨🏻‍💻 fix repeated `row_rank` values bug after re-ranking query
-- 👨🏻‍💻 check 404 errors in API: fix with
+- ✅ fix repeated `row_rank` values bug after re-ranking query
+- ✅ check 404 errors in API
 - 👨🏻‍💻 clean out object-to-link tables (eg, graph_cache.Edges_N_Object_N_Concept_T_ScoringMatrix) by object_id before updating
-- 👉 change all tables charset/collates to `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
+- ✅ change all tables charset/collates to `CHARACTER SET utf8mb4 COLLATE utf8mb4_bin`
 - 👉 add missing concepts in ontology that come from exoset
-- 👉 propagate `record_deleted` flags from `graph_registry` downstream to `graph_cache`. NOTE: current queries are way too slow; need to execute in chunks
+- ✅ propagate `record_deleted` flags from `graph_registry` downstream to `graph_cache`. NOTE: current queries are way too slow; need to execute in chunks
 - weird video length bug in https://graphsearch.epfl.ch/en/lecture/0_r6l7tub3

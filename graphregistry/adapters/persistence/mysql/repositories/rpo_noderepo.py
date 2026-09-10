@@ -41,7 +41,7 @@ class MySQLNodeRepository(NodeRepository):
         "manually_mapped" : "Edges_N_Object_N_Concept_T_ManualMapping",
     }
 
-    # Class initialization and dependency injection
+    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
     def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
 
         # Validate that either a UnitOfWork is provided, or both a GraphDB and
@@ -244,13 +244,9 @@ class MySQLNodeRepository(NodeRepository):
             "manually_mapped" : [],
         }
 
-        # Loop through each mapping type (excluding "detected") and retrieve the
-        # corresponding concepts for the node
+        # Loop through each mapping type and retrieve the corresponding concepts for the
+        # node
         for map_type in get_args(ConceptMapType):
-
-            # Skip the "detected" mapping type as it is not needed for this operation
-            if map_type == "detected":
-                continue
 
             # Resolve the SQL query for retrieving concepts of the node based on the
             # provided key and mapping type
@@ -344,13 +340,8 @@ class MySQLNodeRepository(NodeRepository):
             rows             = [{"object_type": key.object_type, "object_id": key.object_id, **page_profile_row}],
         )
 
-        # Upsert concept edges for each mapping type (excluding "detected") using the
-        # MySQLNodeMapper
+        # Upsert concept edges for each mapping type using the MySQLNodeMapper
         for map_type, table_name in zip(get_args(ConceptMapType), self._CONCEPT_TABLE_NAMES.values(), strict=True):
-
-            # Skip the "detected" mapping type as it is not needed for this operation
-            if map_type == "detected":
-                continue
 
             # Convert the node to scored concept rows for the current mapping type using the
             # MySQLNodeMapper
@@ -498,13 +489,9 @@ class MySQLNodeRepository(NodeRepository):
         # Process concept edges #
         #-----------------------#
 
-        # Loop through each mapping type (excluding "detected") and upsert the corresponding
-        # concept edges for all nodes in the group
+        # Loop through each mapping type and upsert the corresponding concept edges
+        # for all nodes in the group
         for map_type, table_name in zip(get_args(ConceptMapType), self._CONCEPT_TABLE_NAMES.values(), strict=True):
-
-            # Skip the "detected" mapping type as it is not needed for this operation
-            if map_type == "detected":
-                continue
 
             # Convert each node to scored concept rows for the current mapping type using
             # the MySQLNodeMapper

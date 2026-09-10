@@ -129,7 +129,7 @@ class MySQLNodeMapper:
     def to_scored_concepts_rows(node: Node, map_to: ConceptMapType) -> list[dict[str, Any]]:
         return MySQLConceptMapper.to_upsert_rows(
             node_key    = node.key,
-            text_source = map_to,
+            text_source = node.text_source,
             concepts    = getattr(node.concepts, map_to),
         )
 

@@ -22,7 +22,15 @@ def cmd_setup_init(args):
     #===========================================================================#
 
     # Schemas to process
-    schemas_to_process = ['registry', 'lectures', 'airflow', 'graph_cache_test', 'graphsearch_test', 'elasticsearch_cache']
+    schemas_to_process = [
+        'registry',
+        'lectures',
+        'airflow',
+        'graph_cache_test',
+        'graphsearch_test',
+        'elasticsearch_cache',
+        'traversals',
+    ]
 
     # Execute step?
     if True:
