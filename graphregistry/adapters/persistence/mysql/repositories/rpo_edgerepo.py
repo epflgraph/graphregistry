@@ -40,8 +40,8 @@ class MySQLEdgeRepository(EdgeRepository):
         "context",
     ]
 
-    # Class initialization and dependency injection
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
+    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
+    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
         # Validate that either a UnitOfWork is provided, or both a GraphDB and
         # SchemaResolver are provided, but not both.
@@ -64,6 +64,9 @@ class MySQLEdgeRepository(EdgeRepository):
         else:
             raise ValueError("MySQLEdgeRepository requires either uow= or (db=, schema_resolver=).")
 
+        # When True, echo SQL statements executed by standalone sessions.
+        self.verbose = verbose
+
         # Initialize a GraphLogger instance for logging messages.
         self.msg = GraphLogger()
 
@@ -80,7 +83,7 @@ class MySQLEdgeRepository(EdgeRepository):
             return self._uow.get_session(engine_name)
 
         # Else, no UnitOfWork is active, so create and begin a standalone session.
-        session = MySQLSession(self.db, engine_name)
+        session = MySQLSession(self.db, engine_name, verbose=self.verbose)
         session.begin()
         return session
 

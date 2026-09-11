@@ -42,7 +42,7 @@ class MySQLNodeRepository(NodeRepository):
     }
 
     # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
+    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
         # Validate that either a UnitOfWork is provided, or both a GraphDB and
         # SchemaResolver are provided, but not both.
@@ -65,6 +65,8 @@ class MySQLNodeRepository(NodeRepository):
         else:
             raise ValueError("MySQLNodeRepository requires either uow= or (db=, schema_resolver=).")
 
+        # When True, echo SQL statements executed by standalone sessions.
+        self.verbose = verbose
         # Initialize a GraphLogger instance for logging messages.
         self.msg = GraphLogger()
 
@@ -79,7 +81,7 @@ class MySQLNodeRepository(NodeRepository):
             return self._uow.get_session(engine_name)
 
         # No UnitOfWork is active, so open a standalone session for this engine.
-        session = MySQLSession(self.db, engine_name)
+        session = MySQLSession(self.db, engine_name, verbose=self.verbose)
         session.begin()
         return session
 

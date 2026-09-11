@@ -30,18 +30,20 @@ class MySQLUnitOfWork(UnitOfWork):
     same per-engine transaction.
     """
 
-    # Class initialization and dependency injection
-    def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver") -> None:
+    # Public Method: Initialize the unit of work with a GraphDB client and schema resolver.
+    def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver", verbose: bool = False) -> None:
         # GraphDB client that owns the SQLAlchemy engine pool.
         self.db = db
         # Schema resolver used to map object types to database engines and schemas.
         self.schema_resolver = schema_resolver
+        # When True, echo every executed SQL statement to stdout.
+        self.verbose = verbose
         # Lazy cache of transactional sessions, keyed by engine name.
         self._sessions: dict[str, MySQLSession] = {}
         # Node repository that participates in this unit of work.
-        self._node_repo = MySQLNodeRepository(uow=self)
+        self._node_repo = MySQLNodeRepository(uow=self, verbose=verbose)
         # Edge repository that participates in this unit of work.
-        self._edge_repo = MySQLEdgeRepository(uow=self)
+        self._edge_repo = MySQLEdgeRepository(uow=self, verbose=verbose)
 
     # Public Method: Return the node repository participating in this unit of work.
     @property
@@ -57,7 +59,7 @@ class MySQLUnitOfWork(UnitOfWork):
     def get_session(self, engine_name: str) -> MySQLSession:
         """Return (creating if needed) a transactional session for engine_name."""
         if engine_name not in self._sessions:
-            session = MySQLSession(self.db, engine_name)
+            session = MySQLSession(self.db, engine_name, verbose=self.verbose)
             session.begin()
             self._sessions[engine_name] = session
         return self._sessions[engine_name]

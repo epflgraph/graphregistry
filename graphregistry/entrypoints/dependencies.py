@@ -59,13 +59,13 @@ def _schema_resolver(engine_name: str) -> DefaultSchemaResolver:
     return DefaultSchemaResolver(engine_name=engine_name, glbcfg=GlobalConfig())
 
 # Public Method: Return a factory that creates a fresh UnitOfWork for engine_name.
-def build_uow_factory(db: GraphDB, engine_name: str) -> Callable[[], UnitOfWork]:
+def build_uow_factory(db: GraphDB, engine_name: str, verbose: bool = False) -> Callable[[], UnitOfWork]:
     """Return a factory that creates a fresh UnitOfWork for engine_name."""
     schema_resolver = _schema_resolver(engine_name)
 
     # Internal Function: factory
     def _factory() -> UnitOfWork:
-        return MySQLUnitOfWork(db=db, schema_resolver=schema_resolver)
+        return MySQLUnitOfWork(db=db, schema_resolver=schema_resolver, verbose=verbose)
 
     # Return the closure that creates a fresh UnitOfWork per transaction.
     return _factory
