@@ -36,6 +36,10 @@ Data can be added to the registry through direct JSON file imports, or through a
 Installation
 ============
 
+There are two methods of deploying the Graph Registry application: either with Docker or through a local Python installation. It is recommended you pull the repo first, and experiment with the multiple example scripts available.
+
+In either case, you need to setup the configuration files before you can run the API or the CLI. This is explained in the next section.
+
 ## 🐳 Deploy with Docker
 
 Graph Registry is available as a Docker image, which provides a convenient way to deploy the API and run the CLI without needing to set up a local Python environment. The image includes all necessary dependencies and can be easily updated by pulling the latest version from Docker Hub.
@@ -153,10 +157,10 @@ For users who prefer to deploy the API and run the CLI directly on their local m
         --factory
     ```
 
-Once the API is running, the Swagger docs page is available here:<br />
+Once the API is running, the Swagger docs page becomes available here:<br />
 🌍 [http://127.0.0.1:9999/docs](http://127.0.0.1:9999/docs)
 
-You can also test it directly in your shell:
+You can also test it directly on your shell:
 
 ```shell
 curl -X GET http://127.0.0.1:9999/health 2>/dev/null | jq
@@ -169,13 +173,13 @@ Configuration
 =============
 The Graph Registry application relies on seperate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
 
-The configuration files should be stored in the `/config` folder. Example templates are provided in the `/config.examples` folder.
+The configuration files should be stored in a folder named `config`. Example templates are provided in the folder: 📂 [config.examples](config.examples)
 
 ## Evironment setup
 
 ### Graph Registry
 
-The global configuration for the Registry app is defined in `/config/config_registry.yaml`. The content resembles the following:
+The global configuration for the Registry app is defined in: 📂 [config_registry.yaml](config.examples/config_registry.yaml). The content resembles the following:
 
 ```yaml
 # Title and summary description to be displayed on the API's Swagger page
@@ -218,7 +222,7 @@ database:
 
 ### MySQL/MariaDB
 
-The configuration for the database connection and GraphDB CLI is defined in `/config/config_db.yaml`. Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_db.yaml](config.examples/config_db.yaml). Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # MySQL client and dump binaries
@@ -265,7 +269,7 @@ default_env: coresrv_env
 
 ### ElasticSearch
 
-The configuration for the ElasticSearch connection and GraphES CLI is defined in `/config/config_es.yaml`. Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_es.yaml](config.examples/config_es.yaml). Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # Default export path for index dumps
@@ -301,7 +305,7 @@ default_env: coresrv_env
 
 ### Graph AI
 
-The configuration for the GraphAI connection is defined in `/config/config_graphai.yaml`. The content resembles the following:
+The configuration for the GraphAI connection is defined in: 📂 [config_graphai.yaml](config.examples/config_graphai.yaml). The content resembles the following:
 
 ```yaml
 graphai:
@@ -313,7 +317,7 @@ graphai:
 
 ### Generative AI [optional]
 
-If you have access to a local or commercial LLM service, which Graph Registry can (optionally) leverage to improve semantic analysis and enrich your raw data, you can configure it in `/config/config_genai.yaml`. The content resembles the following:
+If you have access to a local or commercial LLM service, which Graph Registry can (optionally) leverage to improve semantic analysis and enrich your raw data, you can configure it in: 📂 [config_genai.yaml](config.examples/config_genai.yaml). The content resembles the following:
 
 ```yaml
 genai:
@@ -326,43 +330,27 @@ genai:
 
 ### Registry API
 
-The configuration for the Graph Registry API is defined in `/config/config_api.json`. It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config.examples/config_api.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
 
 ```json
-
 {
      "allowed-types" : {
         "nodes" : [
             "Course",
-            "Exercise",
             "Lecture",
-            "MOOC",
-            "Notebook",
             "Person",
             "Publication",
-            "Specialisation",
-            "Startup",
-            "StudyPlan",
-            "Unit",
-            "Widget"
+            "Unit"
         ],
         "edges" : [
             ["Course", "Person", "teacher"],
-            ["Course", "StudyPlan", "coursebook"],
-            ["Course", "Specialisation", "coursebook"],
-            ["Exercise", "Person", "authorship"],
             ["Lecture", "Course", "part of"],
-            ["Lecture", "MOOC", "part of"],
-            ["MOOC", "Person", "teacher"],
-            ["Notebook", "Person", "authorship"],
             ["Person", "Unit", "accreditation"],
             ["Person", "Unit", "position group ranking"],
             ["Person", "Unit", "position grouping"],
             ["Publication", "Person", "authorship"],
-            ["Slide", "Lecture", "part of"],
             ["Unit", "Unit", "affiliation"],
-            ["Unit", "Unit", "subtype ranking"],
-            ["Widget", "Lecture", "part of"]
+            ["Unit", "Unit", "subtype ranking"]
         ]
     }
 }
@@ -370,7 +358,7 @@ The configuration for the Graph Registry API is defined in `/config/config_api.j
 
 ### Registry Airflow
 
-The configuration for the Graph Registry airflow mechanism is defined in `/config/config_airflow.json`. It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config.examples/config_airflow.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
 
 ```json
 {
@@ -378,27 +366,16 @@ The configuration for the Graph Registry airflow mechanism is defined in `/confi
         ["Category", true, true],
         ["Concept", true, true],
         ["Course", true, true],
-        ["Curated area", true, true],
-        ["Exercise", true, true],
         ["Lecture", true, true],
-        ["MOOC", true, true],
-        ["Notebook", true, true],
         ["Person", true, true],
         ["Publication", true, true],
-        ["Startup", true, true],
-        ["Unit", true, true],
-        ["Widget", true, true]
+        ["Unit", true, true]
     ],
     "edges": [
         ["Category", "Category", true],
         ["Category", "Concept", true],
         ["Course", "Lecture", true],
         ["Course", "Person", true],
-        ["Exercise", "Person", true],
-        ["Lecture", "MOOC", true],
-        ["Lecture", "Widget", true],
-        ["MOOC", "Person", true],
-        ["Notebook", "Person", true],
         ["Person", "Publication", true],
         ["Person", "Unit", true],
         ["Unit", "Unit", true]
@@ -408,7 +385,7 @@ The configuration for the Graph Registry airflow mechanism is defined in `/confi
 
 ### Semantic scoring
 
-The configuration for the Graph Registry semantic scoring is defined in `/config/config_scores.json`. It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_airflow.json](config.examples/config_airflow.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
 
 ```json
 {
@@ -416,34 +393,20 @@ The configuration for the Graph Registry semantic scoring is defined in `/config
         "education" : [
             ["Course", "Course"],
             ["Course", "Lecture"],
-            ["Course", "MOOC"],
-            ["Exercise", "Exercise"],
-            ["Lecture", "Lecture"],
-            ["Lecture", "MOOC"],
-            ["Lecture", "Widget"],
-            ["MOOC", "MOOC"],
-            ["Notebook", "Notebook"],
-            ["Widget", "Widget"]
+            ["Lecture", "Lecture"]
         ],
         "research" : [
             ["Person", "Person"],
             ["Person", "Publication"],
-            ["Person", "Startup"],
             ["Person", "Unit"],
             ["Publication", "Publication"],
-            ["Publication", "Startup"],
             ["Publication", "Unit"],
-            ["Startup", "Startup"],
-            ["Startup", "Unit"],
             ["Unit", "Unit"]
         ]
     },
     "mixed-scoring-tuples" : [
         ["Category", "Category"],
         ["Course", "Person"],
-        ["Exercise", "Person"],
-        ["MOOC", "Person"],
-        ["Notebook", "Person"],
         ["Person", "Unit"],
         ["Unit", "Unit"]
     ]
@@ -452,7 +415,7 @@ The configuration for the Graph Registry semantic scoring is defined in `/config
 
 ### Indexing setup
 
-The configuration for the Graph Registry indexing setup is defined in `/config/config_index.json`. It allows you to setup the graph indexing rules for the GraphSearch application and the ElasticSearch index, including which node and edge types to index, which custom fields to include, and how to rank recommendation lists.
+The configuration for the Graph Registry indexing setup is defined in: 📂 [config_index.json](config.examples/config_index.json). It allows you to setup the graph indexing rules for the GraphSearch application and the ElasticSearch index, including which node and edge types to index, which custom fields to include, and how to rank recommendation lists.
 
 The content of this file is too long and complex to display here. You should start with the provided default configuration, and modify it in accordance with your use case as you get more familiar with the format.
 
@@ -490,9 +453,7 @@ graphregistry config show
 
 Data Ingestion
 ==============
-
-## API deployment
-
+... 🚧
 
 <!--
 # set up password for es:
