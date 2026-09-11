@@ -35,39 +35,463 @@ Data can be added to the registry through direct JSON file imports, or through a
 
 Installation
 ============
-1. (OPTIONAL) create a virtual environment with `python -m venv venv` and activate with `source venv/bin/activate`
-2. install the requirements with `pip install -r requirements.txt`
-3. you will also need to install vlc with `sudo apt install vlc`
 
-Configuration
-=============
-Copy the example_config.yaml file to config.yaml and edit it to give your graphai, elasticsearch and mysql credentials.
+## 🐳 Deploy with Docker
 
-You may also need to copy the certificates for connecting to elasticsearch (by default in `resources/certificates/`).
+Graph Registry is available as a Docker image, which provides a convenient way to deploy the API and run the CLI without needing to set up a local Python environment. The image includes all necessary dependencies and can be easily updated by pulling the latest version from Docker Hub.
 
-You may also need to create the graphai-client JSON configuration file and give its location in the 
-`graphai.client_config_file` section of your `config.yaml` file. It should look like this:
+Steps to deploy with Docker:
 
-```json
-{
-  "host": "https://graphai.epfl.ch",
-  "port": 443,
-  "user": "YOUR_GRAPHAI_USERNAME",
-  "password": "YOUR_GRAPHAI_PASSWORD"
+1. Create a `docker-compose.yml` file with the following content:
+
+    ```yaml
+    services:
+        graphregistry:
+            image: epflgraph/graphregistry:latest
+            container_name: graphregistry-app
+            restart: unless-stopped
+
+            ports:
+                - "0493:0493"
+
+            environment:
+                GRAPHREGISTRY_ROLE: api
+                API_HOST: 0.0.0.0
+                API_PORT: 0493
+                API_WORKERS: 1
+                API_PROXY_HEADERS: 1
+                API_FORWARDED_ALLOW_IPS: "*"
+
+            volumes:
+                - ./config:/app/config:ro
+    ```
+
+    This is the minimal configuration that will deploy and launch the application. A more complete docker compose file with extra SSL and monitoring features is available in:<br />
+    📂 [docker/deployment/docker-compose_SSL+Monitor.yml](config/config_continue_example.yml)
+
+2. Deploy the Registry app and other optional services:
+
+    ```shell
+    docker compose up -d
+    ```
+
+    If you have a running instance already, you can either execute a soft restart, or force a clean restart as follows:
+
+    ```shell
+    docker compose down graphregistry --remove-orphans
+    docker rmi epflgraph/graphregistry:latest 2>/dev/null || true
+    docker compose pull graphregistry
+    docker compose up graphregistry -d --force-recreate
+    ```
+
+3. At this point, the API will already be running on the selected port. To run the CLI, you have to execute it inside the container:
+
+    ```shell
+    docker compose exec graphregistry graphregistry -h
+    ```
+
+To run commands as `graphregistry [cmd]`, add this to your `~/.zshrc` file:
+
+```shell
+graphregistry() {
+  docker compose exec graphregistry graphregistry "$@"
 }
 ```
 
+Then reload your shell:
 
-RUN
-======
-From the package root directory run:
+```shell
+source ~/.zshrc
+```
 
-```uvicorn graphregistry.entrypoints.api.main:create_app --reload --factory```
+Test with:
 
-TEST
-=======
-Example queries are available in the `resources/api_request_examples/` directory for testing the API. 
-Refer to the README.md file there for further information.
+```shell
+graphregistry test
+```
+
+## 👨🏻‍💻 Local installation
+
+For users who prefer to deploy the API and run the CLI directly on their local machine, follow these steps to set up a Python virtual environment and install the package:
+
+1. Clone the repository:
+
+    ```shell
+    git clone https://github.com/epflgraph/graphregistry.git
+    cd graphregistry
+    ```
+
+2. Create and activate a virtual environment:
+
+    ```shell
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
+
+3. Install the package:
+
+    ```shell
+    pip install .
+    ```
+
+4. Verify and test the CLI installation:
+
+    ```shell
+    graphregistry -h
+    graphregistry test
+    ```
+
+5. Deploy the API:
+
+    ```shell
+    exec uvicorn graphregistry.entrypoints.api.main:create_app \
+        --host 127.0.0.1 \
+        --port 9999 \
+        --workers 1 \
+        --proxy-headers \
+        --forwarded-allow-ips 127.0.0.1 \
+        --factory
+    ```
+
+Once the API is running, the Swagger docs page is available here:<br />
+🌍 [http://127.0.0.1:9999/docs](http://127.0.0.1:9999/docs)
+
+You can also test it directly in your shell:
+
+```shell
+curl -X GET http://127.0.0.1:9999/health 2>/dev/null | jq
+```
+
+> [!IMPORTANT]
+> Before any of these deployment methods works, you need to setup all required configuration files, as explained in the next section.
+
+Configuration
+=============
+The Graph Registry application relies on seperate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
+
+The configuration files should be stored in the `/config` folder. Example templates are provided in the `/config.examples` folder.
+
+## Evironment setup
+
+### Graph Registry
+
+The global configuration for the Registry app is defined in `/config/config_registry.yaml`. The content resembles the following:
+
+```yaml
+# Title and summary description to be displayed on the API's Swagger page
+api:
+    title: "GraphRegistry API"
+    summary: "HTTP API for Graph data management."
+
+# CLI-related static variables
+cli:
+  limit_per_type_max: 10000
+
+# Registry database-related configurations
+database:
+
+    # Path to folders containing SQL files to be exported, imported, and executed
+    sql_paths:
+        formulas: "/path/to/database/formulas/"
+        exports:  "/path/to/data/exports/"
+        patches:  "/path/to/data/patches/"
+
+    # Custom DB schema names on MySQL/MariaDB (for the CREATE DATABASE <schema_name>; command)
+    schema_names:
+        ontology:                graph_ontology
+        registry:                graph_registry
+        lectures:                graph_lectures
+        airflow:                 graph_airflow
+        traversals:              graph_traversals
+        elasticsearch_cache:     elasticsearch_cache
+        graph_cache_test:        graph_cache
+        graph_cache_prod:        graph_cache_prod
+        graphsearch_test:        graphsearch_test
+        graphsearch_prod:        graphsearch_prod
+        graphsearch_prod_mirror: graphsearch_prod_mirror
+        graphai_cache_api:       graphai_cache_api
+
+    # Execution mode [dev, prod]
+    # In 'dev' mode, data is written to separate DB schemas with the prefix "_1_DEV_", to avoid data being written to production tables.
+    mode: dev
+```
+
+### MySQL/MariaDB
+
+The configuration for the database connection and GraphDB CLI is defined in `/config/config_db.yaml`. Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
+
+```yaml
+# MySQL client and dump binaries
+client_bin: /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb
+dump_bin:   /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb-dump
+
+# Default export path for database dumps
+export_path: /path/to/data/mysql_exports
+
+# Database environments (names must end in '_env')
+environments:
+
+  # Core services / test environment
+  coresrv_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    # If SSL required
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      verify_server_cert: true
+
+  # Prod environment
+  prod_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      verify_server_cert: true
+
+  # Other environments
+  something_else_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the GraphDB CLI.
+default_env: coresrv_env
+```
+
+### ElasticSearch
+
+The configuration for the ElasticSearch connection and GraphES CLI is defined in `/config/config_es.yaml`. Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
+
+```yaml
+# Default export path for index dumps
+export_path: /path/to/data/elasticsearch_exports
+
+# ElasticSearch environments (names must end in '_env')
+environments:
+
+  # Core services / test environment
+  coresrv_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Prod environment
+  prod_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Other environments
+  something_else_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the GraphES CLI.
+default_env: coresrv_env
+```
+
+### Graph AI
+
+The configuration for the GraphAI connection is defined in `/config/config_graphai.yaml`. The content resembles the following:
+
+```yaml
+graphai:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+```
+
+### Generative AI [optional]
+
+If you have access to a local or commercial LLM service, which Graph Registry can (optionally) leverage to improve semantic analysis and enrich your raw data, you can configure it in `/config/config_genai.yaml`. The content resembles the following:
+
+```yaml
+genai:
+    api_key: API_KEY
+    inference_url: "https://api.example.com/v1"
+    llm_model: "moonshotai/Kimi-K2.7-Code"
+```
+
+## Application setup
+
+### Registry API
+
+The configuration for the Graph Registry API is defined in `/config/config_api.json`. It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
+
+```json
+
+{
+     "allowed-types" : {
+        "nodes" : [
+            "Course",
+            "Exercise",
+            "Lecture",
+            "MOOC",
+            "Notebook",
+            "Person",
+            "Publication",
+            "Specialisation",
+            "Startup",
+            "StudyPlan",
+            "Unit",
+            "Widget"
+        ],
+        "edges" : [
+            ["Course", "Person", "teacher"],
+            ["Course", "StudyPlan", "coursebook"],
+            ["Course", "Specialisation", "coursebook"],
+            ["Exercise", "Person", "authorship"],
+            ["Lecture", "Course", "part of"],
+            ["Lecture", "MOOC", "part of"],
+            ["MOOC", "Person", "teacher"],
+            ["Notebook", "Person", "authorship"],
+            ["Person", "Unit", "accreditation"],
+            ["Person", "Unit", "position group ranking"],
+            ["Person", "Unit", "position grouping"],
+            ["Publication", "Person", "authorship"],
+            ["Slide", "Lecture", "part of"],
+            ["Unit", "Unit", "affiliation"],
+            ["Unit", "Unit", "subtype ranking"],
+            ["Widget", "Lecture", "part of"]
+        ]
+    }
+}
+```
+
+### Registry Airflow
+
+The configuration for the Graph Registry airflow mechanism is defined in `/config/config_airflow.json`. It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
+
+```json
+{
+    "nodes": [
+        ["Category", true, true],
+        ["Concept", true, true],
+        ["Course", true, true],
+        ["Curated area", true, true],
+        ["Exercise", true, true],
+        ["Lecture", true, true],
+        ["MOOC", true, true],
+        ["Notebook", true, true],
+        ["Person", true, true],
+        ["Publication", true, true],
+        ["Startup", true, true],
+        ["Unit", true, true],
+        ["Widget", true, true]
+    ],
+    "edges": [
+        ["Category", "Category", true],
+        ["Category", "Concept", true],
+        ["Course", "Lecture", true],
+        ["Course", "Person", true],
+        ["Exercise", "Person", true],
+        ["Lecture", "MOOC", true],
+        ["Lecture", "Widget", true],
+        ["MOOC", "Person", true],
+        ["Notebook", "Person", true],
+        ["Person", "Publication", true],
+        ["Person", "Unit", true],
+        ["Unit", "Unit", true]
+    ]
+}
+```
+
+### Semantic scoring
+
+The configuration for the Graph Registry semantic scoring is defined in `/config/config_scores.json`. It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
+
+```json
+{
+    "scored-edge-tuples" : {
+        "education" : [
+            ["Course", "Course"],
+            ["Course", "Lecture"],
+            ["Course", "MOOC"],
+            ["Exercise", "Exercise"],
+            ["Lecture", "Lecture"],
+            ["Lecture", "MOOC"],
+            ["Lecture", "Widget"],
+            ["MOOC", "MOOC"],
+            ["Notebook", "Notebook"],
+            ["Widget", "Widget"]
+        ],
+        "research" : [
+            ["Person", "Person"],
+            ["Person", "Publication"],
+            ["Person", "Startup"],
+            ["Person", "Unit"],
+            ["Publication", "Publication"],
+            ["Publication", "Startup"],
+            ["Publication", "Unit"],
+            ["Startup", "Startup"],
+            ["Startup", "Unit"],
+            ["Unit", "Unit"]
+        ]
+    },
+    "mixed-scoring-tuples" : [
+        ["Category", "Category"],
+        ["Course", "Person"],
+        ["Exercise", "Person"],
+        ["MOOC", "Person"],
+        ["Notebook", "Person"],
+        ["Person", "Unit"],
+        ["Unit", "Unit"]
+    ]
+}
+```
+
+### Indexing setup
+
+The configuration for the Graph Registry indexing setup is defined in `/config/config_index.json`. It allows you to setup the graph indexing rules for the GraphSearch application and the ElasticSearch index, including which node and edge types to index, which custom fields to include, and how to rank recommendation lists.
+
+The content of this file is too long and complex to display here. You should start with the provided default configuration, and modify it in accordance with your use case as you get more familiar with the format.
+
+Getting Started
+===============
+Once you set up your environment and application config files, you are ready to execute a full data processing cycle on Graph Registry.
+
+For a test run with the provided sample data, you do not require Graph AI nor Graph Ontology to be deployed. Pre-calculated results and sample sets are provided, allowing you to bypass the deployment of those two services for now.
+
+You can start by testing the CLI as follows:
+
+```shell
+graphregistry test
+graphregistry -h
+```
+
+If everything works as expected, you are good to go! 🚀
+
+## Testing your configuration
+
+As a first step, your can validate and visualize your configuration files. The CLI provides the command `config` to execute operations related to your configuration files.
+
+For help:
+
+
+```shell
+graphregistry config validate
+```
+
+You can also show a pretty-print summary of your configuration files:
+
+```shell
+graphregistry config show
+```
+
+Data Ingestion
+==============
+
+## API deployment
 
 
 <!--
