@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - main
+      - improved_init_and_docs
 
 permissions:
   contents: write
