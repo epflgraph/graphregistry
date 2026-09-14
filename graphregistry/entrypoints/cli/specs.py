@@ -121,18 +121,17 @@ cli_definitions: Dict[str, Any] = {
             'show' : dict(
                 help        = "Display Registry configuration (registry, index, scores, API).",
                 func        = cmd_config_show,
-                args        = [dict(flags = ('--index' , '-i'), kwargs = dict(action='store_true', default=False, help="Show index configuration.")),
-                               dict(flags = ('--scores', '-s'), kwargs = dict(action='store_true', default=False, help="Show scoring configuration.")),
-                               dict(flags = ('--api'   , '-a'), kwargs = dict(action='store_true', default=False, help="Show API allowed types.")),
-                               dict(flags = ('--all'   , '-A'), kwargs = dict(action='store_true', default=False, help="Show all configuration sections.")),
+                args        = [dict(flags = ('--registry',), kwargs = dict(action='store_true', default=False, help="Show registry configuration.")),
+                               dict(flags = ('--api'     ,), kwargs = dict(action='store_true', default=False, help="Show API allowed types.")),
+                               dict(flags = ('--scores'  ,), kwargs = dict(action='store_true', default=False, help="Show scoring configuration.")),
+                               dict(flags = ('--index'   ,), kwargs = dict(action='store_true', default=False, help="Show index configuration.")),
+                               dict(flags = ('--all'     ,), kwargs = dict(action='store_true', default=False, help="Show all configuration sections.")),
                               ],
-                common_args = ['env'],
             ),
             'validate' : dict(
                 help        = "Validate configuration files and their structure.",
                 func        = cmd_config_validate,
                 args        = [dict(flags = ('--strict',), kwargs = dict(action='store_true', default=False, help="Treat missing optional configs as warnings."))],
-                common_args = ['env'],
             )
         }
     ),

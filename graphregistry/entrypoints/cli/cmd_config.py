@@ -7,7 +7,9 @@ from typing import Any
 
 import rich
 import yaml
+from rich import box
 from rich.console import Console
+from rich.panel import Panel
 
 from graphregistry.common.config import APIConfig, GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.common.paths import (
@@ -79,51 +81,58 @@ def cmd_config_show(args):
         graphregistry config show --api
         graphregistry config show --all
     """
+    show_registry = args.registry
     show_index = args.index
     show_scores = args.scores
     show_api = args.api
-    show_all = args.all
+    # Default is to show all sections.
+    show_all = args.all or not any([show_registry, show_index, show_scores, show_api])
 
-    # Default: show registry summary if no specific flag is given.
-    if not any([show_index, show_scores, show_api, show_all]):
+    # Ordered output for --all / default: registry, api, scores, index.
+    if show_all or show_registry:
         _show_registry_summary(args.ctx.global_config)
-        return
-
-    if show_all:
-        _show_registry_summary(args.ctx.global_config)
-
-    if show_all or show_index:
-        console.print("\n[bold]Index configuration[/bold]")
-        args.ctx.index_config.print(compact=True)
-
-    if show_all or show_scores:
-        args.ctx.scores_config.print()
 
     if show_all or show_api:
         _show_api_config(APIConfig())
 
+    if show_all or show_scores:
+        console.print("")
+        console.print(Panel("Scores configuration", box=box.HEAVY, style="bold", expand=False))
+        args.ctx.scores_config.print()
+
+    if show_all or show_index:
+        console.print("")
+        console.print(Panel("Index configuration", box=box.HEAVY, style="bold", expand=False))
+        args.ctx.index_config.print(compact=True)
+
 
 def _show_registry_summary(glbcfg: GlobalConfig) -> None:
-    console.print("\n[bold]Registry configuration[/bold]")
+    console.print("")
+    console.print(Panel("Registry configuration", box=box.HEAVY, style="bold", expand=False))
+    console.print("")
+    mode = glbcfg.mysql_execution_mode
+    mode_colour = {"dev": "cyan", "prod": "red"}.get(mode, "white")
     console.print(f"  API title:          {glbcfg.api_title}")
     console.print(f"  API summary:        {glbcfg.api_summary}")
-    console.print(f"  Execution mode:     {glbcfg.mysql_execution_mode}")
+    console.print(f"  Execution mode:     [{mode_colour}]{mode}[/{mode_colour}]")
     console.print(f"  limit_per_type_max: {glbcfg.limit_per_type_max}")
     console.print("  Database schemas:")
     for key, name in glbcfg.schema_names.items():
         console.print(f"    - {key:24s} {name}")
+    console.print("")
 
 
 def _show_api_config(api_cfg: APIConfig) -> None:
-    console.print("\n[bold]API allowed types[/bold]")
     console.print("")
-    console.print("  Nodes:")
+    console.print(Panel("API allowed types", box=box.HEAVY, style="bold", expand=False))
+    console.print("")
+    console.print("Nodes:")
     for node_type in api_cfg.allowed_node_types_list:
-        console.print(f"    - {node_type}")
+        console.print(f" - {node_type}")
     console.print("")
-    console.print("  Edges:")
+    console.print("Edges:")
     for edge_tuple in api_cfg.allowed_edge_tuples_list:
-        console.print(f"    - {edge_tuple[0]} --> {edge_tuple[1]} ({edge_tuple[2]})")
+        console.print(f" - {edge_tuple[0]} --> {edge_tuple[1]} ({edge_tuple[2]})")
     console.print("")
 
 
