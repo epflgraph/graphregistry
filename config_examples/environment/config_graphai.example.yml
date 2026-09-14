@@ -1,5 +1,5 @@
 graphai:
-  host_address: "https://graphai.example.com"
+  host_address: HOST_ADDRESS
   port: PORT
   username: USERNAME
   password: PASSWORD

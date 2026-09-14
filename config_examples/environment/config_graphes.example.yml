@@ -1,23 +1,29 @@
-#=======================#
-# GraphES Configuration #
-#=======================#
+# Default export path for index dumps
+export_path: /path/to/data/elasticsearch_exports
 
-# Index environments
+# ElasticSearch environments (names must end in '_env')
 environments:
 
-  # Environment: XaaS > coresrv
-  xaas_coresrv_env:
-    host_address: HOSTNAME
+  # Core services / test environment
+  coresrv_env:
+    host_address: HOST_ADDRESS
     port: PORT
     username: USERNAME
     password: PASSWORD
 
-  # Environment: XaaS > prod
-  xaas_prod_env:
-    host_address: HOSTNAME
+  # Prod environment
+  prod_env:
+    host_address: HOST_ADDRESS
     port: PORT
     username: USERNAME
     password: PASSWORD
 
-# Default environment to use when not specified in the command line
-default_env: xaas_coresrv_env
+  # Other environments
+  something_else_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the GraphES CLI.
+default_env: coresrv_env

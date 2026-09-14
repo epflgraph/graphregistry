@@ -1,7 +1,3 @@
-#=======================#
-# GraphDB Configuration #
-#=======================#
-
 # MySQL client and dump binaries
 client_bin: /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb
 dump_bin:   /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb-dump
@@ -9,37 +5,36 @@ dump_bin:   /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/d
 # Default export path for database dumps
 export_path: /path/to/data/mysql_exports
 
-# Database environments
+# Database environments (names must end in '_env')
 environments:
 
-  # Environment: XaaS > coresrv
-  xaas_coresrv_env:
-    host_address: HOSTNAME
+  # Core services / test environment
+  coresrv_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    # If SSL required
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      verify_server_cert: true
+
+  # Prod environment
+  prod_env:
+    host_address: HOST_ADDRESS
     port: PORT
     username: USERNAME
     password: PASSWORD
     ssl:
       ca: /path/to/ssl/ca-certificates.crt
-      # mode: REQUIRED
       verify_server_cert: true
 
-  # Environment: XaaS > prod
-  xaas_prod_env:
-    host_address: HOSTNAME
-    port: PORT
-    username: USERNAME
-    password: PASSWORD
-    ssl:
-      ca: /path/to/ssl/ca-certificates.crt
-      # mode: REQUIRED
-      verify_server_cert: true
-
-  # Environment: Analytics DB
-  analyticsdb_env:
-    host_address: HOSTNAME
+  # Other environments
+  something_else_env:
+    host_address: HOST_ADDRESS
     port: PORT
     username: USERNAME
     password: PASSWORD
 
-# Default environment to use when not specified in the command line
-default_env: xaas_coresrv_env
+# Default environment to use when not specified in the GraphDB CLI.
+default_env: coresrv_env
