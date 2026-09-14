@@ -150,6 +150,11 @@ class NodeOperations:
     # Method Group: Node diagnostics and special get/save operations #
     #================================================================#
 
+    # Public Method: Return keys of nodes that have no concepts attached.
+    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
+        with self.uow_factory() as uow:
+            return uow.nodes.find_keys_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+
     # Public Method: Return nodes that have no concepts attached.
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
         with self.uow_factory() as uow:
