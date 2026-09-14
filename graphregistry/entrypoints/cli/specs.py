@@ -7,7 +7,11 @@ from graphregistry.entrypoints.cli.cmd_setup import (
     cmd_setup_init,
 )
 from graphregistry.entrypoints.cli.cmd_config import (
-    cmd_config_index,
+    cmd_config_show,
+    cmd_config_validate,
+)
+from graphregistry.entrypoints.cli.cmd_test import (
+    cmd_test,
 )
 from graphregistry.entrypoints.cli.cmd_es import (
     cmd_es_test,
@@ -114,13 +118,38 @@ cli_definitions: Dict[str, Any] = {
             'env': global_common_args['env']
         },
         commands = {
-            'index' : dict(
-                help        = "Print out index config.",
-                func        = cmd_config_index,
-                args        = [],
+            'show' : dict(
+                help        = "Display Registry configuration (registry, index, scores, API).",
+                func        = cmd_config_show,
+                args        = [dict(flags = ('--index' , '-i'), kwargs = dict(action='store_true', default=False, help="Show index configuration.")),
+                               dict(flags = ('--scores', '-s'), kwargs = dict(action='store_true', default=False, help="Show scoring configuration.")),
+                               dict(flags = ('--api'   , '-a'), kwargs = dict(action='store_true', default=False, help="Show API allowed types.")),
+                               dict(flags = ('--all'   , '-A'), kwargs = dict(action='store_true', default=False, help="Show all configuration sections.")),
+                              ],
+                common_args = ['env'],
+            ),
+            'validate' : dict(
+                help        = "Validate configuration files and their structure.",
+                func        = cmd_config_validate,
+                args        = [dict(flags = ('--strict',), kwargs = dict(action='store_true', default=False, help="Treat missing optional configs as warnings."))],
                 common_args = ['env'],
             )
         }
+    ),
+
+    #---------------------#
+    # Command: test       #
+    #---------------------#
+    'test' : dict(
+        help        = "Run a safe smoke test of configuration and service connectivity.",
+        func        = cmd_test,
+        common_args = {
+            'env': global_common_args['env']
+        },
+        args        = [dict(flags = ('--skip-db',), kwargs = dict(action='store_true', default=False, help="Skip database connectivity check.")),
+                       dict(flags = ('--skip-es',), kwargs = dict(action='store_true', default=False, help="Skip Elasticsearch connectivity check.")),
+                       dict(flags = ('--skip-ai',), kwargs = dict(action='store_true', default=False, help="Skip GraphAI/GenAI connectivity checks.")),
+                      ],
     ),
 
     #---------------------#

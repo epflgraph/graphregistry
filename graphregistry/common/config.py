@@ -4,7 +4,7 @@ import json
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import rich
 from yaml import safe_load
@@ -34,6 +34,7 @@ class GlobalConfig:
         # These live in separate files under config/environment/.
         self._merge_service_settings("genai", REPO_ROOT / "config" / "environment" / "config_genai.yml")
         self._merge_service_settings("graphai", REPO_ROOT / "config" / "environment" / "config_graphai.yml")
+        self._merge_elasticsearch_settings()
 
         # Normalise GenAI key names so callers can use either the legacy
         # llm_* names or the config file's api_key / inference_url names.
@@ -97,17 +98,8 @@ class GlobalConfig:
         self.schema_graphsearch_prod_mirror = self.mysql_schema_names['test']['prod_mirror']
 
         # Path where index patch/rollback SQL files are generated.
-        # Supports the 'database.sql_paths.patches' key, with fallbacks
-        # for legacy locations.
-        patch_path_setting = (
-            self.settings.get('database', {}).get('sql_paths', {}).get('patches')
-            or self.settings.get('data_paths', {}).get('patches')
-            or self.settings.get('mysql', {}).get('patch_path')
-            or 'data/index_patches'
-        )
-        self.index_patch_path = Path(patch_path_setting)
-        if not self.index_patch_path.is_absolute():
-            self.index_patch_path = REPO_ROOT / self.index_patch_path
+        # Default location is database/patches/ under the repository root.
+        self.index_patch_path = REPO_ROOT / "database" / "patches"
 
         # Safety limits
         self.limit_per_type_max = self.settings.get('cli', {}).get('limit_per_type_max', 1000)
@@ -191,6 +183,30 @@ class GlobalConfig:
             self.settings[service_key] = json.loads(
                 json.dumps(service_settings[service_key], default=str)
             )
+
+    def _merge_elasticsearch_settings(self) -> None:
+        """
+        Merge the GraphES config into ``self.settings['elasticsearch']``.
+
+        The GraphES file uses ``host_address`` while legacy code expects
+        ``hostname``, so we adapt the key names here.
+        """
+        path = REPO_ROOT / "config" / "environment" / "config_graphes.yml"
+        if not path.exists():
+            return
+        graphes_settings = self._load_settings(path)
+        environments = graphes_settings.get("environments", {})
+        es_settings: dict[str, Any] = {}
+        for env_name, env_cfg in environments.items():
+            es_settings[env_name] = {
+                "hostname": env_cfg.get("host_address"),
+                "port": env_cfg.get("port"),
+                "username": env_cfg.get("username"),
+                "password": env_cfg.get("password"),
+            }
+        # Legacy code expects the ES export path under this key.
+        es_settings["data_export_path"] = graphes_settings.get("export_path", "data/es_exports")
+        self.settings["elasticsearch"] = es_settings
 
     # Print method
 

@@ -15,6 +15,7 @@ The CLI loads `config/environment/config_registry.yml` and creates a `CLIContext
 | Domain | Purpose |
 |--------|---------|
 | `config` | Validate and display configuration. |
+| `test` | Safe smoke test of configuration and service connectivity. |
 | `data` | Insert, update, and delete nodes/edges from JSON files. |
 | `es` | Elasticsearch operations. |
 | `ai` | GraphAI-related commands (legacy path). |
@@ -31,6 +32,14 @@ The CLI loads `config/environment/config_registry.yml` and creates a `CLIContext
 ```bash
 graphregistry config validate
 graphregistry config show
+graphregistry config show --index
+```
+
+### Smoke test
+
+```bash
+graphregistry test
+graphregistry test --skip-db --skip-es --skip-ai
 ```
 
 ### Insert data

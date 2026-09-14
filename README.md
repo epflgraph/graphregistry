@@ -70,8 +70,8 @@ Steps to deploy with Docker:
                 - ./config:/app/config:ro
     ```
 
-    This is the minimal configuration that will deploy and launch the application. A more complete docker compose file with extra SSL and monitoring features is available in:<br />
-    📂 [docker/deployment/docker-compose_SSL+Monitor.yml](config/config_continue_example.yml)
+    This is the minimal configuration that will deploy and launch the application. A more complete example with HTTPS termination and log shipping is available in:<br />
+    📂 [docker/deployment/docker-compose_https+monitor.yml](docker/deployment/docker-compose_https+monitor.yml)
 
 2. Deploy the Registry app and other optional services:
 
@@ -173,13 +173,13 @@ Configuration
 =============
 The Graph Registry application relies on seperate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
 
-The configuration files should be stored in a folder named `config`. Example templates are provided in the folder: 📂 [config.examples](config.examples)
+The configuration files should be stored in a folder named `config`. Example templates are provided in the folder: 📂 [config_examples](config_examples)
 
 ## Evironment setup
 
 ### Graph Registry
 
-The global configuration for the Registry app is defined in: 📂 [config_registry.yaml](config.examples/config_registry.yaml). The content resembles the following:
+The global configuration for the Registry app is defined in: 📂 [config_registry.yml](config_examples/environment/config_registry.example.yml). The content resembles the following:
 
 ```yaml
 # Title and summary description to be displayed on the API's Swagger page
@@ -222,7 +222,7 @@ database:
 
 ### MySQL/MariaDB
 
-The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_db.yaml](config.examples/config_db.yaml). Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_graphdb.yml](config_examples/environment/config_graphdb.example.yml). Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # MySQL client and dump binaries
@@ -269,7 +269,7 @@ default_env: coresrv_env
 
 ### ElasticSearch
 
-The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_es.yaml](config.examples/config_es.yaml). Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_graphes.yml](config_examples/environment/config_graphes.example.yml). Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # Default export path for index dumps
@@ -305,7 +305,7 @@ default_env: coresrv_env
 
 ### Graph AI
 
-The configuration for the GraphAI connection is defined in: 📂 [config_graphai.yaml](config.examples/config_graphai.yaml). The content resembles the following:
+The configuration for the GraphAI connection is defined in: 📂 [config_graphai.yml](config_examples/environment/config_graphai.example.yml). The content resembles the following:
 
 ```yaml
 graphai:
@@ -317,7 +317,7 @@ graphai:
 
 ### Generative AI [optional]
 
-If you have access to a local or commercial LLM service, which Graph Registry can (optionally) leverage to improve semantic analysis and enrich your raw data, you can configure it in: 📂 [config_genai.yaml](config.examples/config_genai.yaml). The content resembles the following:
+If you have access to a local or commercial LLM service, which Graph Registry can (optionally) leverage to improve semantic analysis and enrich your raw data, you can configure it in: 📂 [config_genai.yml](config_examples/environment/config_genai.example.yml). The content resembles the following:
 
 ```yaml
 genai:
@@ -330,7 +330,7 @@ genai:
 
 ### Registry API
 
-The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config.examples/config_api.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config_examples/application/config_api.example.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
 
 ```json
 {
@@ -358,7 +358,7 @@ The configuration for the Graph Registry API is defined in: 📂 [config_api.jso
 
 ### Registry Airflow
 
-The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config.examples/config_airflow.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
 
 ```json
 {
@@ -385,7 +385,7 @@ The configuration for the Graph Registry airflow mechanism is defined in: 📂 [
 
 ### Semantic scoring
 
-The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_airflow.json](config.examples/config_airflow.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_scores.json](config_examples/application/config_scores.example.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
 
 ```json
 {
@@ -415,7 +415,7 @@ The configuration for the Graph Registry semantic scoring is defined in: 📂 [c
 
 ### Indexing setup
 
-The configuration for the Graph Registry indexing setup is defined in: 📂 [config_index.json](config.examples/config_index.json). It allows you to setup the graph indexing rules for the GraphSearch application and the ElasticSearch index, including which node and edge types to index, which custom fields to include, and how to rank recommendation lists.
+The configuration for the Graph Registry indexing setup is defined in: 📂 [config_index.json](config_examples/application/config_index.example.json). It allows you to setup the graph indexing rules for the GraphSearch application and the ElasticSearch index, including which node and edge types to index, which custom fields to include, and how to rank recommendation lists.
 
 The content of this file is too long and complex to display here. You should start with the provided default configuration, and modify it in accordance with your use case as you get more familiar with the format.
 
@@ -434,12 +434,11 @@ graphregistry -h
 
 If everything works as expected, you are good to go! 🚀
 
-## Testing your configuration
+## Test your configuration
 
 As a first step, your can validate and visualize your configuration files. The CLI provides the command `config` to execute operations related to your configuration files.
 
 For help:
-
 
 ```shell
 graphregistry config validate
@@ -450,6 +449,11 @@ You can also show a pretty-print summary of your configuration files:
 ```shell
 graphregistry config show
 ```
+
+## Initialize the application environment
+
+
+
 
 Data Ingestion
 ==============

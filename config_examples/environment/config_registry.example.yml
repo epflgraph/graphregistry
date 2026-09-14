@@ -10,12 +10,6 @@ cli:
 # Registry database-related configurations
 database:
 
-  # Path to folders containing SQL files to be exported, imported, and executed
-  sql_paths:
-    formulas: "/path/to/database/formulas/"
-    exports:  "/path/to/data/exports/"
-    patches:  "/path/to/data/patches/"
-
   # Custom DB schema names on MySQL/MariaDB (for the CREATE DATABASE <schema_name>; command)
   schema_names:
     ontology:                graph_ontology

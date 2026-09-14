@@ -22,11 +22,6 @@ cli:
   limit_per_type_max: 10000
 
 database:
-  sql_paths:
-    formulas: "/path/to/database/formulas/"
-    exports:  "/path/to/data/exports/"
-    patches:  "/path/to/data/patches/"
-
   schema_names:
     ontology: graph_ontology
     registry: graph_registry
@@ -179,6 +174,18 @@ Each node tuple is `[type, process_fields, process_scores]`. Each edge tuple is 
 Use the CLI to validate and inspect configuration files:
 
 ```bash
+# Validate all config files and their structure
 graphregistry config validate
+
+# Show a pretty-print summary of the registry configuration
 graphregistry config show
+
+# Show specific sections
+graphregistry config show --index
+graphregistry config show --scores
+graphregistry config show --api
+
+# Run a safe smoke test (connectivity checks)
+graphregistry test
+graphregistry test --skip-db --skip-es --skip-ai
 ```
