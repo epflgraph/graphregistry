@@ -1,0 +1,71 @@
+# Example Docker Compose deployment for GraphRegistry with HTTPS and log shipping.
+#
+# This is a template. Before using it:
+#   1. Copy config examples to ./config/ and fill in your values.
+#   2. Place your TLS certificate and key under ./ssl/ (e.g. fullchain.pem and privkey.pem),
+#      or update nginx.example.conf to use a different certificate source.
+#   3. Update the server_name in nginx.example.conf to match your domain.
+#   4. Point Promtail to your Loki endpoint in promtail.example.yaml.
+
+services:
+
+  # Graph Registry application deployment
+  graphregistry:
+    image: epflgraph/graphregistry:latest
+    container_name: graphregistry-app
+    restart: unless-stopped
+    labels:
+      logging: "promtail"
+      app: "graphregistry"
+      environment: "example"
+    expose:
+      - "0493"
+    environment:
+      GRAPHREGISTRY_ROLE: api
+      API_HOST: 0.0.0.0
+      API_PORT: 0493
+      API_WORKERS: 1
+      API_PROXY_HEADERS: 1
+      API_FORWARDED_ALLOW_IPS: "*"
+    volumes:
+      - ./config:/app/config:ro
+    networks:
+      - graphregistry
+
+  # NGINX reverse proxy with HTTPS termination.
+  # The example config expects TLS files under ./ssl/.
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: graphregistry-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.example.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - graphregistry
+    networks:
+      - graphregistry
+
+  # Promtail ships container logs to a Loki instance.
+  # Set the Loki URL in promtail.example.yaml before starting.
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: graphregistry-promtail
+    restart: unless-stopped
+    command:
+      - "-config.file=/etc/promtail/promtail-config.yaml"
+    volumes:
+      - ./promtail.example.yaml:/etc/promtail/promtail-config.yaml:ro
+      - ./promtail-positions:/positions
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - graphregistry
+    networks:
+      - graphregistry
+
+networks:
+  graphregistry:
+    driver: bridge

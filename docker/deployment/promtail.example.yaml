@@ -1,0 +1,30 @@
+# Example Promtail configuration for shipping GraphRegistry container logs to Loki.
+#
+# 1. Replace <LOKI_HOST> with the host:port of your Loki instance.
+# 2. If Loki requires authentication, add basic_auth or bearer_token settings.
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /positions/positions.yaml
+
+clients:
+  - url: http://<LOKI_HOST>:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+        filters:
+          - name: label
+            values: ["logging=promtail"]
+    relabel_configs:
+      - source_labels: ["__meta_docker_container_name"]
+        target_label: "container"
+      - source_labels: ["__meta_docker_container_log_stream"]
+        target_label: "logstream"
+      - source_labels: ["__meta_docker_container_label_logging"]
+        target_label: "logging"

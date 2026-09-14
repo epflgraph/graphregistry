@@ -290,7 +290,6 @@ opencode.sh
 output_tokens.json
 package-lock.json
 payload.json
-promtail*
 pyrightconfig.json
 request.json
 resources
