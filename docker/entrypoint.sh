@@ -7,18 +7,22 @@ export PYTHONPATH="/app:${PYTHONPATH:-}"
 export GRAPHREGISTRY_ROOT="${GRAPHREGISTRY_ROOT:-/app}"
 
 REQUIRED_FILES=(
-  "/app/config/config_db.yaml"
-  "/app/config/config_global.yaml"
-  "/app/config/config_index.json"
-  "/app/config/config_scores.json"
-  "/app/config/config_api.json"
+  "/app/config/application/config_airflow.json"
+  "/app/config/application/config_api.json"
+  "/app/config/application/config_index.json"
+  "/app/config/application/config_scores.json"
+  "/app/config/environment/config_genai.yml"
+  "/app/config/environment/config_graphai.yml"
+  "/app/config/environment/config_graphdb.yml"
+  "/app/config/environment/config_graphes.yml"
+  "/app/config/environment/config_registry.yml"
 )
 
 for config_file in "${REQUIRED_FILES[@]}"; do
   if [[ ! -f "${config_file}" ]]; then
     echo "ERROR: required config file not found: ${config_file}"
-    if [[ "${config_file}" == "/app/config/config_api.json" ]]; then
-      echo "       Copy it from the repository: cp config/config_api.json /app/config/config_api.json"
+    if [[ "${config_file}" == "/app/config/application/config_api.json" ]]; then
+      echo "       Copy it from the repository: cp config/application/config_api.json /app/config/application/config_api.json"
     fi
     exit 1
   fi

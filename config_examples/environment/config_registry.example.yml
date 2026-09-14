@@ -1,0 +1,36 @@
+# Title and summary description to be displayed on the API's Swagger page
+api:
+    title: "GraphRegistry API"
+    summary: "HTTP API for Graph data management."
+
+# CLI-related static variables
+cli:
+  limit_per_type_max: 10000
+
+# Registry database-related configurations
+database:
+
+  # Path to folders containing SQL files to be exported, imported, and executed
+  sql_paths:
+    formulas: "/path/to/database/formulas/"
+    exports:  "/path/to/data/exports/"
+    patches:  "/path/to/data/patches/"
+
+  # Custom DB schema names on MySQL/MariaDB (for the CREATE DATABASE <schema_name>; command)
+  schema_names:
+    ontology:                graph_ontology
+    registry:                graph_registry
+    lectures:                graph_lectures
+    airflow:                 graph_airflow
+    traversals:              graph_traversals
+    elasticsearch_cache:     elasticsearch_cache
+    graph_cache_test:        graph_cache
+    graph_cache_prod:        graph_cache_prod
+    graphsearch_test:        graphsearch_test
+    graphsearch_prod:        graphsearch_prod
+    graphsearch_prod_mirror: graphsearch_prod_mirror
+    graphai_cache_api:       graphai_cache_api
+
+  # Execution mode [dev, prod]
+  # In 'dev' mode, data is written to separate tables with prefix "_1_DEV_"
+  mode: dev

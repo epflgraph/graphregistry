@@ -80,10 +80,10 @@ def temp_test_global_config() -> Iterator[tuple[Path, GlobalConfig]]:
     settings = base_config.settings
 
     # Use a non-dev mode so GlobalConfig does not prepend _1_DEV_ to schema names.
-    settings["mysql"]["mode"] = "test"
+    settings["database"]["mode"] = "test"
 
     # Replace the dev prefix with the pytests prefix for every test schema.
-    test_schema_names = settings["mysql"]["db_schema_names"]
+    test_schema_names = settings["database"]["schema_names"]
     for key in test_schema_names:
         value = test_schema_names[key]
         if isinstance(value, str) and value.startswith("_1_DEV_"):
@@ -92,7 +92,7 @@ def temp_test_global_config() -> Iterator[tuple[Path, GlobalConfig]]:
             test_schema_names[key] = "_0_PYTESTS_" + value
 
     with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False, encoding="utf-8"
+        mode="w", suffix=".yml", delete=False, encoding="utf-8"
     ) as tmp_file:
         yaml.safe_dump(settings, tmp_file, default_flow_style=False, sort_keys=False)
         tmp_path = Path(tmp_file.name)

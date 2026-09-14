@@ -64,3 +64,4 @@
 - ✅ propagate `record_deleted` flags from `graph_registry` downstream to `graph_cache`. NOTE: current queries are way too slow; need to execute in chunks
 - weird video length bug in https://graphsearch.epfl.ch/en/lecture/0_r6l7tub3
 - concepts should be soft deletec when respective nodes are deleted by API call
+- what's `patch_max_rows` for?

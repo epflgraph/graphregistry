@@ -1,7 +1,7 @@
 # graphregistry/scripts/integrity_checks/schemas/export_schemas.py
 """Export live MySQL schemas to database/init/schemas/*.sql files.
 
-Reads the logical schema names from config/config_global.yaml, queries each
+Reads the logical schema names from config/environment/config_registry.yml, queries each
 database via GraphDB, and writes one SQL file per schema containing the
 CREATE TABLE statements for all non-underscore-prefixed tables.
 
@@ -73,7 +73,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Load schema names from config_global.yaml via the GlobalConfig loader.
+    # Load schema names from config/environment/config_registry.yml via the GlobalConfig loader.
     glb_cfg = GlobalConfig()
     schema_names = glb_cfg.mysql_schema_names[args.engine]
 

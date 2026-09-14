@@ -8,7 +8,7 @@ GraphRegistry provides a single `graphregistry` command with subcommands grouped
 graphregistry -h
 ```
 
-The CLI loads `config/config_global.yaml` and creates a `CLIContext` with shared configuration objects. Heavy clients are initialised lazily.
+The CLI loads `config/environment/config_registry.yml` and creates a `CLIContext` with shared configuration objects. Heavy clients are initialised lazily.
 
 ## Domains
 
@@ -74,7 +74,7 @@ Multiple actions can be combined, for example `--actions=eval,print,commit`.
 
 ## Environment
 
-Most commands accept `--env` to select a MySQL environment defined in `config/config_db.yaml`.
+Most commands accept `--env` to select a MySQL environment defined in `config/environment/config_graphdb.yml`.
 
 ```bash
 graphregistry data insert --node_list=@nodes.json --env=prod_env --actions=commit

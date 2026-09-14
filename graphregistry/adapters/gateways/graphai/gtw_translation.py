@@ -1,12 +1,10 @@
 # graphregistry/adapters/gateways/graphai/gtw_translation.py
 from __future__ import annotations
 from datetime import datetime, timedelta
-from json import load as load_json
 from pathlib import Path
 from time import sleep
 from typing import Any, Callable, cast
 from requests import Response
-from graphregistry.common.config import GlobalConfig, REPO_ROOT
 from graphregistry.adapters.gateways.graphai.gtw_base import GraphAIBaseGateway
 from graphregistry.application.ports.gateways.prt_translation import TextTranslationGateway
 from graphregistry.domain.models.entities.mdl_text import (
@@ -70,8 +68,8 @@ class GraphAITextTranslationGateway(GraphAIBaseGateway, TextTranslationGateway):
         """
         Args:
             graph_api_json:
-                Path to the GraphAI client config JSON.
-                If omitted, falls back to GlobalConfig().
+                Path to the GraphAI client config YAML.
+                If omitted, falls back to the default GraphAI environment config.
             login_info:
                 Optional already-authenticated login payload.
                 Useful for tests or reused sessions.

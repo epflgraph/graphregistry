@@ -1,7 +1,7 @@
 # graphregistry/scripts/integrity_checks/schemas/scan_datatypes.py
 """
 Compare live MySQL column definitions against the canonical definitions in
-database/init/config/system_datatypes.json and config/config_index.json, and
+database/init/config/system_datatypes.json and config/application/config_index.json, and
 verify that tables use the expected collation (utf8mb4_bin).
 
 The JSON values are full column definitions, e.g.:
@@ -30,8 +30,8 @@ console = Console()
 # Datatypes path in database/init/config/system_datatypes.json
 CONTROL_PATH = Path(__file__).parent.parent.parent.parent / "database/init/config/system_datatypes.json"
 
-# Index-specific abstract datatypes from config/config_index.json
-INDEX_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config/config_index.json"
+# Index-specific abstract datatypes from config/application/config_index.json
+INDEX_CONFIG_PATH = Path(__file__).parent.parent.parent.parent / "config/application/config_index.json"
 
 # Special sentinel column that can be suppressed with -nr.
 ROW_ID_COLUMN = "row_id"
@@ -82,12 +82,12 @@ def load_control() -> dict[str, str]:
 
 # Public Method: Load and convert config_index.json abstract datatypes into SQL definitions.
 def load_index_control() -> dict[str, str]:
-    """Load config_index.json data-types and map them to SQL column types."""
+    """Load config/application/config_index.json data-types and map them to SQL column types."""
     with INDEX_CONFIG_PATH.open("r", encoding="utf-8") as f:
         index_config = json.load(f)
     abstract_types = index_config.get("data-types", {})
     if not isinstance(abstract_types, dict):
-        raise ValueError("config_index.json 'data-types' must be a flat object")
+        raise ValueError("config/application/config_index.json 'data-types' must be a flat object")
 
     # Declare the control data structure.
     control: dict[str, str] = {}
@@ -271,7 +271,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Compare live MySQL columns against system_datatypes.json and "
-            "config_index.json data-types, check utf8mb4_bin collation, "
+            "config/application/config_index.json data-types, check utf8mb4_bin collation, "
             "and generate or execute remediation SQL."
         )
     )
@@ -339,7 +339,7 @@ def main():
                 print('Script aborted by request.')
                 exit()
 
-            # Index tables also inherit the abstract datatypes from config_index.json.
+            # Index tables also inherit the abstract datatypes from config/application/config_index.json.
             # System datatypes take precedence when a field exists in both sources.
             if table_uses_index_datatypes(schema_name, table_name):
                 table_control = {**index_control, **control}
@@ -468,7 +468,7 @@ def main():
             print("-- EXECUTING generated ALTER TABLE statements. DDL is auto-committed.\n")
         else:
             print("-- Review before running. Definitions are taken verbatim from system_datatypes.json")
-            print("-- and config_index.json data-types.")
+            print("-- and config/application/config_index.json data-types.")
             print("-- Expected table collation: CHARACTER SET utf8mb4 COLLATE utf8mb4_bin.\n")
 
         # Build and optionally execute remediation ALTER TABLE statements.

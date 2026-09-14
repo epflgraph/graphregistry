@@ -65,7 +65,7 @@ from graphdb.core.config import GraphDBConfig
 # Import project config paths.
 from graphregistry.common.paths import CONFIG_DB_PATH
 db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-# db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    # db_config = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
 
 # Global common arguments
 global_common_args = {
@@ -98,7 +98,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_setup_init,
                 args = [dict(flags = ('--dry_run'     , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
                         dict(flags = ('--verbose'     , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
-                        dict(flags = ('--index_tables', '-i'), kwargs = dict(action='store_true', default=False, help="Ensure index buildup tables from config_index.json exist.")),
+                        dict(flags = ('--index_tables', '-i'), kwargs = dict(action='store_true', default=False, help="Ensure index buildup tables from config/application/config_index.json exist.")),
                 ],
                 common_args = ['env'],
             )
@@ -387,7 +387,7 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--scores',  '-s'), kwargs=dict(action='store_true', default=False, help="Include 'scores expired' airflow table in expiration. If neither --fields nor --scores is passed, both are included by default.")),
                     dict(flags=('--types',       ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated object types to restrict expiration to (default: all active types from typeflags).")),
                     dict(flags=('--older_than',  ), kwargs=dict(required=False, type=int, default=None, help="Expire objects last cached more than N days ago. If 0 or not passed, all rows are expired regardless of cache date.")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help=f"Maximum number of objects to expire per document type (default: 100, max: see config limits.limit_per_type_max).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help=f"Maximum number of objects to expire per document type (default: 100, max: see config cli.limit_per_type_max).")),
                     dict(flags=('--count',   '-c'), kwargs=dict(action='store_true', default=False, help="Only show how many objects would be affected (do not modify data).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
@@ -398,7 +398,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_refresh,
                 args = [
                     dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict refresh to a single document type (default: all types).")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config limits.limit_per_type_max).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config cli.limit_per_type_max).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', default=False, help="Recompute and persist checksums for matching objects.")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],

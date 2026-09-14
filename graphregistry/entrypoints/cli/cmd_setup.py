@@ -42,7 +42,7 @@ def cmd_setup_init(args):
         for schema_key in schemas_to_process:
 
             # Get the schema name from config
-            schema_name = glbcfg.settings['mysql']['db_schema_names'][schema_key]
+            schema_name = glbcfg.schema_names[schema_key]
 
             # Loop over 3 execution modes: pytests, dev, prod
             for execution_mode_prefix in ['_0_PYTESTS_', '_1_DEV_', '']:
@@ -89,7 +89,7 @@ def cmd_setup_init(args):
         for schema_key in schemas_to_process:
 
             # Get the schema name from config
-            schema_name = glbcfg.settings['mysql']['db_schema_names'][schema_key]
+            schema_name = glbcfg.schema_names[schema_key]
 
             # Loop over 3 execution modes: pytests, dev, prod
             for execution_mode_prefix in ['_0_PYTESTS_', '_1_DEV_', '']:
@@ -166,7 +166,7 @@ def cmd_setup_init(args):
     if args.index_tables:
 
         # Print info message
-        sysmsg.info("🗂️ 📝 Ensure index buildup tables from config_index.json exist.")
+        sysmsg.info("🗂️ 📝 Ensure index buildup tables from config/application/config_index.json exist.")
 
         # Import helpers locally to keep plain setup init startup fast
         from graphregistry.common.dbstruct import DynamicSQL, GraphTable
@@ -261,7 +261,7 @@ def cmd_setup_init(args):
                     continue
 
                 # Build execution schema name
-                execution_schema_name = execution_mode_prefix + glbcfg.settings['mysql']['db_schema_names'][schema_key]
+                execution_schema_name = execution_mode_prefix + glbcfg.schema_names[schema_key]
 
                 # ‼️ Execute SQL file
                 if commit:

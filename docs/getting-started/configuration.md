@@ -1,12 +1,17 @@
 # Configuration
 
-GraphRegistry reads all configuration from a `config/` directory at the repository root. Example templates are provided in `config.examples/`.
+GraphRegistry reads all configuration from a `config/` directory at the repository root:
+
+- `config/environment/` — connection settings for external services and core registry settings.
+- `config/application/` — application behaviour rules.
+
+Example templates are provided in `config.examples/`.
 
 ## Environment configuration
 
 ### Global registry configuration
 
-`config/config_global.yaml` controls execution mode, schema names, and service limits.
+`config/environment/config_registry.yml` controls execution mode, schema names, and service limits.
 
 ```yaml
 api:
@@ -44,7 +49,7 @@ database:
 
 ### MySQL/MariaDB
 
-`config/config_db.yaml` defines database environments used by the `graphdb` client.
+`config/environment/config_graphdb.yml` defines database environments used by the `graphdb` client.
 
 ```yaml
 client_bin: /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb
@@ -67,7 +72,7 @@ default_env: coresrv_env
 
 ### Elasticsearch
 
-`config/config_es.yaml` defines Elasticsearch environments used by the `graphes` client.
+`config/environment/config_graphes.yml` defines Elasticsearch environments used by the `graphes` client.
 
 ```yaml
 export_path: /path/to/data/elasticsearch_exports
@@ -84,11 +89,11 @@ default_env: coresrv_env
 
 ### GraphAI
 
-`config/config_graphai.yaml` (or the JSON variant referenced by `config_global.yaml`) stores GraphAI connection credentials.
+`config/environment/config_graphai.yml` stores GraphAI connection credentials.
 
 ```yaml
 graphai:
-  host_address: HOST_ADDRESS
+  host_address: "https://graphai.example.com"
   port: PORT
   username: USERNAME
   password: PASSWORD
@@ -96,7 +101,7 @@ graphai:
 
 ### Generative AI (optional)
 
-`config/config_genai.yaml` configures an optional LLM for semantic enrichment.
+`config/environment/config_genai.yml` configures an optional LLM for semantic enrichment.
 
 ```yaml
 genai:
@@ -109,7 +114,7 @@ genai:
 
 ### Allowed API types
 
-`config/config_api.json` lists the node and edge types the REST API is allowed to accept.
+`config/application/config_api.json` lists the node and edge types the REST API is allowed to accept.
 
 ```json
 {
@@ -128,7 +133,7 @@ genai:
 
 ### Airflow rules
 
-`config/config_airflow.json` declares which node and edge types participate in each refresh cycle.
+`config/application/config_airflow.json` declares which node and edge types participate in each refresh cycle.
 
 ```json
 {
@@ -148,7 +153,7 @@ Each node tuple is `[type, process_fields, process_scores]`. Each edge tuple is 
 
 ### Semantic scoring
 
-`config/config_scores.json` defines which node-to-node tuples should receive semantic scores.
+`config/application/config_scores.json` defines which node-to-node tuples should receive semantic scores.
 
 ```json
 {
@@ -167,7 +172,7 @@ Each node tuple is `[type, process_fields, process_scores]`. Each edge tuple is 
 
 ### Indexing setup
 
-`config/config_index.json` controls Elasticsearch index layout, field selection, and ranking. Start from the provided example and adapt it to your use case.
+`config/application/config_index.json` controls Elasticsearch index layout, field selection, and ranking. Start from the provided example and adapt it to your use case.
 
 ## Validating configuration
 

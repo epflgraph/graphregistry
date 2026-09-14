@@ -1,6 +1,6 @@
 # Indexing
 
-GraphRegistry builds Elasticsearch indexes that power GraphSearch. The index layout, fields, and ranking rules are controlled by `config/config_index.json`.
+GraphRegistry builds Elasticsearch indexes that power GraphSearch. The index layout, fields, and ranking rules are controlled by `config/application/config_index.json`.
 
 ## Index lifecycle
 

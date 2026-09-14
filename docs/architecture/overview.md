@@ -53,7 +53,7 @@ This means you can test domain logic and use cases without a database, Elasticse
 
 ## Configuration boundary
 
-`GlobalConfig` loads `config/config_global.yaml` at startup. Concrete adapters read service-specific configuration files (for example, `config_graphai.yaml` for GraphAI, `config_db.yaml` for MySQL). Application and domain code never read files directly; they receive configured objects through dependency injection.
+`GlobalConfig` loads `config/environment/config_registry.yml` at startup. Concrete adapters read service-specific configuration files (for example, `config/environment/config_graphai.yml` for GraphAI, `config/environment/config_graphdb.yml` for MySQL). Application and domain code never read files directly; they receive configured objects through dependency injection.
 
 ## Lifecycle of a request
 

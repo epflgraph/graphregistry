@@ -42,7 +42,7 @@ def _find_repo_root(start: Path | None = None) -> Path:
 
 # Resolve repository paths once at import time.
 REPO_ROOT = _find_repo_root()
-CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
+CONFIG_DB_PATH = REPO_ROOT / "config" / "environment" / "config_graphdb.yml"
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {

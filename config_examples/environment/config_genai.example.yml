@@ -1,0 +1,4 @@
+genai:
+  api_key: API_KEY
+  inference_url: "https://api.example.com/v1"
+  llm_model: "moonshotai/Kimi-K2.7-Code"

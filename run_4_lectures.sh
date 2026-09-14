@@ -1,5 +1,5 @@
 graphregistry airflow reset        --options airflow,traversals,cache
-graphregistry airflow config       --typeflags config/config_airflow.json
+graphregistry airflow config       --typeflags config/application/config_airflow.json
 graphregistry airflow expire       --types Lecture
 graphregistry airflow refresh      --limit_per_type 1000000
 graphregistry airflow status

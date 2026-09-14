@@ -8,7 +8,8 @@ Copy the example configuration files and fill in the real connection details:
 
 ```bash
 cp -r config.examples config
-# Edit config/config_global.yaml, config/config_db.yaml, config/config_es.yaml, etc.
+# Edit config/environment/config_registry.yml, config/environment/config_graphdb.yml,
+# config/environment/config_graphes.yml, etc.
 ```
 
 ## 2. Test the CLI

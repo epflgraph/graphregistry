@@ -59,8 +59,7 @@ class RCPModelsClient:
             raise ValueError(
                 "Missing RCP LLM configuration: "
                 + ", ".join(missing)
-                + ". Expected config_global.yaml -> llm.rcp.{llm_base_url, llm_api_key, llm_model} "
-                "or genai.{llm_base_url, llm_api_key, llm_model}, "
+                + ". Expected config/environment/config_genai.yml -> genai.{llm_base_url, llm_api_key, llm_model}, "
                 "or pass values explicitly."
             )
 

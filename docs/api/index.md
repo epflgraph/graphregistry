@@ -78,7 +78,7 @@ curl -X POST http://127.0.0.1:9999/api/edges/save \
 
 ## Allowed types
 
-The API rejects node/edge types that are not listed in `config/config_api.json` with HTTP 400.
+The API rejects node/edge types that are not listed in `config/application/config_api.json` with HTTP 400.
 
 ## Error responses
 

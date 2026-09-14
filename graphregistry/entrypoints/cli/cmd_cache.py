@@ -145,8 +145,8 @@ def cmd_cache_debug(args):
 
     # from graphregistry.common.config import GlobalConfig
     # glbcfg = GlobalConfig()
-    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']   , re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
-    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.settings['mysql']['db_schema_names']['elasticsearch_cache'], re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
+    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.schema_names['graphsearch_test']   , re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
+    # db.print_database_stats(engine_name='xaas_coresrv', schema_name=glbcfg.schema_names['elasticsearch_cache'], re_exclude=[r'.*(MOOC|Lecture|Widget|Notebook|Exercise|Specialisation|Startup|StudyPlan).*'])
 
 
     # registry.indexdb.idoclinks['Category']['Course']['SEM'].horizontal_patch(actions=('print', 'commit'))

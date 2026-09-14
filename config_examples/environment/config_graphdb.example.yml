@@ -34,7 +34,7 @@ environments:
       # mode: REQUIRED
       verify_server_cert: true
 
-  # Environment: analytics
+  # Environment: Analytics DB
   analyticsdb_env:
     host_address: HOSTNAME
     port: PORT

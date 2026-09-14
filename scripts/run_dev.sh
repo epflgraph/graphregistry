@@ -26,7 +26,7 @@ graphregistry airflow sync --include_ontology
 
 # Step 3: Reset and config airflow
 graphregistry airflow reset --options typeflags,airflow,traversals,cache
-graphregistry airflow config --typeflags config/config_airflow.json
+graphregistry airflow config --typeflags config/application/config_airflow.json
 graphregistry airflow status
 
 # Step 4: AI/LLM operations

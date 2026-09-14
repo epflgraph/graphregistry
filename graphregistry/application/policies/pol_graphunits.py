@@ -2,7 +2,7 @@
 """Graph-units validation policy for API node/edge saves.
 
 This module implements an application-level policy that enforces the
-``allowed-types`` section of ``config/config_api.json``. It is intentionally
+``allowed-types`` section of ``config/application/config_api.json``. It is intentionally
 kept free of framework and persistence details: it receives plain sets of
 allowed values and domain model objects, and raises a domain exception when a
 node or edge type is not permitted.

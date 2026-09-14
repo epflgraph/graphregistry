@@ -11,7 +11,7 @@ The `graph_airflow` schema contains flag tables:
 - `Operations_N_Object_T_ScoresExpired` — nodes whose scores expired.
 - `Operations_N_Object_N_Object_T_FieldsChanged` — edges whose fields changed.
 
-These flags are driven by the `config_airflow.json` configuration.
+These flags are driven by the `config/application/config_airflow.json` configuration.
 
 ## Resetting flags
 

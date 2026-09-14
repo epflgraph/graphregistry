@@ -75,7 +75,7 @@ curl -X POST http://127.0.0.1:9999/api/nodes/save_many \
   -d @nodes.json
 ```
 
-The API enforces the allow-list configured in `config/config_api.json`.
+The API enforces the allow-list configured in `config/application/config_api.json`.
 
 ## Concept detection
 
@@ -94,6 +94,6 @@ node_ops.enrich_with_concepts(node)
 
 ## Validation
 
-- Node and edge types must be allowed by `config_api.json`.
+- Node and edge types must be allowed by `config/application/config_api.json`.
 - Field keys must be consistent with their parent node/edge key.
 - Duplicate keys are rejected with a `DuplicateKeyError` (HTTP 409 in the API).

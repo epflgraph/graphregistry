@@ -64,7 +64,7 @@ def schema_name(test_config: tuple[Path, str]) -> str:
 
 @pytest.fixture(scope="module")
 def db() -> GraphDB:
-    db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    db_config = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
     return GraphDB(config=db_config)
 
 

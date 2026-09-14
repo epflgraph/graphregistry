@@ -27,7 +27,7 @@ idxcfg =  IndexConfig()
 scrcfg = ScoresConfig()
 
 # Initialise MySQL client
-# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+    # db_cfg = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
 from graphregistry.common.paths import (
     CONFIG_DB_PATH,
     REPO_ROOT as PROJECT_ROOT,
@@ -1903,7 +1903,7 @@ class GraphRegistry():
                     # Get edges to process directly from config json
                     edge_types_from_flags = set([tuple(sorted([from_node_type, to_node_type])) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields is True])
 
-                    # Filter by the edge types explicitly selected in config_index.json.
+                    # Filter by the edge types explicitly selected in config/application/config_index.json.
                     # object-selection.edges defines the (from_type, to_type, context)
                     # triples that should be indexed; only those pairs are processed.
                     edge_types_available = set(idxcfg.settings['edge_selection_contexts'])
@@ -5144,7 +5144,7 @@ class GraphRegistry():
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
-            # Get mixed doclink tuples from config_scores.json
+            # Get mixed doclink tuples from config/application/config_scores.json
             doclinks_to_process = sorted(list(set(dynsql.doclink_types_mix)))
 
             # Loop over all doclink tuples
@@ -6163,7 +6163,7 @@ class GraphRegistry():
                 # Flip doc-link direction if needed
                 doc_type, link_type = sorted([doc_type, link_type])
 
-                # Resolve the canonical context for this edge pair from config_index.json.
+                # Resolve the canonical context for this edge pair from config/application/config_index.json.
                 # object-selection.edges defines which (from_type, to_type, context) triple
                 # should be used when flattening the 5-tuple edge into a 4-tuple index link.
                 edge_pair_key = (doc_type, link_type)
@@ -6178,7 +6178,7 @@ class GraphRegistry():
                 if edge_context is None:
                     sysmsg.warning(
                         f"No edge context configured for '{doc_type}' <-> '{link_type}' "
-                        "in config_index.json object-selection.edges. Skipping."
+                            "in config/application/config_index.json object-selection.edges. Skipping."
                     )
                     return
                 #----------------------------#
@@ -7573,7 +7573,7 @@ class GraphRegistry():
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
 
-                    # Resolve the canonical context for this edge pair from config_index.json.
+                # Resolve the canonical context for this edge pair from config/application/config_index.json.
                     edge_pair_key = tuple(sorted([self.doc_type, self.link_type]))
                     edge_context = idxcfg.settings['edge_selection_contexts'].get(edge_pair_key)
                     sysmsg.trace(
@@ -7586,7 +7586,7 @@ class GraphRegistry():
                     if edge_context is None:
                         sysmsg.warning(
                             f"No edge context configured for '{self.doc_type}' <-> '{self.link_type}' "
-                            "in config_index.json object-selection.edges. Skipping."
+                        "in config/application/config_index.json object-selection.edges. Skipping."
                         )
                         return
 

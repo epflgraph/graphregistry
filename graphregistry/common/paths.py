@@ -53,21 +53,32 @@ def find_repo_root(start: Path | None = None) -> Path:
 REPO_ROOT = find_repo_root()
 
 CONFIG_DIR = REPO_ROOT / "config"
+CONFIG_ENVIRONMENT_DIR = CONFIG_DIR / "environment"
+CONFIG_APPLICATION_DIR = CONFIG_DIR / "application"
 DATABASE_DIR = REPO_ROOT / "database"
 EXAMPLES_DIR = REPO_ROOT / "examples"
 RESOURCES_DIR = REPO_ROOT / "resources"
 SCRIPTS_DIR = REPO_ROOT / "scripts"
 
 
-CONFIG_DB_PATH = CONFIG_DIR / "config_db.yaml"
-CONFIG_GLOBAL_PATH = CONFIG_DIR / "config_global.yaml"
-CONFIG_GLOBAL_TEMPLATE_PATH = CONFIG_DIR / "config_global.template.yaml"
-CONFIG_INDEX_PATH = CONFIG_DIR / "config_index.json"
-CONFIG_INDEX_TEMPLATE_PATH = CONFIG_DIR / "config_index.template.json"
-CONFIG_SCORES_PATH = CONFIG_DIR / "config_scores.json"
-CONFIG_SCORES_TEMPLATE_PATH = CONFIG_DIR / "config_scores.template.json"
-CONFIG_API_PATH = CONFIG_DIR / "config_api.json"
-CONFIG_GRAPHAI_CLIENT_PATH = CONFIG_DIR / "config_graphai.json"
+# Environment / service connection configurations
+CONFIG_REGISTRY_PATH = CONFIG_ENVIRONMENT_DIR / "config_registry.yml"
+CONFIG_GRAPHDB_PATH = CONFIG_ENVIRONMENT_DIR / "config_graphdb.yml"
+CONFIG_GRAPHES_PATH = CONFIG_ENVIRONMENT_DIR / "config_graphes.yml"
+CONFIG_GRAPHAI_PATH = CONFIG_ENVIRONMENT_DIR / "config_graphai.yml"
+CONFIG_GENAI_PATH = CONFIG_ENVIRONMENT_DIR / "config_genai.yml"
+
+# Backwards-compatible aliases for the renamed service connection configs.
+CONFIG_DB_PATH = CONFIG_GRAPHDB_PATH
+CONFIG_ES_PATH = CONFIG_GRAPHES_PATH
+CONFIG_GLOBAL_PATH = CONFIG_REGISTRY_PATH
+CONFIG_GRAPHAI_CLIENT_PATH = CONFIG_GRAPHAI_PATH
+
+# Application / behaviour configurations
+CONFIG_API_PATH = CONFIG_APPLICATION_DIR / "config_api.json"
+CONFIG_INDEX_PATH = CONFIG_APPLICATION_DIR / "config_index.json"
+CONFIG_SCORES_PATH = CONFIG_APPLICATION_DIR / "config_scores.json"
+CONFIG_AIRFLOW_PATH = CONFIG_APPLICATION_DIR / "config_airflow.json"
 
 
 DATABASE_QUERIES_DIR = DATABASE_DIR / "queries"
