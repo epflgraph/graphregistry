@@ -513,3 +513,93 @@ You can also use the Swagger UI interface to experiment with data management usi
 🌍 [http://127.0.0.1:9999/docs](http://127.0.0.1:9999/docs)
 
 You have an example of how to execute each data management operation, using either the CLI or the API, in the folder: 📂 [examples/entrypoints](examples/entrypoints).
+
+For information on the data format, consult the Registry [documentation](https://epflgraph.github.io/graphregistry/).
+
+Airflow Mechanism
+=================
+Calculating a semantically interconnected knowledge graph is expensive, particularly when the number of academic objects (represented as nodes in the graph) is in the order of hundreds of thousands. For example, a well connected graph with 100'000 nodes can easily have in the order of 10 million edges. Executing a complete graph recalculation every time you insert or delete data would not be feasible.
+
+For this reason, the Registry application has a flexible mechanism - called *Graph Airflow* (inspired by Apache Airflow) - that enables data managers to decide and configure which parts of the graph, and under which conditions, should be (re)calculated.
+
+The Airflow mechanism allows you to:
+
+- select which types of nodes and edges to process;
+- impose an upper bound of the number of objects to process in one cycle;
+- (re)process only new objects, or otherwise objects for which the checksums have changed;
+- (re)process only objects that have expired (based on when they were last processed).
+
+The entire pipeline, from data ingestion to updating and patching the knowledge graph that serves Graph Search in production, is optimized such that only data points that are different (or focibly need to be re-computed) are actually affected.
+
+## Sync new objects
+
+The first action into lauching a knowledge graph refresh cycle (other than inserting and deleting objects) is to sync the current objects in the data registry into airflow, so they start being tracked. You can do this with the command:
+
+```shell
+graphregistry airflow sync
+```
+
+If you are just starting, you should also sync the ontology objects (concepts and category objects) so they are tracked like any other object:
+
+```shell
+graphregistry airflow sync --include_ontology
+```
+
+If this is not your first refresh cycle, and every time you begin a new one, it is advisable to start with a clean slate by resetting all cached states across the pipeline:
+
+```shell
+graphregistry airflow reset
+```
+
+You can later reset the cached states in a more targated manner using the following options:
+
+```shell
+graphregistry airflow reset --options typeflags,airflow,traversals,cache
+```
+
+For a faster reset action, use the option `--doc_types` to limit to the object type(s) you intend to process.
+
+## Setup types to process
+
+Graph Airflow allows you to precisely select which node and edge object types to process before you launch a refresh cycle. These are called *type flags* and they are defined in the configuration file: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json).
+
+The format is the following:
+
+```json
+{
+    "nodes": [
+        ["object type 1", process_fields, process_scores],
+        ["object type 2", process_fields, process_scores],
+        ...
+    ],
+    "edges": [
+        ["object type [from]", "object type [to]", process_fields],
+        ["object type [from]", "object type [to]", process_fields],
+        ...
+    ]
+}
+```
+
+Where `object type` can take values like `Course`, `Person`, `Lecture`, `Publication`, etc, representing the different types of academic objects managed by your institution.
+
+The type flags are boolean `[true|false]` values representing, in the case of **nodes**:
+
+- `process_fields`: process all metadata fields like title, description, url, and custom (object type-specific) fields;
+- `process_scores`: process or re-calculate semantic scores related to (ie, from and to) this object type.
+
+In the case of **edges**:
+
+- `process_fields`: process all metadata related to organizational edges, like, for example, a `Person-to-Publication` authorship relation. The type flag `process_scores` is excluded in this field because it is already covered by the nodes field.
+
+To apply the configuration, run:
+
+```shell
+graphregistry airflow config --typeflags config/application/config_airflow.json
+```
+
+You can verify the configuration with:
+
+```shell
+graphregistry airflow status
+```
+
