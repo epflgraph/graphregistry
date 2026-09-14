@@ -434,11 +434,12 @@ graphregistry -h
 
 If everything works as expected, you are good to go! 🚀
 
+> [!TIP]
+> You can print the help info for all the CLI commands and sub-commands with `graphregistry <cmd> <subcmd> -h`
+
 ## Test your configuration
 
-As a first step, your can validate and visualize your configuration files. The CLI provides the command `config` to execute operations related to your configuration files.
-
-For help:
+As a first step, your can validate and check your configuration. The CLI provides the command `config` to execute operations related to your configuration files.
 
 ```shell
 graphregistry config validate
@@ -452,27 +453,63 @@ graphregistry config show
 
 ## Initialize the application environment
 
+If you start from an empty environment, you can run the initialization command to generate all the necessary databases and tables utilized by the Registry application:
 
+```shell
+graphregistry setup init
+```
 
+This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database. If not, you can import the ontology sample set as follows:
 
-Data Ingestion
-==============
-... 🚧
+```shell
+graphregistry setup init --import-ontology-sample
+```
 
-<!--
-# set up password for es:
+## Ingesting and managing data
 
-# using the Docker DNS name
-docker compose exec elasticsearch bin/elasticsearch-reset-password -u elastic -i --url https://elasticsearch:9200
+There are two ways of inserting data into the Registry database: using the CLI or the API. To help you get started, a sample dataset is provided in the folder: 📂 [examples/sample_sets](examples/sample_sets).
 
-curl --cacert ./.certs/ca.crt -u elastic:$NEWPASS https://127.0.0.1:9200/_cluster/health?pretty
+The command for managing Registry data is:
 
+```shell
+graphregistry data
+```
 
-kibana:
+For example, you can use the subcommand `save` to insert a list of nodes:
 
-docker compose exec elasticsearch bin/elasticsearch-service-tokens create elastic/kibana kibana-token
+```shell
+graphregistry data save --node_list examples/sample_sets/sample_epfl_node_list.json
+```
 
-[copy token to .env in var KIBANA_SERVICE_TOKEN]
+and the corresponding list of edges:
 
-restart: docker compose up -d kibana
--->
+```shell
+graphregistry data save --edge_list examples/sample_sets/sample_epfl_edge_list.json
+```
+
+Alternatively, you can replicate the exact same operation with the API as follows:
+
+```shell
+jq '.' examples/sample_sets/sample_epfl_node_list.json \
+| curl -sS -X POST 'http://127.0.0.1:9999/api/nodes/save_many' \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d @- \
+| jq '.'
+```
+
+for the same list of nodes, and the same thing for the edges:
+
+```shell
+jq '.' examples/sample_sets/sample_epfl_edge_list.json \
+| curl -sS -X POST 'http://127.0.0.1:9999/api/edges/save_many' \
+    -H 'accept: application/json' \
+    -H 'Content-Type: application/json' \
+    -d @- \
+| jq '.'
+```
+
+You can also use the Swagger UI interface to experiment with data management using the API:<br />
+🌍 [http://127.0.0.1:9999/docs](http://127.0.0.1:9999/docs)
+
+You have an example of how to execute each data management operation, using either the CLI or the API, in the folder: 📂 [examples/entrypoints](examples/entrypoints).
