@@ -583,15 +583,18 @@ class IndexConfig:
                     self.settings['elasticsearch']['filters' ]['links'].get(doc_type_as_link, [])
                 ]
 
-                # Append to printable struct
-                if str(idx_tuple) not in printable_struct:
-                    printable_struct[str(idx_tuple)] = {
+                # Append to printable struct, keyed by both link type and
+                # field/order/filter signature so distinct link types that
+                # happen to share the same empty configuration are not merged.
+                ps_key = (doc_type_as_link, str(idx_tuple))
+                if ps_key not in printable_struct:
+                    printable_struct[ps_key] = {
                         'doc_type(s)' : [other_doc_type],
                         'link_type'   : doc_type_as_link,
                         'idx_tuple'   : idx_tuple
                     }
                 else:
-                    printable_struct[str(idx_tuple)]['doc_type(s)'] += [other_doc_type]
+                    printable_struct[ps_key]['doc_type(s)'] += [other_doc_type]
 
         #----------------------------------------------#
 
