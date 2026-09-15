@@ -75,13 +75,6 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/epflgraph/graphregistry
-  alternate:
-    - name: English
-      link: /graphregistry/en/
-      lang: en
-    - name: Français
-      link: /graphregistry/fr/
-      lang: fr
 
 nav:
   - Home: index.md

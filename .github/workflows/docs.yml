@@ -37,7 +37,7 @@ jobs:
             mkdocs-material-
 
       - name: Install docs dependencies
-        run: pip install mkdocs-material mkdocs-minify-plugin
+        run: pip install ".[docs]"
 
       - name: Deploy to GitHub Pages
         run: mkdocs gh-deploy --force
