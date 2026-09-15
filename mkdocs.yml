@@ -1,10 +1,14 @@
-site_name: GraphRegistry
+site_name: Graph Registry
 site_description: Documentation for the EPFL Graph Registry service
 site_author: EPFL Graph Team
 site_url: https://epflgraph.github.io/graphregistry/
 
+repo_url: https://github.com/epflgraph/graphregistry
+edit_uri: edit/improved_init_and_docs/docs/
+
 theme:
   name: material
+  custom_dir: overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -21,27 +25,38 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
-    - navigation.instant
-    - navigation.tracking
-    - navigation.tabs
-    - navigation.sections
-    - navigation.expand
-    - navigation.top
-    - search.suggest
-    - search.highlight
-    - content.code.copy
+    - content.action.edit
+    - content.action.view
     - content.code.annotate
+    - content.code.copy
     - content.tabs.link
+    - navigation.expand
+    - navigation.instant
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - toc.integrate
 
 plugins:
   - search
   - minify:
       minify_html: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: date
 
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.inlinehilite
@@ -60,8 +75,13 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/epflgraph/graphregistry
-  version:
-    provider: mike
+  alternate:
+    - name: English
+      link: /graphregistry/en/
+      lang: en
+    - name: Français
+      link: /graphregistry/fr/
+      lang: fr
 
 nav:
   - Home: index.md

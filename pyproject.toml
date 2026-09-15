@@ -87,3 +87,7 @@ exclude_lines = [
 ]
 skip_covered = false
 show_missing = true
+
+# Add this:
+# pip install mkdocs-git-revision-date-localized-plugin
+

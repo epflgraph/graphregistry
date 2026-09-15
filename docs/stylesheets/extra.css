@@ -23,3 +23,11 @@
 .md-typeset code {
     border-radius: 4px;
 }
+
+.md-header__option .md-header__button,
+a[title="GitHub"].md-header__button {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0.8rem;
+    padding-right: 0;
+}

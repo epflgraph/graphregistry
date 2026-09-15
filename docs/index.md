@@ -30,6 +30,16 @@ GraphRegistry is one service in the broader Graph Data Platform:
 - [API reference](api/index.md)
 - [CLI reference](cli/index.md)
 
+```mermaid
+flowchart LR
+    API --> Application
+    CLI --> Application
+    Application --> Ports
+    Ports --> Adapters
+    Adapters --> MySQL
+    Adapters --> GraphAI
+```
+
 ## Repository
 
 The source code lives at [github.com/epflgraph/graphregistry](https://github.com/epflgraph/graphregistry).
