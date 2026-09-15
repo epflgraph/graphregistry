@@ -672,9 +672,11 @@ graphregistry cache update --matrix --actions commit
 > [!CAUTION]
 > This matrix can easily grow to tens of millions of data points - hence the need for processing objects in small chunks.
 
-## Index database (for Graph Search)
-
+Serving Graph Search
+====================
 At this point, the Knowledge Graph is fully defined and up-to-date, and could technically be used to serve a graph-type search client. However, what makes [Graph Search](https://github.com/epflgraph/graphsearch_ui) special compared to other similar systems is how fast and reactive it is. All data is pre-calculated and cached before a user ever uses the search bar or clicks on a link.
+
+## Index database on MySQL/MariaDB
 
 To achieve this level of caching, and yet keep data up-to-date effectively, the Registry has a sophisticated data patching mechanism that introduces minimal changes into the pre-calculated graph database. To execute this patching operation, run the following two commands:
 
@@ -699,7 +701,7 @@ Execute as follows:
 graphregistry data delete_loose_ends --env coresrv --actions eval,commit
 ```
 
-## ElasticSearch index (for Graph Search)
+## Index documents on ElasticSearch
 
 Finally, you can export the Graph Search database index into ElasticSearch, which serves the application's search bar as well as the chatbot functionality. This is done in two steps. First, you export it locally from MySQL/MariaDB:
 
@@ -713,4 +715,4 @@ Then, you import it into your ElasticSearch server:
 graphregistry es import --env coresrv --input_folder path/to/es_exports/YYYY-MM-DD/es_fullindex_YYYY-MM-DD --rename_to graphsearch_dev -r --chunk_size 1000
 ```
 
-These commands assume you are deploying in a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respecively.
+These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respecively.
