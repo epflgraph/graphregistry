@@ -39,7 +39,7 @@ theme:
     - navigation.tracking
     - search.highlight
     - search.suggest
-    - toc.integrate
+    # - toc.integrate
 
 plugins:
   - search
@@ -74,7 +74,14 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/epflgraph/graphregistry
+      link: https://github.com/epflgraph/graphplatform
+      name: Graph Platform on GitHub
+    - icon: fontawesome/solid/globe
+      link: https://www.epfl.ch/education/educational-initiatives/cede/
+      name: EPFL-CEDE
+    - icon: fontawesome/solid/envelope
+      link: mailto:graph-support@epfl.ch
+      name: Contact EPFL Graph Support
 
 nav:
   - Home: index.md
@@ -82,17 +89,19 @@ nav:
       - getting-started/installation.md
       - getting-started/configuration.md
       - getting-started/quickstart.md
-  - Architecture:
-      - architecture/overview.md
-      - architecture/hexagonal-layout.md
-      - architecture/domain-models.md
-      - architecture/application-layer.md
-      - architecture/adapters.md
-      - architecture/entrypoints.md
-  - Operations:
-      - operations/data-ingestion.md
-      - operations/cache-airflow.md
-      - operations/indexing.md
+  - Reference:
+      - reference/overview.md
+      - Architecture:
+          - reference/architecture/overview.md
+          - reference/architecture/hexagonal-layout.md
+          - reference/architecture/domain-models.md
+          - reference/architecture/application-layer.md
+          - reference/architecture/adapters.md
+          - reference/architecture/entrypoints.md
+      - Operations:
+          - reference/operations/data-ingestion.md
+          - reference/operations/cache-airflow.md
+          - reference/operations/indexing.md
   - API: api/index.md
   - CLI: cli/index.md
   - Development:
@@ -102,4 +111,4 @@ nav:
 extra_css:
   - stylesheets/extra.css
 
-copyright: Copyright &copy; 2026 EPFL Graph Team
+copyright: Copyright &copy; 2026 EPFL - Apache License 2.0

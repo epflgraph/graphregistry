@@ -1,4 +1,4 @@
-# GraphRegistry
+# Graph Registry
 
 GraphRegistry is the first layer of the EPFL Graph Data Platform. It ingests structured data and constructs a semantic knowledge graph that feeds [GraphSearch](https://github.com/epflgraph/graphsearch_ui) and [GraphChat](https://github.com/epflgraph/graphchatbot).
 

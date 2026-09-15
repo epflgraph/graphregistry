@@ -634,9 +634,83 @@ graphregistry airflow status
 ```
 
 > [!CAUTION]
-> Avoid setting `--limit_per_type` too high, as it might overwhelm your MySQL/MariaDB server. It is almost always better to keep that limit low, and execute the refresh cycle multiple times, than the other way around.
+> Avoid setting `--limit_per_type` too high, as it might overwhelm your MySQL/MariaDB server. It is almost always better to keep that limit low, and execute the refresh cycle multiple times, compared to the opposite.
 
+Knowledge Graph Construction
+============================
+Once the execution plan has been configured, the next stage is to calculate and construct the **Knowledge Graph**, which is the core structure that represents the essence of the Graph Platform.
 
+## Formulas
 
+The first functionality to master that will enable you to fully benefit from the Graph Registry capabilities is *formulas*. They are described in detail in the [documentation](https://epflgraph.github.io/graphregistry/). For now, it is enough to descriminate formulas into three types:
 
+- formulas related to object metadata fields;
+- formulas related to graph traversals;
+- formulas related to semantic scores calculation.
 
+In can execute all three types at once (including some intermediate steps) as follows:
+
+```shell
+graphregistry cache update --formulas reset,fields,views,traversals,scores --actions commit,eval
+```
+
+## Scoring matrix
+
+The two primary results of the previous command are:
+
+1. **Fields:** Consolidation of all object inputs, composed fields, and auto-generated metadata;
+2. **Scores:** Consolidation of all object semantic analysis and calculated scores.
+
+Starting with the second, semantic scores are represented by weighted edges of the type `Object-to-Concept` and `Object-to-Category`, where concepts and categories are the basic objects of the [Graph Ontology](https://github.com/epflgraph/graphontology).
+
+Once the link between objects and the concepts ontology has been calculated, the next step is calculate and update the global `Object-to-Object` scoring matrix:
+
+```shell
+graphregistry cache update --matrix --actions commit
+```
+
+> [!CAUTION]
+> This matrix can easily grow to tens of millions of data points - hence the need for processing objects in small chunks.
+
+## Index database (for Graph Search)
+
+At this point, the Knowledge Graph is fully defined and up-to-date, and could technically be used to serve a graph-type search client. However, what makes [Graph Search](https://github.com/epflgraph/graphsearch_ui) special compared to other similar systems is how fast and reactive it is. All data is pre-calculated and cached before a user ever uses the search bar or clicks on a link.
+
+To achieve this level of caching, and yet keep data up-to-date effectively, the Registry has a sophisticated data patching mechanism that introduces minimal changes into the pre-calculated graph database. To execute this patching operation, run the following two commands:
+
+```shell
+graphregistry index build --actions commit,eval
+graphregistry index patch --actions commit,eval
+```
+
+Once data patching has been completed, and assuming it was successful, you should update the object parameters on Graph Airflow, so they are marked as processed and not processed again in the next cycle:
+
+```shell
+graphregistry airflow rollover --actions commit
+graphregistry airflow update_dates --actions commit
+graphregistry airflow reset --options airflow,traversals,cache
+```
+
+If you executed multiple refresh and patching cycles, to the point where no objects are left to process under the current configuration, you should do a final clean up of the knowledge graph. It consists of removing all orphan nodes and loose-end edges, as well as small disconnected "island" subgraphs, keeping only the [largest connected graph](https://en.wikipedia.org/wiki/Component_(graph_theory)).
+
+Execute as follows:
+
+```shell
+graphregistry data delete_loose_ends --env coresrv --actions eval,commit
+```
+
+## ElasticSearch index (for Graph Search)
+
+Finally, you can export the Graph Search database index into ElasticSearch, which serves the application's search bar as well as the chatbot functionality. This is done in two steps. First, you export it locally from MySQL/MariaDB:
+
+```shell
+graphregistry index generate --target elasticsearch --index_date YYYY-MM-DD -r
+```
+
+Then, you import it into your ElasticSearch server:
+
+```shell
+graphregistry es import --env coresrv --input_folder path/to/es_exports/YYYY-MM-DD/es_fullindex_YYYY-MM-DD --rename_to graphsearch_dev -r --chunk_size 1000
+```
+
+These commands assume you are deploying in a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respecively.
