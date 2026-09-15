@@ -8,7 +8,7 @@ edit_uri: edit/improved_init_and_docs/docs/
 
 theme:
   name: material
-  custom_dir: overrides
+  custom_dir: docs/overrides
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
