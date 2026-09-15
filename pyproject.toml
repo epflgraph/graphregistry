@@ -39,6 +39,7 @@ dependencies = [
 docs = [
     "mkdocs-material",
     "mkdocs-minify-plugin",
+    "mkdocs-static-i18n",
 ]
 
 [project.scripts]
