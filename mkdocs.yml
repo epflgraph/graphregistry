@@ -31,6 +31,7 @@ theme:
     - content.code.copy
     - content.tabs.link
     - navigation.expand
+    - navigation.instant
     - navigation.path
     - navigation.sections
     - navigation.tabs
@@ -44,46 +45,9 @@ plugins:
   - search
   - minify:
       minify_html: true
-  - i18n:
-      docs_structure: suffix
-      languages:
-        - locale: en
-          name: English
-          default: true
-          build: true
-        - locale: fr
-          name: Français
-          build: true
-          site_name: Registre Graphique
-          site_description: Documentation du service EPFL Graph Registry
-          nav_translations:
-            Home: Accueil
-            "Getting Started": Démarrage
-            Installation: Installation
-            Configuration: Configuration
-            Quickstart: Démarrage rapide
-            Architecture: Architecture
-            Overview: Vue d'ensemble
-            "Hexagonal layout": Architecture hexagonale
-            "Domain models": Modèles de domaine
-            "Application layer": Couche application
-            Adapters: Adaptateurs
-            Entrypoints: Points d'entrée
-            Operations: Opérations
-            "Data ingestion": Ingestion de données
-            "Cache and airflow": Cache et airflow
-            Indexing: Indexation
-            API: API
-            CLI: CLI
-            Development: Développement
-            Contributing: Contribuer
-            Testing: Tests
   - git-revision-date-localized:
       enable_creation_date: true
       type: date
-      enable_git_follow: false
-      exclude:
-        - "*.fr.md"
 
 markdown_extensions:
   - admonition
@@ -111,6 +75,13 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/epflgraph/graphregistry
+  alternate:
+    - name: English
+      link: /graphregistry/en/
+      lang: en
+    - name: Français
+      link: /graphregistry/fr/
+      lang: fr
 
 nav:
   - Home: index.md
