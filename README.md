@@ -559,7 +559,7 @@ graphregistry airflow reset --options typeflags,airflow,traversals,cache
 
 For a faster reset action, use the option `--doc_types` to limit to the object type(s) you intend to process.
 
-## Setup types to process
+## Setup the object and content types to process
 
 Graph Airflow allows you to precisely select which node and edge object types to process before you launch a refresh cycle. These are called *type flags* and they are defined in the configuration file: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json).
 
@@ -602,4 +602,41 @@ You can verify the configuration with:
 ```shell
 graphregistry airflow status
 ```
+
+## Checksums, expiration dates, and subset sizes
+
+To determine if an object needs to be re-processed due to changes in its metadata, like title and description, Graph Airflow relies on object checksums. Therefore, you should always update them at the beginning of a refresh cycle:
+
+```shell
+graphregistry airflow update_checksums
+```
+
+Note, however, that this operation, and the ones bellow, respect the active type flags. If you want to modify the affected types, be sure to set them in advace with `graphregistry airflow config`.
+
+Another way you can decide whether or not to re-process objects is through expiration dates. If, for example, you consider that semantic connection scores between objects (semantic edges) should be re-calculated after 90 days, you can run:
+
+```shell
+graphregistry airflow expire --scores --older_than 90
+```
+
+This is useful for discriminating between semantic or organizational edges based on how often they change. For instance, a course description and content might change every academic year, thus requiring frequent semantic analysis, whereas a journal paper typically remains unchanged once it has been published.
+
+Once you set all the conditions under which objects should to be re-processed, you need to update the "to process" states before launching the actual cycle:
+
+```shell
+graphregistry airflow refresh --limit_per_type 1000
+```
+
+This command will then output and print the precise execution plan for the next stage. You can double check the plan at any time with the command:
+
+```shell
+graphregistry airflow status
+```
+
+> [!CAUTION]
+> Avoid setting `--limit_per_type` too high, as it might overwhelm your MySQL/MariaDB server. It is almost always better to keep that limit low, and execute the refresh cycle multiple times, than the other way around.
+
+
+
+
 
