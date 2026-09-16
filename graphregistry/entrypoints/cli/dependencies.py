@@ -52,6 +52,7 @@ def build_edge_operations(*, uow_factory: Callable[[], UnitOfWork]) -> EdgeOpera
 #---------------------------------------------------------------------------------------#
 # Internal Function: Build lecture operations wired to MySQL repository and AI gateways #
 #---------------------------------------------------------------------------------------#
+# Internal Function: Build lecture operations wired to MySQL repository and AI gateways.
 def build_lecture_operations(
     *,
     db : GraphDB,
@@ -107,7 +108,11 @@ def build_lecture_enrichment_operations(*, db: GraphDB, engine_name: str, global
 # Public Method: Build node operations from a CLI args namespace.
 def build_node_operations_from_args(args, *, concept_detection_gateway: ConceptDetectionGateway | None = None) -> NodeOperations:
     """Build node operations from a CLI args namespace."""
-    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
+    uow_factory = build_uow_factory(
+        db          = args.ctx.db,
+        engine_name = args.env,
+        verbose     = getattr(args, 'verbose', False),
+    )
     return build_node_operations(
         uow_factory               = uow_factory,
         concept_detection_gateway = concept_detection_gateway,
@@ -122,7 +127,11 @@ def build_edge_operations_from_args(args) -> EdgeOperations:
 # Public Method: Build node operations with a GraphAI concept-detection gateway
 def build_node_operations_with_concept_detection_from_args(args) -> NodeOperations:
     """Build node operations with a GraphAI concept-detection gateway."""
-    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
+    uow_factory = build_uow_factory(
+        db          = args.ctx.db,
+        engine_name = args.env,
+        verbose     = getattr(args, 'verbose', False),
+    )
     return build_node_operations(
         uow_factory               = uow_factory,
         concept_detection_gateway = GraphAIConceptDetectionGateway(),
@@ -140,6 +149,7 @@ def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOpera
 #-------------------------------------------------------------------#
 # Public Method: Build lecture operations from a CLI args namespace #
 #-------------------------------------------------------------------#
+# Public Method: Build lecture operations from a CLI args namespace.
 def build_lecture_operations_from_args(
     args,
     *,

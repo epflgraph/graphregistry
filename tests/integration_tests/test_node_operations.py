@@ -17,7 +17,7 @@ from graphregistry.domain.models.entities.mdl_base import NodeKey
 from graphregistry.domain.models.entities.mdl_node import NodeList
 
 # Engine name used for all integration tests in this module.
-ENGINE_NAME = "xaas_coresrv"
+ENGINE_NAME = "coresrv"
 # Path to the JSON fixture that drives the node operation tests.
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "integration_tests" / "node_operations_sample.json"
 

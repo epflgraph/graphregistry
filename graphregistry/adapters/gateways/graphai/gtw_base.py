@@ -10,8 +10,10 @@ from time import sleep
 from typing import Any, ClassVar, Literal, cast, overload
 
 from requests import Response, Session
+from yaml import safe_load
 
 from graphregistry.common.config import GlobalConfig, REPO_ROOT
+from graphregistry.common.paths import CONFIG_GRAPHAI_PATH
 
 
 class GraphAIBaseGateway:
@@ -139,25 +141,31 @@ class GraphAIBaseGateway:
     def _resolve_graph_api_json(graph_api_json: str | Path | None) -> Path:
         """
         Resolve the config file path, either from the explicit argument or from
-        GlobalConfig.
+        the default GraphAI environment config.
         """
         if graph_api_json is None:
-            glbcfg = GlobalConfig()
-            graph_api_json = glbcfg.settings["graphai"]["client_config_file"]
+            graph_api_json = CONFIG_GRAPHAI_PATH
 
         path = Path(cast(str, graph_api_json))
         return path if path.is_absolute() else (REPO_ROOT / path)
+
+    @staticmethod
+    def _load_graphai_config(graph_api_json: str | Path) -> dict[str, Any]:
+        """Load the GraphAI connection config from YAML."""
+        with open(graph_api_json, "r", encoding="utf-8") as fp:
+            raw = safe_load(fp)
+        cfg = raw.get("graphai", raw) if isinstance(raw, dict) else raw
+        return cast(dict[str, Any], cfg)
 
     def _login(self, graph_api_json: str, max_tries: int = 5) -> dict[str, Any]:
         """
         Authenticate against GraphAI and return the login payload with bearer token.
         """
-        with open(graph_api_json) as fp:
-            cfg = load_json(fp)
+        cfg = self._load_graphai_config(graph_api_json)
 
         login_info: dict[str, Any] = {
-            "user": cfg["user"],
-            "host": f'{cfg["host"]}:{cfg["port"]}',
+            "user": cfg["username"],
+            "host": f'{cfg["host_address"]}:{cfg["port"]}',
             "graph_api_json": graph_api_json,
         }
 
@@ -165,7 +173,7 @@ class GraphAIBaseGateway:
             url="/token",
             login_info=login_info,
             method="POST",
-            data={"username": cfg["user"], "password": cfg["password"]},
+            data={"username": cfg["username"], "password": cfg["password"]},
             max_tries=max_tries,
             timeout=30,
         )

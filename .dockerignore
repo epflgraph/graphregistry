@@ -83,16 +83,20 @@ services_path.txt
 setup.sh
 
 # Runtime config files: mounted at runtime, not baked into image
-config/config_api.json
-config/config_db.yaml
-config/config_global.yaml
-config/config_global.*.yaml
-config/config_index.json
-config/config_index.*.json
-config/config_scores.json
-config/config_scores.*.json
-config/config_graphai_client*.json
-config/config_es.yaml
+config/*
+config/application/config_api.json
+config/application/config_airflow.json
+config/application/config_index.json
+config/application/config_index.*.json
+config/application/config_scores.json
+config/application/config_scores.*.json
+config/environment/config_registry.yml
+config/environment/config_registry.*.yml
+config/environment/config_graphdb.yml
+config/environment/config_graphes.yml
+config/environment/config_graphai.yml
+config/environment/config_genai.yml
+config/environment/config_graphai_client*.yml
 config.ini
 example_config_dict.json
 

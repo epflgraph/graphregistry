@@ -1,0 +1,114 @@
+site_name: Graph Registry
+site_description: Documentation for the EPFL Graph Registry service
+site_author: EPFL Graph Team
+site_url: https://epflgraph.github.io/graphregistry/
+
+repo_url: https://github.com/epflgraph/graphregistry
+edit_uri: edit/improved_init_and_docs/docs/
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - navigation.expand
+    - navigation.instant
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    # - toc.integrate
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      enable_creation_date: true
+      type: date
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - attr_list
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/epflgraph/graphplatform
+      name: Graph Platform on GitHub
+    - icon: fontawesome/solid/globe
+      link: https://www.epfl.ch/education/educational-initiatives/cede/
+      name: EPFL-CEDE
+    - icon: fontawesome/solid/envelope
+      link: mailto:graph-support@epfl.ch
+      name: Contact EPFL Graph Support
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - getting-started/installation.md
+      - getting-started/configuration.md
+      - getting-started/quickstart.md
+  - Reference:
+      - reference/overview.md
+      - Architecture:
+          - reference/architecture/overview.md
+          - reference/architecture/hexagonal-layout.md
+          - reference/architecture/domain-models.md
+          - reference/architecture/application-layer.md
+          - reference/architecture/adapters.md
+          - reference/architecture/entrypoints.md
+      - Operations:
+          - reference/operations/data-ingestion.md
+          - reference/operations/cache-airflow.md
+          - reference/operations/indexing.md
+  - API: api/index.md
+  - CLI: cli/index.md
+  - Development:
+      - development/contributing.md
+      - development/testing.md
+
+extra_css:
+  - stylesheets/extra.css
+
+copyright: Copyright &copy; 2026 EPFL - Apache License 2.0

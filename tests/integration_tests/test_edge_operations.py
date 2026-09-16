@@ -16,7 +16,7 @@ from graphregistry.domain.models.entities.mdl_base import EdgeKey
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList, EdgeList
 
 # Engine name used for all integration tests in this module.
-ENGINE_NAME = "xaas_coresrv"
+ENGINE_NAME = "coresrv"
 # Path to the JSON fixture that drives the edge operation tests.
 FIXTURE_PATH = Path(__file__).resolve().parents[1] / "fixtures" / "integration_tests" / "edge_operations_sample.json"
 

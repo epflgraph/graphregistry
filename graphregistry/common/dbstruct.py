@@ -42,7 +42,7 @@ def _find_repo_root(start: Path | None = None) -> Path:
 
 # Resolve repository paths once at import time.
 REPO_ROOT = _find_repo_root()
-CONFIG_DB_PATH = REPO_ROOT / "config" / "config_db.yaml"
+CONFIG_DB_PATH = REPO_ROOT / "config" / "environment" / "config_graphdb.yml"
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -214,7 +214,7 @@ class DynamicSQL:
         return self.get_sql_alter_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, include_schema=include_schema)
 
     # Public Method: Compare configured fields against a live table and report differences.
-    def compare_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
+    def compare_fields(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='coresrv', schema_name=None):
         return self.compare_fields_with_table(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group, engine_name=engine_name, schema_name=schema_name)
 
     #---------------------------------#
@@ -222,7 +222,7 @@ class DynamicSQL:
     #---------------------------------#
 
     # Public Method: Compare configured fields for a type against an existing table by name.
-    def compare_fields_with_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='xaas_coresrv', schema_name=None):
+    def compare_fields_with_table(self, doc_type, link_type=None, link_subtype=None, index_group=None, engine_name='coresrv', schema_name=None):
 
         # Get list of fields based on doc type, link type, link subtype, and index group
         fields_in_config = self.get_fields(doc_type=doc_type, link_type=link_type, link_subtype=link_subtype, index_group=index_group)
@@ -767,7 +767,7 @@ if __name__ == "__main__":
     # Initialise a local GraphDB client for this standalone script block.
     db = GraphDB(config=GraphDBConfig.from_file(CONFIG_DB_PATH))
 
-    # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name='elasticsearch_cache')
+    # list_of_tables = db.get_tables_in_schema(engine_name='coresrv', schema_name='elasticsearch_cache')
     # for t in list_of_tables:
     #     if '_L_' in t:
     #         print(f"SELECT * FROM elasticsearch_cache.{t} WHERE (doc_id, link_id) NOT IN (SELECT doc_id,
@@ -828,9 +828,9 @@ if __name__ == "__main__":
     exit()
 
     # Get list of tables in schema
-    # list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name,
+    # list_of_tables = db.get_tables_in_schema(engine_name='coresrv', schema_name=schema_name,
     # use_regex=[r"IndexBuildup_Fields_Docs_[^_]*"])
-    list_of_tables = db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=schema_name)
+    list_of_tables = db.get_tables_in_schema(engine_name='coresrv', schema_name=schema_name)
 
     # Loop over list of tables
     for table_name in list_of_tables:
@@ -851,7 +851,7 @@ if __name__ == "__main__":
             link_type    = tb.link_type,
             link_subtype = tb.link_subtype,
             index_group  = tb.index_group,
-            engine_name  = 'xaas_coresrv',
+            engine_name  = 'coresrv',
             schema_name  = tb.schema_name
         )
 

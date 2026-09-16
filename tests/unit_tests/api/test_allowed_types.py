@@ -2,7 +2,7 @@
 """Tests for the config-based allowed-type validation on save endpoints.
 
 These tests use the real ``GraphUnitsValidator`` (loaded from
-``config/config_api.json``) and fake repositories so no database is required.
+``config/application/config_api.json``) and fake repositories so no database is required.
 """
 from __future__ import annotations
 
@@ -100,11 +100,11 @@ class TestOpenAPIExamples:
         assert response.status_code == 200
         schemas = response.json()["components"]["schemas"]
 
-        # First allowed node type in config_api.json is "Course".
+        # First allowed node type in config/application/config_api.json is "Course".
         assert schemas["NodeSpec"]["properties"]["type"]["example"] == "Course"
         assert schemas["NodeKeySpec"]["properties"]["type"]["example"] == "Course"
 
-        # First allowed edge tuple in config_api.json is ("Course", "Person", "teacher").
+        # First allowed edge tuple in config/application/config_api.json is ("Course", "Person", "teacher").
         assert schemas["EdgeSpec"]["properties"]["from_type"]["example"] == "Course"
         assert schemas["EdgeSpec"]["properties"]["to_type"]["example"] == "Person"
         assert schemas["EdgeSpec"]["properties"]["context"]["example"] == "teacher"
@@ -229,7 +229,7 @@ class TestEdgeAllowedTypes:
 
 
 class TestMissingAPIConfig:
-    """The API must refuse to start when config_api.json is absent."""
+    """The API must refuse to start when config/application/config_api.json is absent."""
 
     def test_app_fails_when_config_api_json_missing(
         self, monkeypatch: pytest.MonkeyPatch
@@ -237,7 +237,7 @@ class TestMissingAPIConfig:
         # Point APIConfig at a non-existing path and reset the router's cached
         # config so the new app instance attempts to load the missing file.
         monkeypatch.setattr(
-            APIConfig, "DEFAULT_PATH", Path("/nonexistent/config_api.json")
+            APIConfig, "DEFAULT_PATH", Path("/nonexistent/config/application/config_api.json")
         )
         from graphregistry.entrypoints.api import router as router_module
 

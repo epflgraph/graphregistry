@@ -445,23 +445,17 @@ class GraphES:
         self._config = config or GlobalConfig()
         self.name = name
 
-        # Initiate the ElasticSearch engines
-        self.params_test        , self.engine_test         = self.initiate_engine('test')
-        self.params_prod        , self.engine_prod         = self.initiate_engine('prod')
-        self.params_xaas_prod   , self.engine_xaas_prod    = self.initiate_engine('xaas_prod')
-        self.params_xaas_coresrv, self.engine_xaas_coresrv = self.initiate_engine('xaas_coresrv')
-        self.params = {
-            'test'         : self.params_test,
-            'prod'         : self.params_prod,
-            'xaas_prod'    : self.params_xaas_prod,
-            'xaas_coresrv' : self.params_xaas_coresrv
-        }
-        self.engine = {
-            'test'         : self.engine_test,
-            'prod'         : self.engine_prod,
-            'xaas_prod'    : self.engine_xaas_prod,
-            'xaas_coresrv' : self.engine_xaas_coresrv
-        }
+        # Initiate all configured ElasticSearch engines.
+        # Engine names are the keys ending in '_env' from the ES config.
+        es_settings = self._config.settings.get('elasticsearch', {})
+        engine_names = [
+            key[:-4] for key in es_settings.keys()
+            if key.endswith('_env') and isinstance(es_settings[key], dict)
+        ]
+        self.params: dict[str, Any] = {}
+        self.engine: dict[str, Any] = {}
+        for name in engine_names:
+            self.params[name], self.engine[name] = self.initiate_engine(name)
 
     #---------------------------------------------#
     # Method: Initialize the ElasticSearch engine #

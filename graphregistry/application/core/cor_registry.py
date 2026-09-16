@@ -27,7 +27,7 @@ idxcfg =  IndexConfig()
 scrcfg = ScoresConfig()
 
 # Initialise MySQL client
-# db_cfg = GraphDBConfig.from_file("config/config_db.yaml")
+    # db_cfg = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
 from graphregistry.common.paths import (
     CONFIG_DB_PATH,
     REPO_ROOT as PROJECT_ROOT,
@@ -435,15 +435,15 @@ class GraphRegistry():
                         # Build SET clause for the flags present on this table
                         set_parts = ["to_process = 0"]
                         where_parts = ["to_process = 1"]
-                        if db.has_column(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name, column_name='has_changed'):
+                        if db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_changed'):
                             set_parts.append("has_changed = 0")
                             where_parts.append("has_changed = 1")
-                        if db.has_column(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
+                        if db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
                             set_parts.append("has_expired = 0")
                             where_parts.append("has_expired = 1")
                         set_clause = f"SET {', '.join(set_parts)} WHERE {' OR '.join(where_parts)}"
 
-                        db.execute_query_in_shell(engine_name='xaas_coresrv',
+                        db.execute_query_in_shell(engine_name='coresrv',
                             query=f"UPDATE {schema_name}.{table_name} {set_clause};"
                         , query_id='5LEjczg5', verbose=verbose)
 
@@ -458,9 +458,9 @@ class GraphRegistry():
 
                 # Get list of tables in 'graph_cache' schema containing 'to_process' column
                 list_of_tables = sorted([(glbcfg.schema_graph_cache_test, table_name)
-                    for table_name in db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test)
+                    for table_name in db.get_tables_in_schema(engine_name='coresrv', schema_name=glbcfg.schema_graph_cache_test)
                     if not table_name.startswith('_')
-                    and db.has_column(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name, column_name='to_process')])
+                    and db.has_column(engine_name='coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name, column_name='to_process')])
 
                 # Print list of affected tables
                 print('\nThe following tables will be affected:')
@@ -475,7 +475,7 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv',
+                        db.execute_query_in_shell(engine_name = 'coresrv',
                             query    = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;",
                             query_id = 'DFEkXX4A',
                             verbose  = verbose
@@ -492,9 +492,9 @@ class GraphRegistry():
 
                 # Get list of tables in 'traversals' schema containing 'to_process' column
                 list_of_tables = sorted([(glbcfg.schema_traversals, table_name)
-                    for table_name in db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.schema_traversals)
+                    for table_name in db.get_tables_in_schema(engine_name='coresrv', schema_name=glbcfg.schema_traversals)
                     if not table_name.startswith('_')
-                    and db.has_column(engine_name='xaas_coresrv', schema_name=glbcfg.schema_traversals, table_name=table_name, column_name='to_process')])
+                    and db.has_column(engine_name='coresrv', schema_name=glbcfg.schema_traversals, table_name=table_name, column_name='to_process')])
 
                 # Print list of affected tables
                 print('\nThe following tables will be affected:')
@@ -509,7 +509,7 @@ class GraphRegistry():
                 with tqdm(list_of_tables, unit='table') as pb:
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
-                        db.execute_query_in_shell(engine_name = 'xaas_coresrv',
+                        db.execute_query_in_shell(engine_name = 'coresrv',
                             query    = f"UPDATE {schema_name}.{table_name} SET to_process = 0 WHERE to_process = 1;",
                             query_id = 'X7vYqZ3A',
                             verbose  = verbose
@@ -560,11 +560,11 @@ class GraphRegistry():
                         print_sql(query_eval, title=f'{query_id}[eval]')
                 count = 0
                 if 'eval' in actions and query_eval is not None:
-                    out = db.execute_query(engine_name='xaas_coresrv', query=query_eval, query_id=f'{query_id}[eval]')
+                    out = db.execute_query(engine_name='coresrv', query=query_eval, query_id=f'{query_id}[eval]')
                     count = out[0][0] if out and len(out) > 0 and out[0] else 0
                     sysmsg.trace(f"  ~ {count} rows would be flagged")
                 if do_commit and query_update is not None:
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=query_update, verbose=verbose, query_id=query_id)
+                    db.execute_query_in_shell(engine_name='coresrv', query=query_update, verbose=verbose, query_id=query_id)
                 return count
 
             # Internal helper: build an IN (...) string of active object types from TypeFlags.
@@ -580,7 +580,7 @@ class GraphRegistry():
                     query = f"""SELECT DISTINCT from_object_type, to_object_type
                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                                  WHERE to_process = 1"""
-                    rows = db.execute_query(engine_name='xaas_coresrv', query=query, query_id='active-edge-types')
+                    rows = db.execute_query(engine_name='coresrv', query=query, query_id='active-edge-types')
                     if not rows:
                         return None
                     pairs = ", ".join(f"('{_sql_escape(ft)}', '{_sql_escape(tt)}')" for ft, tt in rows)
@@ -590,7 +590,7 @@ class GraphRegistry():
                     query = f"""SELECT DISTINCT object_type
                                   FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
                                  WHERE to_process = 1 {flag_filter}"""
-                    rows = db.execute_query(engine_name='xaas_coresrv', query=query, query_id='active-node-types')
+                    rows = db.execute_query(engine_name='coresrv', query=query, query_id='active-node-types')
                     if not rows:
                         return None
                     types = ", ".join(f"'{_sql_escape(r[0])}'" for r in rows)
@@ -603,7 +603,7 @@ class GraphRegistry():
                              WHERE TABLE_SCHEMA = '{_sql_escape(schema_name)}'
                                AND TABLE_NAME = '{_sql_escape(table_name)}'
                                AND COLUMN_NAME = 'row_id'"""
-                rows = db.execute_query(engine_name='xaas_coresrv', query=query, query_id='has-row-id')
+                rows = db.execute_query(engine_name='coresrv', query=query, query_id='has-row-id')
                 return bool(rows)
 
             # Internal helper: execute a propagate UPDATE in row_id chunks when possible,
@@ -661,7 +661,7 @@ class GraphRegistry():
 
                     with _quiet_chunk_discovery():
                         db.execute_query_in_chunks(
-                            engine_name='xaas_coresrv',
+                            engine_name='coresrv',
                             schema_name=schema_name,
                             table_name=table_name,
                             query=query_update,
@@ -677,7 +677,7 @@ class GraphRegistry():
                     # No row_id: batch by active object type (node) or edge pair.
                     if is_edge:
                         active_pairs = db.execute_query(
-                            engine_name='xaas_coresrv',
+                            engine_name='coresrv',
                             query=f"""SELECT DISTINCT from_object_type, to_object_type
                                         FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                                        WHERE to_process = 1""",
@@ -694,7 +694,7 @@ class GraphRegistry():
                             if 'print' in actions:
                                 print_sql(q, title=f'{query_id}-{ft}-{tt}[commit]')
                             db.execute_query_in_shell(
-                                engine_name='xaas_coresrv',
+                                engine_name='coresrv',
                                 query=q,
                                 verbose=verbose,
                                 query_id=f'{query_id}-{ft}-{tt}',
@@ -702,7 +702,7 @@ class GraphRegistry():
                     else:
                         flag_type = 'scores' if 'ScoresExpired' in query_update else 'fields'
                         active_types = db.execute_query(
-                            engine_name='xaas_coresrv',
+                            engine_name='coresrv',
                             query=f"""SELECT DISTINCT object_type
                                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
                                        WHERE to_process = 1
@@ -720,7 +720,7 @@ class GraphRegistry():
                             if 'print' in actions:
                                 print_sql(q, title=f'{query_id}-{ot}[commit]')
                             db.execute_query_in_shell(
-                                engine_name='xaas_coresrv',
+                                engine_name='coresrv',
                                 query=q,
                                 verbose=verbose,
                                 query_id=f'{query_id}-{ot}',
@@ -846,7 +846,7 @@ class GraphRegistry():
                         for doc_type in pb:
                             pb.set_description(f"⚙️  Doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
                             table_name = f"IndexBuildup_Fields_Docs_{doc_type}"
-                            if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
+                            if not db.table_exists(engine_name='coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
                                 sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
                                 continue
                             query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
@@ -901,7 +901,7 @@ class GraphRegistry():
                         for source_doc_type, target_doc_type in pb:
                             pb.set_description(f"⚙️  Doc-link type: {source_doc_type}-{target_doc_type}".ljust(PBWIDTH)[:PBWIDTH])
                             table_name = f"IndexBuildup_Fields_Links_ParentChild_{source_doc_type}_{target_doc_type}"
-                            if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
+                            if not db.table_exists(engine_name='coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=table_name):
                                 sysmsg.trace(f"  ~ Skipping missing table: {table_name}")
                                 continue
                             query_update = f"""UPDATE {glbcfg.schema_graph_cache_test}.{table_name} p
@@ -946,7 +946,7 @@ class GraphRegistry():
                 list_of_tables = sorted([
                     (glbcfg.schema_graph_cache_test, table_name)
                     for table_name in db.get_tables_in_schema(
-                        engine_name = 'xaas_coresrv',
+                        engine_name = 'coresrv',
                         schema_name = glbcfg.schema_graph_cache_test,
                         use_regex   = [r'^Edges_N_Object_N_Object_T_ScoresMatrix_.*_AS$']
                     )
@@ -975,7 +975,7 @@ class GraphRegistry():
                     sample_score_matrix_table = list_of_tables[0][1] if list_of_tables else None
                     if sample_score_matrix_table:
                         temp_col_type, temp_col_id = db.execute_query(
-                            engine_name='xaas_coresrv',
+                            engine_name='coresrv',
                             query=f"""
                                 SELECT MAX(CASE WHEN COLUMN_NAME = 'from_object_type' THEN COLLATION_NAME END),
                                        MAX(CASE WHEN COLUMN_NAME = 'from_object_id'   THEN COLLATION_NAME END)
@@ -1007,7 +1007,7 @@ class GraphRegistry():
                         if 'print' in actions:
                             print_sql(temp_table_create_scores, title='PropScoresTmpCreate')
                         db.execute_query_in_shell(
-                            engine_name='xaas_coresrv',
+                            engine_name='coresrv',
                             query=temp_table_create_scores,
                             verbose=verbose,
                             query_id='PropScoresTmpCreate',
@@ -1069,7 +1069,7 @@ class GraphRegistry():
                             # because the type is fixed in the outer predicate.
                             if 'commit' in actions:
                                 active_types = db.execute_query(
-                                    engine_name='xaas_coresrv',
+                                    engine_name='coresrv',
                                     query=f"""SELECT DISTINCT object_type
                                                 FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
                                                WHERE to_process = 1
@@ -1084,7 +1084,7 @@ class GraphRegistry():
                                     if 'print' in actions:
                                         print_sql(q_from, title=f'yzm93BqQ-from-{ot}[commit]')
                                     db.execute_query_in_shell(
-                                        engine_name='xaas_coresrv',
+                                        engine_name='coresrv',
                                         query=q_from,
                                         verbose=verbose,
                                         query_id=f'yzm93BqQ-from-{ot}',
@@ -1095,7 +1095,7 @@ class GraphRegistry():
                                     if 'print' in actions:
                                         print_sql(q_to, title=f'yzm93BqQ-to-{ot}[commit]')
                                     db.execute_query_in_shell(
-                                        engine_name='xaas_coresrv',
+                                        engine_name='coresrv',
                                         query=q_to,
                                         verbose=verbose,
                                         query_id=f'yzm93BqQ-to-{ot}',
@@ -1106,7 +1106,7 @@ class GraphRegistry():
                         if 'print' in actions:
                             print_sql(temp_table_drop_scores, title='PropScoresTmpDrop')
                         db.execute_query_in_shell(
-                            engine_name='xaas_coresrv',
+                            engine_name='coresrv',
                             query=temp_table_drop_scores,
                             verbose=verbose,
                             query_id='PropScoresTmpDrop',
@@ -1116,7 +1116,7 @@ class GraphRegistry():
                 list_of_tables = sorted([
                     (glbcfg.schema_graph_cache_test, table_name)
                     for table_name in db.get_tables_in_schema(
-                        engine_name = 'xaas_coresrv',
+                        engine_name = 'coresrv',
                         schema_name = glbcfg.schema_graph_cache_test,
                         use_regex   = [r'^Edges_N_Object_N_.*_T_FinalScores$']
                     )
@@ -1285,7 +1285,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_T_ChecksumsObject',
                     query=sql_query,
@@ -1323,7 +1323,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_T_ChecksumsObject',
                     query=sql_query,
@@ -1352,7 +1352,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_T_ChecksumsObject',
                     query=sql_query,
@@ -1398,7 +1398,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_T_ChecksumsPageProfile',
                     query=sql_query,
@@ -1447,7 +1447,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_T_ChecksumsCustomFields',
                     query=sql_query,
@@ -1483,7 +1483,7 @@ class GraphRegistry():
 
             # Upsert computed checksums into target table
             db.execute_query_as_safe_inserts(
-                engine_name='xaas_coresrv',
+                engine_name='coresrv',
                 schema_name=glbcfg.schema_graph_cache_test,
                 table_name='Operations_N_Object_T_Checksums',
                 query=sql_query,
@@ -1518,7 +1518,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='j65waWD2')
+                db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='j65waWD2')
 
             # Print status
             sysmsg.trace(f"☑️ Done processing checksums for Object.")
@@ -1563,7 +1563,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_N_Object_T_ChecksumsObject',
                     query=sql_query,
@@ -1610,7 +1610,7 @@ class GraphRegistry():
 
                 # Upsert computed checksums into target table
                 db.execute_query_as_safe_inserts(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=glbcfg.schema_graph_cache_test,
                     table_name='Operations_N_Object_N_Object_T_ChecksumsCustomFields',
                     query=sql_query,
@@ -1643,7 +1643,7 @@ class GraphRegistry():
 
             # Upsert computed checksums into target table
             db.execute_query_as_safe_inserts(
-                engine_name='xaas_coresrv',
+                engine_name='coresrv',
                 schema_name=glbcfg.schema_graph_cache_test,
                 table_name='Operations_N_Object_N_Object_T_Checksums',
                 query=sql_query,
@@ -1677,7 +1677,7 @@ class GraphRegistry():
                 """
 
                 # Execute query in shell
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Fpas6ysH')
+                db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='Fpas6ysH')
 
             # Print status
             sysmsg.trace(f"☑️ Done processing checksums for Object-to-Object.")
@@ -1699,7 +1699,7 @@ class GraphRegistry():
             def status(self):
 
                 # Print object type flags
-                out = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                out = db.execute_query(engine_name='coresrv', query=f"""
                     SELECT object_type, flag_type, to_process
                       FROM {glbcfg.schema_airflow}.Operations_N_Object_T_TypeFlags
                      WHERE to_process = 1
@@ -1711,7 +1711,7 @@ class GraphRegistry():
 
                 # Print object-to-object type flags. Collapse symmetric pairs to
                 # the alphabetically ordered direction so each edge is shown once.
-                out = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                out = db.execute_query(engine_name='coresrv', query=f"""
                     SELECT DISTINCT LEAST(from_object_type, to_object_type) AS from_object_type,
                                     GREATEST(from_object_type, to_object_type) AS to_object_type,
                                     1 AS to_process
@@ -1743,7 +1743,7 @@ class GraphRegistry():
 
                 # Set object type flags
                 db.set_cells(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==2 else ''}_T_TypeFlags",
                     set         = [('to_process', to_process)],
@@ -1771,7 +1771,7 @@ class GraphRegistry():
 
                 # Get object type flags
                 output = db.get_cells(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_type_key)==2 else ''}_T_TypeFlags",
                     select      = ['to_process'],
@@ -1799,7 +1799,7 @@ class GraphRegistry():
                 for table_name in ['Operations_N_Object_T_TypeFlags', 'Operations_N_Object_N_Object_T_TypeFlags']:
 
                     # Execute query to reset to_process flags
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=f"""
+                    db.execute_query_in_shell(engine_name='coresrv', query=f"""
                         UPDATE {glbcfg.schema_airflow}.{table_name}
                            SET to_process = 0
                          WHERE to_process = 1
@@ -1842,7 +1842,7 @@ class GraphRegistry():
                         from_node_type, to_node_type, process_fields = d
                         if process_fields:
                             db.execute_query_in_shell(
-                                engine_name = 'xaas_coresrv',
+                                engine_name = 'coresrv',
                                 query       = f"""
                                     INSERT INTO {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_TypeFlags
                                                 (from_object_type, to_object_type, to_process)
@@ -1872,7 +1872,7 @@ class GraphRegistry():
                 """
 
                 # Execute the query
-                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='4bcoW1KT')]
+                config_json['nodes'] = [[row[0], row[1]>0.5, row[2]>0.5] for row in db.execute_query(engine_name='coresrv', query=sql_query, query_id='4bcoW1KT')]
 
                 # Define SQL query for fetching edges config
                 sql_query = f"""
@@ -1883,7 +1883,7 @@ class GraphRegistry():
                 """
 
                 # Execute the query
-                config_json['edges'] = [[row[0], row[1], True] for row in db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='9K34TTeQ')]
+                config_json['edges'] = [[row[0], row[1], True] for row in db.execute_query(engine_name='coresrv', query=sql_query, query_id='9K34TTeQ')]
 
                 # Return the config JSON
                 return config_json
@@ -1903,7 +1903,7 @@ class GraphRegistry():
                     # Get edges to process directly from config json
                     edge_types_from_flags = set([tuple(sorted([from_node_type, to_node_type])) for from_node_type, to_node_type, process_fields in config_json['edges'] if process_fields is True])
 
-                    # Filter by the edge types explicitly selected in config_index.json.
+                    # Filter by the edge types explicitly selected in config/application/config_index.json.
                     # object-selection.edges defines the (from_type, to_type, context)
                     # triples that should be indexed; only those pairs are processed.
                     edge_types_available = set(idxcfg.settings['edge_selection_contexts'])
@@ -1984,14 +1984,14 @@ class GraphRegistry():
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
 
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='UeM1cM6K')
+                    out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='UeM1cM6K')
                     df = pd.DataFrame(out, columns=['object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [by type or key]')
 
                 else:
 
-                    out = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                    out = db.execute_query(engine_name='coresrv', query=f"""
                         SELECT object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_T_FieldsChanged
                          WHERE to_process = 1
@@ -2001,7 +2001,7 @@ class GraphRegistry():
                     if not df.empty:
                         print_dataframe(df, title='🪪  FIELDS CHANGED: Object [stats]')
 
-                    out = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                    out = db.execute_query(engine_name='coresrv', query=f"""
                         SELECT from_object_type, to_object_type, COUNT(*) AS n_to_process
                           FROM {glbcfg.schema_airflow}.Operations_N_Object_N_Object_T_FieldsChanged
                          WHERE to_process = 1
@@ -2058,7 +2058,7 @@ class GraphRegistry():
 
                 # Set object type flags
                 db.set_cells(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [4,6] else ''}_T_FieldsChanged",
                     set         = set_clause_list,
@@ -2119,7 +2119,7 @@ class GraphRegistry():
 
                 # Get object type flags
                 output = db.get_cells(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = f"Operations_N_Object{'_N_Object' if len(object_key) in [2,4] else ''}_T_FieldsChanged",
                     select      = ['object_type', 'object_id', 'checksum_current', 'checksum_previous', 'has_changed', 'last_date_cached', 'has_expired', 'to_process'] if len(object_key) in [1,2] else
@@ -2162,7 +2162,7 @@ class GraphRegistry():
                                  AND cp.record_deleted = 0
                              GROUP BY cp.object_type
                     """
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='DY3x5PC8')
+                    out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='DY3x5PC8')
 
                     # Execute object sync
                     sql_query = f"""
@@ -2179,7 +2179,7 @@ class GraphRegistry():
                        ON DUPLICATE KEY UPDATE to_process = VALUES(to_process),
                                                deleted    = VALUES(deleted);
                      """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='2PbejfUm')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='2PbejfUm')
 
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
@@ -2196,7 +2196,7 @@ class GraphRegistry():
                                       WHERE deleted = 0
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='x5BdjGfN')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='x5BdjGfN')
 
                     # Print status
                     sysmsg.trace(f"⚙️  Processing edges on schema '{schema_name}' ...")
@@ -2215,7 +2215,7 @@ class GraphRegistry():
                                  AND cp.record_deleted = 0
                              GROUP BY cp.from_object_type, cp.to_object_type
                     """
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='Gk7dDRC0')
+                    out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='Gk7dDRC0')
 
                     # Execute object sync
                     sql_query = f"""
@@ -2234,7 +2234,7 @@ class GraphRegistry():
                        ON DUPLICATE KEY UPDATE to_process = VALUES(to_process),
                                                deleted    = VALUES(deleted);
                      """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='s1gXyPYb')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='s1gXyPYb')
 
                     # Print status
                     sysmsg.trace(f"Done. New object tuples synched: {out}'")
@@ -2251,7 +2251,7 @@ class GraphRegistry():
                                       WHERE deleted = 0
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_N_Object_T_TypeFlags.to_process;
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='dEE3eDPD')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='dEE3eDPD')
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'FieldsChanged' airflow tables.\n")
@@ -2298,7 +2298,7 @@ class GraphRegistry():
                         """
 
                         # Execute query to reset to_process flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='RWCE1vkr')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='RWCE1vkr')
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'FieldsChanged' airflow tables.\n")
@@ -2350,7 +2350,7 @@ class GraphRegistry():
                         # Set random date for "last_date_cached" column.
                         # chunk_filter scopes boundary discovery to rows actually touched by the UPDATE.
                         db.execute_query_in_chunks(
-                            engine_name = 'xaas_coresrv',
+                            engine_name = 'coresrv',
                             schema_name = glbcfg.schema_airflow,
                             table_name  = table_name,
                             query       = sql_query,
@@ -2429,7 +2429,7 @@ class GraphRegistry():
                             print_sql(sql_query, title='MY52N1XY')
 
                         # Reset all expiration flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='MY52N1XY')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='MY52N1XY')
 
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table '{table_name}' - setting 'has_expired' flags to 1 ...")
@@ -2457,7 +2457,7 @@ class GraphRegistry():
                             """
 
                             # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='10PxduJu')
+                            db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='10PxduJu')
 
                         # Else, only count number of rows affected
                         else:
@@ -2485,7 +2485,7 @@ class GraphRegistry():
                                 print(f"\nExecuting query:\n{sql_query}\n")
 
                             # Set has_expired=1 for dates older than time_period (and NULL dates if include_new=True)
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='d5GKbPVP')
+                            out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='d5GKbPVP')
 
                             # Print as data frame
                             df = pd.DataFrame(out, columns=['object_type', 'rows_to_be_set'] if u=='n' else ['from_object_type', 'to_object_type', 'rows_to_be_set'])
@@ -2541,7 +2541,7 @@ class GraphRegistry():
                     """
 
                     # Execute query in shell
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='iGojjBW7')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='iGojjBW7')
 
                     # Generate SQL query for object-to-objects
                     sql_query = f"""
@@ -2554,7 +2554,7 @@ class GraphRegistry():
                     """
 
                     # Execute query in shell
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Hy3LQ6tJ')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='Hy3LQ6tJ')
 
                     #------------------------------------------#
                     # Update 'to_process' flags in both tables #
@@ -2584,7 +2584,7 @@ class GraphRegistry():
                         """
 
                         # Reset to_process flags for all nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='MsnEuv05')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='MsnEuv05')
 
                         # Generate SQL query
                         # sql_query = f"""
@@ -2614,7 +2614,7 @@ class GraphRegistry():
                         """
 
                         # Update to_process flags for nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='ye472zFQ')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='ye472zFQ')
 
                     #--------------------------------#
                     # Fetch stats on what to process #
@@ -2640,7 +2640,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='4QF4Lh4y')
+                        out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='4QF4Lh4y')
                         df = pd.DataFrame(out, columns=[['object_type'] if u=='n' else ['from_object_type', 'to_object_type']][0]+['new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
@@ -2656,7 +2656,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='CUytG62p')
+                        out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='CUytG62p')
                         df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
 
@@ -2719,7 +2719,7 @@ class GraphRegistry():
                                 print('\n')
 
                             # Execute evaluation query
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='D3YbxeVt')
+                            out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='D3YbxeVt')
                             if len(out) > 0:
                                 df = pd.DataFrame(out, columns=[['object_type'] if table_name == 'Operations_N_Object_T_FieldsChanged' else ['from_object_type', 'to_object_type']][0]+['n_to_rollover'])
                                 print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
@@ -2738,7 +2738,7 @@ class GraphRegistry():
 
                         # Reset all expiration flags
                         if 'commit' in actions:
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions, query_id='ht5AZcsE')
+                            db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, verbose='print' in actions, query_id='ht5AZcsE')
                         elif 'print' in actions:
                             print('\nSQL commit query:\n\n')
                             print_sql(sql_query_commit, title='ht5AZcsE')
@@ -2799,7 +2799,7 @@ class GraphRegistry():
                                 print_sql(sql_query_eval, title='kpAX4Cft')
 
                             # Execute evaluation query
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='kpAX4Cft')
+                            out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='kpAX4Cft')
                             if len(out) > 0:
                                 df = pd.DataFrame(out, columns=[['object_type'] if table_name == 'Operations_N_Object_T_FieldsChanged' else ['from_object_type', 'to_object_type']][0]+['n_to_update'])
                                 print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
@@ -2815,7 +2815,7 @@ class GraphRegistry():
 
                         # Reset all expiration flags
                         if 'commit' in actions:
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions, query_id='Q2dracb0')
+                            db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, verbose='print' in actions, query_id='Q2dracb0')
                         elif 'print' in actions:
                             print('\nSQL commit query:\n\n')
                             print_sql(sql_query_commit, title='Q2dracb0')
@@ -2848,12 +2848,12 @@ class GraphRegistry():
                         msg = 'Invalid key length.'
                         print_colour(msg, colour='magenta', background='black', style='normal', display_method=True)
                         return
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='xGQc0t7t')
+                    out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='xGQc0t7t')
                     df = pd.DataFrame(out, columns=['object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'])
                     if not df.empty:
                         print_dataframe(df, title='🧮 SCORES EXPIRED: Object [by key or id]')
                 else:
-                    out = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                    out = db.execute_query(engine_name='coresrv', query=f"""
                         SELECT object_type, COUNT(*) AS n_to_process
                         FROM {glbcfg.schema_airflow}.Operations_N_Object_T_ScoresExpired
                         WHERE to_process = 1
@@ -2895,7 +2895,7 @@ class GraphRegistry():
 
                 # Set object type flags
                 db.set_cells(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = 'Operations_N_Object_T_ScoresExpired',
                     set         = set_clause_list,
@@ -2940,7 +2940,7 @@ class GraphRegistry():
 
                 # Get object type flags
                 output = db.get_cells(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = glbcfg.schema_airflow,
                     table_name  = 'Operations_N_Object_T_ScoresExpired',
                     select      = ['object_type', 'object_id', 'last_date_cached', 'has_expired', 'to_process'],
@@ -2983,7 +2983,7 @@ class GraphRegistry():
                                  AND n.record_deleted = 0
                              GROUP BY n.object_type
                     """
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='7RNfE1fF')
+                    out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='7RNfE1fF')
 
                     # Execute object sync
                     sql_query = f"""
@@ -3000,7 +3000,7 @@ class GraphRegistry():
                        ON DUPLICATE KEY UPDATE to_process = VALUES(to_process),
                                                deleted    = VALUES(deleted);
                      """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='5mhz4Uwr')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='5mhz4Uwr')
 
                     # Print status
                     sysmsg.trace(f"Done. New objects synched: {out}'")
@@ -3017,7 +3017,7 @@ class GraphRegistry():
                                       WHERE deleted = 0
                     ON DUPLICATE KEY UPDATE to_process = Operations_N_Object_T_TypeFlags.to_process;
                     """
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='n2TKRWNV')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='n2TKRWNV')
 
                 # Print status
                 sysmsg.success("♻️  ✅ Done synching new objects between registry and 'ScoresExpired' airflow tables.\n")
@@ -3064,7 +3064,7 @@ class GraphRegistry():
                         """
 
                         # Execute query to reset to_process flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='AhJepYi8')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='AhJepYi8')
 
                 # Print status
                 sysmsg.success("🧹 ✅ Done resetting flags in 'ScoresExpired' airflow table.\n")
@@ -3116,7 +3116,7 @@ class GraphRegistry():
                         # Set random date for "last_date_cached" column.
                         # chunk_filter scopes boundary discovery to rows actually touched by the UPDATE.
                         db.execute_query_in_chunks(
-                            engine_name = 'xaas_coresrv',
+                            engine_name = 'coresrv',
                             schema_name = glbcfg.schema_airflow,
                             table_name  = 'Operations_N_Object_T_ScoresExpired',
                             query       = sql_query,
@@ -3191,7 +3191,7 @@ class GraphRegistry():
                         """
 
                         # Reset all expiration flags
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='Zsz9iF13')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='Zsz9iF13')
 
                         # Print status
                         sysmsg.trace(f"⚙️  Processing table 'Operations_N_Object_T_ScoresExpired' - setting 'has_expired' flags to 1 ...")
@@ -3220,7 +3220,7 @@ class GraphRegistry():
                             """
 
                             # Set has_expired=1 for dates older than time_period
-                            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='6nKcLVme')
+                            db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='6nKcLVme')
 
                         # Else, only count number of rows affected
                         else:
@@ -3247,7 +3247,7 @@ class GraphRegistry():
                                 print(f"\nExecuting query:\n{sql_query}\n")
 
                             # Set has_expired=1 for dates older than time_period
-                            out = db.execute_query(engine_name='xaas_coresrv', query=sql_query, query_id='46PNmQvh')
+                            out = db.execute_query(engine_name='coresrv', query=sql_query, query_id='46PNmQvh')
 
                             # Print as data frame
                             df = pd.DataFrame(out, columns=['object_type', 'rows_to_be_set'])
@@ -3314,7 +3314,7 @@ class GraphRegistry():
                         """
 
                         # Reset to_process flags for all nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='q4L84LJy')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='q4L84LJy')
 
                         # # Generate SQL query
                         # sql_query = f"""
@@ -3340,7 +3340,7 @@ class GraphRegistry():
                         """
 
                         # Update to_process flags for nodes
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose=verbose, query_id='tBKyps8J')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose=verbose, query_id='tBKyps8J')
 
                         #--------------------------------#
                         # Fetch stats on what to process #
@@ -3361,7 +3361,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='JH9iFxCF')
+                        out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='JH9iFxCF')
                         df = pd.DataFrame(out, columns=['object_type', 'new_or_never_cached', 'cache_expired'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
@@ -3375,7 +3375,7 @@ class GraphRegistry():
                         """
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='ZK89fhUA')
+                        out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='ZK89fhUA')
                         df = pd.DataFrame(out, columns=['TOTAL', 'new_or_never_cached', 'cache_expired'])
                         print_dataframe(df, title=f'\n🔍 Evaluation results for table: "Operations_N_Object_T_ScoresExpired"')
 
@@ -3434,7 +3434,7 @@ class GraphRegistry():
                             print_sql(sql_query_eval, title='y9GdvZ4W')
 
                         # Execute evaluation query
-                        out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='y9GdvZ4W')
+                        out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='y9GdvZ4W')
                         if len(out) > 0:
                             df = pd.DataFrame(out, columns=['object_type', 'n_to_update'])
                             print_dataframe(df, title=f'\n🔍 Evaluation results for table: "{table_name}"')
@@ -3450,7 +3450,7 @@ class GraphRegistry():
 
                     # Reset all expiration flags
                     if 'commit' in actions:
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose='print' in actions)
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, verbose='print' in actions)
                     elif 'print' in actions:
                         print('\nSQL commit query:\n\n')
                         print_sql(sql_query_commit, title='ERWG42')
@@ -3475,7 +3475,7 @@ class GraphRegistry():
         def _soft_delete_column(schema_name, table_name):
             for col in ('record_deleted', 'deleted'):
                 if db.column_exists(
-                    engine_name='xaas_coresrv',
+                    engine_name='coresrv',
                     schema_name=schema_name,
                     table_name=table_name,
                     column_name=col,
@@ -3961,7 +3961,7 @@ class GraphRegistry():
                     print_sql(sql_query_eval, title='8nZVFGbc')
 
                 # Execute evaluation query
-                out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='8nZVFGbc')
+                out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='8nZVFGbc')
                 df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                 if len(df) > 0:
                     print_dataframe(df, title=f'\n🔍 Evaluation results for view: "{view_name}"')
@@ -3973,7 +3973,7 @@ class GraphRegistry():
                 sysmsg.trace(f"⚙️  Processing view: '{view_name}' ...")
 
                 # Fetch target table column names
-                target_table_columns = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=target_table)
+                target_table_columns = db.get_column_names(engine_name='coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=target_table)
 
                 # Remove row_id (if exists)
                 if 'row_id' in target_table_columns:
@@ -3988,7 +3988,7 @@ class GraphRegistry():
 
                 # Execute commit query in shell
                 # Note: 'execute_query_in_chunks' doesn't work with UNIONs
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=False, query_id='Mn0to7TQ')
+                db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, verbose=False, query_id='Mn0to7TQ')
 
         # Apply formula from SQL file
         def apply_formulas_from_folder(self, local_path, verbose=False, actions=None):
@@ -4171,8 +4171,8 @@ class GraphRegistry():
                 sql_formula = file.read()
 
             # Fill in the template variables
-            for db_schema_name in glbcfg.mysql_schema_names['xaas_coresrv']:
-                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
+            for db_schema_name in glbcfg.mysql_schema_names['coresrv']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['coresrv'][db_schema_name])
 
             # Determine type of formula (safe inserts vs direct execution)
             if (
@@ -4214,7 +4214,7 @@ class GraphRegistry():
 
                 # Execute SQL formula as safe inserts
                 db.execute_query_as_safe_inserts(
-                    engine_name       = 'xaas_coresrv',
+                    engine_name       = 'coresrv',
                     schema_name       = glbcfg.schema_graph_cache_test,
                     table_name        = target_table,
                     query             = sql_formula,
@@ -4235,7 +4235,7 @@ class GraphRegistry():
 
                 # Execute the SQL formula when requested
                 if 'commit' in actions:
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=False, query_id='Neg00cQJ')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_formula, verbose=False, query_id='Neg00cQJ')
 
             # Unknown execution type
             else:
@@ -4273,8 +4273,8 @@ class GraphRegistry():
                 sql_formula = file.read()
 
             # Fill in the template variables
-            for db_schema_name in glbcfg.mysql_schema_names['xaas_coresrv']:
-                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
+            for db_schema_name in glbcfg.mysql_schema_names['coresrv']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['coresrv'][db_schema_name])
 
             # Print formula when requested (avoid double-printing during commit)
             if 'print' in actions:
@@ -4283,7 +4283,7 @@ class GraphRegistry():
             # Execute the SQL formula statement-by-statement in chunks
             if 'commit' in actions:
                 db.execute_sql_statements_in_chunks(
-                    engine_name   = 'xaas_coresrv',
+                    engine_name   = 'coresrv',
                     sql           = sql_formula,
                     chunk_size    = chunk_size,
                     show_progress = show_progress,
@@ -4302,11 +4302,11 @@ class GraphRegistry():
                 sql_formula = file.read()
 
             # Fill in the template variables
-            for db_schema_name in glbcfg.mysql_schema_names['xaas_coresrv']:
-                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
+            for db_schema_name in glbcfg.mysql_schema_names['coresrv']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['coresrv'][db_schema_name])
 
             # Execute the SQL formula
-            db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_formula, verbose=verbose, query_id='N5ABPyWm')
+            db.execute_query_in_shell(engine_name='coresrv', query=sql_formula, verbose=verbose, query_id='N5ABPyWm')
 
         # Update cache table from SQL calculated field formula
         def cache_update_from_calculated_field(self, object_type_key, field_name, verbose=False):
@@ -4351,12 +4351,12 @@ class GraphRegistry():
                 return
 
             # Fill in the template variables
-            for db_schema_name in glbcfg.mysql_schema_names['xaas_coresrv']:
-                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
+            for db_schema_name in glbcfg.mysql_schema_names['coresrv']:
+                sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['coresrv'][db_schema_name])
 
             # Execute SQL formula as safe inserts
             db.execute_query_as_safe_inserts(
-                engine_name       = 'xaas_coresrv',
+                engine_name       = 'coresrv',
                 schema_name       = glbcfg.schema_graph_cache_test,
                 table_name        = target_table,
                 query             = sql_formula,
@@ -4526,7 +4526,7 @@ class GraphRegistry():
                         print_sql(sql_eval_query, title='f3LmCRzV')
 
                     # Execute evaluation query
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_eval_query, query_id='f3LmCRzV')
+                    out = db.execute_query(engine_name='coresrv', query=sql_eval_query, query_id='f3LmCRzV')
                     df = pd.DataFrame(out, columns=['from_object_type', 'to_object_type', 'n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for ({from_object_type}, {to_object_type})')
@@ -4539,7 +4539,7 @@ class GraphRegistry():
             if 'commit' in actions and sql_commit_query is not None:
 
                 # Execute commit query
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_commit_query, query_id='wAbL4D8i')
+                db.execute_query_in_shell(engine_name='coresrv', query=sql_commit_query, query_id='wAbL4D8i')
 
         # Core function that consolidates the object-to-object scores matrix (adjusted/bounded scores)
         def consolidate_scores_matrix(self, from_object_type, to_object_type, update_averages=False, score_thr=0.1, actions=()):
@@ -4637,7 +4637,7 @@ class GraphRegistry():
                     if 'commit' in actions:
                         # pass # $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
                         # TODO: Add --no-avg-recalc flag
-                        db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_avg, verbose='print' in actions, query_id='gs1ieZYM')
+                        db.execute_query_in_shell(engine_name='coresrv', query=sql_query_avg, verbose='print' in actions, query_id='gs1ieZYM')
 
                 # Check first if an average score is available, return otherwise
                 sql_query_check = f"""
@@ -4645,7 +4645,7 @@ class GraphRegistry():
                      WHERE (from_object_type, to_object_type)
                          = ('{from_object_type}', '{to_object_type}');
                 """
-                out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_check, query_id='fTaH8sTj')
+                out = db.execute_query(engine_name='coresrv', query=sql_query_check, query_id='fTaH8sTj')
                 if len(out) == 0:
                     sysmsg.warning(f'\nNo average score calculation available for ({from_object_type}, {to_object_type})')
                     return
@@ -4678,7 +4678,7 @@ class GraphRegistry():
                     print_sql(sql_query, title='qHE7tP6J')
 
                 # Execute commit query
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query, verbose='print' in actions, query_id='qHE7tP6J')
+                db.execute_query_in_shell(engine_name='coresrv', query=sql_query, verbose='print' in actions, query_id='qHE7tP6J')
 
     #-----------------------------------------------------------#
     # Subclass definition: GraphIndex Management (SQL Database) #
@@ -4686,7 +4686,7 @@ class GraphRegistry():
     class IndexDB():
 
         # Class constructor
-        def __init__(self, engine_name='xaas_coresrv'):
+        def __init__(self, engine_name='coresrv'):
             # db = GraphDB()
             self.engine_name = engine_name
             self.cachebuilder = self.CacheBuildup()
@@ -5047,7 +5047,7 @@ class GraphRegistry():
                 return
 
             # Get list of columns for SEM table
-            list_of_columns_sem = db.get_column_names(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
+            list_of_columns_sem = db.get_column_names(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_sem)
 
             # Remove row_id
             if 'row_id' in list_of_columns_sem:
@@ -5086,7 +5086,7 @@ class GraphRegistry():
             if test_mode:
                 print(SQLQuery)
             else:
-                db.execute_query_in_shell(engine_name='xaas_coresrv', query=SQLQuery, query_id='tb1Vdfyq')
+                db.execute_query_in_shell(engine_name='coresrv', query=SQLQuery, query_id='tb1Vdfyq')
 
         # Helper: ensure mixed view exists for a single doc-link type
         @staticmethod
@@ -5104,11 +5104,11 @@ class GraphRegistry():
             if (doc_type, link_type) not in configured_mix_pairs:
                 # If a stale MIX view already exists, drop it so horizontal_patch_elasticsearch
                 # falls back to the correct ORG/SEM branch instead of querying the invalid view.
-                table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix, exclude_views=False)
+                table_exists_mix = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_mix, exclude_views=False)
                 if table_exists_mix:
                     sysmsg.info(f"🗑️  Dropping stale MIX view for {doc_type} --> {link_type} (not in configured SEM∩ORG pairs).")
                     db.execute_query_in_shell(
-                        engine_name='xaas_coresrv',
+                        engine_name='coresrv',
                         query=f"DROP VIEW IF EXISTS {glbcfg.schema_graphsearch_test}.{table_name_mix}",
                         query_id='xY7gHv2K'
                     )
@@ -5120,9 +5120,9 @@ class GraphRegistry():
                 return False
 
             # Generate 'table exists' flags
-            table_exists_org = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
-            table_exists_sem = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
-            table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix, exclude_views=False)
+            table_exists_org = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_org)
+            table_exists_sem = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_sem)
+            table_exists_mix = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_mix, exclude_views=False)
 
             # Cannot create MIX if either source table is missing
             if not (table_exists_org and table_exists_sem):
@@ -5144,7 +5144,7 @@ class GraphRegistry():
         # Create mixed (org+sem) views for ElasticSearch indexing
         def create_mixed_views(self, drop_existing=False, test_mode=False):
 
-            # Get mixed doclink tuples from config_scores.json
+            # Get mixed doclink tuples from config/application/config_scores.json
             doclinks_to_process = sorted(list(set(dynsql.doclink_types_mix)))
 
             # Loop over all doclink tuples
@@ -5156,9 +5156,9 @@ class GraphRegistry():
                 table_name_mix = f"Index_D_{doc_type}_L_{link_type}_T_MIX"
 
                 # Generate 'table exists' flags
-                table_exists_org = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_org)
-                table_exists_sem = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_sem)
-                table_exists_mix = db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=table_name_mix)
+                table_exists_org = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_org)
+                table_exists_sem = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_sem)
+                table_exists_mix = db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=table_name_mix)
 
                 # Only process if both SEM and ORG tables exist
                 if not (table_exists_org and table_exists_sem):
@@ -5178,7 +5178,7 @@ class GraphRegistry():
             return
 
         # Delete loose ends from the Operations_N_Object_T_NoLooseEnds table and optionally update it
-        def delete_loose_ends(self, engine_name='xaas_coresrv', refresh_graph=False, actions=()):
+        def delete_loose_ends(self, engine_name='coresrv', refresh_graph=False, actions=()):
 
             #------------------------------------------------------------------#
             # Step 0: Remove orphaned row_rank = 99 / overflow rows from SEM   #
@@ -5817,7 +5817,7 @@ class GraphRegistry():
 
             # Get list of node tables
             list_of_node_tables = db.get_tables_in_schema(
-                engine_name = 'xaas_coresrv',
+                engine_name = 'coresrv',
                 schema_name = glbcfg.schema_graphsearch_test,
                 use_regex   = [r'^Index_D_[^_]*$'])
 
@@ -5827,14 +5827,14 @@ class GraphRegistry():
                 # Tables from MySQL/MariaDB
                 glbcfg.schema_graphsearch_test :
                     db.get_tables_in_schema(
-                        engine_name = 'xaas_coresrv',
+                        engine_name = 'coresrv',
                         schema_name = glbcfg.schema_graphsearch_test,
                         use_regex   = [r'^Index_D_[^_]*_L_[^_]*']),
 
                 # Tables from ElasticSearch cache
                 glbcfg.schema_es_cache :
                     db.get_tables_in_schema(
-                        engine_name = 'xaas_coresrv',
+                        engine_name = 'coresrv',
                         schema_name = glbcfg.schema_es_cache,
                         use_regex   = [r'^Index_D_[^_]*_L_[^_]*'])
             }
@@ -5854,12 +5854,12 @@ class GraphRegistry():
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Verify that table exists in the schema
-                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name) is False:
+                        if db.table_exists(engine_name='coresrv', schema_name=schema_name, table_name=table_name) is False:
                             continue
 
                         # Execute SQL query to count orphaned nodes (nodes without a page profile)
                         n_orphaned_nodes = db.execute_query(
-                            engine_name = 'xaas_coresrv',
+                            engine_name = 'coresrv',
                             schema_name = schema_name,
                             query = f"""
                                   SELECT COUNT(*)
@@ -5885,12 +5885,12 @@ class GraphRegistry():
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
                         # Verify that table exists in the schema
-                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=table_name) is False:
+                        if db.table_exists(engine_name='coresrv', schema_name=schema_name, table_name=table_name) is False:
                             continue
 
                         # Execute SQL query to count orphaned edges (edges without a page profile) - forward direction
                         n_orphaned_edges_1 = db.execute_query(
-                            engine_name = 'xaas_coresrv',
+                            engine_name = 'coresrv',
                             schema_name = schema_name,
                             query = f"""
                                   SELECT COUNT(*)
@@ -5902,7 +5902,7 @@ class GraphRegistry():
 
                         # Execute SQL query to count orphaned edges (edges without a page profile) - reverse direction
                         n_orphaned_edges_2 = db.execute_query(
-                            engine_name = 'xaas_coresrv',
+                            engine_name = 'coresrv',
                             schema_name = schema_name,
                             query = f"""
                                   SELECT COUNT(*)
@@ -5926,9 +5926,9 @@ class GraphRegistry():
                         # Skip if the target doc table does not exist (some object types are not
                         # indexed in every schema, e.g. Exercise in elasticsearch_cache).
                         doc_table_forward = f"Index_D_{doc_type}"
-                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=doc_table_forward):
+                        if db.table_exists(engine_name='coresrv', schema_name=schema_name, table_name=doc_table_forward):
                             n_with_no_doc_index_1 = db.execute_query(
-                                engine_name = 'xaas_coresrv',
+                                engine_name = 'coresrv',
                                 schema_name = schema_name,
                                 query = f"""
                                       SELECT COUNT(*)
@@ -5943,9 +5943,9 @@ class GraphRegistry():
 
                         # Verify that all edges have a corresponding doc index entry - reverse direction.
                         doc_table_reverse = f"Index_D_{link_type}"
-                        if db.table_exists(engine_name='xaas_coresrv', schema_name=schema_name, table_name=doc_table_reverse):
+                        if db.table_exists(engine_name='coresrv', schema_name=schema_name, table_name=doc_table_reverse):
                             n_with_no_doc_index_2 = db.execute_query(
-                                engine_name = 'xaas_coresrv',
+                                engine_name = 'coresrv',
                                 schema_name = schema_name,
                                 query = f"""
                                       SELECT COUNT(*)
@@ -5978,7 +5978,7 @@ class GraphRegistry():
             # info
             def info(self):
                 list_of_tables = db.get_tables_in_schema(
-                    engine_name   = 'xaas_coresrv',
+                    engine_name   = 'coresrv',
                     schema_name   = glbcfg.schema_graph_cache_test,
                     include_views = False,
                     filter_by     = False,
@@ -6129,7 +6129,7 @@ class GraphRegistry():
                         print_sql(sql_query_eval, title='hpFZ8RAT')
 
                     # Execute evaluation query
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='hpFZ8RAT') # TODO: add verbose
+                    out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='hpFZ8RAT') # TODO: add verbose
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc type: "{doc_type}"')
@@ -6148,7 +6148,7 @@ class GraphRegistry():
                     sql_query_commit = f"\tREPLACE INTO {glbcfg.schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, verbose=('print' in actions), query_id='F1ArYGKd')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, verbose=('print' in actions), query_id='F1ArYGKd')
 
             # Update index buildup tables: link parent-child type
             def build_links_parentchild(self, doc_type, link_type, actions=()):
@@ -6163,7 +6163,7 @@ class GraphRegistry():
                 # Flip doc-link direction if needed
                 doc_type, link_type = sorted([doc_type, link_type])
 
-                # Resolve the canonical context for this edge pair from config_index.json.
+                # Resolve the canonical context for this edge pair from config/application/config_index.json.
                 # object-selection.edges defines which (from_type, to_type, context) triple
                 # should be used when flattening the 5-tuple edge into a 4-tuple index link.
                 edge_pair_key = (doc_type, link_type)
@@ -6178,7 +6178,7 @@ class GraphRegistry():
                 if edge_context is None:
                     sysmsg.warning(
                         f"No edge context configured for '{doc_type}' <-> '{link_type}' "
-                        "in config_index.json object-selection.edges. Skipping."
+                            "in config/application/config_index.json object-selection.edges. Skipping."
                     )
                     return
                 #----------------------------#
@@ -6228,7 +6228,7 @@ class GraphRegistry():
                 target_table = f'IndexBuildup_Fields_Links_ParentChild_{doc_type}_{link_type}'
 
                 # Create target table if it doesn't exist
-                create_table_if_not_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=target_table)
+                create_table_if_not_exists(engine_name='coresrv', schema_name=glbcfg.schema_graph_cache_test, table_name=target_table)
 
                 # List of evaluation columns
                 eval_columns = ['doc_type', 'link_type']
@@ -6244,7 +6244,7 @@ class GraphRegistry():
                 # Evaluate query
                 if 'eval' in actions:
                     sql_query_eval = f"SELECT {', '.join(eval_columns)}, COUNT(*) AS n_to_process FROM ({sql_query}) t GROUP BY {', '.join(eval_columns)}"
-                    out = db.execute_query(engine_name='xaas_coresrv', query=sql_query_eval, query_id='6D05nXQL')
+                    out = db.execute_query(engine_name='coresrv', query=sql_query_eval, query_id='6D05nXQL')
                     df = pd.DataFrame(out, columns=eval_columns+['n_to_process'])
                     if len(df) > 0:
                         print_dataframe(df, title=f'\n🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"')
@@ -6263,7 +6263,7 @@ class GraphRegistry():
                     sql_query_commit = f"\tREPLACE INTO {glbcfg.schema_graph_cache_test}.{target_table} ({', '.join(target_table_columns)})\n{sql_query}"
 
                     # Execute commit
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='gEzB7UwD')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, query_id='gEzB7UwD')
 
         #----------------------------------------------#
         # Sub-subclass definition: Page Profiles Table #
@@ -6271,7 +6271,7 @@ class GraphRegistry():
         class PageProfile():
 
             # Class constructor
-            def __init__(self, engine_name='xaas_coresrv'):
+            def __init__(self, engine_name='coresrv'):
 
                 # Assign DB pointer
                 # db = GraphDB()
@@ -6331,7 +6331,7 @@ class GraphRegistry():
 
             # ...
             def info(self):
-                out = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                out = db.execute_query(engine_name='coresrv', query=f"""
                     SELECT object_type, COUNT(*) AS n_to_process
                     FROM {glbcfg.schema_graph_cache_test}.{self.table_name}
                     WHERE to_process = 1
@@ -6462,7 +6462,7 @@ class GraphRegistry():
         class IndexDocs():
 
             # Class constructor
-            def __init__(self, doc_type, engine_name='xaas_coresrv'):
+            def __init__(self, doc_type, engine_name='coresrv'):
 
                 # Assign DB pointer
                 # db = GraphDB()
@@ -6963,7 +6963,7 @@ class GraphRegistry():
         class IndexDocLinks():
 
             # Class constructor
-            def __init__(self, doc_type, link_type, link_subtype, engine_name='xaas_coresrv'):
+            def __init__(self, doc_type, link_type, link_subtype, engine_name='coresrv'):
 
                 # Assign DB pointer
                 # db = GraphDB()
@@ -7046,7 +7046,7 @@ class GraphRegistry():
 
                 print('\nSelected table:', self.index_table_name)
                 out = db.get_column_names(
-                    engine_name = 'xaas_coresrv',
+                    engine_name = 'coresrv',
                     schema_name = f'graphsearch_{self.engine_name}',
                     table_name  = self.index_table_name
                 )
@@ -7573,7 +7573,7 @@ class GraphRegistry():
                 # Organisational table?
                 if self.link_subtype.upper() == 'ORG':
 
-                    # Resolve the canonical context for this edge pair from config_index.json.
+                # Resolve the canonical context for this edge pair from config/application/config_index.json.
                     edge_pair_key = tuple(sorted([self.doc_type, self.link_type]))
                     edge_context = idxcfg.settings['edge_selection_contexts'].get(edge_pair_key)
                     sysmsg.trace(
@@ -7586,7 +7586,7 @@ class GraphRegistry():
                     if edge_context is None:
                         sysmsg.warning(
                             f"No edge context configured for '{self.doc_type}' <-> '{self.link_type}' "
-                            "in config_index.json object-selection.edges. Skipping."
+                        "in config/application/config_index.json object-selection.edges. Skipping."
                         )
                         return
 
@@ -8067,7 +8067,7 @@ class GraphRegistry():
                 # Resolve table name or return if it doesn't exist #
                 #--------------------------------------------------#
                 # Table type: MIX
-                if   db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
+                if   db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_MIX", exclude_views=False):
 
                     # Print status
                     if 'print' in actions:
@@ -8108,7 +8108,7 @@ class GraphRegistry():
                     """
 
                 # Table type: ORG
-                elif db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
+                elif db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG", exclude_views=True):
 
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_ORG"
@@ -8125,7 +8125,7 @@ class GraphRegistry():
                     """
 
                 # Table type: SEM
-                elif db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.mysql_schema_names['xaas_coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
+                elif db.table_exists(engine_name='coresrv', schema_name=glbcfg.mysql_schema_names['coresrv']['graphsearch'], table_name=f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM", exclude_views=True):
 
                     # Generate table name
                     table_name = f"Index_D_{self.doc_type}_L_{self.link_type}_T_SEM"
@@ -8317,7 +8317,7 @@ class GraphRegistry():
                         print_sql(sql_query_commit, title='zwRx2b8a')
 
                     # Execute the commit SQL query
-                    db.execute_query_in_shell(engine_name='xaas_coresrv', query=sql_query_commit, query_id='zwRx2b8a')
+                    db.execute_query_in_shell(engine_name='coresrv', query=sql_query_commit, query_id='zwRx2b8a')
 
             # TODO: SELECT * FROM elasticsearch_cache.Index_D_Unit_L_Person WHERE (doc_id, link_id) NOT IN (SELECT doc_id, link_id FROM graphsearch_test.Index_D_Unit_L_Person_T_ORG)
 
@@ -8481,7 +8481,7 @@ class GraphRegistry():
 
                     # Check first if {glbcfg.schema_es_cache}.Index_D_{doc_type} table exists, ignore if it doesn't
                     if not db.table_exists(
-                        engine_name="xaas_coresrv",
+                        engine_name="coresrv",
                         schema_name=glbcfg.schema_es_cache,
                         table_name=f"Index_D_{doc_type}",
                     ):
@@ -8490,7 +8490,7 @@ class GraphRegistry():
                         continue
 
                     db.execute_query_stream_to_file(
-                        engine_name="xaas_coresrv",
+                        engine_name="coresrv",
                         query=f"""
                             SELECT {', '.join(column_names_doc)}
                             FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}
@@ -8519,7 +8519,7 @@ class GraphRegistry():
 
                     for link_type in list_of_doc_types:
                         if not db.table_exists(
-                            engine_name="xaas_coresrv",
+                            engine_name="coresrv",
                             schema_name=glbcfg.schema_es_cache,
                             table_name=f"Index_D_{doc_type}_L_{link_type}",
                         ):
@@ -8531,7 +8531,7 @@ class GraphRegistry():
                         links_jsonl = f"{target_folder}/.tmp_links_{index_date}_{doc_type}_L_{link_type}.jsonl"
 
                         db.execute_query_stream_to_file(
-                            engine_name="xaas_coresrv",
+                            engine_name="coresrv",
                             query=f"""
                                 SELECT {', '.join(column_names_link)}
                                 FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}_L_{link_type}
@@ -8696,7 +8696,7 @@ class GraphRegistry():
                     column_names_doc = default_column_names_doc + custom_column_names_doc
 
                     # Fetch list of docs for doc_type
-                    list_of_docs = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                    list_of_docs = db.execute_query(engine_name='coresrv', query=f"""
                         SELECT {', '.join(column_names_doc)}
                             FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}
                         ORDER BY doc_id ASC
@@ -8749,13 +8749,13 @@ class GraphRegistry():
                         column_names_link = default_column_names_link + custom_column_names_link
 
                         # Check if link table exists
-                        if not db.table_exists(engine_name='xaas_coresrv', schema_name=glbcfg.schema_es_cache, table_name=f"Index_D_{doc_type}_L_{link_type}"):
+                        if not db.table_exists(engine_name='coresrv', schema_name=glbcfg.schema_es_cache, table_name=f"Index_D_{doc_type}_L_{link_type}"):
                             if not ignore_warnings:
                                 sysmsg.warning(f"Table does not exist: Index_D_{doc_type}_L_{link_type}.")
                             continue
 
                         # Fetch list of links for doc_type and link_type
-                        list_of_links = db.execute_query(engine_name='xaas_coresrv', query=f"""
+                        list_of_links = db.execute_query(engine_name='coresrv', query=f"""
                             SELECT {', '.join(column_names_link)}
                               FROM {glbcfg.schema_es_cache}.Index_D_{doc_type}_L_{link_type}
                           ORDER BY doc_id ASC, link_rank ASC

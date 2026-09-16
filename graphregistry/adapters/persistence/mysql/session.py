@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from sqlalchemy import text
 from sqlalchemy.exc import DataError, IntegrityError, OperationalError, SQLAlchemyError
+from graphdb.models.sqlquery import print_sql
 from graphregistry.domain.exceptions import (
     ConnectionExhaustedError,
     DuplicateKeyError,
@@ -74,12 +75,14 @@ class MySQLSession:
     tuples. Higher-level mapping happens in repositories.
     """
 
-    # Class initialization and dependency injection
-    def __init__(self, db: "GraphDB", engine_name: str) -> None:
+    # Public Method: Initialize the session with a GraphDB engine and verbosity flag.
+    def __init__(self, db: "GraphDB", engine_name: str, verbose: bool = False) -> None:
         # GraphDB client that owns the SQLAlchemy engine pool.
         self.db = db
         # Name of the engine to use within the GraphDB client.
         self.engine_name = engine_name
+        # When True, echo every executed SQL statement to stdout.
+        self.verbose = verbose
         # Bound SQLAlchemy connection, opened by begin().
         self._connection: Any | None = None
         # Bound SQLAlchemy transaction, started by begin().
@@ -98,6 +101,10 @@ class MySQLSession:
         """Execute a query inside the bound transaction and return result rows."""
         if self._connection is None:
             raise PersistenceError("Session is not open. Call begin() before execute().")
+
+        # Echo the query before execution when verbose mode is enabled.
+        if self.verbose:
+            print_sql(query, params=params, title=f"{self.engine_name} SQL")
 
         # Run the query and translate SQLAlchemy errors into domain errors.
         try:

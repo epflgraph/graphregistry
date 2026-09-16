@@ -36,8 +36,8 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     GraphDB client, schema resolver, and node repository.
     """
 
-    # Class initialization and dependency injection
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, node_repo: NodeRepository | None = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
+    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client group.
+    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, node_repo: NodeRepository | None = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
         # Validate that either a UnitOfWork is provided, or a GraphDB,
         # SchemaResolver and NodeRepository are provided, but not both.
@@ -50,7 +50,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             self._uow = uow
             self.db = uow.db
             self.schema_resolver = uow.schema_resolver
-            self.node_repo: NodeRepository = MySQLNodeRepository(uow=uow)
+            self.node_repo: NodeRepository = MySQLNodeRepository(uow=uow, verbose=verbose)
 
         # If a UnitOfWork is not provided, ensure that db, schema_resolver and
         # node_repo are provided; otherwise, raise an error.
@@ -61,6 +61,9 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             self.node_repo = node_repo
         else:
             raise ValueError("MySQLLectureRepository requires either uow= or (db=, schema_resolver=, node_repo=).")
+
+        # When True, echo SQL statements executed by standalone sessions.
+        self.verbose = verbose
 
         # Initialize a GraphLogger instance for logging messages.
         self.msg = GraphLogger()
@@ -78,7 +81,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             return self._uow.get_session(engine_name)
 
         # No UnitOfWork is active, so open a standalone session for this engine.
-        session = MySQLSession(self.db, engine_name)
+        session = MySQLSession(self.db, engine_name, verbose=self.verbose)
         session.begin()
         return session
 

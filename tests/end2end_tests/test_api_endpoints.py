@@ -36,7 +36,7 @@ from tests.helpers.db_checks import (
 )
 from tests.helpers.fixtures import load_subgraph_fixture, temp_test_global_config
 
-ENGINE_NAME = "xaas_coresrv"
+ENGINE_NAME = "coresrv"
 SUBGRAPH_FIXTURE_PATH = (
     Path(__file__).resolve().parents[1]
     / "fixtures"
@@ -64,7 +64,7 @@ def schema_name(test_config: tuple[Path, str]) -> str:
 
 @pytest.fixture(scope="module")
 def db() -> GraphDB:
-    db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    db_config = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
     return GraphDB(config=db_config)
 
 

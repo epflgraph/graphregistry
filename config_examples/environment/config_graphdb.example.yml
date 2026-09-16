@@ -1,0 +1,40 @@
+# MySQL client and dump binaries
+client_bin: /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb
+dump_bin:   /usr/bin/docker run --rm -i -e=MYSQL_PWD -v /path/to/data:/path/to/data mariadb:VERSION mariadb-dump
+
+# Default export path for database dumps
+export_path: /path/to/data/mysql_exports
+
+# Database environments (names must end in '_env')
+environments:
+
+  # Core services / test environment
+  coresrv_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    # If SSL required
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      verify_server_cert: true
+
+  # Prod environment
+  prod_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+    ssl:
+      ca: /path/to/ssl/ca-certificates.crt
+      verify_server_cert: true
+
+  # Other environments
+  something_else_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the GraphDB CLI.
+default_env: coresrv_env

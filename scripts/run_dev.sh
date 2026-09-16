@@ -26,7 +26,7 @@ graphregistry airflow sync --include_ontology
 
 # Step 3: Reset and config airflow
 graphregistry airflow reset --options typeflags,airflow,traversals,cache
-graphregistry airflow config --typeflags config/config_airflow.json
+graphregistry airflow config --typeflags config/application/config_airflow.json
 graphregistry airflow status
 
 # Step 4: AI/LLM operations
@@ -51,8 +51,8 @@ graphregistry airflow update_dates --actions commit
 graphregistry airflow reset --options airflow,traversals,cache
 
 # Step 8: Clean up loose ends in graph cache, search, an elasticsearch indexes
-graphregistry data delete_loose_ends --env xaas_coresrv --actions eval,commit
+graphregistry data delete_loose_ends --env coresrv --actions eval,commit
 
 # # Step 9: ElasticSearch index creation and import
 graphregistry index generate --target elasticsearch --index_date 9999-99-99 -r -f
-graphregistry es import --env xaas_coresrv --input_folder /home/dockerhost/data/es_exports/9999-99-99/es_fullindex_9999-99-99 --rename_to graphsearch_dev -r -f --chunk_size 1000
+graphregistry es import --env coresrv --input_folder /home/dockerhost/data/es_exports/9999-99-99/es_fullindex_9999-99-99 --rename_to graphsearch_dev -r -f --chunk_size 1000

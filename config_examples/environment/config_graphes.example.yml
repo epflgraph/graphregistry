@@ -1,0 +1,29 @@
+# Default export path for index dumps
+export_path: /path/to/data/elasticsearch_exports
+
+# ElasticSearch environments (names must end in '_env')
+environments:
+
+  # Core services / test environment
+  coresrv_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Prod environment
+  prod_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+  # Other environments
+  something_else_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
+# Default environment to use when not specified in the GraphES CLI.
+default_env: coresrv_env

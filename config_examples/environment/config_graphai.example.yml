@@ -1,0 +1,5 @@
+graphai:
+  host_address: HOST_ADDRESS
+  port: PORT
+  username: USERNAME
+  password: PASSWORD

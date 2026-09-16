@@ -16,6 +16,25 @@ def register(subparsers, cmd_name):
     # >> graphregistry cmd_name [-h|...]
     parser = subparsers.add_parser(cmd_name, help=cli_definitions[cmd_name]['help'])
 
+    #--------------------------------------------------#
+    # Direct command: graphregistry <domain>           #
+    #--------------------------------------------------#
+    if 'func' in cli_definitions[cmd_name]:
+        parser.set_defaults(func=cli_definitions[cmd_name]['func'])
+
+        # Add common args at domain level
+        for arg_name in cli_definitions[cmd_name].get('common_args', {}):
+            arg = cli_definitions[cmd_name]['common_args'][arg_name]
+            parser.add_argument(*arg['flags'], **arg['kwargs'])
+
+        # Add command-specific args directly on the domain parser.
+        for arg in cli_definitions[cmd_name].get('args', []):
+            parser.add_argument(*arg['flags'], **arg['kwargs'])
+        return
+
+    #--------------------------------------------------#
+    # Nested commands: graphregistry <domain> <cmd>    #
+    #--------------------------------------------------#
     # Register Level 2 parser
     # >> graphregistry cmd_name cmd [-h|...]
     subcmd_cmd_name = parser.add_subparsers(dest=f"{cmd_name}_cmd", metavar="<command>", required=True,

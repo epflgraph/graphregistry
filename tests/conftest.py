@@ -178,16 +178,20 @@ class FakeNodeRepository:
             key_list = key_list.item_list
         return [self.delete(key, actions=actions) for key in key_list]
 
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
         results = [
-            node for node in self._store.values()
+            node.key for node in self._store.values()
             if not (node.concepts.detected.item_list or node.concepts.ai_validated.item_list or node.concepts.manually_mapped.item_list)
         ]
         if object_type:
-            results = [node for node in results if node.key.object_type == object_type]
+            results = [key for key in results if key.object_type == object_type]
         if id_pattern and id_pattern != "*":
-            results = [node for node in results if id_pattern.replace("*", "") in node.key.object_id]
-        return NodeList(item_list=results)
+            results = [key for key in results if id_pattern.replace("*", "") in key.object_id]
+        return NodeKeyList(item_list=results)
+
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+        node_keys = self.find_keys_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+        return self.get_many(node_keys)
 
 
 class FakeEdgeRepository:

@@ -47,6 +47,10 @@ class NodeRepository(Protocol):
     def delete_many(self, key_list: NodeKeyList | list[NodeKey], actions: ActionSet = ('commit',)) -> list[bool | None]:
         ...
 
+    # Public Method: Return keys of nodes that have no concepts attached.
+    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
+        ...
+
     # Public Method: Return nodes that have no concepts attached.
     def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
         ...

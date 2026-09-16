@@ -7,7 +7,11 @@ from graphregistry.entrypoints.cli.cmd_setup import (
     cmd_setup_init,
 )
 from graphregistry.entrypoints.cli.cmd_config import (
-    cmd_config_index,
+    cmd_config_show,
+    cmd_config_validate,
+)
+from graphregistry.entrypoints.cli.cmd_test import (
+    cmd_test,
 )
 from graphregistry.entrypoints.cli.cmd_es import (
     cmd_es_test,
@@ -62,16 +66,17 @@ from graphregistry.entrypoints.cli.cmd_index import (
 # Import db config
 from graphdb.core.config import GraphDBConfig
 
+# Import project config paths.
 from graphregistry.common.paths import CONFIG_DB_PATH
 db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-# db_config = GraphDBConfig.from_file("config/config_db.yaml")
+    # db_config = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
 
 # Global common arguments
 global_common_args = {
     'env' : dict(
-        flags = ('--env',),
+        flags  = ('--env',),
         kwargs = dict(
-            help = "Specify environment (default=test).",
+            help    = "Specify environment (default=test).",
             choices = tuple(db_config.environments.keys()),
             default = db_config.default_env
         )
@@ -87,7 +92,7 @@ cli_definitions: Dict[str, Any] = {
     # Command: setup      #
     #---------------------#
     'setup' : dict(
-        help = "Initialize a new Registry instance with base data and configuration.",
+        help        = "Initialize a new Registry instance with base data and configuration.",
         common_args = {
             'env': global_common_args['env']
         },
@@ -97,7 +102,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_setup_init,
                 args = [dict(flags = ('--dry_run'     , '-d'), kwargs = dict(action='store_true', default=False, help="Execute in dry run mode (do not modify any data).")),
                         dict(flags = ('--verbose'     , '-v'), kwargs = dict(action='store_true', default=False, help="Display detailed output.")),
-                        dict(flags = ('--index_tables', '-i'), kwargs = dict(action='store_true', default=False, help="Ensure index buildup tables from config_index.json exist.")),
+                        dict(flags = ('--index_tables', '-i'), kwargs = dict(action='store_true', default=False, help="Ensure index buildup tables from config/application/config_index.json exist.")),
                 ],
                 common_args = ['env'],
             )
@@ -108,45 +113,69 @@ cli_definitions: Dict[str, Any] = {
     # Command: config     #
     #---------------------#
     'config' : dict(
-        help = "Inspect and validate Registry configuration files.",
+        help        = "Inspect and validate Registry configuration files.",
         common_args = {
             'env': global_common_args['env']
         },
         commands = {
-            'index' : dict(
-                help = "Print out index config.",
-                func = cmd_config_index,
-                args = [],
-                common_args = ['env'],
+            'show' : dict(
+                help        = "Display Registry configuration (registry, index, scores, API).",
+                func        = cmd_config_show,
+                args        = [dict(flags = ('--registry',), kwargs = dict(action='store_true', default=False, help="Show registry configuration.")),
+                               dict(flags = ('--api'     ,), kwargs = dict(action='store_true', default=False, help="Show API allowed types.")),
+                               dict(flags = ('--scores'  ,), kwargs = dict(action='store_true', default=False, help="Show scoring configuration.")),
+                               dict(flags = ('--index'   ,), kwargs = dict(action='store_true', default=False, help="Show index configuration.")),
+                               dict(flags = ('--all'     ,), kwargs = dict(action='store_true', default=False, help="Show all configuration sections.")),
+                              ],
+            ),
+            'validate' : dict(
+                help        = "Validate configuration files and their structure.",
+                func        = cmd_config_validate,
+                args        = [dict(flags = ('--strict',), kwargs = dict(action='store_true', default=False, help="Treat missing optional configs as warnings."))],
             )
         }
+    ),
+
+    #---------------------#
+    # Command: test       #
+    #---------------------#
+    'test' : dict(
+        help        = "Run a safe smoke test of configuration and service connectivity.",
+        func        = cmd_test,
+        common_args = {
+            'env': global_common_args['env']
+        },
+        args        = [dict(flags = ('--skip-db',), kwargs = dict(action='store_true', default=False, help="Skip database connectivity check.")),
+                       dict(flags = ('--skip-es',), kwargs = dict(action='store_true', default=False, help="Skip Elasticsearch connectivity check.")),
+                       dict(flags = ('--skip-ai',), kwargs = dict(action='store_true', default=False, help="Skip GraphAI/GenAI connectivity checks.")),
+                      ],
     ),
 
     #---------------------#
     # Command: es         #
     #---------------------#
     'es' : dict(
-        help = "Manage ElasticSearch server operations.",
+        help        = "Manage ElasticSearch server operations.",
         common_args = {
             'env': global_common_args['env']
         },
         commands = {
             'test' : dict(
-                help = "Test server connectivity.",
-                func = cmd_es_test,
-                args = [],
+                help        = "Test server connectivity.",
+                func        = cmd_es_test,
+                args        = [],
                 common_args = ['env'],
             ),
             'info' : dict(
-                help = "Print server info.",
-                func = cmd_es_info,
-                args = [],
+                help        = "Print server info.",
+                func        = cmd_es_info,
+                args        = [],
                 common_args = ['env'],
             ),
             'health' : dict(
-                help = "Print server health.",
-                func = cmd_es_health,
-                args = [],
+                help        = "Print server health.",
+                func        = cmd_es_health,
+                args        = [],
                 common_args = ['env'],
             ),
             'list' : dict(
@@ -204,8 +233,6 @@ cli_definitions: Dict[str, Any] = {
                 args = [
                     dict(flags = ('--index_name'   ,), kwargs = dict(required=True,  type=str, default=None, help="Name of the index to manage.")),
                     dict(flags = ('--create_alias' ,), kwargs = dict(required=False, type=str, default=None, help="Create alias pointing to index.")),
-                    # dict(flags = ('--replace_existing', '-r'), kwargs = dict(action='store_true', default=False, help="Replace existing alias.")),
-                    # dict(flags = ('--force'           , '-f'), kwargs = dict(action='store_true', default=False, help="Force replace without prompting for confirmation."))
                 ],
                 common_args = ['env'],
             ),
@@ -216,7 +243,7 @@ cli_definitions: Dict[str, Any] = {
     # Command: ai         #
     #---------------------#
     'ai' : dict(
-        help = "Interact with GraphAI API.",
+        help        = "Interact with GraphAI API.",
         common_args = {
             'env': global_common_args['env']
         },
@@ -224,7 +251,10 @@ cli_definitions: Dict[str, Any] = {
             'detect_concepts' : dict(
                 help = "Detect concepts for nodes using GraphAI.",
                 func = cmd_ai_detect_concepts,
-                args = [],
+                args = [
+                    dict(flags=('--types',       ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated object types to detect concepts for (default: Course).")),
+                    dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Print executed SQL queries to stdout.")),
+                ],
                 common_args = ['env']
             )
         }
@@ -234,7 +264,7 @@ cli_definitions: Dict[str, Any] = {
     # Command: data       #
     #---------------------#
     'data' : dict(
-        help = "Manage base registry data.",
+        help        = "Manage base registry data.",
         common_args = {
             'env': global_common_args['env']
         },
@@ -289,9 +319,7 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--edge',      ), kwargs=dict(required=False, type=str, default=None, help="Path to edge JSON file.")),
                     dict(flags=('--node_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to node list JSON file.")),
                     dict(flags=('--edge_list', ), kwargs=dict(required=False, type=str, default=None, help="Path to edge list JSON file.")),
-                    # dict(flags=('--subgraph',  ), kwargs=dict(required=False, type=str, default=None, help="save node and edge list (subgraph) from JSON string, or '@path/to/file.json' to load JSON from a file.")),
                     dict(flags=('--actions',   ), kwargs=dict(required=False, type=str, default='eval', help="Comma-separated actions to perform: print,eval,commit (default=eval).")),
-                    # dict(flags=('--detect_concepts', '-dc'), kwargs=dict(action='store_true', default=False, help="Detect concepts on save.")),
                 ],
                 common_args = ['env']
             ),
@@ -323,9 +351,9 @@ cli_definitions: Dict[str, Any] = {
     # Command: airflow    #
     #---------------------#
     'airflow' : dict(
-        help = "Manage Airflow orchestrator operations.",
+        help        = "Manage Airflow orchestrator operations.",
         common_args = dict(),
-        commands = {
+        commands    = {
             'reset' : dict(
                 help = "Reset orchestrator 'to_process' flags across all Registry tables.",
                 func = cmd_airflow_reset,
@@ -346,9 +374,9 @@ cli_definitions: Dict[str, Any] = {
                 common_args = []
             ),
             'status' : dict(
-                help = "Display all Airflow status tables.",
-                func = cmd_airflow_status,
-                args = [],
+                help        = "Display all Airflow status tables.",
+                func        = cmd_airflow_status,
+                args        = [],
                 common_args = []
             ),
             'to_process' : dict(
@@ -387,7 +415,7 @@ cli_definitions: Dict[str, Any] = {
                     dict(flags=('--scores',  '-s'), kwargs=dict(action='store_true', default=False, help="Include 'scores expired' airflow table in expiration. If neither --fields nor --scores is passed, both are included by default.")),
                     dict(flags=('--types',       ), kwargs=dict(required=False, type=str, default=None, help="Comma-separated object types to restrict expiration to (default: all active types from typeflags).")),
                     dict(flags=('--older_than',  ), kwargs=dict(required=False, type=int, default=None, help="Expire objects last cached more than N days ago. If 0 or not passed, all rows are expired regardless of cache date.")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help=f"Maximum number of objects to expire per document type (default: 100, max: see config limits.limit_per_type_max).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help=f"Maximum number of objects to expire per document type (default: 100, max: see config cli.limit_per_type_max).")),
                     dict(flags=('--count',   '-c'), kwargs=dict(action='store_true', default=False, help="Only show how many objects would be affected (do not modify data).")),
                     dict(flags=('--verbose', '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
@@ -398,7 +426,7 @@ cli_definitions: Dict[str, Any] = {
                 func = cmd_airflow_refresh,
                 args = [
                     dict(flags=('--doc_type',      ), kwargs=dict(required=False, type=str, default=None, help="Restrict refresh to a single document type (default: all types).")),
-                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config limits.limit_per_type_max).")),
+                    dict(flags=('--limit_per_type',), kwargs=dict(required=False, type=int, default=None, help="Maximum number of objects to refresh per document type (default: 100, max: see config cli.limit_per_type_max).")),
                     dict(flags=('--refresh_checksums', '-r'), kwargs=dict(action='store_true', default=False, help="Recompute and persist checksums for matching objects.")),
                     dict(flags=('--verbose',           '-v'), kwargs=dict(action='store_true', default=False, help="Execute in verbose mode.")),
                 ],
@@ -438,9 +466,9 @@ cli_definitions: Dict[str, Any] = {
     # Command: cache      #
     #---------------------#
     'cache' : dict(
-        help = "Manage and update the computations cache for Knowledge Graph construction.",
+        help        = "Manage and update the computations cache for Knowledge Graph construction.",
         common_args = dict(),
-        commands = {
+        commands    = {
             'update' : dict(
                 help = "Execute computations for Knowledge Graph construction (selected subset based on Airflow config).",
                 func = cmd_cache_update,
@@ -462,9 +490,9 @@ cli_definitions: Dict[str, Any] = {
                 common_args = []
             ),
             'debug' : dict(
-                help = "General purpose debugging command to inspect class methods.",
-                func = cmd_cache_debug,
-                args = [],
+                help        = "General purpose debugging command to inspect class methods.",
+                func        = cmd_cache_debug,
+                args        = [],
                 common_args = []
             )
         }
@@ -474,9 +502,9 @@ cli_definitions: Dict[str, Any] = {
     # Command: run        #
     #---------------------#
     'run' : dict(
-        help = "Run ad-hoc scripts for testing and debugging purposes.",
+        help        = "Run ad-hoc scripts for testing and debugging purposes.",
         common_args = dict(),
-        commands = {
+        commands    = {
             'formula' : dict(
                 help = "Execute SQL formula with placeholders.",
                 func = cmd_run_formula,
@@ -494,9 +522,9 @@ cli_definitions: Dict[str, Any] = {
     # Command: index      #
     #---------------------#
     'index' : dict(
-        help = "Manage and update the data structure (index) for the GraphSearch app.",
+        help        = "Manage and update the data structure (index) for the GraphSearch app.",
         common_args = dict(),
-        commands = {
+        commands    = {
             'build' : dict(
                 help = "Build up and/or update index field tables.",
                 func = cmd_index_build,

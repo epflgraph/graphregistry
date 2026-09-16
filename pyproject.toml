@@ -35,6 +35,13 @@ dependencies = [
     "graphai-client @ git+https://github.com/epflgraph/graphai-client.git",
 ]
 
+[project.optional-dependencies]
+docs = [
+    "mkdocs-material",
+    "mkdocs-minify-plugin",
+    "mkdocs-git-revision-date-localized-plugin",
+]
+
 [project.scripts]
 # CLI entrypoint for the graphregistry package
 graphregistry = "graphregistry.entrypoints.cli.main:main"
@@ -81,3 +88,7 @@ exclude_lines = [
 ]
 skip_covered = false
 show_missing = true
+
+# Add this:
+# pip install mkdocs-git-revision-date-localized-plugin
+

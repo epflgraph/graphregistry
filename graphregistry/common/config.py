@@ -4,7 +4,7 @@ import json
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import rich
 from yaml import safe_load
@@ -18,50 +18,65 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 class GlobalConfig:
     """Class to handle global configuration."""
 
-    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_global.yaml"
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "environment" / "config_registry.yml"
 
     # Initialization method
     def __init__(self, settings: dict | None = None):
 
-        # Load index configuration in to JSON
+        # Load registry configuration into JSON
         if settings is None:
             settings = self._load_settings()
 
         # Initialise settings
         self.settings = json.loads(json.dumps(settings, default=str))
 
+        # Merge environment-specific service configurations.
+        # These live in separate files under config/environment/.
+        self._merge_service_settings("genai", REPO_ROOT / "config" / "environment" / "config_genai.yml")
+        self._merge_service_settings("graphai", REPO_ROOT / "config" / "environment" / "config_graphai.yml")
+        self._merge_elasticsearch_settings()
+
+        # Normalise GenAI key names so callers can use either the legacy
+        # llm_* names or the config file's api_key / inference_url names.
+        genai = self.settings.setdefault('genai', {})
+        genai['llm_api_key']  = genai.get('llm_api_key')  or genai.get('api_key')
+        genai['llm_base_url'] = genai.get('llm_base_url') or genai.get('inference_url')
+
         # Get llm parameters from config file
-        self.llm_api_key  = self.settings['genai']['llm_api_key']
-        self.llm_base_url = self.settings['genai']['llm_base_url']
-        self.llm_model    = self.settings['genai']['llm_model']
+        self.llm_api_key  = genai['llm_api_key']
+        self.llm_base_url = genai['llm_base_url']
+        self.llm_model    = genai['llm_model']
 
         #-----------------------------------------
         # Set MySQL schema names from config file
         #-----------------------------------------
 
         # Get execution mode [dev, prod] from config file
-        self.mysql_execution_mode = self.settings['mysql']['mode']
+        self.mysql_execution_mode = self.settings['database']['mode']
+
+        # Raw schema names as declared in the registry config
+        self.schema_names = self.settings['database']['schema_names']
 
         # Fetch schema names from config file
         self.mysql_schema_names = {
             'test' : {
-                'ontology'    : self.settings['mysql']['db_schema_names']['ontology'],
-                'registry'    : self.settings['mysql']['db_schema_names']['registry'],
-                'lectures'    : self.settings['mysql']['db_schema_names']['lectures'],
-                'airflow'     : self.settings['mysql']['db_schema_names']['airflow'],
-                'traversals'  : self.settings['mysql']['db_schema_names']['traversals'],
-                'es_cache'    : self.settings['mysql']['db_schema_names']['elasticsearch_cache'],
-                'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_test'],
-                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_test'],
-                'prod_mirror' : self.settings['mysql']['db_schema_names']['graphsearch_prod_mirror']
+                'ontology'    : self.schema_names['ontology'],
+                'registry'    : self.schema_names['registry'],
+                'lectures'    : self.schema_names['lectures'],
+                'airflow'     : self.schema_names['airflow'],
+                'traversals'  : self.schema_names['traversals'],
+                'es_cache'    : self.schema_names['elasticsearch_cache'],
+                'graph_cache' : self.schema_names['graph_cache_test'],
+                'graphsearch' : self.schema_names['graphsearch_test'],
+                'prod_mirror' : self.schema_names['graphsearch_prod_mirror']
             },
             'prod' : {
-                'graph_cache' : self.settings['mysql']['db_schema_names']['graph_cache_prod'],
-                'graphsearch' : self.settings['mysql']['db_schema_names']['graphsearch_prod']
+                'graph_cache' : self.schema_names['graph_cache_prod'],
+                'graphsearch' : self.schema_names['graphsearch_prod']
             }
         }
-        self.mysql_schema_names['xaas_coresrv'] = copy.deepcopy(self.mysql_schema_names['test'])
-        self.mysql_schema_names['xaas_prod']    = copy.deepcopy(self.mysql_schema_names['prod'])
+        self.mysql_schema_names['coresrv'] = copy.deepcopy(self.mysql_schema_names['test'])
+        self.mysql_schema_names['prod']    = copy.deepcopy(self.mysql_schema_names['prod'])
 
         # Add prefix to schema names if in 'dev' mode
         if self.mysql_execution_mode == 'dev':
@@ -83,20 +98,12 @@ class GlobalConfig:
         self.schema_graphsearch_prod_mirror = self.mysql_schema_names['test']['prod_mirror']
 
         # Path where index patch/rollback SQL files are generated.
-        # Supports the new top-level 'data_paths.patches' key, with a fallback
-        # to the legacy 'mysql.patch_path' key for backwards compatibility.
-        patch_path_setting = (
-            self.settings.get('data_paths', {}).get('patches')
-            or self.settings.get('mysql', {}).get('patch_path')
-            or 'data/index_patches'
-        )
-        self.index_patch_path = Path(patch_path_setting)
-        if not self.index_patch_path.is_absolute():
-            self.index_patch_path = REPO_ROOT / self.index_patch_path
+        # Default location is database/patches/ under the repository root.
+        self.index_patch_path = REPO_ROOT / "database" / "patches"
 
         # Safety limits
-        self.limit_per_type_max = self.settings.get('limits', {}).get('limit_per_type_max', 1000)
-        self.patch_max_rows = self.settings.get('limits', {}).get('patch_max_rows', 50000)
+        self.limit_per_type_max = self.settings.get('cli', {}).get('limit_per_type_max', 1000)
+        self.patch_max_rows = self.settings.get('cli', {}).get('patch_max_rows', 50000)
 
         # Object type to schema mapping
         self.object_type_to_schema = {
@@ -167,6 +174,40 @@ class GlobalConfig:
             raw_config = safe_load(f)
         return json.loads(json.dumps(raw_config, default=str))
 
+    def _merge_service_settings(self, service_key: str, path: Path) -> None:
+        """Merge a separate environment service config into ``self.settings``."""
+        if not path.exists():
+            return
+        service_settings = self._load_settings(path)
+        if service_key in service_settings:
+            self.settings[service_key] = json.loads(
+                json.dumps(service_settings[service_key], default=str)
+            )
+
+    def _merge_elasticsearch_settings(self) -> None:
+        """
+        Merge the GraphES config into ``self.settings['elasticsearch']``.
+
+        The GraphES file uses ``host_address`` while legacy code expects
+        ``hostname``, so we adapt the key names here.
+        """
+        path = REPO_ROOT / "config" / "environment" / "config_graphes.yml"
+        if not path.exists():
+            return
+        graphes_settings = self._load_settings(path)
+        environments = graphes_settings.get("environments", {})
+        es_settings: dict[str, Any] = {}
+        for env_name, env_cfg in environments.items():
+            es_settings[env_name] = {
+                "hostname": env_cfg.get("host_address"),
+                "port": env_cfg.get("port"),
+                "username": env_cfg.get("username"),
+                "password": env_cfg.get("password"),
+            }
+        # Legacy code expects the ES export path under this key.
+        es_settings["data_export_path"] = graphes_settings.get("export_path", "data/es_exports")
+        self.settings["elasticsearch"] = es_settings
+
     # Print method
 
     def print(self):
@@ -181,7 +222,7 @@ class GlobalConfig:
 class APIConfig:
     """Class to handle API-specific configuration, including allowed types."""
 
-    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_api.json"
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "application" / "config_api.json"
 
     def __init__(self, api_config: dict | None = None):
         """Load and parse the API configuration.
@@ -239,7 +280,7 @@ class APIConfig:
 class IndexConfig:
     """Class to handle index configuration."""
 
-    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_index.json"
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "application" / "config_index.json"
 
     # Initialization method
     def __init__(self, index_config: dict | None = None):
@@ -542,15 +583,18 @@ class IndexConfig:
                     self.settings['elasticsearch']['filters' ]['links'].get(doc_type_as_link, [])
                 ]
 
-                # Append to printable struct
-                if str(idx_tuple) not in printable_struct:
-                    printable_struct[str(idx_tuple)] = {
+                # Append to printable struct, keyed by both link type and
+                # field/order/filter signature so distinct link types that
+                # happen to share the same empty configuration are not merged.
+                ps_key = (doc_type_as_link, str(idx_tuple))
+                if ps_key not in printable_struct:
+                    printable_struct[ps_key] = {
                         'doc_type(s)' : [other_doc_type],
                         'link_type'   : doc_type_as_link,
                         'idx_tuple'   : idx_tuple
                     }
                 else:
-                    printable_struct[str(idx_tuple)]['doc_type(s)'] += [other_doc_type]
+                    printable_struct[ps_key]['doc_type(s)'] += [other_doc_type]
 
         #----------------------------------------------#
 
@@ -626,7 +670,7 @@ class IndexConfig:
 class ScoresConfig:
     """Class to handle index configuration."""
 
-    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "config_scores.json"
+    DEFAULT_PATH: ClassVar[Path] = REPO_ROOT / "config" / "application" / "config_scores.json"
 
     # Initialization method
     def __init__(self, scores_config: dict | None = None):

@@ -42,7 +42,7 @@ class MySQLNodeRepository(NodeRepository):
     }
 
     # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None) -> None:
+    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
         # Validate that either a UnitOfWork is provided, or both a GraphDB and
         # SchemaResolver are provided, but not both.
@@ -65,6 +65,8 @@ class MySQLNodeRepository(NodeRepository):
         else:
             raise ValueError("MySQLNodeRepository requires either uow= or (db=, schema_resolver=).")
 
+        # When True, echo SQL statements executed by standalone sessions.
+        self.verbose = verbose
         # Initialize a GraphLogger instance for logging messages.
         self.msg = GraphLogger()
 
@@ -79,7 +81,7 @@ class MySQLNodeRepository(NodeRepository):
             return self._uow.get_session(engine_name)
 
         # No UnitOfWork is active, so open a standalone session for this engine.
-        session = MySQLSession(self.db, engine_name)
+        session = MySQLSession(self.db, engine_name, verbose=self.verbose)
         session.begin()
         return session
 
@@ -702,8 +704,8 @@ class MySQLNodeRepository(NodeRepository):
     # Method Group: Node diagnostics and special get/save operations #
     #================================================================#
 
-    # Public Method: Return nodes that have no concepts attached
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+    # Public Method: Return keys of nodes that have no concepts attached
+    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
 
         # Resolve the schema for the provided object type
         engine_name, schema_name = self.schema_resolver.for_object_type(
@@ -720,8 +722,7 @@ class MySQLNodeRepository(NodeRepository):
             id_pattern  = id_pattern.replace("*", "%") if id_pattern is not None else "%",
         )
 
-        # Execute the query and build NodeKey objects from the result rows. Then fetch
-        # the full nodes for those keys
+        # Execute the query and build NodeKey objects from the result rows.
         node_keys_data = cast(
             list[tuple[str, str]],
             self._execute_read(engine_name=engine_name, query=sql_query),
@@ -733,7 +734,14 @@ class MySQLNodeRepository(NodeRepository):
             for row in node_keys_data
         ]
 
-        # Return the requested nodes
+        # Return the collected keys so callers can stream the node loading.
+        return NodeKeyList(item_list=node_keys)
+
+    # Public Method: Return nodes that have no concepts attached
+    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+
+        # Fetch the candidate keys and then load full nodes for backward compatibility.
+        node_keys = self.find_keys_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
         return self.get_many(node_keys)
 
     #================================================================#

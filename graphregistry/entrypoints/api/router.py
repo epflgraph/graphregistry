@@ -18,7 +18,7 @@ import graphregistry.entrypoints.api.schemas as apispecs
 
 # Environment variables
 API_ENV_VAR = "GRAPHREGISTRY_API_ENV"
-DEFAULT_API_ENV = "xaas_coresrv"
+DEFAULT_API_ENV = "coresrv"
 
 # Router object
 router = APIRouter(

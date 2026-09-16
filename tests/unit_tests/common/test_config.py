@@ -8,7 +8,7 @@ from graphregistry.common.paths import DATABASE_SYSTEM_DATATYPES_PATH
 
 # Public Method: Verify edge-selection contexts are parsed into a sorted lookup.
 def test_index_config_exposes_edge_selection_contexts() -> None:
-    """object-selection.edges from config_index.json is parsed into a sorted
+    """object-selection.edges from config/application/config_index.json is parsed into a sorted
     (from_type, to_type) -> context lookup used during index builds.
     """
     cfg = IndexConfig()
@@ -28,7 +28,7 @@ def test_index_config_exposes_edge_selection_contexts() -> None:
 
 # Public Method: Verify mixed scoring tuples are exposed as configured.
 def test_scores_config_exposes_mixed_scoring_tuples() -> None:
-    """mixed-scoring-tuples from config_scores.json is parsed into tuples."""
+    """mixed-scoring-tuples from config/application/config_scores.json is parsed into tuples."""
     cfg = ScoresConfig()
 
     # Raw config order is preserved.
@@ -83,6 +83,6 @@ def test_dynamic_sql_falls_back_to_index_datatypes() -> None:
     """Fields not in system_datatypes.json fall back to config_index.json data-types."""
     dynsql = DynamicSQL(db=None)
 
-    # "year" is defined in config_index.json, not in system_datatypes.json.
+    # "year" is defined in config/application/config_index.json, not in system_datatypes.json.
     datatypes = dynsql.get_datatypes_from_fields(["year"])
     assert datatypes == ["MEDIUMINT UNSIGNED"]
