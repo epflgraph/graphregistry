@@ -26,8 +26,8 @@ def cmd_run_formula(args):
         return
 
     # Fill in the template variables
-    for db_schema_name in glbcfg.mysql_schema_names['xaas_coresrv']:
-        sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['xaas_coresrv'][db_schema_name])
+    for db_schema_name in glbcfg.mysql_schema_names['coresrv']:
+        sql_formula = sql_formula.replace(f'[[{db_schema_name}]]', glbcfg.mysql_schema_names['coresrv'][db_schema_name])
 
     # Print the final SQL if resolve_only is True
     if resolve_only or verbose:

@@ -75,8 +75,8 @@ class GlobalConfig:
                 'graphsearch' : self.schema_names['graphsearch_prod']
             }
         }
-        self.mysql_schema_names['xaas_coresrv'] = copy.deepcopy(self.mysql_schema_names['test'])
-        self.mysql_schema_names['xaas_prod']    = copy.deepcopy(self.mysql_schema_names['prod'])
+        self.mysql_schema_names['coresrv'] = copy.deepcopy(self.mysql_schema_names['test'])
+        self.mysql_schema_names['prod']    = copy.deepcopy(self.mysql_schema_names['prod'])
 
         # Add prefix to schema names if in 'dev' mode
         if self.mysql_execution_mode == 'dev':

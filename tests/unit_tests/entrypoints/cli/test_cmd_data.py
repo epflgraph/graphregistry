@@ -21,7 +21,7 @@ def _args(**overrides: Any) -> SimpleNamespace:
     """Build a minimal CLI args namespace with all data subcommand options."""
     defaults: dict[str, Any] = {
         "ctx": SimpleNamespace(db=MagicMock(), global_config=MagicMock()),
-        "env": "xaas_coresrv",
+        "env": "coresrv",
         # Input options
         "node": None,
         "edge": None,

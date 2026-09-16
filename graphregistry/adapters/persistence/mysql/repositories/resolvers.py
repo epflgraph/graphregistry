@@ -82,7 +82,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
 
         {
             "EPFL": {
-                "engine_name": "xaas_coresrv",
+                "engine_name": "coresrv",
                 "node_schema_map": {
                     "Person": "graph_person",
                     "Course": "graph_course",

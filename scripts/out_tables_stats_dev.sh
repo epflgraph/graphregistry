@@ -5,7 +5,7 @@ from graphregistry.common.config import GlobalConfig
 db = GraphDB()
 glbcfg = GlobalConfig()
 
-db_env = "xaas_coresrv"
+db_env = "coresrv"
 
 schema_name = '_1_DEV_' + glbcfg.settings['mysql']['db_schema_names']['graphsearch_test']
 

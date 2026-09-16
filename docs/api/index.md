@@ -8,7 +8,7 @@ GraphRegistry exposes a FastAPI REST API under the `/api` prefix. Interactive do
 http://127.0.0.1:9999/api
 ```
 
-The environment is selected once per API process via the `GRAPHREGISTRY_API_ENV` environment variable and defaults to `xaas_coresrv`.
+The environment is selected once per API process via the `GRAPHREGISTRY_API_ENV` environment variable and defaults to `coresrv`.
 
 ## System endpoints
 

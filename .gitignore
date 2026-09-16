@@ -263,7 +263,6 @@ count_object_type_triples.json
 count_object_type_triples.py
 /data/
 database/init/data_patches/
-database/init/sample_sets/*
 database/patches/table_fix_graphsearch.sql
 database/patches/yves_courses_mismatches.sql
 database/tests/

@@ -21,7 +21,7 @@ def cmd_test(args):
     """
     Usage:
         graphregistry test
-        graphregistry test --env xaas_coresrv
+        graphregistry test --env coresrv
         graphregistry test --skip-db --skip-es --skip-ai
     """
     skip_db = args.skip_db

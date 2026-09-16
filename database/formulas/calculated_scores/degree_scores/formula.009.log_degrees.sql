@@ -1,6 +1,13 @@
 -- ================= Calculate max log degrees
 DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees;
-        CREATE TABLE [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees AS
+        CREATE TABLE [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees (
+                        from_object_type varchar(32) NOT NULL,
+                        to_object_type   varchar(32) NOT NULL,
+                        max_log_degree   float DEFAULT NULL,
+                        PRIMARY KEY (from_object_type,to_object_type),
+                        KEY from_object_type (from_object_type),
+                        KEY   to_object_type (  to_object_type)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AS
               SELECT from_object_type, to_object_type, MAX(log_degree) AS max_log_degree
                 FROM [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations
                WHERE deleted = 0

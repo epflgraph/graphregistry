@@ -307,7 +307,7 @@ def main():
 
     # Prepare db for the following steps.
     db = GraphDB()
-    engine_name = "xaas_coresrv"
+    engine_name = "coresrv"
 
     # Prepare control for the following steps.
     control = load_control()

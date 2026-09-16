@@ -68,7 +68,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--engine",
-        default = "xaas_coresrv",
+        default = "coresrv",
         help    = "GraphDB engine name to use for the export.",
     )
     args = parser.parse_args()

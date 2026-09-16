@@ -88,8 +88,8 @@ def cmd_airflow_to_process(args):
     # Get list of tables where to_process flag is present
     list_of_tables = [
         table_name
-        for table_name  in db.get_tables_in_schema(engine_name='xaas_coresrv', schema_name=glbcfg.schema_airflow)
-        if 'to_process' in db.get_column_names(    engine_name='xaas_coresrv', schema_name=glbcfg.schema_airflow, table_name=table_name)
+        for table_name  in db.get_tables_in_schema(engine_name='coresrv', schema_name=glbcfg.schema_airflow)
+        if 'to_process' in db.get_column_names(    engine_name='coresrv', schema_name=glbcfg.schema_airflow, table_name=table_name)
     ]
 
     # Check arguments:
@@ -103,7 +103,7 @@ def cmd_airflow_to_process(args):
         # Execute command:
         # - for each table, count and print the number of rows where to_process=1
         for table_name in list_of_tables:
-            n = db.count_rows_in_table(engine_name='xaas_coresrv', schema_name=glbcfg.schema_airflow, table_name=table_name, where_clause="to_process = 1")
+            n = db.count_rows_in_table(engine_name='coresrv', schema_name=glbcfg.schema_airflow, table_name=table_name, where_clause="to_process = 1")
             print(f"{table_name} {'.'*(64 - len(table_name))} {n}")
 
         # Print footers
@@ -120,7 +120,7 @@ def cmd_airflow_to_process(args):
         # - for each table, set all cells to_process=0
         for table_name in list_of_tables:
             print(f"⚙️  Processing table: {table_name} ...")
-            db.set_cells(engine_name='xaas_coresrv', schema_name=glbcfg.schema_airflow, table_name=table_name, set=[('to_process', 0)], where=[('to_process', 1)], verbose=False)
+            db.set_cells(engine_name='coresrv', schema_name=glbcfg.schema_airflow, table_name=table_name, set=[('to_process', 0)], where=[('to_process', 1)], verbose=False)
 
         # Print footers
         print("🖥️  ~ Done.")

@@ -36,7 +36,7 @@ from tests.helpers.db_checks import (
 )
 from tests.helpers.fixtures import load_subgraph_fixture, temp_test_global_config
 
-ENGINE_NAME = "xaas_coresrv"
+ENGINE_NAME = "coresrv"
 SUBGRAPH_FIXTURE_PATH = (
     Path(__file__).resolve().parents[1]
     / "fixtures"

@@ -28,7 +28,7 @@ class MySQLIndexDeploy(IndexDeployRepository):
     """
     MySQL adapter for deploying GraphSearch index tables from a source
     environment (e.g. graphsearch_test on coresrv) to a target environment
-    (e.g. graphsearch_prod on xaas_prod).
+    (e.g. graphsearch_prod on prod).
 
     The SQL templates live under database/queries/patching and are loaded via
     graphregistry.common.dbstruct.sql_queries_paths.

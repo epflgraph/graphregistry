@@ -1,0 +1,9 @@
+CREATE TABLE `Edges_N_Concept_N_Concept_T_Symmetric` (
+  `id` varchar(255) NOT NULL,
+  `from_id` varchar(255) NOT NULL,
+  `to_id` varchar(255) NOT NULL,
+  `score` float NOT NULL,
+  `record_deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `row_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  PRIMARY KEY (`row_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
