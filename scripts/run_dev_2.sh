@@ -23,5 +23,4 @@ graphregistry airflow rollover
 scripts/out_tables_stats_dev.sh
 # ------------------------------------------
 
-
 graphregistry kgraph prune

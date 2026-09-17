@@ -300,18 +300,28 @@ def cmd_init(
     #------------------------------------------------------------#
     sysmsg.info("➡️ 📝 Insert default data into MySQL tables.")
 
-    # Prepare list_of_sql_files for the following steps.
-    list_of_sql_files = sorted(glob.glob("database/init/default_data/*.sql"))
+    # Map schema directory names (e.g. "graph_registry") back to schema keys.
+    schema_name_to_key = {v: k for k, v in glbcfg.schema_names.items()}
+
+    # Prepare list_of_sql_files for the following steps, including nested folders.
+    list_of_sql_files = sorted(glob.glob("database/init/default_data/**/*.sql", recursive=True))
 
     # Iterate over the collection.
     for sql_file in list_of_sql_files:
-        match = re.match(r".*schema_([a-z]*)\.data\..*\.sql", os.path.basename(sql_file))
-        if not match:
-            sysmsg.critical(f"➡️ ❌ Could not extract schema name from file name '{os.path.basename(sql_file)}'.")
-            raise typer.Exit(code=1)
+        basename = os.path.basename(sql_file)
+        match = re.match(r".*schema_([a-z_]*)\.data\..*\.sql", basename)
+        if match:
+            schema_key = match.group(1)
+        else:
+            # Fall back to the schema folder name (e.g. "graph_registry" -> "registry").
+            # SQL files may live in an intermediate "sql" subfolder, so look two levels up.
+            folder_name = os.path.basename(os.path.dirname(os.path.dirname(sql_file)))
+            schema_key = schema_name_to_key.get(folder_name)
+            if schema_key is None:
+                sysmsg.critical(f"➡️ ❌ Could not extract schema name from file '{sql_file}'.")
+                raise typer.Exit(code=1)
 
-        # Prepare schema_key for the following steps.
-        schema_key = match.group(1)
+        # Log the resolved schema before executing the file against each mode.
         sysmsg.trace(f"Processing default data SQL file '{sql_file}' for schema '{schema_key}' ...")
 
         # Iterate over the collection.

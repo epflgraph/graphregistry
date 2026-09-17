@@ -74,10 +74,15 @@ def cmd_airflow_expire(
     include_fields = fields or not scores
     include_scores = scores or not fields
 
+    # The "fields" scope covers both node and edge FieldsChanged tables; the
+    # "scores" scope covers only the node ScoresExpired table.
+    include_nodes = include_fields or include_scores
+    include_edges = include_fields
+
     # Expire objects in the selected Airflow scopes.
     cli_ctx.registry.orchestrator.expire(
-        include_nodes  = False,
-        include_edges  = False,
+        include_nodes  = include_nodes,
+        include_edges  = include_edges,
         include_fields = include_fields,
         include_scores = include_scores,
         object_types   = None,
@@ -112,15 +117,24 @@ def cmd_airflow_plan(
     if update_checksums:
         gr.orchestrator.update_checksums_v2(actions=("commit",), verbose=verbose)
 
-    # Optionally expire objects in the selected scopes.
-    if expire:
-        include_fields = "fields" in expire
-        include_scores = "scores" in expire
+    # Optionally expire objects in the selected scopes. Providing --older-than
+    # without --expire implies both fields and scores scopes.
+    if expire or older_than is not None:
+        expire_value = expire or "fields,scores"
+        include_fields = "fields" in expire_value
+        include_scores = "scores" in expire_value
         if not include_fields and not include_scores:
             include_fields = include_scores = True
+
+        # The "fields" scope covers both node and edge FieldsChanged tables; the
+        # "scores" scope covers only the node ScoresExpired table.
+        include_nodes = include_fields or include_scores
+        include_edges = include_fields
+
+        # Run expiration for the selected fields/scores scopes.
         gr.orchestrator.expire(
-            include_nodes  = False,
-            include_edges  = False,
+            include_nodes  = include_nodes,
+            include_edges  = include_edges,
             include_fields = include_fields,
             include_scores = include_scores,
             object_types   = None,
