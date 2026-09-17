@@ -45,29 +45,64 @@ def cmd_init(
     # Step 0: Import graph ontology sample set                     #
     #------------------------------------------------------------#
     if import_ontology_sample:
-        sysmsg.info("🧬 📝 Importing graph ontology sample set.")
-
         # Use the configured ontology schema name and bundled sample SQL folder.
         ontology_input_folder = "database/init/sample_sets/graph_ontology/sql"
         ontology_schema_name = glbcfg.schema_ontology
 
-        # Log the target schema and source folder before importing.
-        sysmsg.trace(f"Importing ontology into schema '{ontology_schema_name}' from '{ontology_input_folder}' ...")
+        # Determine whether the ontology schema already has tables.
+        ontology_already_populated = (
+            db.database_exists(engine_name=env, schema_name=ontology_schema_name)
+            and len(db.get_tables_in_schema(engine_name=env, schema_name=ontology_schema_name, include_views=False)) > 0
+        )
 
-        # Replicate: graphdb import --schema_name <ontology> --input_folder <folder> -c -d -z
-        if commit:
-            db.import_database(
-                engine_name              = env,
-                schema_name              = ontology_schema_name,
-                input_folder             = ontology_input_folder,
-                create_keys_after_import = True,
-                ignore_existing          = False,
-                verbose                  = verbose,
-                compress                 = True,
+        # Import ontology tables/data only if the schema is still empty.
+        if ontology_already_populated:
+            sysmsg.warning(
+                f"🧬 Ontology schema '{ontology_schema_name}' already contains tables; "
+                "skipping ontology table/data import. Drop the schema first if you want to re-import."
             )
-            sysmsg.success("🧬 ✅ Graph ontology sample set imported.\n")
         else:
-            sysmsg.success("🧬 💡 Dry run: would import graph ontology sample set.\n")
+            sysmsg.info("🧬 📝 Importing graph ontology sample set.")
+            sysmsg.trace(f"Importing ontology into schema '{ontology_schema_name}' from '{ontology_input_folder}' ...")
+
+            # Replicate: graphdb import --schema_name <ontology> --input_folder <folder> -c -d -z
+            if commit:
+                db.import_database(
+                    engine_name              = env,
+                    schema_name              = ontology_schema_name,
+                    input_folder             = ontology_input_folder,
+                    create_keys_after_import = True,
+                    ignore_existing          = False,
+                    verbose                  = verbose,
+                    compress                 = True,
+                )
+                sysmsg.success("🧬 ✅ Graph ontology sample set imported.")
+            else:
+                sysmsg.success("🧬 💡 Dry run: would import graph ontology sample set.")
+
+        # Import (or refresh) ontology views. Views use [[ontology]] placeholder for the schema name.
+        ontology_views_folder = "database/init/sample_sets/graph_ontology/views"
+        view_sql_files = sorted(glob.glob(f"{ontology_views_folder}/*.sql"))
+        if view_sql_files:
+            sysmsg.info("🧬 📝 Importing graph ontology views.")
+            for view_sql_file in view_sql_files:
+                view_name = os.path.basename(view_sql_file)
+                sysmsg.trace(f"Importing view '{view_name}' into schema '{ontology_schema_name}' ...")
+                if commit:
+                    with open(view_sql_file, "r", encoding="utf-8") as fp:
+                        view_sql = fp.read().replace("[[ontology]]", ontology_schema_name)
+                    db.execute_query(
+                        engine_name = env,
+                        query       = view_sql,
+                        schema_name = ontology_schema_name,
+                        verbose     = verbose,
+                    )
+                else:
+                    sysmsg.trace(f"🧬 💡 Dry run: would execute view '{view_name}' against '{ontology_schema_name}'.")
+            sysmsg.success("🧬 ✅ Graph ontology views imported.\n")
+        else:
+            sysmsg.warning(f"🧬 No ontology view SQL files found in '{ontology_views_folder}'.")
+            print("")
 
     # Schemas that must exist and be initialized for the Registry to function.
     schemas_to_process = [
