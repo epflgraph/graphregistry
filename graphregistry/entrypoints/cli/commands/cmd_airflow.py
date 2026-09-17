@@ -165,9 +165,10 @@ def cmd_airflow_rollover(
     # Rollover checksums first.
     gr.orchestrator.rollover(actions=("commit",))
 
+    # Update last cached dates while to_process flags are still set (update_dates
+    # filters on to_process=1). Reset must happen after this step.
+    gr.orchestrator.update_dates(actions=("commit",))
+
     # Reset orchestrator flags. Deep reset includes cache/traversal tables unless skipped.
     reset_options = ("airflow",) if skip_hard_reset else ("airflow", "traversals", "cache")
     gr.orchestrator.reset(options=reset_options, doc_type=None, verbose=verbose)
-
-    # Update last cached dates.
-    gr.orchestrator.update_dates(actions=("commit",))
