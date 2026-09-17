@@ -94,8 +94,7 @@ def delete_many(node_keys_path: Path, edge_keys_path: Path, env: dict[str, str])
         cli_base_cmd()
         + [
             "delete",
-            f"--edge_key_list=@{edge_keys_path}",
-            "--actions=commit",
+            str(edge_keys_path),
         ],
         env=env,
     )
@@ -103,8 +102,7 @@ def delete_many(node_keys_path: Path, edge_keys_path: Path, env: dict[str, str])
         cli_base_cmd()
         + [
             "delete",
-            f"--node_key_list=@{node_keys_path}",
-            "--actions=commit",
+            str(node_keys_path),
         ],
         env=env,
     )
@@ -142,8 +140,7 @@ def test_cli_data_commands_subgraph_e2e(
             cli_base_cmd()
             + [
                 "save",
-                f"--node_list=@{node_list_path}",
-                "--actions=commit",
+                str(node_list_path),
             ],
             env=cli_env,
         )
@@ -152,8 +149,7 @@ def test_cli_data_commands_subgraph_e2e(
             cli_base_cmd()
             + [
                 "save",
-                f"--edge_list=@{edge_list_path}",
-                "--actions=commit",
+                str(edge_list_path),
             ],
             env=cli_env,
         )

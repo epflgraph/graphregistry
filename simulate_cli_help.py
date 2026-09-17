@@ -100,7 +100,7 @@ def main() -> None:
     # Top-level help
     show_help(
         usage="graphregistry [OPTIONS] COMMAND [ARGS]...",
-        description="GraphRegistry CLI for managing MySQL, ElasticSearch, registry cache/index pipelines, and airflow orchestration.",
+        description="GraphRegistry CLI for managing MySQL, ElasticSearch, registry cache/index pipelines, and Airflow orchestration.",
         options=[
             ("--install-completion", "Install completion for the current shell.", ""),
             ("--show-completion", "Show completion for the current shell, to copy or customize.", ""),
@@ -110,7 +110,7 @@ def main() -> None:
             ("test", "Run a safe smoke test of configuration and service connectivity."),
             ("config", "Inspect and validate Registry configuration files."),
             ("data", "Manage base registry data."),
-            ("airflow", "Manage airflow orchestrator operations."),
+            ("airflow", "Manage Airflow orchestrator operations."),
             ("ai", "Interact with GraphAI API."),
             ("kgraph", "High-level knowledge-graph construction workflows."),
             ("devtools", "Low-level building blocks for advanced users."),
@@ -224,14 +224,14 @@ def main() -> None:
     # airflow
     show_help(
         usage="graphregistry airflow [OPTIONS] COMMAND [ARGS]...",
-        description="Manage airflow orchestrator operations.",
+        description="Manage Airflow orchestrator operations.",
         common=common_options(),
         subcommands=[
             ("sync", "Sync new data (Registry -> Airflow)."),
             ("config", "Setup the object and content types to process."),
             ("expire", "Mark objects as expired based on last cached date."),
-            ("plan", "Generate execution plan based on airflow conditions."),
-            ("status", "Display airflow execution plan."),
+            ("plan", "Generate execution plan based on Airflow conditions."),
+            ("status", "Display Airflow orchestrator status tables."),
             ("rollover", "Rollover states after a processing cycle."),
         ],
     )
@@ -257,8 +257,8 @@ def main() -> None:
         usage="graphregistry airflow expire [OPTIONS]",
         description="Mark objects as expired based on last cached date.",
         options=[
-            ("--fields", "Include 'fields changed' airflow tables.", ""),
-            ("--scores", "Include 'scores expired' airflow table.", ""),
+            ("--fields", "Include 'fields changed' Airflow tables.", ""),
+            ("--scores", "Include 'scores expired' Airflow table.", ""),
             ("--older-than, -d", "Expire objects last cached more than N days ago.", ""),
         ],
         common=common_options(),
@@ -266,27 +266,27 @@ def main() -> None:
 
     show_help(
         usage="graphregistry airflow plan [OPTIONS]",
-        description="Generate execution plan based on airflow conditions.",
+        description="Generate execution plan based on Airflow conditions.",
         options=[
             ("--update-checksums, -c", "Recompute and persist checksums before expiring.", ""),
             ("--expire, -e", "Comma-separated scopes to expire: fields,scores.", ""),
             ("--older-than, -d", "Expire objects last cached more than N days ago.", ""),
             ("--limit-per-type, -l", "Maximum number of objects to expire per document type.", ""),
-            ("--skip-hard-reset, -shr", "Reset only airflow states; no full pipeline reset.", "")
+            ("--skip-hard-reset, -shr", "Reset only Airflow states; no full pipeline reset.", "")
         ],
         common=common_options(),
     )
 
     show_help(
         usage="graphregistry airflow status [OPTIONS]",
-        description="Display airflow execution plan.",
+        description="Display Airflow orchestrator status tables.",
         common=common_options(),
     )
 
     show_help(
         usage="graphregistry airflow rollover [OPTIONS]",
         description="Rollover states (new checksums and expiration dates) after a processing cycle.",
-        options=[("--skip-hard-reset, -shr", "Reset only airflow states; no full pipeline reset.", "")],
+        options=[("--skip-hard-reset, -shr", "Reset only Airflow states; no full pipeline reset.", "")],
         common=common_options(),
     )
 
@@ -302,7 +302,7 @@ def main() -> None:
 
     show_help(
         usage="graphregistry ai detect-concepts [OPTIONS]",
-        description="Detect concepts for objects active on airflow",
+        description="Detect concepts for objects active on Airflow.",
         common=common_options(),
     )
 
@@ -372,7 +372,7 @@ def main() -> None:
         subcommands=[
             ("data-save", "Save node(s) or edge(s) from a JSON file."),
             ("data-delete", "Delete node(s) or edge(s) from a JSON file."),
-            ("airflow-inspect-to-process", "Inspect or reset 'to_process' flags in airflow tables."),
+            ("airflow-inspect-to-process", "Inspect or reset 'to_process' flags in Airflow tables."),
             ("airflow-reset", "Reset orchestrator 'to_process' flags."),
             ("airflow-update-checksums", "Update object checksums based on typeflag activation."),
             ("airflow-expire", "Mark objects as expired based on last cached date."),
@@ -406,9 +406,9 @@ def main() -> None:
 
     show_help(
         usage="graphregistry devtools airflow-inspect-to-process [OPTIONS]",
-        description="Inspect or reset the airflow 'to_process' flags across airflow tables.",
+        description="Inspect or reset the Airflow 'to_process' flags across Airflow tables.",
         options=[
-            ("--count", "Count rows with to_process=1 in each airflow table.", ""),
+            ("--count", "Count rows with to_process=1 in each Airflow table.", ""),
             ("--reset", "Set to_process=0 for all rows currently marked to_process=1.", ""),
         ],
         common=common_options(),
@@ -437,8 +437,8 @@ def main() -> None:
         usage="graphregistry devtools airflow-expire [OPTIONS]",
         description="Mark objects as expired (has_expired=1) based on when they were last cached.",
         options=[
-            ("--fields", "Include 'fields changed' airflow tables.", ""),
-            ("--scores", "Include 'scores expired' airflow table.", ""),
+            ("--fields", "Include 'fields changed' Airflow tables.", ""),
+            ("--scores", "Include 'scores expired' Airflow table.", ""),
             ("--types", "Comma-separated object types to restrict expiration to.", "Exercise,Notebook"),
             ("--older-than", "Expire objects last cached more than N days ago.", "300"),
         ],
@@ -454,7 +454,7 @@ def main() -> None:
 
     show_help(
         usage="graphregistry devtools airflow-propagate [OPTIONS]",
-        description="Propagate airflow 'to_process' flags to graph_cache tables.",
+        description="Propagate Airflow 'to_process' flags to graph_cache tables.",
         options=[
             ("--fields", "Propagate fields-changed flags only.", ""),
             ("--scores", "Propagate scores-expired flags only.", ""),

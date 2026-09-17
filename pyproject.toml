@@ -29,6 +29,7 @@ dependencies = [
     "pytest-cov",
     "pytest-xdist",
     "openai",
+    "typer",
     # Git dependency (PEP 508 syntax)
     "graphdb-client @ git+https://github.com/epflgraph/graphdb-client.git",
     "graphes-client @ git+https://github.com/epflgraph/graphes-client.git",
@@ -56,6 +57,7 @@ exclude = [
     "node_modules*",
     "scripts*",
     "tests*",
+    "graphregistry/entrypoints/cli/_legacy*",
 ]
 
 # Pytest configuration for the project

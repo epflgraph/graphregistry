@@ -318,3 +318,4 @@ nohup_lectures.out
 notes_new_agent.txt
 /scripts/integrity_checks/data/
 notes.txt
+/graphregistry/entrypoints/cli/_legacy/

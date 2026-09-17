@@ -16,3 +16,4 @@ SELECT DISTINCT n.object_type, n.object_id
             AND n.record_deleted = 0
             AND c.concept_id  IS NULL
             AND tf.to_process = 1
+       ORDER BY n.object_type, n.object_id

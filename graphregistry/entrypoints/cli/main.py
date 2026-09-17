@@ -1,88 +1,44 @@
 # graphregistry/entrypoints/cli/main.py
-import argparse
-from typing import Any
-
-from graphdb.core.config import GraphDBConfig
-
-from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+from __future__ import annotations
+import typer
+from graphregistry.entrypoints.cli.commands import (
+    cmd_ai,
+    cmd_airflow,
+    cmd_config,
+    cmd_data,
+    cmd_devtools,
+    cmd_init,
+    cmd_kgraph,
+    cmd_test,
+)
 from graphregistry.entrypoints.cli.context import CLIContext
-from graphregistry.entrypoints.cli.register import register
 
-#---------------------------------------------------------------------#
-# Function to build the main argument parser and register subcommands #
-#---------------------------------------------------------------------#
-def build_parser() -> argparse.ArgumentParser:
+#==================#
+# App Definition   #
+#==================#
+app = typer.Typer(
+    name             = "graphregistry",
+    help             = "GraphRegistry CLI for managing MySQL, ElasticSearch, registry cache/index pipelines, and Airflow orchestration.",
+    no_args_is_help  = True,
+    context_settings = {"help_option_names": ["--help", "-h"]},
+)
 
-    # Initialize main parser
-    parser = argparse.ArgumentParser(
-        prog="graphregistry",
-        description="GraphRegistry command-line interface (CLI) for managing MySQL, Elasticsearch, registry cache/index pipelines, and Airflow orchestration.",
-    )
+# Register each domain sub-app under the top-level CLI.
+app.add_typer(cmd_config.app, name="config")
+app.add_typer(cmd_init.app, name="init")
+app.command(name="test")(cmd_test.cmd_test)
+app.add_typer(cmd_data.app, name="data")
+app.add_typer(cmd_airflow.app, name="airflow")
+app.add_typer(cmd_ai.app, name="ai")
+app.add_typer(cmd_kgraph.app, name="kgraph")
+app.add_typer(cmd_devtools.app, name="devtools")
 
-    # Register subparsers for each domain
-    subparsers = parser.add_subparsers(dest="domain", required=True)
+# Public Function: Build the shared CLI context once per invocation.
+@app.callback()
+def main_callback(ctx: typer.Context) -> None:
+    """Attach the shared CLI context to the Typer invocation context."""
+    ctx.obj = CLIContext()
 
-    # Register commands for each domain
-    for cmd_name in ["config", "test", "es", "ai", "data", "airflow", "cache", "run", "index", "setup"]:
-        register(subparsers, cmd_name)
-
-    # Return the fully built parser
-    return parser
-
-
-#-------------------------------------------------------------------------#
-# Main function to execute the CLI with proper context and error handling #
-#-------------------------------------------------------------------------#
-def main(argv=None) -> int:
-
-    # Build the argument parser
-    parser = build_parser()
-
-    # Parse the command-line arguments
-    args = parser.parse_args(argv)
-
-    # If no command was provided, print help and exit
-    if not hasattr(args, "func"):
-        parser.print_help()
-        return 1
-
-    # Create shared config objects. Heavy clients (MySQL, ES) are initialized lazily.
-    global_config = GlobalConfig()
-    index_config  = IndexConfig()
-    scores_config = ScoresConfig()
-
-    # Load MySQL config; the client itself is initialized lazily by CLIContext.db.
-    from graphregistry.common.paths import CONFIG_DB_PATH
-
-    db_config = GraphDBConfig.from_file(CONFIG_DB_PATH)
-
-    # Registry is only required for selected domains.
-    registry: Any | None = None
-    if args.domain in {"airflow", "cache", "index", "data"}:
-        from graphregistry.application.core.cor_registry import GraphRegistry
-
-        registry = GraphRegistry()
-
-    # GraphAI module is only required when an ai subcommand wires a GraphAI gateway.
-    # Authentication is handled lazily inside the hexagonal gateway adapters, not here.
-    ai: Any | None = None
-    if args.domain == "ai":
-        import graphai_client as GraphAI
-
-        ai = GraphAI
-
-    # Create CLI context
-    ctx = CLIContext(
-        global_config=global_config,
-        index_config=index_config,
-        scores_config=scores_config,
-        db_config=db_config,
-        registry=registry,
-        ai=ai,
-    )
-
-    # Attach to args for all subcommands
-    args.ctx = ctx
-
-    # Execute the command function and return its exit code
-    return args.func(args) or 0
+# Public Function: Entry point for the console script.
+def main() -> None:
+    app()
