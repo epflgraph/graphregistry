@@ -11,9 +11,10 @@ from graphregistry.entrypoints.cli.context import CLIContext
 
 # Create the Typer sub-app for the init command.
 app = typer.Typer(
-    help             = "Initialize the Registry instance with required databases, tables, and default data.",
-    no_args_is_help  = False,
-    context_settings = {"help_option_names": ["--help", "-h"]},
+    help                   = "Initialize the Registry instance with required databases, tables, and default data.",
+    no_args_is_help        = False,
+    invoke_without_command = True,
+    context_settings       = {"help_option_names": ["--help", "-h"]},
 )
 
 # Public Method: Initialize a new Registry instance (databases, tables, default data).
@@ -24,12 +25,49 @@ def cmd_init(
     verbose: Annotated[bool, VerboseOption()] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", "-d", help="Execute in dry run mode (do not modify any data).")] = False,
     index_tables: Annotated[bool, typer.Option("--index-tables", "-i", help="Ensure index buildup tables from config/application/config_index.json exist.")] = False,
+    import_ontology_sample: Annotated[bool, typer.Option("--import-ontology-sample", help="Import the graph ontology sample set before initializing Registry tables.")] = False,
+    force: Annotated[bool, typer.Option("--force", help="Allow execution in prod execution mode.")] = False,
 ) -> None:
     """Initialize the Registry instance with required databases, tables, and default data."""
     cli_ctx: CLIContext = ctx.obj
     glbcfg = cli_ctx.global_config
     db = cli_ctx.db
     commit = not dry_run
+
+    # Refuse to run in prod execution mode unless explicitly forced.
+    if glbcfg.mysql_execution_mode == "prod" and not force:
+        raise typer.BadParameter(
+            "init is only allowed in 'dev' execution mode. "
+            "Use --force if you really want to run it in 'prod' mode."
+        )
+
+    #------------------------------------------------------------#
+    # Step 0: Import graph ontology sample set                     #
+    #------------------------------------------------------------#
+    if import_ontology_sample:
+        sysmsg.info("🧬 📝 Importing graph ontology sample set.")
+
+        # Use the configured ontology schema name and bundled sample SQL folder.
+        ontology_input_folder = "database/init/sample_sets/graph_ontology/sql"
+        ontology_schema_name = glbcfg.schema_ontology
+
+        # Log the target schema and source folder before importing.
+        sysmsg.trace(f"Importing ontology into schema '{ontology_schema_name}' from '{ontology_input_folder}' ...")
+
+        # Replicate: graphdb import --schema_name <ontology> --input_folder <folder> -c -d -z
+        if commit:
+            db.import_database(
+                engine_name              = env,
+                schema_name              = ontology_schema_name,
+                input_folder             = ontology_input_folder,
+                create_keys_after_import = True,
+                ignore_existing          = False,
+                verbose                  = verbose,
+                compress                 = True,
+            )
+            sysmsg.success("🧬 ✅ Graph ontology sample set imported.\n")
+        else:
+            sysmsg.success("🧬 💡 Dry run: would import graph ontology sample set.\n")
 
     # Schemas that must exist and be initialized for the Registry to function.
     schemas_to_process = [
@@ -63,13 +101,10 @@ def cmd_init(
 
             # Handle the conditional case.
             if db.database_exists(engine_name=env, schema_name=execution_schema_name):
-                sysmsg.warning(f"Database '{execution_schema_name}' exists in the MySQL test server.")
-            else:
+                sysmsg.warning(f"Database '{execution_schema_name}' already exists.")
+            elif commit:
                 sysmsg.trace(f"Database '{execution_schema_name}' does not exist. Creating database ...")
-
-                # Handle the conditional case.
-                if commit:
-                    db.create_database(engine_name=env, schema_name=execution_schema_name)
+                db.create_database(engine_name=env, schema_name=execution_schema_name)
 
                 # Handle the conditional case.
                 if db.database_exists(engine_name=env, schema_name=execution_schema_name):
@@ -77,9 +112,11 @@ def cmd_init(
                 else:
                     sysmsg.error(f"🗄️ ❌ Failed to create database '{execution_schema_name}'.")
                     raise typer.Exit(code=1)
+            else:
+                sysmsg.trace(f"🗄️ 💡 Dry run: would create database '{execution_schema_name}'.")
 
     # Continue with the next step.
-    sysmsg.success("🗄️ ✅ All required databases exist (or were created).\n")
+    sysmsg.success("🗄️ ✅ All required databases exist (or would be created).\n")
 
     #------------------------------------------------------------#
     # Step 2: Create required MySQL tables and views               #
@@ -136,35 +173,37 @@ def cmd_init(
                     verbose     = verbose,
                 )
 
-            # Continue with the next step.
-            sysmsg.trace(f"Verifying that all required tables were created ...")
+                # Continue with the next step.
+                sysmsg.trace(f"Verifying that all required tables were created ...")
 
-            # Prepare tables_in_schema for the following steps.
-            tables_in_schema = sorted(
-                db.get_tables_in_schema(engine_name=env, schema_name=execution_schema_name, include_views=True)
-            )
-            required_tables_lower = {t.lower() for t in required_tables}
-            tables_in_schema_lower = {t.lower() for t in tables_in_schema}
-
-            # Handle the conditional case.
-            if not required_tables_lower.issubset(tables_in_schema_lower):
-                missing = required_tables_lower - tables_in_schema_lower
-                sysmsg.error(f"Not all required tables were created. Tables missing: {missing}")
-                sysmsg.critical(f"🗂️ ❌ Failed to create all required tables in database '{execution_schema_name}'.")
-                raise typer.Exit(code=1)
-
-            # Handle the conditional case.
-            if len(tables_in_schema) > len(required_tables):
-                sysmsg.warning(
-                    f"Database '{execution_schema_name}' contains extra tables: "
-                    f"{set(tables_in_schema) - set(required_tables)}"
+                # Prepare tables_in_schema for the following steps.
+                tables_in_schema = sorted(
+                    db.get_tables_in_schema(engine_name=env, schema_name=execution_schema_name, include_views=True)
                 )
+                required_tables_lower = {t.lower() for t in required_tables}
+                tables_in_schema_lower = {t.lower() for t in tables_in_schema}
 
-            # Continue with the next step.
-            sysmsg.trace(f"☑️ Done creating tables in database '{execution_schema_name}'.")
+                # Handle the conditional case.
+                if not required_tables_lower.issubset(tables_in_schema_lower):
+                    missing = required_tables_lower - tables_in_schema_lower
+                    sysmsg.error(f"Not all required tables were created. Tables missing: {missing}")
+                    sysmsg.critical(f"🗂️ ❌ Failed to create all required tables in database '{execution_schema_name}'.")
+                    raise typer.Exit(code=1)
+
+                # Handle the conditional case.
+                if len(tables_in_schema) > len(required_tables):
+                    sysmsg.warning(
+                        f"Database '{execution_schema_name}' contains extra tables: "
+                        f"{set(tables_in_schema) - set(required_tables)}"
+                    )
+
+                # Continue with the next step.
+                sysmsg.trace(f"☑️ Done creating tables in database '{execution_schema_name}'.")
+            else:
+                sysmsg.trace(f"🗂️ 💡 Dry run: would execute '{sql_file_path}' against '{execution_schema_name}'.")
 
     # Continue with the next step.
-    sysmsg.success("🗂️ ✅ All required MySQL tables were created.\n")
+    sysmsg.success("🗂️ ✅ All required MySQL tables were created (or would be created).\n")
 
     #------------------------------------------------------------#
     # Step 3: Ensure dynamic index buildup tables exist            #
@@ -252,6 +291,8 @@ def cmd_init(
             # Handle the conditional case.
             if commit:
                 db.execute_query_from_file(engine_name=env, file_path=sql_file, database=execution_schema_name)
+            else:
+                sysmsg.trace(f"➡️ 💡 Dry run: would execute '{sql_file}' against '{execution_schema_name}'.")
 
     # Continue with the next step.
-    sysmsg.success("➡️ ✅ Done inserting default data.\n")
+    sysmsg.success("➡️ ✅ Done inserting default data (or would insert).\n")
