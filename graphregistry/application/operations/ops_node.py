@@ -151,14 +151,14 @@ class NodeOperations:
     #================================================================#
 
     # Public Method: Return keys of nodes that have no concepts attached.
-    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
+    def find_keys_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeKeyList:
         with self.uow_factory() as uow:
-            return uow.nodes.find_keys_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+            return uow.nodes.find_keys_with_no_concepts(object_types=object_types, id_pattern=id_pattern)
 
     # Public Method: Return nodes that have no concepts attached.
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+    def get_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeList:
         with self.uow_factory() as uow:
-            return uow.nodes.get_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+            return uow.nodes.get_with_no_concepts(object_types=object_types, id_pattern=id_pattern)
 
     # Public Method: Check whether a node has concepts for the given mapping type.
     def has_concepts(self, node_or_key: Node | NodeKey, map_type: ConceptMapType) -> bool:

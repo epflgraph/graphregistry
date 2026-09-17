@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 import typer
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeElapsedColumn
+from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
@@ -40,24 +41,39 @@ def cmd_ai_detect_concepts(
     ctx: typer.Context,
     env: Annotated[str, EnvOption()] = DEFAULT_ENV,
     verbose: Annotated[bool, VerboseOption()] = False,
-    types: Annotated[str | None, typer.Option("--types", help="Comma-separated object types to detect concepts for.")] = None,
+    object_types: Annotated[str | None, typer.Option("--object-types", help="Comma-separated object types to detect concepts for.")] = None,
 ) -> None:
     """Detect concepts for objects active on Airflow."""
     cli_ctx: CLIContext = ctx.obj
     node_ops = _get_node_ops(cli_ctx, env, verbose)
 
-    # Resolve the object types to process. Default to Course for backward compatibility.
-    object_types = [t.strip() for t in types.split(",") if t.strip()] if types else ["Course"]
+    # Resolve the object types to process. When not provided, inherit the node
+    # types marked for field processing in the Airflow typeflags configuration.
+    if object_types:
+        resolved_types = [t.strip() for t in object_types.split(",") if t.strip()]
+    else:
+        resolved_types = cli_ctx.registry.orchestrator.typeflags.get_types_to_process(fields_or_scores="fields")[0]
+
+    # Concept detection attaches concepts to content nodes; ontology nodes such as
+    # Category and Concept are the targets of those edges, not the sources.
+    glbcfg = GlobalConfig()
+    resolved_types = [
+        t for t in resolved_types
+        if glbcfg.object_type_to_schema.get(t) != glbcfg.schema_ontology
+    ]
+
+    # Abort early when there are no eligible object types to process.
+    if not resolved_types:
+        typer.echo("No object types to process (typeflags config has no nodes with field processing enabled).")
+        raise typer.Exit(code=0)
 
     # Manage the resource context.
     with _make_progress() as progress:
-        progress.console.print(f"Detecting concepts for object types: {', '.join(object_types)}")
+        progress.console.print(f"Detecting concepts for object types: {', '.join(resolved_types)}")
 
-        # Declare the candidate_keys data structure.
-        candidate_keys: list[NodeKey] = []
-        for object_type in object_types:
-            key_list = node_ops.find_keys_with_no_concepts(object_type=object_type)
-            candidate_keys.extend(key_list.item_list)
+        # Fetch all candidate keys in a single query using an IN-list predicate.
+        key_list = node_ops.find_keys_with_no_concepts(object_types=resolved_types)
+        candidate_keys: list[NodeKey] = list(key_list.item_list)
 
         # Handle the conditional case.
         if not candidate_keys:

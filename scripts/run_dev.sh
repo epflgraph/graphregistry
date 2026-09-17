@@ -28,15 +28,11 @@ graphregistry airflow sync --include_ontology
 graphregistry airflow reset --options typeflags,airflow,traversals,cache
 graphregistry airflow config --typeflags config/application/config_airflow.json
 graphregistry airflow status
+graphregistry airflow plan -c -l 10000
+graphregistry airflow status
 
 # Step 4: AI/LLM operations
 graphregistry ai detect_concepts
-
-# Step 5: Decide what to process
-graphregistry airflow update_checksums
-# graphregistry airflow expire
-graphregistry airflow refresh --limit_per_type 10000
-graphregistry airflow status
 
 # Step 6: Knowledge graph generation sequence
 graphregistry cache update --formulas reset,fields,views,traversals,scores --actions commit,eval

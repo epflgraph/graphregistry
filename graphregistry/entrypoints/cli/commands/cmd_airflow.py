@@ -93,13 +93,13 @@ def cmd_airflow_plan(
     ctx: typer.Context,
     env: Annotated[str, EnvOption()] = DEFAULT_ENV,
     verbose: Annotated[bool, VerboseOption()] = False,
-    update_checksums: Annotated[bool, typer.Option("--update-checksums", "-c", help="Recompute and persist checksums before expiring.")] = False,
-    expire: Annotated[str | None, typer.Option("--expire", "-e", help="Comma-separated scopes to expire: fields,scores.")] = None,
+    update_checksums: Annotated[bool, typer.Option("--update-checksums", "-c", help="Recompute and persist checksums before refreshing.")] = False,
+    expire: Annotated[str | None, typer.Option("--expire", "-e", help="Comma-separated scopes to expire before refreshing: fields,scores.")] = None,
     older_than: Annotated[int | None, typer.Option("--older-than", "-d", help="Expire objects last cached more than N days ago.")] = None,
-    limit_per_type: Annotated[int | None, typer.Option("--limit-per-type", "-l", help="Maximum number of objects to expire per document type.")] = None,
+    limit_per_type: Annotated[int | None, typer.Option("--limit-per-type", "-l", help="Maximum number of objects to refresh per document type.")] = None,
     skip_hard_reset: Annotated[bool, typer.Option("--skip-hard-reset", "-shr", help="Reset only Airflow states; no full pipeline reset.")] = False,
 ) -> None:
-    """Generate execution plan based on Airflow conditions."""
+    """Generate execution plan: reset, optionally update checksums, optionally expire, then refresh to_process flags."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
     gr = cli_ctx.registry
@@ -129,6 +129,13 @@ def cmd_airflow_plan(
             count_only     = False,
             verbose        = verbose,
         )
+
+    # Refresh to_process flags: this is the equivalent of the old 'airflow refresh' command.
+    gr.orchestrator.refresh(
+        doc_type       = None,
+        limit_per_type = limit_per_type,
+        verbose        = verbose,
+    )
 
 # Public Method: Display Airflow orchestrator status tables.
 @app.command(name="status")
