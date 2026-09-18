@@ -1,47 +1,61 @@
+#!/usr/bin/env bash
+# Run the manual end-to-end pipeline test.
+#
+# This script triggers tests/end2end_tests/test_full_pipeline.py, which in turn
+# executes tests/end2end_tests/helpers/run_cli_sequence.sh against the configured
+# _1_DEV_* schemas and compares the output to
+# tests/end2end_tests/data/ground_truth/.
+#
+# The test is destructive: it mutates the dev schemas.  It is guarded by the
+# dev-mode check inside the pytest test itself.
+#
+# Usage:
+#   ./scripts/run_e2e_test.sh
+#
+# Compare-only mode (skip the pipeline and compare existing test_output/ to ground_truth/):
+#   ./scripts/run_e2e_test.sh --compare-only
 
-# Step 1: Initialise database tables and sample imports
-graphregistry init --import-ontology-sample
+set -euo pipefail
 
-# Step 2: Load sample node and edge lists into registry
-graphregistry data save database/init/sample_sets/graph_registry/json/sample_epfl_node_list.json
-graphregistry data save database/init/sample_sets/graph_registry/json/sample_epfl_edge_list.json
+echo "🧪 GraphRegistry e2e test wrapper"
+echo "   Started at: $(date +'%Y-%m-%d %H:%M:%S')"
 
-# Step 3: Sync new data, configure airflow, and generate execution plan
-graphregistry airflow sync --include-ontology
-graphregistry airflow config tests/end2end_tests/config/config_airflow.json
-graphregistry airflow plan -c -l 10000
-graphregistry airflow status
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Step 4: Execute concept detection with GraphAI
-graphregistry ai detect-concepts
+# Use the project virtualenv if it exists.
+if [[ -f "${REPO_ROOT}/.venv.registry/bin/activate" ]]; then
+    echo "🐍 Activating project virtualenv..."
+    # shellcheck source=/dev/null
+    source "${REPO_ROOT}/.venv.registry/bin/activate"
+fi
 
-# Step 5: Compute and generate/patch knowledge graph for GraphSearch
-graphregistry kgraph compute
-graphregistry kgraph patch
+export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+export GRAPHREGISTRY_RUN_MANUAL_E2E=1
 
-# Step 6: Wrap up processing cycle
-graphregistry airflow rollover
+cd "${REPO_ROOT}"
 
-# Step 7: Prune orphan nodes and loose ends from final graph
-graphregistry kgraph prune
+# Parse optional --compare-only flag and forward the remaining args to pytest.
+COMPARE_ONLY=0
+PYTEST_ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == "--compare-only" ]]; then
+        COMPARE_ONLY=1
+    else
+        PYTEST_ARGS+=("$arg")
+    fi
+done
 
-# Sanity check: Display number of rows in GraphSearch tables
-scripts/out_tables_stats_dev.sh
+if [[ "$COMPARE_ONLY" == "1" ]]; then
+    export GRAPHREGISTRY_E2E_COMPARE_ONLY=1
+    echo "🔄 Mode: compare-only (skip pipeline, compare existing test_output/ to ground_truth/)"
+else
+    echo "🚀 Mode: full pipeline (mutates _1_DEV_* schemas)"
+fi
 
-# Step 8: Export GraphSearch data from MySQL and import into ElasticSearch as index
-graphregistry kgraph index -n graphsearch_e2e_test -r -f
-
-# Test results 1: Export all MySQL tables for comparison with ground truth
-rm -rf /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql
-mkdir -p /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql
-graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graph_registry
-graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graph_airflow
-graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graph_cache
-graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graph_traversals
-graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graphsearch_test
-graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_elasticsearch_cache
-
-# Test results 2: Export ElasticSearch index for comparison with ground truth
-rm -rf /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json
-mkdir -p /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json
-graphes export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json --chunk_size 1000 --index_name graphsearch_e2e_test
+echo "▶️  Starting pytest..."
+exec pytest tests/end2end_tests/test_full_pipeline.py \
+    --override-ini="addopts=" \
+    -v \
+    -s \
+    "${PYTEST_ARGS[@]}"
