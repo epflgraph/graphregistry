@@ -75,7 +75,7 @@ def get_free_port() -> int:
 
 
 @contextmanager
-def api_base_url(config_path: Path) -> Iterator[str]:
+def api_base_url(config_path: Path, db: GraphDB) -> Iterator[str]:
     port = get_free_port()
 
     # The API app creates a fresh GlobalConfig inside create_app, so we must tell
@@ -84,9 +84,15 @@ def api_base_url(config_path: Path) -> Iterator[str]:
     previous_value = os.environ.get(env_var_name)
     os.environ[env_var_name] = str(config_path)
 
+    app = create_app()
+    # The router dependency expects request.app.state.db. Because we run with
+    # lifespan="off" to keep the test fixture lightweight, we inject the DB
+    # client directly into app state before starting uvicorn.
+    app.state.db = db
+
     server = uvicorn.Server(
         uvicorn.Config(
-            create_app(),
+            app,
             host="127.0.0.1",
             port=port,
             log_level="warning",
@@ -162,7 +168,7 @@ def test_api_data_insert_subgraph_e2e(db: GraphDB, test_config: tuple[Path, str]
     key_nodes = key_subgraph["node_list"]
     key_edges = key_subgraph["edge_list"]
 
-    with api_base_url(config_path) as base_url:
+    with api_base_url(config_path, db) as base_url:
         delete_edges(base_url, key_edges)
         delete_nodes(base_url, key_nodes)
 

@@ -76,7 +76,7 @@ def test_dynamic_sql_resolves_system_datatypes() -> None:
     assert "varchar(32) NOT NULL" in datatypes
     assert "varchar(255) NOT NULL" in datatypes
     assert "bigint(20) unsigned NOT NULL AUTO_INCREMENT" in datatypes
-    assert "tinyint(1) NULL DEFAULT NULL" in datatypes
+    assert "tinyint(1) NOT NULL DEFAULT 0" in datatypes
 
 # Public Method: Verify fallback to config_index.json for undefined system types.
 def test_dynamic_sql_falls_back_to_index_datatypes() -> None:
@@ -85,4 +85,4 @@ def test_dynamic_sql_falls_back_to_index_datatypes() -> None:
 
     # "year" is defined in config/application/config_index.json, not in system_datatypes.json.
     datatypes = dynsql.get_datatypes_from_fields(["year"])
-    assert datatypes == ["MEDIUMINT UNSIGNED"]
+    assert datatypes == ["mediumint(8) unsigned DEFAULT NULL"]

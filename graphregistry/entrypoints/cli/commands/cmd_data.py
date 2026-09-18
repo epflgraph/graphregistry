@@ -275,7 +275,7 @@ def _is_node(payload: dict[str, Any]) -> bool:
     keys = set(payload.keys())
     if keys == {"node"}:
         return True
-    return "object_type" in payload and "object_id" in payload and "title" in payload
+    return "type" in payload and "id" in payload and "title" in payload
 
 # Internal Function: Detect a single-edge payload shape.
 def _is_edge(payload: dict[str, Any]) -> bool:
@@ -283,7 +283,7 @@ def _is_edge(payload: dict[str, Any]) -> bool:
     keys = set(payload.keys())
     if keys == {"edge"}:
         return True
-    return "from_object_type" in payload and "to_object_type" in payload and "context" in payload
+    return "from_type" in payload and "to_type" in payload and "context" in payload
 
 # Internal Function: Detect a node-list payload shape.
 def _is_node_list(payload: dict[str, Any]) -> bool:
@@ -294,7 +294,7 @@ def _is_node_list(payload: dict[str, Any]) -> bool:
     if "node_list" in payload and isinstance(payload["node_list"], list):
         return True
     if isinstance(payload, list):
-        return len(payload) == 0 or ("object_type" in payload[0] and "title" in payload[0])
+        return len(payload) == 0 or ("type" in payload[0] and "title" in payload[0])
     return False
 
 # Internal Function: Detect an edge-list payload shape.
@@ -306,7 +306,7 @@ def _is_edge_list(payload: dict[str, Any]) -> bool:
     if "edge_list" in payload and isinstance(payload["edge_list"], list):
         return True
     if isinstance(payload, list):
-        return len(payload) == 0 or ("from_object_type" in payload[0] and "context" in payload[0])
+        return len(payload) == 0 or ("from_type" in payload[0] and "context" in payload[0])
     return False
 
 # Internal Function: Detect a single node-key payload shape.
@@ -315,8 +315,8 @@ def _is_node_key(payload: dict[str, Any]) -> bool:
     keys = set(payload.keys())
     if keys == {"key"}:
         inner = payload["key"]
-        return isinstance(inner, dict) and "object_type" in inner and "object_id" in inner
-    return "object_type" in payload and "object_id" in payload and len(payload) == 2
+        return isinstance(inner, dict) and "type" in inner and "id" in inner
+    return "type" in payload and "id" in payload and len(payload) == 2
 
 # Internal Function: Detect a single edge-key payload shape.
 def _is_edge_key(payload: dict[str, Any]) -> bool:
@@ -324,14 +324,14 @@ def _is_edge_key(payload: dict[str, Any]) -> bool:
     keys = set(payload.keys())
     if keys == {"key"}:
         inner = payload["key"]
-        return isinstance(inner, dict) and "from_object_type" in inner and "to_object_type" in inner
+        return isinstance(inner, dict) and "from_type" in inner and "to_type" in inner
     return (
-        "from_object_type" in payload
-        and "to_object_type" in payload
+        "from_type" in payload
+        and "to_type" in payload
         and "context" in payload
         and len(payload) == 5
-        and "from_object_id" in payload
-        and "to_object_id" in payload
+        and "from_id" in payload
+        and "to_id" in payload
     )
 
 # Internal Function: Detect a node-key-list payload shape.
@@ -340,10 +340,10 @@ def _is_node_key_list(payload: dict[str, Any]) -> bool:
     if "key_list" in payload and isinstance(payload["key_list"], list):
         return len(payload["key_list"]) == 0 or (
             isinstance(payload["key_list"][0], dict)
-            and "object_type" in payload["key_list"][0]
+            and "type" in payload["key_list"][0]
         )
     if isinstance(payload, list):
-        return len(payload) == 0 or ("object_type" in payload[0] and "object_id" in payload[0] and len(payload[0]) == 2)
+        return len(payload) == 0 or ("type" in payload[0] and "id" in payload[0] and len(payload[0]) == 2)
     return False
 
 # Internal Function: Detect an edge-key-list payload shape.
@@ -352,12 +352,12 @@ def _is_edge_key_list(payload: dict[str, Any]) -> bool:
     if "key_list" in payload and isinstance(payload["key_list"], list):
         return len(payload["key_list"]) == 0 or (
             isinstance(payload["key_list"][0], dict)
-            and "from_object_type" in payload["key_list"][0]
+            and "from_type" in payload["key_list"][0]
         )
     if isinstance(payload, list):
         return len(payload) == 0 or (
-            "from_object_type" in payload[0]
-            and "to_object_type" in payload[0]
+            "from_type" in payload[0]
+            and "to_type" in payload[0]
             and "context" in payload[0]
         )
     return False

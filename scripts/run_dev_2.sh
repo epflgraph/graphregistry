@@ -11,7 +11,7 @@ graphregistry airflow config config/application/config_airflow.json
 
 # Loop this:
 # ------------------------------------------
-graphregistry airflow plan -c -l 1000
+graphregistry airflow plan -c -l 10000
 graphregistry airflow status
 
 graphregistry ai detect-concepts
@@ -24,3 +24,5 @@ scripts/out_tables_stats_dev.sh
 # ------------------------------------------
 
 graphregistry kgraph prune
+
+graphregistry kgraph index -r -f

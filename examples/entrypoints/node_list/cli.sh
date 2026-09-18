@@ -1,1 +1,1 @@
-graphregistry data list --node_request examples/entrypoints/node_list/request.json
+graphregistry data list examples/entrypoints/node_list/request.json
