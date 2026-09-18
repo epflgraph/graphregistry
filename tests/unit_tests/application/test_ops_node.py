@@ -1,16 +1,16 @@
-# tests/unit_tests/application/test_ops_node.py
+# graphregistry/tests/unit_tests/application/test_ops_node.py
 """Unit tests for NodeOperations using a fake repository adapter."""
 from __future__ import annotations
-
 import pytest
-
+from tests.conftest import FakeNodeRepository, make_node
 from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.entities.mdl_conceptmap import Concept, ScoredConcept, ScoredConceptList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeList
-from tests.conftest import FakeNodeRepository, make_node
 
-
+#==================#
+# Class Definition #
+#==================#
 class TestNodeOperationsCrud:
     def test_save_and_get(self, node_ops: NodeOperations, fake_node_repo: FakeNodeRepository) -> None:
         node = make_node(object_id="CS-433", title="ML")
@@ -69,7 +69,9 @@ class TestNodeOperationsCrud:
         node_ops.save(node, actions=("eval",))
         assert node_ops.exists(node.key) is False
 
-
+#==================#
+# Class Definition #
+#==================#
 class TestNodeOperationsConcepts:
     def test_has_concepts_false_for_empty_detected(self, node_ops: NodeOperations) -> None:
         node = make_node(object_id="CS-433")
@@ -96,11 +98,13 @@ class TestNodeOperationsConcepts:
         ])
         node_ops.save_many(NodeList(item_list=[empty, enriched]))
 
-        results = node_ops.get_with_no_concepts(object_type="Course")
+        results = node_ops.get_with_no_concepts(object_types=["Course"])
         assert len(results.item_list) == 1
         assert results.item_list[0].key.object_id == "CS-433"
 
-
+#==================#
+# Class Definition #
+#==================#
 class TestNodeOperationsEnrich:
     def test_enrich_with_concepts_requires_gateway(self, node_ops: NodeOperations) -> None:
         node = make_node(object_id="CS-433", raw_text="Machine learning")
@@ -108,6 +112,10 @@ class TestNodeOperationsEnrich:
             node_ops.enrich_with_concepts(node)
 
     def test_enrich_with_concepts_populates_detected(self) -> None:
+
+#==================#
+# Class Definition #
+#==================#
         class FakeConceptGateway:
             def detect_concepts(self, text: str) -> ScoredConceptList:
                 return ScoredConceptList(item_list=[
@@ -121,6 +129,10 @@ class TestNodeOperationsEnrich:
         assert result.concepts.detected.item_list[0].concept.name == "ML"
 
     def test_enrich_with_concepts_list(self) -> None:
+
+#==================#
+# Class Definition #
+#==================#
         class FakeConceptGateway:
             def detect_concepts(self, text: str) -> ScoredConceptList:
                 return ScoredConceptList(item_list=[])

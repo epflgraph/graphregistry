@@ -70,6 +70,7 @@ class TestMySQLNodeMapper:
         key = NodeKey(object_type="Course", object_id="CS-433")
         node = Node(
             key=key,
+            text_source="detected",
             concepts=NodeConceptList(
                 detected=ScoredConceptList(item_list=[
                     ScoredConcept(concept=Concept(id="c1", name="ML"), score=0.9),

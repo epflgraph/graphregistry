@@ -7,5 +7,6 @@ CREATE TABLE `Edges_N_Category_N_OAlexTopic_T_Semantic` (
   `wikipedia_score` float NOT NULL,
   `score` float NOT NULL,
   `row_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  PRIMARY KEY (`category_id`,`topic_id`)
+  PRIMARY KEY (`row_id`),
+  UNIQUE KEY unique_key (`category_id`,`topic_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

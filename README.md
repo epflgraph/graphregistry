@@ -456,14 +456,10 @@ graphregistry config show
 If you start from an empty environment, you can run the initialization command to generate all the necessary databases and tables utilized by the Registry application:
 
 ```shell
-graphregistry setup init
+graphregistry init
 ```
 
-This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database. If not, you can import the ontology sample set as follows:
-
-```shell
-graphregistry setup init --import-ontology-sample
-```
+This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database.
 
 ## Ingesting and managing data
 

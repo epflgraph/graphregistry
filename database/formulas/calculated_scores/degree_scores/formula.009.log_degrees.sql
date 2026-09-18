@@ -4,7 +4,7 @@ DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees;
                         from_object_type varchar(32) NOT NULL,
                         to_object_type   varchar(32) NOT NULL,
                         max_log_degree   float DEFAULT NULL,
-                        PRIMARY KEY (from_object_type,to_object_type),
+                        PRIMARY KEY (from_object_type, to_object_type),
                         KEY from_object_type (from_object_type),
                         KEY   to_object_type (  to_object_type)
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin AS
@@ -12,12 +12,6 @@ DROP TABLE IF EXISTS [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees;
                 FROM [[graph_cache]].Edges_N_Object_N_Object_T_DegreeCombinations
                WHERE deleted = 0
             GROUP BY from_object_type, to_object_type;
-
--- ================= Add indices to optimise the following query
-         ALTER TABLE [[graph_cache]].Edges_N_Object_N_Object_T_MaxLogDegrees
-     ADD PRIMARY KEY (from_object_type, to_object_type),
-             ADD KEY from_object_type    (from_object_type),
-             ADD KEY to_object_type      (to_object_type);
 
 -- ================= Calculate normalised log scores
         REPLACE INTO [[graph_cache]].Edges_N_Object_N_Object_T_NormLogDegrees

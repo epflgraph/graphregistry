@@ -1,1 +1,1 @@
-graphregistry data save --edge examples/entrypoints/edge_save/request.json --actions=commit
+graphregistry data save examples/entrypoints/edge_save/request.json

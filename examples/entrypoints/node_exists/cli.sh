@@ -1,1 +1,1 @@
-graphregistry data exists --node_key examples/entrypoints/node_exists/request.json
+graphregistry data exists examples/entrypoints/node_exists/request.json

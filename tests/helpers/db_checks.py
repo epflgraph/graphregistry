@@ -68,7 +68,8 @@ def count_node_rows(db: GraphDB, schema_name: str, engine_name: str, node_json: 
     query = f"""
     SELECT COUNT(*)
     FROM {schema_name}.Nodes_N_Object
-    WHERE {" AND ".join(wheres)};
+    WHERE {" AND ".join(wheres)}
+      AND record_deleted = 0;
     """
     rows = db.execute_query(engine_name=engine_name, query=query)
     return int(rows[0][0])
@@ -81,7 +82,8 @@ def fetch_node_basic_row(
     query = f"""
     SELECT object_title, text_source, raw_text
     FROM {schema_name}.Nodes_N_Object
-    WHERE {" AND ".join(wheres)};
+    WHERE {" AND ".join(wheres)}
+      AND record_deleted = 0;
     """
     rows = db.execute_query(engine_name=engine_name, query=query)
     return cast(tuple | None, rows[0] if rows else None)
@@ -94,7 +96,8 @@ def fetch_node_custom_fields(
     query = f"""
     SELECT field_language, field_name, field_value
     FROM {schema_name}.Data_N_Object_T_CustomFields
-    WHERE {" AND ".join(wheres)};
+    WHERE {" AND ".join(wheres)}
+      AND record_deleted = 0;
     """
     return cast(list[tuple[str, str, str]], db.execute_query(engine_name=engine_name, query=query))
 
@@ -104,7 +107,8 @@ def count_edge_rows(db: GraphDB, schema_name: str, engine_name: str, edge_json: 
     query = f"""
     SELECT COUNT(*)
     FROM {schema_name}.Edges_N_Object_N_Object_T_ChildToParent
-    WHERE {" AND ".join(wheres)};
+    WHERE {" AND ".join(wheres)}
+      AND record_deleted = 0;
     """
     rows = db.execute_query(engine_name=engine_name, query=query)
     return int(rows[0][0])
@@ -117,7 +121,8 @@ def fetch_edge_custom_fields(
     query = f"""
     SELECT field_language, field_name, field_value
     FROM {schema_name}.Data_N_Object_N_Object_T_CustomFields
-    WHERE {" AND ".join(wheres)};
+    WHERE {" AND ".join(wheres)}
+      AND record_deleted = 0;
     """
     return cast(list[tuple[str, str, str]], db.execute_query(engine_name=engine_name, query=query))
 

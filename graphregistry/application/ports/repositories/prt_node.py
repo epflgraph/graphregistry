@@ -9,6 +9,10 @@ from graphregistry.domain.types import ActionSet
 # Class Definition #
 #==================#
 @runtime_checkable
+
+#==================#
+# Class Definition #
+#==================#
 class NodeRepository(Protocol):
 
     # Public Method: List nodes of a given object type and optional ID pattern.
@@ -48,9 +52,9 @@ class NodeRepository(Protocol):
         ...
 
     # Public Method: Return keys of nodes that have no concepts attached.
-    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
+    def find_keys_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeKeyList:
         ...
 
     # Public Method: Return nodes that have no concepts attached.
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+    def get_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeList:
         ...

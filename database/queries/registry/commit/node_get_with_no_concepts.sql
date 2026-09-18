@@ -10,9 +10,10 @@ SELECT DISTINCT n.object_type, n.object_id
             AND n.object_id   = fc.object_id
      INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
              ON n.object_type = tf.object_type
-          WHERE n.object_type LIKE '[[object_type]]'
+          WHERE [[object_type_predicate]]
             AND n.object_id   LIKE '[[id_pattern]]'
             AND n.raw_text    IS NOT NULL
             AND n.record_deleted = 0
             AND c.concept_id  IS NULL
             AND tf.to_process = 1
+       ORDER BY n.object_type, n.object_id

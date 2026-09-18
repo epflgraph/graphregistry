@@ -1,6 +1,7 @@
 # graphregistry/adapters/persistence/mysql/repositories/rpo_noderepo.py
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast, get_args
+from loguru import logger as sysmsg
 from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeMapper
 from graphregistry.adapters.persistence.mysql.repositories.helpers import qualified_table, soft_delete_by_key_tuples, upsert_rows
 from graphregistry.adapters.persistence.mysql.repositories.schemas import PAGE_PROFILE_COLUMNS
@@ -705,43 +706,78 @@ class MySQLNodeRepository(NodeRepository):
     #================================================================#
 
     # Public Method: Return keys of nodes that have no concepts attached
-    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
+    def find_keys_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeKeyList:
 
-        # Resolve the schema for the provided object type
-        engine_name, schema_name = self.schema_resolver.for_object_type(
-            object_type if object_type is not None else "Course"
-        )
+        # Determine the engine and airflow schema once; object-specific schemas
+        # are resolved per group below.
+        engine_name, _ = self.schema_resolver.for_object_type("Course")
         _, airflow_schema_name = self.schema_resolver.for_airflow()
 
-        # Load the SQL query that finds nodes without concept detections.
-        sql_query = resolve_sql_query(
-            file_path   = sql_queries_paths["registry"]["commit"]["node_get_with_no_concepts"],
-            registry    = schema_name,
-            airflow     = airflow_schema_name,
-            object_type = object_type if object_type is not None else "%",
-            id_pattern  = id_pattern.replace("*", "%") if id_pattern is not None else "%",
-        )
+        # Build the object-type predicate. Use an IN-list when types are provided,
+        # otherwise fall back to matching every type.
+        if object_types:
+            # Group requested types by their target schema so that each query uses
+            # the correct Nodes_N_Object and Edges_N_Object_N_Concept_T_ConceptDetection tables.
+            schema_to_types: dict[str, list[str]] = {}
+            for object_type in object_types:
+                _, schema_name = self.schema_resolver.for_object_type(object_type)
+                schema_to_types.setdefault(schema_name, []).append(object_type)
+        else:
+            schema_to_types = {self.schema_resolver.for_object_type("Course")[1]: []}
 
-        # Execute the query and build NodeKey objects from the result rows.
-        node_keys_data = cast(
-            list[tuple[str, str]],
-            self._execute_read(engine_name=engine_name, query=sql_query),
-        )
+        # Normalise the id pattern and the target edge table name once.
+        id_pattern_value = id_pattern.replace("*", "%") if id_pattern is not None else "%"
+        concept_edge_table = "Edges_N_Object_N_Concept_T_ConceptDetection"
 
-        # Build NodeKey objects from the result rows. The first column is the object type
-        node_keys = [
-            NodeKey(object_type=cast(Any, row[0]), object_id=row[1])
-            for row in node_keys_data
-        ]
+        # Accumulate keys across all schema groups.
+        node_keys: list[NodeKey] = []
+
+        # Query each schema that owns the requested object types.
+        for schema_name, types_in_schema in schema_to_types.items():
+            # Skip schemas that do not store concept-detection edges (e.g. ontology).
+            if not self.db.table_exists(engine_name, schema_name, concept_edge_table, exclude_views=True):
+                # Ontology schemas (Category, Concept, ...) do not store
+                # concept-detection edges because they are the targets, not sources.
+                sysmsg.trace(
+                    "Skipping schema '{}': concept detection is not performed on ontology nodes.",
+                    schema_name,
+                )
+                continue
+
+            # Build the IN-list predicate for this schema group.
+            if types_in_schema:
+                escaped_types = [t.replace("'", "''") for t in types_in_schema]
+                object_type_predicate = "n.object_type IN (" + ",".join(f"'{t}'" for t in escaped_types) + ")"
+            else:
+                object_type_predicate = "n.object_type LIKE '%'"
+
+            # Load the SQL query that finds nodes without concept detections.
+            sql_query = resolve_sql_query(
+                file_path              = sql_queries_paths["registry"]["commit"]["node_get_with_no_concepts"],
+                registry               = schema_name,
+                airflow                = airflow_schema_name,
+                object_type_predicate  = object_type_predicate,
+                id_pattern             = id_pattern_value,
+            )
+
+            # Execute the query and append results.
+            node_keys_data = cast(
+                list[tuple[str, str]],
+                self._execute_read(engine_name=engine_name, query=sql_query),
+            )
+            node_keys.extend(
+                NodeKey(object_type=cast(Any, row[0]), object_id=row[1])
+                for row in node_keys_data
+            )
 
         # Return the collected keys so callers can stream the node loading.
         return NodeKeyList(item_list=node_keys)
 
     # Public Method: Return nodes that have no concepts attached
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
+    def get_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeList:
 
         # Fetch the candidate keys and then load full nodes for backward compatibility.
-        node_keys = self.find_keys_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+        node_keys = self.find_keys_with_no_concepts(object_types=object_types, id_pattern=id_pattern)
         return self.get_many(node_keys)
 
     #================================================================#

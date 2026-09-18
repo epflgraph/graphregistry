@@ -1,10 +1,10 @@
 # graphregistry/entrypoints/cli/dependencies.py
-"""Centralized dependency builders for CLI handlers and scripts.
+"""Centralized dependency builders for the Typer CLI.
 
 These builders wire adapters (MySQL UnitOfWork, GraphAI/GenAI gateways) with
 application operations while keeping the wiring logic in one place. They are
-entrypoint concerns: they know about concrete adapters so the handlers and
-scripts don't have to repeat that knowledge.
+entrypoint concerns: they know about concrete adapters so the handlers don't
+have to repeat that knowledge.
 """
 from __future__ import annotations
 from typing import Callable
@@ -21,6 +21,7 @@ from graphregistry.application.operations.ops_node import NodeOperations
 from graphregistry.application.ports.gateways.prt_conceptdet import ConceptDetectionGateway
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import GlobalConfig
+from graphregistry.entrypoints.cli.context import CLIContext
 from graphregistry.entrypoints.dependencies import build_uow_factory
 
 #================================================================#
@@ -49,18 +50,15 @@ def build_edge_operations(*, uow_factory: Callable[[], UnitOfWork]) -> EdgeOpera
     """Build edge operations wired to a UnitOfWork factory."""
     return EdgeOperations(uow_factory=uow_factory)
 
-#---------------------------------------------------------------------------------------#
-# Internal Function: Build lecture operations wired to MySQL repository and AI gateways #
-#---------------------------------------------------------------------------------------#
-# Internal Function: Build lecture operations wired to MySQL repository and AI gateways.
+# Public Method: Build lecture operations wired to MySQL repository and AI gateways #
 def build_lecture_operations(
     *,
-    db : GraphDB,
-    engine_name   : str,
-    global_config : GlobalConfig,
-    include_video_gateway      : bool = True,
-    include_concept_gateway    : bool = True,
-    include_enrichment_gateway : bool = True,
+    db                        : GraphDB,
+    engine_name               : str,
+    global_config             : GlobalConfig,
+    include_video_gateway     : bool = True,
+    include_concept_gateway   : bool = True,
+    include_enrichment_gateway: bool = True,
 ) -> LectureOperations:
 #---------------------------------------------------------------------------------------#
     """Build lecture operations wired to the MySQL repository and AI gateways."""
@@ -68,10 +66,10 @@ def build_lecture_operations(
     # Build the schema resolver for the target registry environment.
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
 
-    # The node repository is required by the lecture repository to resolve
+    # The node repository is required by the lecture repository to resolve and persist.
     node_repo = MySQLNodeRepository(db=db, schema_resolver=schema_resolver)
 
-    # The lecture repository needs the node repository to resolve and persist
+    # The lecture repository needs the node repository to resolve and persist.
     lecture_repo = MySQLLectureRepository(
         db              = db,
         schema_resolver = schema_resolver,
@@ -79,9 +77,9 @@ def build_lecture_operations(
     )
 
     # Instantiate the requested AI gateways, using None for disabled features.
-    video_processing_gateway = GraphAIVideoGateway() if include_video_gateway else None
-    concept_detection_gateway = GraphAIConceptDetectionGateway() if include_concept_gateway else None
-    lecture_enrichment_gateway = GenAILectureEnrichmentGateway() if include_enrichment_gateway else None
+    video_processing_gateway   = GraphAIVideoGateway()     if include_video_gateway     else None
+    concept_detection_gateway  = GraphAIConceptDetectionGateway() if include_concept_gateway   else None
+    lecture_enrichment_gateway = GenAILectureEnrichmentGateway()  if include_enrichment_gateway else None
 
     # Assemble the lecture operations with all selected gateways.
     return LectureOperations(
@@ -91,78 +89,79 @@ def build_lecture_operations(
         lecture_enrichment_gateway = lecture_enrichment_gateway,
     )
 
-# Public Method: Build lecture operations for enrichment workflows (no video gateway).
-def build_lecture_enrichment_operations(*, db: GraphDB, engine_name: str, global_config: GlobalConfig) -> LectureOperations:
-    """Build lecture operations for enrichment workflows (no video gateway)."""
-    return build_lecture_operations(
-        db                    = db,
-        engine_name           = engine_name,
-        global_config         = global_config,
-        include_video_gateway = False,
-    )
-
 #================================================================#
-# Function Group: CLI-specific builders from argparse context    #
+# Function Group: CLI-specific builders from CLI context         #
 #================================================================#
 
-# Public Method: Build node operations from a CLI args namespace.
-def build_node_operations_from_args(args, *, concept_detection_gateway: ConceptDetectionGateway | None = None) -> NodeOperations:
-    """Build node operations from a CLI args namespace."""
+# Public Method: Build node operations from the CLI context.
+def build_node_operations_from_cli(
+    *,
+    ctx: CLIContext,
+    env: str,
+    verbose: bool = False,
+    concept_detection_gateway: ConceptDetectionGateway | None = None,
+) -> NodeOperations:
+    """Build node operations from the CLI context."""
     uow_factory = build_uow_factory(
-        db          = args.ctx.db,
-        engine_name = args.env,
-        verbose     = getattr(args, 'verbose', False),
+        db          = ctx.db,
+        engine_name = env,
+        verbose     = verbose,
     )
     return build_node_operations(
         uow_factory               = uow_factory,
         concept_detection_gateway = concept_detection_gateway,
     )
 
-# Public Method: Build edge operations from a CLI args namespace.
-def build_edge_operations_from_args(args) -> EdgeOperations:
-    """Build edge operations from a CLI args namespace."""
-    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
+# Public Method: Build edge operations from the CLI context.
+def build_edge_operations_from_cli(*, ctx: CLIContext, env: str, verbose: bool = False) -> EdgeOperations:
+    """Build edge operations from the CLI context."""
+    uow_factory = build_uow_factory(
+        db          = ctx.db,
+        engine_name = env,
+        verbose     = verbose,
+    )
     return build_edge_operations(uow_factory=uow_factory)
 
-# Public Method: Build node operations with a GraphAI concept-detection gateway
-def build_node_operations_with_concept_detection_from_args(args) -> NodeOperations:
+# Public Method: Build node operations with a GraphAI concept-detection gateway.
+def build_node_operations_with_concept_detection_from_cli(*, ctx: CLIContext, env: str, verbose: bool = False) -> NodeOperations:
     """Build node operations with a GraphAI concept-detection gateway."""
     uow_factory = build_uow_factory(
-        db          = args.ctx.db,
-        engine_name = args.env,
-        verbose     = getattr(args, 'verbose', False),
+        db          = ctx.db,
+        engine_name = env,
+        verbose     = verbose,
     )
     return build_node_operations(
         uow_factory               = uow_factory,
         concept_detection_gateway = GraphAIConceptDetectionGateway(),
     )
 
-# Public Method: Build node and edge operations from a CLI args namespace
-def build_registry_operations_from_args(args) -> tuple[NodeOperations, EdgeOperations]:
-    """Build node and edge operations from a CLI args namespace, sharing one UnitOfWork factory."""
-    uow_factory = build_uow_factory(db=args.ctx.db, engine_name=args.env)
+# Public Method: Build node and edge operations from the CLI context.
+def build_registry_operations_from_cli(*, ctx: CLIContext, env: str, verbose: bool = False) -> tuple[NodeOperations, EdgeOperations]:
+    """Build node and edge operations from the CLI context, sharing one UnitOfWork factory."""
+    uow_factory = build_uow_factory(
+        db          = ctx.db,
+        engine_name = env,
+        verbose     = verbose,
+    )
     return (
         build_node_operations(uow_factory=uow_factory),
         build_edge_operations(uow_factory=uow_factory),
     )
 
-#-------------------------------------------------------------------#
-# Public Method: Build lecture operations from a CLI args namespace #
-#-------------------------------------------------------------------#
-# Public Method: Build lecture operations from a CLI args namespace.
-def build_lecture_operations_from_args(
-    args,
+# Public Method: Build lecture operations from the CLI context.
+def build_lecture_operations_from_cli(
     *,
-    include_video_gateway      : bool = True,
-    include_concept_gateway    : bool = True,
-    include_enrichment_gateway : bool = True,
+    ctx: CLIContext,
+    env: str,
+    include_video_gateway     : bool = True,
+    include_concept_gateway   : bool = True,
+    include_enrichment_gateway: bool = True,
 ) -> LectureOperations:
-#-------------------------------------------------------------------#
-    """Build lecture operations from a CLI args namespace."""
+    """Build lecture operations from the CLI context."""
     return build_lecture_operations(
-        db                         = args.ctx.db,
-        engine_name                = args.env,
-        global_config              = args.ctx.global_config,
+        db                         = ctx.db,
+        engine_name                = env,
+        global_config              = ctx.global_config,
         include_video_gateway      = include_video_gateway,
         include_concept_gateway    = include_concept_gateway,
         include_enrichment_gateway = include_enrichment_gateway,

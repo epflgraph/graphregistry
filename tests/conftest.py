@@ -178,19 +178,19 @@ class FakeNodeRepository:
             key_list = key_list.item_list
         return [self.delete(key, actions=actions) for key in key_list]
 
-    def find_keys_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeKeyList:
+    def find_keys_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeKeyList:
         results = [
             node.key for node in self._store.values()
             if not (node.concepts.detected.item_list or node.concepts.ai_validated.item_list or node.concepts.manually_mapped.item_list)
         ]
-        if object_type:
-            results = [key for key in results if key.object_type == object_type]
+        if object_types:
+            results = [key for key in results if key.object_type in object_types]
         if id_pattern and id_pattern != "*":
             results = [key for key in results if id_pattern.replace("*", "") in key.object_id]
         return NodeKeyList(item_list=results)
 
-    def get_with_no_concepts(self, object_type: str | None = None, id_pattern: str | None = None) -> NodeList:
-        node_keys = self.find_keys_with_no_concepts(object_type=object_type, id_pattern=id_pattern)
+    def get_with_no_concepts(self, object_types: list[str] | None = None, id_pattern: str | None = None) -> NodeList:
+        node_keys = self.find_keys_with_no_concepts(object_types=object_types, id_pattern=id_pattern)
         return self.get_many(node_keys)
 
 
