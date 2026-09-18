@@ -389,7 +389,7 @@ class GraphRegistry():
 
         # Reset airflow and chache flags
         # Options: ('typeflags', 'airflow', 'cache', 'traversals')
-        def reset(self, options=(), doc_type=None, verbose=False):
+        def reset(self, options=(), doc_type=None, clear_has_expired=True, verbose=False):
 
             # Print status
             sysmsg.info("🧹 📝 Reset 'to_process' flags to 0.")
@@ -408,8 +408,11 @@ class GraphRegistry():
             # Reset flags on graph_airflow
             if 'airflow' in options:
 
-                # Print status
-                sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
+                # Print status, reflecting whether has_expired is also cleared.
+                if clear_has_expired:
+                    sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
+                else:
+                    sysmsg.info("🧹 📝 Reset 'to_process' and 'has_changed' flags in graph_airflow tables.")
 
                 # Get list of tables in 'graph_airflow' schema to process
                 list_of_tables = [
@@ -432,23 +435,31 @@ class GraphRegistry():
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Build SET clause for the flags present on this table
+                        # Build SET clause for the flags present on this table.
+                        # When clear_has_expired is False, preserve has_expired so a
+                        # previous expire command remains in effect during planning.
                         set_parts = ["to_process = 0"]
                         where_parts = ["to_process = 1"]
                         if db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_changed'):
                             set_parts.append("has_changed = 0")
                             where_parts.append("has_changed = 1")
-                        if db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
+                        if clear_has_expired and db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
                             set_parts.append("has_expired = 0")
                             where_parts.append("has_expired = 1")
                         set_clause = f"SET {', '.join(set_parts)} WHERE {' OR '.join(where_parts)}"
 
-                        db.execute_query_in_shell(engine_name='coresrv',
-                            query=f"UPDATE {schema_name}.{table_name} {set_clause};"
-                        , query_id='5LEjczg5', verbose=verbose)
+                        db.execute_query_in_shell(
+                            engine_name = 'coresrv',
+                            query       = f"UPDATE {schema_name}.{table_name} {set_clause};",
+                            query_id    = '5LEjczg5',
+                            verbose     = verbose,
+                        )
 
                 # Print status
-                sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{glbcfg.schema_airflow}' tables.")
+                if clear_has_expired:
+                    sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{glbcfg.schema_airflow}' tables.")
+                else:
+                    sysmsg.success(f"🧹 ✅ Done resetting 'to_process' and 'has_changed' flags in '{glbcfg.schema_airflow}' tables.")
 
             # Reset flags on graph_cache
             if 'cache' in options:

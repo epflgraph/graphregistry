@@ -23,7 +23,7 @@ def cmd_kgraph_compute(
     cachemanager = cli_ctx.registry.cachemanager
 
     # Run the full set of cache computation formulas.
-    cachemanager.apply_data_reset_formulas(verbose=verbose, actions=("commit",))
+    # cachemanager.apply_data_reset_formulas(verbose=verbose, actions=("commit",))
     cachemanager.apply_calculated_field_formulas(verbose=verbose, actions=("commit",))
     cachemanager.materialize_views(actions=("commit",))
     cachemanager.apply_traversals(verbose=verbose, actions=("commit",))
