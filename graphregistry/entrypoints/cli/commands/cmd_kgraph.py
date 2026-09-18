@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 import typer
+from graphregistry.application.core.cor_registry import ELASTICSEARCH_DATA_EXPORT_PATH
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
 from graphregistry.entrypoints.cli.context import CLIContext
 
@@ -74,15 +75,15 @@ def cmd_kgraph_index(
     from_cache: Annotated[bool, typer.Option("--from-cache", "-c", help="Import index file from existing local cache.")] = False,
     ignore_warnings: Annotated[bool, typer.Option("--ignore-warnings", "-i", help="Ignore warning messages.")] = False,
 ) -> None:
-    """Generate graph index for ElasticSearch."""
-    del env  # Registry uses the configured environment internally.
+    """Generate graph index for ElasticSearch and import it."""
     cli_ctx: CLIContext = ctx.obj
     indexes = cli_ctx.registry.indexes
+    index_date = index_name.split("_")[-1]
 
     # Generate local cache unless the caller only wants the index file.
     if not from_cache:
         indexes.generate_local_cache_streaming(
-            index_date       = index_name.split("_")[-1],
+            index_date       = index_date,
             ignore_warnings  = ignore_warnings,
             replace_existing = replace_existing,
             force_replace    = force_replace,
@@ -90,8 +91,19 @@ def cmd_kgraph_index(
 
     # Generate the ElasticSearch index file from local cache.
     indexes.generate_index_from_local_cache(
-        index_date       = index_name.split("_")[-1],
+        index_date       = index_date,
         ignore_warnings  = ignore_warnings,
         replace_existing = replace_existing,
         force_replace    = force_replace,
+    )
+
+    # Import the generated index folder into ElasticSearch.
+    input_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}"
+    cli_ctx.es.import_index_from_folder(
+        engine_name      = env,
+        input_folder     = input_folder,
+        rename_to        = index_name,
+        replace_existing = replace_existing,
+        force            = force_replace,
+        chunk_size       = 1000,
     )
