@@ -27,6 +27,20 @@ def cmd_airflow_sync(
         include_ontology=include_ontology,
     )
 
+# Public Method: Reset orchestrator 'to_process' flags across Registry tables.
+@app.command(name="reset")
+def cmd_airflow_reset(
+    ctx: typer.Context,
+    env: Annotated[str, EnvOption()] = DEFAULT_ENV,
+    verbose: Annotated[bool, VerboseOption()] = False,
+    options: Annotated[str, typer.Option("--options", help="Comma-separated options: typeflags,airflow,traversals,cache.")] = "typeflags,airflow",
+) -> None:
+    """Reset orchestrator 'to_process' flags across Registry tables."""
+    del env  # Registry uses the configured environment internally.
+    cli_ctx: CLIContext = ctx.obj
+    option_set = tuple(o.strip() for o in options.split(",") if o.strip())
+    cli_ctx.registry.orchestrator.reset(options=option_set, doc_type=None, verbose=verbose)
+
 # Public Method: Setup the object and content types to process.
 @app.command(name="config")
 def cmd_airflow_config(
@@ -56,6 +70,18 @@ def cmd_airflow_config(
     # Apply the parsed typeflags configuration to the orchestrator.
     cli_ctx.registry.orchestrator.typeflags.config(config_json=cfg)
 
+# Public Method: Update object checksums based on typeflag activation.
+@app.command(name="update-checksums")
+def cmd_airflow_update_checksums(
+    ctx: typer.Context,
+    env: Annotated[str, EnvOption()] = DEFAULT_ENV,
+    verbose: Annotated[bool, VerboseOption()] = False
+) -> None:
+    """Update object checksums based on typeflag activation."""
+    del env  # Registry uses the configured environment internally.
+    cli_ctx: CLIContext = ctx.obj
+    cli_ctx.registry.orchestrator.update_checksums_v2(actions=("commit",), verbose=verbose)
+
 # Public Method: Mark objects as expired based on last cached date.
 @app.command(name="expire")
 def cmd_airflow_expire(
@@ -65,6 +91,7 @@ def cmd_airflow_expire(
     fields: Annotated[bool, typer.Option("--fields", help="Include 'fields changed' Airflow tables.")] = False,
     scores: Annotated[bool, typer.Option("--scores", help="Include 'scores expired' Airflow table.")] = False,
     older_than: Annotated[int | None, typer.Option("--older-than", "-d", help="Expire objects last cached more than N days ago.")] = None,
+    types: Annotated[str | None, typer.Option("--types", "-t", help="Comma-separated object types to expire (e.g. Person,Publication).")] = None,
 ) -> None:
     """Mark objects as expired based on last cached date."""
     del env  # Registry uses the configured environment internally.
@@ -79,13 +106,17 @@ def cmd_airflow_expire(
     include_nodes = include_fields or include_scores
     include_edges = include_fields
 
+    # Convert a comma-separated type list into a clean Python list, or leave it
+    # as None when the caller wants to expire every active type.
+    object_types = [t.strip() for t in types.split(",") if t.strip()] if types else None
+
     # Expire objects in the selected Airflow scopes.
     cli_ctx.registry.orchestrator.expire(
         include_nodes  = include_nodes,
         include_edges  = include_edges,
         include_fields = include_fields,
         include_scores = include_scores,
-        object_types   = None,
+        object_types   = object_types,
         older_than     = older_than,
         limit_per_type = None,
         count_only     = False,
@@ -110,8 +141,16 @@ def cmd_airflow_plan(
     gr = cli_ctx.registry
 
     # Reset orchestrator flags. Deep reset includes cache/traversal tables unless skipped.
+    # Only clear has_expired when the plan itself will recompute expiration, so a
+    # previous manual expire command is not accidentally discarded.
+    will_expire = expire is not None or older_than is not None
     reset_options = ("airflow",) if skip_hard_reset else ("airflow", "traversals", "cache")
-    gr.orchestrator.reset(options=reset_options, doc_type=None, verbose=verbose)
+    gr.orchestrator.reset(
+        options           = reset_options,
+        doc_type          = None,
+        clear_has_expired = will_expire,
+        verbose           = verbose,
+    )
 
     # Optionally recompute checksums before expiring stale objects.
     if update_checksums:

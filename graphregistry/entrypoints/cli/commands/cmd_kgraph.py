@@ -23,7 +23,7 @@ def cmd_kgraph_compute(
     cachemanager = cli_ctx.registry.cachemanager
 
     # Run the full set of cache computation formulas.
-    cachemanager.apply_data_reset_formulas(verbose=verbose, actions=("commit",))
+    # cachemanager.apply_data_reset_formulas(verbose=verbose, actions=("commit",))
     cachemanager.apply_calculated_field_formulas(verbose=verbose, actions=("commit",))
     cachemanager.materialize_views(actions=("commit",))
     cachemanager.apply_traversals(verbose=verbose, actions=("commit",))
@@ -45,8 +45,8 @@ def cmd_kgraph_patch(
     indexdb = cli_ctx.registry.indexdb
 
     # Build and then patch the index field tables.
-    indexdb.build(actions=("commit", "eval"))
-    indexdb.patch(actions=("commit", "eval"))
+    indexdb.build(actions=("commit", ""))
+    indexdb.patch(actions=("commit", ""))
 
 # Public Method: Prune orphan nodes, loose edges, and small islands from the knowledge graph.
 @app.command(name="prune")

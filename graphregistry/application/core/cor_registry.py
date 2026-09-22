@@ -389,7 +389,7 @@ class GraphRegistry():
 
         # Reset airflow and chache flags
         # Options: ('typeflags', 'airflow', 'cache', 'traversals')
-        def reset(self, options=(), doc_type=None, verbose=False):
+        def reset(self, options=(), doc_type=None, clear_has_expired=True, verbose=False):
 
             # Print status
             sysmsg.info("🧹 📝 Reset 'to_process' flags to 0.")
@@ -408,8 +408,11 @@ class GraphRegistry():
             # Reset flags on graph_airflow
             if 'airflow' in options:
 
-                # Print status
-                sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
+                # Print status, reflecting whether has_expired is also cleared.
+                if clear_has_expired:
+                    sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
+                else:
+                    sysmsg.info("🧹 📝 Reset 'to_process' and 'has_changed' flags in graph_airflow tables.")
 
                 # Get list of tables in 'graph_airflow' schema to process
                 list_of_tables = [
@@ -432,23 +435,31 @@ class GraphRegistry():
                     for schema_name, table_name in pb:
                         pb.set_description(f"⚙️  {table_name}".ljust(PBWIDTH)[:PBWIDTH])
 
-                        # Build SET clause for the flags present on this table
+                        # Build SET clause for the flags present on this table.
+                        # When clear_has_expired is False, preserve has_expired so a
+                        # previous expire command remains in effect during planning.
                         set_parts = ["to_process = 0"]
                         where_parts = ["to_process = 1"]
                         if db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_changed'):
                             set_parts.append("has_changed = 0")
                             where_parts.append("has_changed = 1")
-                        if db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
+                        if clear_has_expired and db.has_column(engine_name='coresrv', schema_name=schema_name, table_name=table_name, column_name='has_expired'):
                             set_parts.append("has_expired = 0")
                             where_parts.append("has_expired = 1")
                         set_clause = f"SET {', '.join(set_parts)} WHERE {' OR '.join(where_parts)}"
 
-                        db.execute_query_in_shell(engine_name='coresrv',
-                            query=f"UPDATE {schema_name}.{table_name} {set_clause};"
-                        , query_id='5LEjczg5', verbose=verbose)
+                        db.execute_query_in_shell(
+                            engine_name = 'coresrv',
+                            query       = f"UPDATE {schema_name}.{table_name} {set_clause};",
+                            query_id    = '5LEjczg5',
+                            verbose     = verbose,
+                        )
 
                 # Print status
-                sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{glbcfg.schema_airflow}' tables.")
+                if clear_has_expired:
+                    sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{glbcfg.schema_airflow}' tables.")
+                else:
+                    sysmsg.success(f"🧹 ✅ Done resetting 'to_process' and 'has_changed' flags in '{glbcfg.schema_airflow}' tables.")
 
             # Reset flags on graph_cache
             if 'cache' in options:
@@ -972,28 +983,12 @@ class GraphRegistry():
                     # Materialize expired score nodes into a scratch table so each score-matrix
                     # UPDATE does not re-scan the airflow table.
                     temp_table_path_scores = f"{glbcfg.schema_graph_cache_test}._tmp_prop_scores_expired"
-                    sample_score_matrix_table = list_of_tables[0][1] if list_of_tables else None
-                    if sample_score_matrix_table:
-                        temp_col_type, temp_col_id = db.execute_query(
-                            engine_name='coresrv',
-                            query=f"""
-                                SELECT MAX(CASE WHEN COLUMN_NAME = 'from_object_type' THEN COLLATION_NAME END),
-                                       MAX(CASE WHEN COLUMN_NAME = 'from_object_id'   THEN COLLATION_NAME END)
-                                  FROM INFORMATION_SCHEMA.COLUMNS
-                                 WHERE TABLE_SCHEMA = '{glbcfg.schema_graph_cache_test}'
-                                   AND TABLE_NAME   = '{sample_score_matrix_table}'
-                                   AND COLUMN_NAME  IN ('from_object_type', 'from_object_id')
-                            """,
-                            query_id='PropScoresTmpCollation'
-                        )[0]
-                    else:
-                        temp_col_type, temp_col_id = 'utf8mb4_bin', 'utf8mb4_bin'
 
                     temp_table_create_scores = f"""
                     DROP TABLE IF EXISTS {temp_table_path_scores};
                     CREATE TABLE {temp_table_path_scores} (
-                        object_type VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {temp_col_type} NOT NULL,
-                        object_id   VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {temp_col_id} NOT NULL,
+                        object_type VARCHAR(255) NOT NULL,
+                        object_id   VARCHAR(255) NOT NULL,
                         PRIMARY KEY (object_type, object_id)
                     ) AS
                     SELECT se.object_type, se.object_id
@@ -5254,9 +5249,9 @@ class GraphRegistry():
                 query=f"""
                     DROP TABLE IF EXISTS {valid_nodes_source_table};
                     CREATE TABLE {valid_nodes_source_table} (
-                        object_type VARCHAR(255) COLLATE utf8mb4_bin NOT NULL,
-                        object_id   VARCHAR(255) COLLATE utf8mb4_bin NOT NULL
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+                        object_type VARCHAR(255) NOT NULL,
+                        object_id   VARCHAR(255) NOT NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                     INSERT INTO {valid_nodes_source_table} (object_type, object_id)
                         SELECT object_type, object_id FROM {glbcfg.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
                         UNION ALL
@@ -7551,9 +7546,6 @@ class GraphRegistry():
                 buildup_table_exists_flipped = db.table_exists(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graph_cache'], table_name=f'IndexBuildup_Fields_Links_ParentChild_{self.link_type}_{self.doc_type}')
                 buildup_table_exists = buildup_table_exists_direct or buildup_table_exists_flipped
 
-                # Cross-engine collate correction
-                colate_correct = 'COLLATE utf8mb4_bin'
-
                 #--------------------------#
                 # Build commit SQL queries #
                 #--------------------------#
@@ -7597,9 +7589,9 @@ class GraphRegistry():
                     doc_id_subquery = f"""
                         SELECT DISTINCT IF(from_object_type='{self.doc_type}', from_object_id, to_object_id) AS doc_id
                           FROM {parentchild_table_path}
-                         WHERE from_object_type {colate_correct} = '{self.doc_type}'
-                           AND to_object_type   {colate_correct} = '{self.link_type}'
-                           AND context          {colate_correct} = '{edge_context}'
+                         WHERE from_object_type = '{self.doc_type}'
+                           AND to_object_type   = '{self.link_type}'
+                           AND context          = '{edge_context}'
                            AND to_process = 1
                            AND deleted = 0
                     """
@@ -7607,7 +7599,7 @@ class GraphRegistry():
                     # Delete existing rows for affected doc ids
                     SQLQuery_Delete = f"""
                     DELETE FROM {target_table_path}
-                     WHERE doc_id {colate_correct} IN ({doc_id_subquery})
+                     WHERE doc_id IN ({doc_id_subquery})
                     """
 
                     # Buildup table exists?
@@ -7633,10 +7625,10 @@ class GraphRegistry():
                            LEFT JOIN {glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}.IndexBuildup_Fields_Links_ParentChild_{self.doc_type if buildup_table_exists_direct else self.link_type}_{self.link_type if buildup_table_exists_direct else self.doc_type} bl
                                   ON (p.{'from' if buildup_table_exists_direct else 'to'}_object_type, p.{'from' if buildup_table_exists_direct else 'to'}_object_id, p.{'to' if buildup_table_exists_direct else 'from'}_object_type, p.{'to' if buildup_table_exists_direct else 'from'}_object_id) = (bl.doc_type, bl.doc_id, bl.link_type, bl.link_id)
                           INNER JOIN affected_docs ad
-                                  ON p.from_object_id {colate_correct} = ad.doc_id
-                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                  AND p.context          {colate_correct} = '{edge_context}'
+                                  ON p.from_object_id = ad.doc_id
+                                WHERE p.from_object_type = '{self.doc_type}'
+                                  AND p.to_object_type   = '{self.link_type}'
+                                  AND p.context          = '{edge_context}'
                                   AND p.deleted = 0
                                   AND bd.degree_score IS NOT NULL
                                   AND p.to_object_id IS NOT NULL
@@ -7668,10 +7660,10 @@ class GraphRegistry():
                            LEFT JOIN {buildup_link_table_path} bd
                                   ON (p.to_object_type, p.to_object_id) = (bd.doc_type, bd.doc_id)
                           INNER JOIN affected_docs ad
-                                  ON p.from_object_id {colate_correct} = ad.doc_id
-                                WHERE p.from_object_type {colate_correct} = '{self.doc_type}'
-                                  AND p.to_object_type   {colate_correct} = '{self.link_type}'
-                                  AND p.context        {colate_correct} = '{edge_context}'
+                                  ON p.from_object_id = ad.doc_id
+                                WHERE p.from_object_type = '{self.doc_type}'
+                                  AND p.to_object_type   = '{self.link_type}'
+                                  AND p.context        = '{edge_context}'
                                   AND p.deleted = 0
                                   AND bd.degree_score IS NOT NULL
                                   AND p.to_object_id IS NOT NULL
@@ -7721,7 +7713,7 @@ class GraphRegistry():
                         # Delete existing rows for affected doc ids [locator: #sem-onto-del]
                         SQLQuery_Delete = f"""
                         DELETE FROM {target_table_path}
-                         WHERE doc_id {colate_correct} IN ({doc_id_subquery})
+                         WHERE doc_id IN ({doc_id_subquery})
                         """
 
                         if self.doc_type == ontology_type:
@@ -7743,7 +7735,7 @@ class GraphRegistry():
                               INNER JOIN {buildup_link_table_path} i
                                       ON {link_join_condition}
                               INNER JOIN affected_docs ad
-                                      ON fs.{ontology_id_col} {colate_correct} = ad.doc_id
+                                      ON fs.{ontology_id_col} = ad.doc_id
                                     WHERE fs.object_type = '{object_type}'
                                       AND fs.deleted = 0
                                       AND fs.score IS NOT NULL
@@ -7774,7 +7766,7 @@ class GraphRegistry():
                               INNER JOIN {buildup_link_table_path} i
                                       ON {link_join_condition}
                               INNER JOIN affected_docs ad
-                                      ON fs.object_id {colate_correct} = ad.doc_id
+                                      ON fs.object_id = ad.doc_id
                                     WHERE fs.object_type = '{object_type}'
                                       AND fs.deleted = 0
                                       AND fs.score IS NOT NULL
@@ -7799,13 +7791,13 @@ class GraphRegistry():
                                           SELECT DISTINCT IF(from_object_type="{self.doc_type}", from_object_id, to_object_id) AS doc_id
                                                      FROM {scoresmatrix_table_path}
                                                     WHERE (
-                                                                (       from_object_type {colate_correct} = "{self.doc_type}"
-                                                                    AND   to_object_type {colate_correct} = "{self.link_type}"
+                                                                (       from_object_type = "{self.doc_type}"
+                                                                    AND   to_object_type = "{self.link_type}"
                                                                 )
                                                             OR
                                                                 (
-                                                                          to_object_type {colate_correct} = "{self.doc_type}"
-                                                                    AND from_object_type {colate_correct} = "{self.link_type}"
+                                                                          to_object_type = "{self.doc_type}"
+                                                                    AND from_object_type = "{self.link_type}"
                                                                 )
                                                           )
                                                        AND to_process = 1
@@ -7816,13 +7808,13 @@ class GraphRegistry():
                                           SELECT DISTINCT IF(to_object_type="{self.doc_type}", to_object_id, from_object_id) AS doc_id
                                                      FROM {scoresmatrix_table_path}
                                                     WHERE (
-                                                                (       from_object_type {colate_correct} = "{self.doc_type}"
-                                                                    AND   to_object_type {colate_correct} = "{self.link_type}"
+                                                                (       from_object_type = "{self.doc_type}"
+                                                                    AND   to_object_type = "{self.link_type}"
                                                                 )
                                                             OR
                                                                 (
-                                                                          to_object_type {colate_correct} = "{self.doc_type}"
-                                                                    AND from_object_type {colate_correct} = "{self.link_type}"
+                                                                          to_object_type = "{self.doc_type}"
+                                                                    AND from_object_type = "{self.link_type}"
                                                                 )
                                                           )
                                                         AND to_process = 1
@@ -7833,23 +7825,9 @@ class GraphRegistry():
                         # subqueries are simple lookups instead of repeated UNION scans.
                         temp_table_path = f"{glbcfg.mysql_schema_names[self.engine_name]['graph_cache']}._tmp_hp_{self.doc_type}_{self.link_type}"
 
-                        # Match the temp table's doc_id collation to the target index table
-                        # so DELETE ... IN (SELECT ...) comparisons do not fail on collation mismatch.
-                        target_doc_id_collation = db.execute_query(
-                            engine_name=self.engine_name,
-                            query=f"""
-                                SELECT COLLATION_NAME
-                                  FROM INFORMATION_SCHEMA.COLUMNS
-                                 WHERE TABLE_SCHEMA = '{glbcfg.mysql_schema_names[self.engine_name]['graphsearch']}'
-                                   AND TABLE_NAME   = '{self.index_table_name}'
-                                   AND COLUMN_NAME  = 'doc_id'
-                            """,
-                            query_id='ColHpLookup'
-                        )[0][0]
-
                         temp_table_create_query = f"""
                         DROP TABLE IF EXISTS {temp_table_path};
-                        CREATE TABLE {temp_table_path} (doc_id VARCHAR(255) CHARACTER SET utf8mb4 COLLATE {target_doc_id_collation} NOT NULL PRIMARY KEY) AS
+                        CREATE TABLE {temp_table_path} (doc_id VARCHAR(255) NOT NULL PRIMARY KEY) AS
                         {doc_id_subquery};
                         """
                         temp_table_drop_query = f"DROP TABLE IF EXISTS {temp_table_path};"
@@ -7859,7 +7837,7 @@ class GraphRegistry():
                         # Delete existing rows for affected doc ids
                         SQLQuery_Delete = f"""
                         DELETE FROM {target_table_path}
-                         WHERE doc_id {colate_correct} IN ({doc_id_subquery})
+                         WHERE doc_id IN ({doc_id_subquery})
                         """
 
                         # Insert freshly ranked forward rows from the source
@@ -7880,9 +7858,9 @@ class GraphRegistry():
                           INNER JOIN {buildup_link_table_path} i
                                   ON (s.from_object_type, s.to_object_type, s.to_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                           INNER JOIN affected_docs ad
-                                  ON s.from_object_id {colate_correct} = ad.doc_id
-                                WHERE s.from_object_type {colate_correct} = "{self.doc_type}"
-                                  AND s.to_object_type   {colate_correct} = "{self.link_type}"
+                                  ON s.from_object_id = ad.doc_id
+                                WHERE s.from_object_type = "{self.doc_type}"
+                                  AND s.to_object_type   = "{self.link_type}"
                                   AND s.deleted = 0
                                   AND s.score IS NOT NULL
                                   AND s.to_object_id IS NOT NULL
@@ -7912,9 +7890,9 @@ class GraphRegistry():
                           INNER JOIN {buildup_link_table_path} i
                                   ON (s.to_object_type, s.from_object_type, s.from_object_id) = ("{self.doc_type}", "{self.link_type}", i.doc_id)
                           INNER JOIN affected_docs ad
-                                  ON s.to_object_id {colate_correct} = ad.doc_id
-                                WHERE s.to_object_type   {colate_correct} = "{self.doc_type}"
-                                  AND s.from_object_type {colate_correct} = "{self.link_type}"
+                                  ON s.to_object_id = ad.doc_id
+                                WHERE s.to_object_type   = "{self.doc_type}"
+                                  AND s.from_object_type = "{self.link_type}"
                                   AND s.deleted = 0
                                   AND s.score IS NOT NULL
                                   AND s.from_object_id IS NOT NULL
