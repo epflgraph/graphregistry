@@ -27,6 +27,20 @@ def cmd_airflow_sync(
         include_ontology=include_ontology,
     )
 
+# Public Method: Reset orchestrator 'to_process' flags across Registry tables.
+@app.command(name="reset")
+def cmd_airflow_reset(
+    ctx: typer.Context,
+    env: Annotated[str, EnvOption()] = DEFAULT_ENV,
+    verbose: Annotated[bool, VerboseOption()] = False,
+    options: Annotated[str, typer.Option("--options", help="Comma-separated options: typeflags,airflow,traversals,cache.")] = "typeflags,airflow",
+) -> None:
+    """Reset orchestrator 'to_process' flags across Registry tables."""
+    del env  # Registry uses the configured environment internally.
+    cli_ctx: CLIContext = ctx.obj
+    option_set = tuple(o.strip() for o in options.split(",") if o.strip())
+    cli_ctx.registry.orchestrator.reset(options=option_set, doc_type=None, verbose=verbose)
+
 # Public Method: Setup the object and content types to process.
 @app.command(name="config")
 def cmd_airflow_config(
@@ -55,6 +69,18 @@ def cmd_airflow_config(
 
     # Apply the parsed typeflags configuration to the orchestrator.
     cli_ctx.registry.orchestrator.typeflags.config(config_json=cfg)
+
+# Public Method: Update object checksums based on typeflag activation.
+@app.command(name="update-checksums")
+def cmd_airflow_update_checksums(
+    ctx: typer.Context,
+    env: Annotated[str, EnvOption()] = DEFAULT_ENV,
+    verbose: Annotated[bool, VerboseOption()] = False
+) -> None:
+    """Update object checksums based on typeflag activation."""
+    del env  # Registry uses the configured environment internally.
+    cli_ctx: CLIContext = ctx.obj
+    cli_ctx.registry.orchestrator.update_checksums_v2(actions=("commit",), verbose=verbose)
 
 # Public Method: Mark objects as expired based on last cached date.
 @app.command(name="expire")

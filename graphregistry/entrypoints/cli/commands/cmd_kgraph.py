@@ -45,8 +45,8 @@ def cmd_kgraph_patch(
     indexdb = cli_ctx.registry.indexdb
 
     # Build and then patch the index field tables.
-    indexdb.build(actions=("commit", "eval"))
-    indexdb.patch(actions=("commit", "eval"))
+    indexdb.build(actions=("commit", ""))
+    indexdb.patch(actions=("commit", ""))
 
 # Public Method: Prune orphan nodes, loose edges, and small islands from the knowledge graph.
 @app.command(name="prune")

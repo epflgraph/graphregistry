@@ -463,7 +463,7 @@ This command assumes the [Graph Ontology](https://github.com/epflgraph/graphonto
 
 ## Ingesting and managing data
 
-There are two ways of inserting data into the Registry database: using the CLI or the API. To help you get started, a sample dataset is provided in the folder: 📂 [examples/sample_sets](examples/sample_sets).
+There are two ways of inserting data into the Registry database: using the CLI or the API. To help you get started, a sample dataset is provided in the folder: 📂 [database/init/sample_sets](database/init/sample_sets/graph_registry/json).
 
 The command for managing Registry data is:
 
@@ -471,22 +471,17 @@ The command for managing Registry data is:
 graphregistry data
 ```
 
-For example, you can use the subcommand `save` to insert a list of nodes:
+For example, you can use the subcommand `save` to insert a list of nodes and their respective edges:
 
 ```shell
-graphregistry data save --node_list examples/sample_sets/sample_epfl_node_list.json
-```
-
-and the corresponding list of edges:
-
-```shell
-graphregistry data save --edge_list examples/sample_sets/sample_epfl_edge_list.json
+graphregistry data save database/init/sample_sets/graph_registry/json/sample_epfl_node_list.json
+graphregistry data save database/init/sample_sets/graph_registry/json/sample_epfl_edge_list.json
 ```
 
 Alternatively, you can replicate the exact same operation with the API as follows:
 
 ```shell
-jq '.' examples/sample_sets/sample_epfl_node_list.json \
+jq '.' database/init/sample_sets/graph_registry/json/sample_epfl_node_list.json \
 | curl -sS -X POST 'http://127.0.0.1:9999/api/nodes/save_many' \
     -H 'accept: application/json' \
     -H 'Content-Type: application/json' \
@@ -497,7 +492,7 @@ jq '.' examples/sample_sets/sample_epfl_node_list.json \
 for the same list of nodes, and the same thing for the edges:
 
 ```shell
-jq '.' examples/sample_sets/sample_epfl_edge_list.json \
+jq '.' database/init/sample_sets/graph_registry/json/sample_epfl_edge_list.json \
 | curl -sS -X POST 'http://127.0.0.1:9999/api/edges/save_many' \
     -H 'accept: application/json' \
     -H 'Content-Type: application/json' \
@@ -553,7 +548,7 @@ You can later reset the cached states in a more targated manner using the follow
 graphregistry airflow reset --options typeflags,airflow,traversals,cache
 ```
 
-For a faster reset action, use the option `--doc_types` to limit to the object type(s) you intend to process.
+<!-- For a faster reset action, use the option `--doc_types` to limit to the object type(s) you intend to process. -->
 
 ## Setup the object and content types to process
 
@@ -590,7 +585,7 @@ In the case of **edges**:
 To apply the configuration, run:
 
 ```shell
-graphregistry airflow config --typeflags config/application/config_airflow.json
+graphregistry airflow config config/application/config_airflow.json
 ```
 
 You can verify the configuration with:
@@ -604,7 +599,7 @@ graphregistry airflow status
 To determine if an object needs to be re-processed due to changes in its metadata, like title and description, Graph Airflow relies on object checksums. Therefore, you should always update them at the beginning of a refresh cycle:
 
 ```shell
-graphregistry airflow update_checksums
+graphregistry airflow update-checksums
 ```
 
 Note, however, that this operation, and the ones bellow, respect the active type flags. If you want to modify the affected types, be sure to set them in advace with `graphregistry airflow config`.
@@ -612,7 +607,7 @@ Note, however, that this operation, and the ones bellow, respect the active type
 Another way you can decide whether or not to re-process objects is through expiration dates. If, for example, you consider that semantic connection scores between objects (semantic edges) should be re-calculated after 90 days, you can run:
 
 ```shell
-graphregistry airflow expire --scores --older_than 90
+graphregistry airflow expire --scores --older-than 90
 ```
 
 This is useful for discriminating between semantic or organizational edges based on how often they change. For instance, a course description and content might change every academic year, thus requiring frequent semantic analysis, whereas a journal paper typically remains unchanged once it has been published.
@@ -620,7 +615,7 @@ This is useful for discriminating between semantic or organizational edges based
 Once you set all the conditions under which objects should to be re-processed, you need to update the "to process" states before launching the actual cycle:
 
 ```shell
-graphregistry airflow refresh --limit_per_type 1000
+graphregistry airflow plan --limit-per-type 1000
 ```
 
 This command will then output and print the precise execution plan for the next stage. You can double check the plan at any time with the command:
@@ -630,27 +625,19 @@ graphregistry airflow status
 ```
 
 > [!CAUTION]
-> Avoid setting `--limit_per_type` too high, as it might overwhelm your MySQL/MariaDB server. It is almost always better to keep that limit low, and execute the refresh cycle multiple times, compared to the opposite.
+> Avoid setting `--limit-per-type` too high, as it might overwhelm your MySQL/MariaDB server. It is almost always better to keep that limit low, and execute the refresh cycle multiple times, compared to the opposite.
 
 Knowledge Graph Construction
 ============================
 Once the execution plan has been configured, the next stage is to calculate and construct the **Knowledge Graph**, which is the core structure that represents the essence of the Graph Platform.
 
-## Formulas
+## Formulas and scoring matrix
 
 The first functionality to master that will enable you to fully benefit from the Graph Registry capabilities is *formulas*. They are described in detail in the [documentation](https://epflgraph.github.io/graphregistry/). For now, it is enough to descriminate formulas into three types:
 
 - formulas related to object metadata fields;
 - formulas related to graph traversals;
 - formulas related to semantic scores calculation.
-
-In can execute all three types at once (including some intermediate steps) as follows:
-
-```shell
-graphregistry cache update --formulas reset,fields,views,traversals,scores --actions commit,eval
-```
-
-## Scoring matrix
 
 The two primary results of the previous command are:
 
@@ -659,10 +646,12 @@ The two primary results of the previous command are:
 
 Starting with the second, semantic scores are represented by weighted edges of the type `Object-to-Concept` and `Object-to-Category`, where concepts and categories are the basic objects of the [Graph Ontology](https://github.com/epflgraph/graphontology).
 
-Once the link between objects and the concepts ontology has been calculated, the next step is calculate and update the global `Object-to-Object` scoring matrix:
+Once the link between objects and the concepts ontology has been calculated, the next step is calculate and update the global `Object-to-Object` scoring matrix.
+
+In can execute all these steps at once (including intermediate steps) as follows:
 
 ```shell
-graphregistry cache update --matrix --actions commit
+graphregistry kgraph compute
 ```
 
 > [!CAUTION]
@@ -674,41 +663,32 @@ At this point, the Knowledge Graph is fully defined and up-to-date, and could te
 
 ## Index database on MySQL/MariaDB
 
-To achieve this level of caching, and yet keep data up-to-date effectively, the Registry has a sophisticated data patching mechanism that introduces minimal changes into the pre-calculated graph database. To execute this patching operation, run the following two commands:
+To achieve this level of caching, and yet keep data up-to-date effectively, the Registry has a sophisticated data patching mechanism that introduces minimal changes into the pre-calculated graph database. To execute this patching operation, run the following command:
 
 ```shell
-graphregistry index build --actions commit,eval
-graphregistry index patch --actions commit,eval
+graphregistry kgraph patch
 ```
 
 Once data patching has been completed, and assuming it was successful, you should update the object parameters on Graph Airflow, so they are marked as processed and not processed again in the next cycle:
 
 ```shell
-graphregistry airflow rollover --actions commit
-graphregistry airflow update_dates --actions commit
-graphregistry airflow reset --options airflow,traversals,cache
+graphregistry airflow rollover
 ```
 
-If you executed multiple refresh and patching cycles, to the point where no objects are left to process under the current configuration, you should do a final clean up of the knowledge graph. It consists of removing all orphan nodes and loose-end edges, as well as small disconnected "island" subgraphs, keeping only the [largest connected graph](https://en.wikipedia.org/wiki/Component_(graph_theory)).
+If you executed multiple (re)compute and patching cycles, to the point where no objects are left to process under the current configuration, you should do a final clean up of the knowledge graph. It consists of removing all orphan nodes and loose-end edges, as well as small disconnected "island" subgraphs, keeping only the [largest connected graph](https://en.wikipedia.org/wiki/Component_(graph_theory)).
 
 Execute as follows:
 
 ```shell
-graphregistry data delete_loose_ends --env coresrv --actions eval,commit
+graphregistry kgraph prune
 ```
 
 ## Index documents on ElasticSearch
 
-Finally, you can export the Graph Search database index into ElasticSearch, which serves the application's search bar as well as the chatbot functionality. This is done in two steps. First, you export it locally from MySQL/MariaDB:
+Finally, you can export the Graph Search database index for importing into ElasticSearch, which serves the application's search bar as well as the chatbot functionality. This is done with the following command:
 
 ```shell
-graphregistry index generate --target elasticsearch --index_date YYYY-MM-DD -r
-```
-
-Then, you import it into your ElasticSearch server:
-
-```shell
-graphregistry es import --env coresrv --input_folder path/to/es_exports/YYYY-MM-DD/es_fullindex_YYYY-MM-DD --rename_to graphsearch_dev -r --chunk_size 1000
+graphregistry kgraph index
 ```
 
 These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respecively.
