@@ -7,7 +7,9 @@ relationship.
 """
 from __future__ import annotations
 from typing import Any
+from loguru import logger as sysmsg
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
+from graphregistry.common.dbstruct import GraphTable
 
 #================================================================#
 # Method Group: SQL identifier helpers                           #
@@ -124,3 +126,30 @@ def soft_delete_by_key_tuples(session: MySQLSession, schema_name: str, table_nam
          WHERE ({', '.join(key_column_names)}) IN ({placeholders})
     """
     session.execute(sql, params)
+
+#================================================================#
+# Method Group: Table management helpers                         #
+#================================================================#
+
+# Public Method: Check whether a table exists and create it if not,
+# mirroring the legacy create_table_if_not_exists for the graphsearch,
+# graph_cache, and es_cache schemas. The es_cache unique-key migration of
+# the legacy helper is handled by the es_cache patch variants.
+def create_table_if_not_exists(db: Any, engine_name: str, schema_name: str, table_name: str) -> None:
+    """Check whether a table exists and create it if not."""
+    if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
+        sysmsg.warning(f"Target database '{schema_name}' does not exist. Creating database ...")
+        db.create_database(engine_name=engine_name, schema_name=schema_name)
+        if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
+            sysmsg.critical(f"❌ Failed to create database '{schema_name}'.")
+            raise RuntimeError(f"Failed to create database '{schema_name}'.")
+        sysmsg.trace("☑️ Database created successfully.")
+    if not db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
+        sysmsg.warning(f"Target table '{schema_name}.{table_name}' does not exist. Creating table ...")
+        table = GraphTable(db=db, schema_name=schema_name, table_name=table_name)
+        db.execute_query_in_shell(engine_name=engine_name, query=table.create_table_sql, verbose=False, query_id='v29zYeaA')
+        if db.table_exists(engine_name=engine_name, schema_name=schema_name, table_name=table_name):
+            sysmsg.trace("☑️ Table created successfully.")
+        else:
+            sysmsg.critical(f"❌ Failed to create table '{schema_name}.{table_name}'.")
+            raise RuntimeError(f"Failed to create table '{schema_name}.{table_name}'.")

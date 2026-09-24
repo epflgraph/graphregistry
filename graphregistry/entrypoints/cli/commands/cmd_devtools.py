@@ -1,12 +1,25 @@
 # graphregistry/entrypoints/cli/commands/cmd_devtools.py
 from __future__ import annotations
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 import typer
+from graphregistry.domain.models.pipeline.mdl_policies import ExpirationPolicy
+from graphregistry.domain.models.pipeline.mdl_scores import ScoreConsolidationParams
 from graphregistry.entrypoints.cli.commands.cmd_data import _load_json_input
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
 from graphregistry.entrypoints.cli.context import CLIContext
-from graphregistry.entrypoints.cli.dependencies import build_registry_operations_from_cli
+from graphregistry.entrypoints.cli.dependencies import (
+    build_cacheprojection_repository,
+    build_change_tracking_repository,
+    build_formula_repository,
+    build_index_integrity_repository,
+    build_index_patch_operations,
+    build_processing_scope,
+    build_searchindex_export_repository,
+    build_registry_operations_from_cli,
+    build_scoresmatrix_repository,
+    build_typeflags_repository,
+)
 from graphregistry.entrypoints.mappers import SpecMapper
 
 # Create the Typer sub-app for advanced developer commands.
@@ -177,7 +190,23 @@ def cmd_devtools_airflow_reset(
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
     option_set = tuple(o.strip() for o in options.split(",") if o.strip())
-    cli_ctx.registry.orchestrator.reset(options=option_set, doc_type=None, verbose=verbose)
+
+    # Deactivate the typeflags through the typed repository when requested.
+    if "typeflags" in option_set:
+        typeflags_repo = build_typeflags_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+        typeflags_repo.reset()
+
+    # Clear the airflow tracking flags through the typed repository when requested.
+    if "airflow" in option_set:
+        change_repo = build_change_tracking_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+        change_repo.clear_all_flags()
+
+    # Clear the cache and traversals projection flags through the typed repository.
+    cache_repo = build_cacheprojection_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, index_config=cli_ctx.index_config, verbose=verbose)
+    cache_repo.reset_flags(
+        include_cache      = "cache" in option_set,
+        include_traversals = "traversals" in option_set,
+    )
 
 # Public Method: Update object checksums based on typeflag activation.
 @app.command(name="airflow-update-checksums")
@@ -190,7 +219,14 @@ def cmd_devtools_airflow_update_checksums(
     """Update object checksums based on typeflag activation."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.orchestrator.update_checksums_v2(actions=_parse_actions(actions), verbose=verbose)
+    change_repo = build_change_tracking_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    scope = build_processing_scope(
+        db                    = cli_ctx.db,
+        global_config         = cli_ctx.global_config,
+        index_config          = cli_ctx.index_config,
+        restrict_to_indexable = True,
+    )
+    change_repo.update_current_checksums(scope=scope, actions=_parse_actions(actions))
 
 # Public Method: Mark objects as expired based on last cached date.
 @app.command(name="airflow-expire")
@@ -213,18 +249,23 @@ def cmd_devtools_airflow_expire(
     include_scores = scores or not fields
     object_types = [t.strip() for t in types.split(",") if t.strip()] if types else None
 
-    # Continue with the next step.
-    cli_ctx.registry.orchestrator.expire(
-        include_nodes  = False,
-        include_edges  = False,
+    # Continue with the next step through the typed repository.
+    change_repo = build_change_tracking_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    scope = build_processing_scope(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+    )
+    policy = ExpirationPolicy(
+        older_than     = timedelta(days=older_than),
+        limit_per_type = None,
         include_fields = include_fields,
         include_scores = include_scores,
+        include_nodes  = False,
+        include_edges  = False,
         object_types   = object_types,
-        older_than     = older_than,
-        limit_per_type = None,
-        count_only     = False,
-        verbose        = verbose,
     )
+    change_repo.apply_expiration(policy=policy, scope=scope, count_only=False, actions=_parse_actions(actions))
 
 # Public Method: Refresh 'to_process' flags.
 @app.command(name="airflow-refresh")
@@ -237,11 +278,13 @@ def cmd_devtools_airflow_refresh(
     """Refresh 'to_process' flags based on changed checksums, expired dates, and/or new objects."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.orchestrator.refresh(
-        doc_type       = None,
-        limit_per_type = limit_per_type,
-        verbose        = verbose,
+    change_repo = build_change_tracking_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    scope = build_processing_scope(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
     )
+    change_repo.refresh_flags(scope=scope, limit_per_type=limit_per_type)
 
 # Public Method: Propagate 'to_process' flags to cache tables.
 @app.command(name="airflow-propagate")
@@ -261,12 +304,18 @@ def cmd_devtools_airflow_propagate(
     include_fields = fields or not scores
     include_scores = scores or not fields
 
-    # Continue with the next step.
-    cli_ctx.registry.orchestrator.propagate(
-        actions        = _parse_actions(actions),
+    # Continue with the next step through the typed repository.
+    cache_repo = build_cacheprojection_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, index_config=cli_ctx.index_config, verbose=verbose)
+    scope = build_processing_scope(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+    )
+    cache_repo.propagate(
+        scope          = scope,
         include_fields = include_fields,
         include_scores = include_scores,
-        verbose        = verbose,
+        actions        = _parse_actions(actions),
     )
 
 #================================================================#
@@ -285,21 +334,23 @@ def cmd_devtools_cache_formulas_update(
     """Execute cache SQL formulas."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cachemanager = cli_ctx.registry.cachemanager
+
+    # Apply the selected formula families through the typed repository.
+    formula_repo = build_formula_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
     action_set = _parse_actions(actions)
     formula_set = tuple(f.strip() for f in formulas.split(",") if f.strip())
 
     # Handle the conditional case.
     if "reset" in formula_set and "commit" in action_set:
-        cachemanager.apply_data_reset_formulas(verbose="print" in action_set, actions=action_set)
+        formula_repo.apply_data_reset_formulas(actions=action_set)
     if "fields" in formula_set and "commit" in action_set:
-        cachemanager.apply_calculated_field_formulas(verbose="print" in action_set, actions=action_set)
+        formula_repo.apply_calculated_field_formulas(actions=action_set)
     if "views" in formula_set:
-        cachemanager.materialize_views(actions=action_set)
+        formula_repo.materialize_views(actions=action_set)
     if "traversals" in formula_set and "commit" in action_set:
-        cachemanager.apply_traversals(verbose="print" in action_set, actions=action_set)
+        formula_repo.apply_traversals(actions=action_set)
     if "scores" in formula_set and "commit" in action_set:
-        cachemanager.apply_scoring_formulas(verbose="print" in action_set, actions=action_set)
+        formula_repo.apply_scoring_formulas(actions=action_set)
 
 # Public Method: Recalculate the scores matrix.
 @app.command(name="cache-scores-matrix")
@@ -312,9 +363,16 @@ def cmd_devtools_cache_scores_matrix(
     """Recalculate the scores matrix."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.cachemanager.update_scores_matrix(
-        score_thr = 0.1,
-        actions   = _parse_actions(actions),
+    scores_repo = build_scoresmatrix_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, scores_config=cli_ctx.scores_config, verbose=verbose)
+    scope = build_processing_scope(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+    )
+    scores_repo.update_matrix(
+        scope   = scope,
+        params  = ScoreConsolidationParams(),
+        actions = _parse_actions(actions),
     )
 
 #================================================================#
@@ -332,7 +390,17 @@ def cmd_devtools_index_build(
     """Build up and/or update index field tables."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.indexdb.build(actions=_parse_actions(actions))
+
+    # Build the staging tables through the typed operation.
+    patch_ops = build_index_patch_operations(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+        scores_config = cli_ctx.scores_config,
+        verbose       = verbose,
+    )
+    typeflags_repo = build_typeflags_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    patch_ops.build(flags=typeflags_repo.load(), actions=_parse_actions(actions))
 
 # Public Method: Apply vertical and horizontal patching to index tables.
 @app.command(name="index-patch")
@@ -345,7 +413,17 @@ def cmd_devtools_index_patch(
     """Apply vertical and horizontal patching to all index tables."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.indexdb.patch(actions=_parse_actions(actions))
+
+    # Run the full patch cycle through the typed operation.
+    patch_ops = build_index_patch_operations(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+        scores_config = cli_ctx.scores_config,
+        verbose       = verbose,
+    )
+    typeflags_repo = build_typeflags_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    patch_ops.patch(flags=typeflags_repo.load(), actions=_parse_actions(actions))
 
 # Public Method: Delete loose ends from cache/graphsearch tables.
 @app.command(name="index-delete-loose-ends")
@@ -359,7 +437,8 @@ def cmd_devtools_index_delete_loose_ends(
     """Delete loose ends from cache and graphsearch index tables."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.indexdb.delete_loose_ends(
+    integrity_repo = build_index_integrity_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    integrity_repo.delete_loose_ends(
         refresh_graph = not use_cache,
         actions       = _parse_actions(actions),
     )
@@ -381,11 +460,18 @@ def cmd_devtools_index_es_generate(
     """Generate ElasticSearch index files from MySQL."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    indexes = cli_ctx.registry.indexes
+
+    # Generate through the typed export repository.
+    export_repo = build_searchindex_export_repository(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+        verbose       = verbose,
+    )
 
     # Handle the conditional case.
     if not index_file_only:
-        indexes.generate_local_cache_streaming(
+        export_repo.generate_local_cache(
             index_date       = index_date,
             ignore_warnings  = ignore_warnings,
             replace_existing = replace_existing,
@@ -394,7 +480,7 @@ def cmd_devtools_index_es_generate(
 
     # Handle the conditional case.
     if not local_cache_only:
-        indexes.generate_index_from_local_cache(
+        export_repo.generate_index_folder(
             index_date       = index_date,
             ignore_warnings  = ignore_warnings,
             replace_existing = replace_existing,

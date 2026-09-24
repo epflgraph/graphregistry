@@ -4,8 +4,18 @@ from datetime import date
 from typing import Annotated
 import typer
 from graphregistry.application.core.cor_registry import ELASTICSEARCH_DATA_EXPORT_PATH
+from graphregistry.domain.models.pipeline.mdl_scores import ScoreConsolidationParams
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
 from graphregistry.entrypoints.cli.context import CLIContext
+from graphregistry.entrypoints.cli.dependencies import (
+    build_formula_repository,
+    build_index_integrity_repository,
+    build_index_patch_operations,
+    build_processing_scope,
+    build_scoresmatrix_repository,
+    build_searchindex_export_repository,
+    build_typeflags_repository,
+)
 
 # Create the Typer sub-app for high-level knowledge-graph workflows.
 app = typer.Typer(help="Knowledge Graph construction workflows.")
@@ -20,17 +30,29 @@ def cmd_kgraph_compute(
     """Execute cache formulas and update the scores matrix."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cachemanager = cli_ctx.registry.cachemanager
 
-    # Run the full set of cache computation formulas.
-    # cachemanager.apply_data_reset_formulas(verbose=verbose, actions=("commit",))
-    cachemanager.apply_calculated_field_formulas(verbose=verbose, actions=("commit",))
-    cachemanager.materialize_views(actions=("commit",))
-    cachemanager.apply_traversals(verbose=verbose, actions=("commit",))
-    cachemanager.apply_scoring_formulas(verbose=verbose, actions=("commit",))
+    # Run the full set of cache computation formulas through the typed
+    # repository.
+    formula_repo = build_formula_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    formula_repo.apply_calculated_field_formulas(actions=("commit",))
+    formula_repo.materialize_views(actions=("commit",))
+    formula_repo.apply_traversals(actions=("commit",))
+    formula_repo.apply_scoring_formulas(actions=("commit",))
 
-    # Update the scores matrix.
-    cachemanager.update_scores_matrix(score_thr=0.1, actions=("commit",))
+    # Update the scores matrix through the typed repository; the cache
+    # formulas above remain on the legacy cache manager until the formulas
+    # family is migrated.
+    scores_repo = build_scoresmatrix_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, scores_config=cli_ctx.scores_config, verbose=verbose)
+    scope = build_processing_scope(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+    )
+    scores_repo.update_matrix(
+        scope   = scope,
+        params  = ScoreConsolidationParams(),
+        actions = ("commit",),
+    )
 
 # Public Method: (Re)build and patch database for Graph Search.
 @app.command(name="patch")
@@ -42,11 +64,19 @@ def cmd_kgraph_patch(
     """Build and patch index field tables."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    indexdb = cli_ctx.registry.indexdb
 
-    # Build and then patch the index field tables.
-    indexdb.build(actions=("commit", ""))
-    indexdb.patch(actions=("commit", ""))
+    # Build the staging tables, then patch, through the typed operation.
+    patch_ops = build_index_patch_operations(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+        scores_config = cli_ctx.scores_config,
+        verbose       = verbose,
+    )
+    typeflags_repo = build_typeflags_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    flags = typeflags_repo.load()
+    patch_ops.build(flags=flags, actions=("commit",))
+    patch_ops.patch(flags=flags, actions=("commit",))
 
 # Public Method: Prune orphan nodes, loose edges, and small islands from the knowledge graph.
 @app.command(name="prune")
@@ -58,7 +88,8 @@ def cmd_kgraph_prune(
     """Prune the knowledge graph."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
-    cli_ctx.registry.indexdb.delete_loose_ends(
+    integrity_repo = build_index_integrity_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    integrity_repo.delete_loose_ends(
         refresh_graph = True,
         actions       = ("commit",),
     )
@@ -77,20 +108,24 @@ def cmd_kgraph_index(
 ) -> None:
     """Generate graph index for ElasticSearch and import it."""
     cli_ctx: CLIContext = ctx.obj
-    indexes = cli_ctx.registry.indexes
     index_date = index_name.split("_")[-1]
 
-    # Generate local cache unless the caller only wants the index file.
+    # Generate through the typed export repository: the local cache unless
+    # the caller only wants the index file, then the import folder.
+    export_repo = build_searchindex_export_repository(
+        db            = cli_ctx.db,
+        global_config = cli_ctx.global_config,
+        index_config  = cli_ctx.index_config,
+        verbose       = verbose,
+    )
     if not from_cache:
-        indexes.generate_local_cache_streaming(
+        export_repo.generate_local_cache(
             index_date       = index_date,
             ignore_warnings  = ignore_warnings,
             replace_existing = replace_existing,
             force_replace    = force_replace,
         )
-
-    # Generate the ElasticSearch index file from local cache.
-    indexes.generate_index_from_local_cache(
+    export_repo.generate_index_folder(
         index_date       = index_date,
         ignore_warnings  = ignore_warnings,
         replace_existing = replace_existing,

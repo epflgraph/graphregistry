@@ -1,29 +1,31 @@
 # graphregistry/adapters/persistence/mysql/repositories/resolvers.py
 from __future__ import annotations
-from graphregistry.application.ports.repositories.resolvers import SchemaResolver, EngineSchema
-from graphregistry.domain.models.entities.mdl_node import NodeKey
-from graphregistry.domain.models.entities.mdl_edge import EdgeKey
+from graphregistry.application.ports.repositories.resolvers import EngineSchema, SchemaResolver
 from graphregistry.common.config import GlobalConfig
+from graphregistry.domain.models.entities.mdl_edge import EdgeKey
+from graphregistry.domain.models.entities.mdl_node import NodeKey
 
-# Class definition
+#==================#
+# Class Definition #
+#==================#
 class DefaultSchemaResolver(SchemaResolver):
 
-    # Initialisation method
+    # Public Method: Initialize the resolver with an engine and configuration.
     def __init__(self, engine_name: str, glbcfg: GlobalConfig):
         self.engine_name = engine_name
         self.glbcfg = glbcfg
 
-    # Class method: Get engine identifier and schema name for airflow
+    # Public Method: Get engine identifier and schema name for airflow
     def for_airflow(self) -> EngineSchema:
         schema = self.glbcfg.schema_airflow
         return (self.engine_name, schema)
 
-    # Class method: Get engine identifier and schema name for a node
+    # Public Method: Get engine identifier and schema name for a node
     def for_node(self, key: NodeKey) -> EngineSchema:
         schema = self.glbcfg.object_type_to_schema[key.object_type]
         return (self.engine_name, schema)
 
-    # Class method: Get engine identifier and schema name for an edge
+    # Public Method: Get engine identifier and schema name for an edge
     def for_edge(self, key: EdgeKey) -> EngineSchema:
         a = key.from_object_type
         b = key.to_object_type
@@ -31,7 +33,7 @@ class DefaultSchemaResolver(SchemaResolver):
         schema = self.glbcfg.object2object_type_to_schema[edge_type]
         return (self.engine_name, schema)
 
-    # Class method: Get engine identifier and schema name for an object type (node or edge)
+    # Public Method: Get engine identifier and schema name for an object type (node or edge)
     def for_object_type(self, object_type: str | tuple[str, str]) -> EngineSchema:
         if type(object_type) is str:
             schema = self.glbcfg.object_type_to_schema[object_type]
@@ -44,22 +46,29 @@ class DefaultSchemaResolver(SchemaResolver):
         else:
             raise ValueError(f"Invalid object_type: {object_type}")
 
-    # Class method: Get engine identifier and schema name for graph cache
+    # Public Method: Get engine identifier and schema name for graph cache
     def for_graph_cache(self) -> EngineSchema:
         schema = self.glbcfg.schema_graph_cache_test
         return (self.engine_name, schema)
 
-    # Class method: Get engine identifier and schema name for graph search (test)
+    # Public Method: Get engine identifier and schema name for graph search (test)
     def for_graphsearch_test(self) -> EngineSchema:
         schema = self.glbcfg.schema_graphsearch_test
         return (self.engine_name, schema)
 
-    # Class method: Get engine identifier and schema name for graph search (prod mirror)
+    # Public Method: Get engine identifier and schema name for graph search (prod mirror)
     def for_graphsearch_prod_mirror(self) -> EngineSchema:
         schema = self.glbcfg.schema_graphsearch_prod_mirror
         return (self.engine_name, schema)
 
-# Class definition
+    # Public Method: Get engine identifier and schema name for the Elasticsearch cache
+    def for_es_cache(self) -> EngineSchema:
+        schema = self.glbcfg.schema_es_cache
+        return (self.engine_name, schema)
+
+#==================#
+# Class Definition #
+#==================#
 class MultiTenantSchemaResolver(SchemaResolver):
     """
     SchemaResolver implementation supporting multi-tenant deployments.
@@ -73,7 +82,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
     from the domain and repository layers.
     """
 
-    # Initialization with tenant configuration
+    # Public Method: Initialize the resolver with a tenant configuration.
     def __init__(self, tenant_config: dict[str, dict]):
         """
         Initialize the resolver with a tenant configuration.
@@ -109,7 +118,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
         """
         self.tenant_config = tenant_config
 
-    # Helper method: Retrieve the default tenant config
+    # Internal Method: Retrieve the default tenant configuration.
     def _get_tenant(self) -> dict:
         """
         Retrieve the default tenant configuration.
@@ -121,7 +130,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
             raise ValueError("No tenant configuration available")
         return next(iter(self.tenant_config.values()))
 
-    # Class method: Resolve schema for a Node
+    # Public Method: Resolve schema for a Node
     def for_node(self, key: NodeKey) -> EngineSchema:
         """
         Resolve persistence target for a Node.
@@ -142,7 +151,7 @@ class MultiTenantSchemaResolver(SchemaResolver):
         schema = tenant["node_schema_map"][node_type]
         return engine_name, schema
 
-    # Class method: Resolve schema for an Edge
+    # Public Method: Resolve schema for an Edge
     def for_edge(self, key: EdgeKey) -> EngineSchema:
         """
         Resolve persistence target for an Edge.
