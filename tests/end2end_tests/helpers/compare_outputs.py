@@ -16,41 +16,42 @@ from pathlib import Path
 from typing import Any
 
 
-# Regex for MariaDB/MySQL-style timestamps such as '2026-09-18 09:07:24'.
-# Also accepts ISO 'T' separators and optional fractional seconds.
-_DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?$")
+# Regex for MariaDB/MySQL-style dates and timestamps such as '2026-09-18'
+# (DATE) or '2026-09-18 09:07:24' (DATETIME).  Also accepts ISO 'T'
+# separators and optional fractional seconds.
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?$")
 
 
-def _is_datetime_like(value: Any) -> bool:
-    """Return True if the value looks like a SQL timestamp string."""
-    return isinstance(value, str) and bool(_DATETIME_RE.match(value))
+def _is_date_like(value: Any) -> bool:
+    """Return True if the value looks like a SQL date or timestamp string."""
+    return isinstance(value, str) and bool(_DATE_RE.match(value))
 
 
-def _detect_datetime_columns(
+def _detect_date_columns(
     gt_rows: list[tuple[Any, ...]],
     act_rows: list[tuple[Any, ...]],
 ) -> set[int]:
-    """Return column indices where every non-None value looks like a datetime."""
+    """Return column indices where every non-None value looks like a date."""
     if not gt_rows or not act_rows:
         return set()
 
     n_cols = len(gt_rows[0])
-    datetime_cols: set[int] = set()
+    date_cols: set[int] = set()
 
     for col_idx in range(n_cols):
-        is_dt = True
+        is_date = True
         for row in gt_rows + act_rows:
             if col_idx >= len(row):
-                is_dt = False
+                is_date = False
                 break
             val = row[col_idx]
-            if val is not None and not _is_datetime_like(val):
-                is_dt = False
+            if val is not None and not _is_date_like(val):
+                is_date = False
                 break
-        if is_dt:
-            datetime_cols.add(col_idx)
+        if is_date:
+            date_cols.add(col_idx)
 
-    return datetime_cols
+    return date_cols
 
 
 # --------------------------------------------------------------------------- #
@@ -62,7 +63,7 @@ def compare_output_directories(
     actual_dir: Path,
     *,
     ignore_row_id: bool = True,
-    ignore_datetime_columns: bool = True,
+    ignore_date_columns: bool = True,
     rtol: float = 1e-5,
     atol: float = 1e-8,
     ignore_json_keys: list[str] | None = None,
@@ -101,7 +102,7 @@ def compare_output_directories(
                     act_tables[key],
                     schema_table=f"{schema}.{table}",
                     ignore_row_id=ignore_row_id,
-                    ignore_datetime_columns=ignore_datetime_columns,
+                    ignore_date_columns=ignore_date_columns,
                     rtol=rtol,
                     atol=atol,
                     verbose=verbose,
@@ -187,7 +188,7 @@ def compare_sql_table(
     *,
     schema_table: str,
     ignore_row_id: bool = True,
-    ignore_datetime_columns: bool = True,
+    ignore_date_columns: bool = True,
     rtol: float = 1e-5,
     atol: float = 1e-8,
     verbose: bool = True,
@@ -201,11 +202,11 @@ def compare_sql_table(
         act_rows = [row[:-1] for row in act_rows]
 
     ignored_cols: set[int] = set()
-    if ignore_datetime_columns and gt_rows and act_rows:
-        ignored_cols = _detect_datetime_columns(gt_rows, act_rows)
+    if ignore_date_columns and gt_rows and act_rows:
+        ignored_cols = _detect_date_columns(gt_rows, act_rows)
         if verbose and ignored_cols:
             print(
-                f"      ⏱️  Ignoring datetime column(s) {sorted(ignored_cols)} in {schema_table}"
+                f"      ⏱️  Ignoring date column(s) {sorted(ignored_cols)} in {schema_table}"
             )
 
     if len(gt_rows) != len(act_rows):
