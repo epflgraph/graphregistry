@@ -18,6 +18,9 @@ graphregistry airflow config tests/end2end_tests/config/config_airflow.json
 graphregistry airflow plan -c -l 10000
 graphregistry airflow status
 
+# Optional: Execute concept detection with GraphAI
+# graphregistry ai detect-concepts
+
 # Step 4: Compute and generate/patch knowledge graph for GraphSearch
 graphregistry kgraph compute
 graphregistry kgraph patch
@@ -35,7 +38,7 @@ graphregistry kgraph prune
 graphregistry kgraph index -n graphsearch_e2e_test -r -f
 
 # Test results 1: Export all MySQL tables for comparison with ground truth
-rm -rf /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql
+rm   -rf /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output
 mkdir -p /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql
 graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graph_registry
 graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_graph_airflow
@@ -45,6 +48,6 @@ graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_
 graphdb export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/sql -d --schema_name _1_DEV_elasticsearch_cache
 
 # Test results 2: Export ElasticSearch index for comparison with ground truth
-rm -rf /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json
+rm   -rf /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json
 mkdir -p /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json
 graphes export --output_folder /home/dockerhost/dev/graphregistry/tests/end2end_tests/data/test_output/json --chunk_size 1000 --index_name graphsearch_e2e_test

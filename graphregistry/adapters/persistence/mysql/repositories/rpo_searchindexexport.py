@@ -82,16 +82,20 @@ class MySQLSearchIndexExportRepository(SearchIndexExportRepository):
             tqdm.write(f"⚙️ [GLC-ES] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
             target_output_path = os.path.join(target_folder, f"es_splitindex_{index_date}_{doc_type}.jsonl.gz")
             if os.path.exists(target_output_path):
-                if not ignore_warnings:
+                # State the outcome up front: this file will either be
+                # replaced or skipped, depending on the caller's flags.
+                if replace_existing and force_replace:
+                    sysmsg.warning(f"♻️ Replacing existing file: {target_output_path}")
+                elif not ignore_warnings:
                     sysmsg.warning(f"File already exists: {target_output_path}")
                 if not replace_existing:
-                    sysmsg.warning(f"Failed to generate local ElasticSearch cache. File already exists: {target_output_path}")
+                    sysmsg.warning(f"⚠️ File already exists and replace_existing is False; skipping: {target_output_path}")
                     continue
 
                 # Without force_replace the output is skipped rather than
                 # replaced; the caller decides whether to confirm.
                 if not force_replace:
-                    sysmsg.warning(f"Output exists and force_replace is False; skipping: {target_output_path}")
+                    sysmsg.warning(f"⚠️ File already exists and force_replace is False; skipping: {target_output_path}")
                     continue
                 os.remove(target_output_path)
 
@@ -261,17 +265,21 @@ class MySQLSearchIndexExportRepository(SearchIndexExportRepository):
         settings_path = os.path.join(output_folder, "settings_mappings.json")
 
         # Existing outputs are skipped unless replacement is forced; the
-        # caller decides whether to confirm, as with the local cache.
+        # caller decides whether to confirm, as with the local cache. The
+        # outcome is stated up front so the operator can tell replacement
+        # from a silently skipped regeneration.
         existing_files = [p for p in (docs_path, settings_path) if os.path.exists(p)]
         if existing_files:
-            if not ignore_warnings:
+            if replace_existing and force_replace:
+                sysmsg.warning(f"♻️ Replacing existing output in: {output_folder}")
+            elif not ignore_warnings:
                 for path in existing_files:
                     sysmsg.warning(f"File already exists: {path}")
             if not replace_existing:
                 sysmsg.error(f"❌ Failed. Output already exists in: {output_folder}")
                 return output_folder
             if not force_replace:
-                sysmsg.warning(f"Output exists and force_replace is False; skipping: {output_folder}")
+                sysmsg.warning(f"⚠️ Output already exists and force_replace is False; skipping: {output_folder}")
                 return output_folder
             for path in existing_files:
                 try:
