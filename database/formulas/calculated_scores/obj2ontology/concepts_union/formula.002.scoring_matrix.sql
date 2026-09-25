@@ -37,9 +37,8 @@
                           WHERE deleted = 0
                             AND to_process = 1
                         ) AS new
-ON DUPLICATE KEY UPDATE
-                        score_1 = COALESCE(new.score_1, Edges_N_Object_N_Concept_T_ScoringMatrix.score_1),
-                        score_2 = COALESCE(new.score_2, Edges_N_Object_N_Concept_T_ScoringMatrix.score_2),
-                        score_3 = COALESCE(new.score_3, Edges_N_Object_N_Concept_T_ScoringMatrix.score_3),
+ON DUPLICATE KEY UPDATE score_1    = new.score_1,
+                        score_2    = new.score_2,
+                        score_3    = new.score_3,
                         to_process = new.to_process,
                         deleted    = new.deleted;
