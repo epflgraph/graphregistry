@@ -444,6 +444,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_AVG (
   to_object_type varchar(32) NOT NULL,
   avg_score float NOT NULL,
   n_rows int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (from_object_type, to_object_type),
   KEY from_object_type (from_object_type),
   KEY to_object_type (to_object_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
