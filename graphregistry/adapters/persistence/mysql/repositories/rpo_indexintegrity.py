@@ -88,6 +88,30 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         # links, reusing the cached component when allowed.
         self._ensure_largest_component(engine_name, cache_schema, search_schema, cache_table_path, refresh_graph, actions)
 
+        # Postcondition: the component must hold nodes whenever the graph
+        # analysis had nodes to analyse. An empty component with a non-empty
+        # page profile means the computation died mid-run, and every later
+        # cleanup would no-op against garbage (E2E finding, 2026-09-25).
+        page_profile_rows = self.db.execute_query(
+            engine_name = engine_name,
+            schema_name = search_schema,
+            query       = f"SELECT COUNT(*) FROM {search_schema}.Data_N_Object_T_PageProfile;",
+            query_id    = 'lccchkpp',
+        )
+        component_rows = self.db.execute_query(
+            engine_name = engine_name,
+            query       = f"SELECT COUNT(*) FROM {cache_table_path};",
+            query_id    = 'lccchk',
+        )
+        page_profile_count = page_profile_rows[0][0] if page_profile_rows else 0
+        component_count = component_rows[0][0] if component_rows else 0
+        if page_profile_count > 0 and component_count == 0:
+            raise RuntimeError(
+                f"Largest connected component is empty while the page profile holds "
+                f"{page_profile_count} nodes; the graph analysis failed to persist. "
+                "Check the failure logged above."
+            )
+
         # Step 4: clean up the index tables of both schemas against the
         # largest component as the valid-node reference.
         for schema_name in (search_schema, es_cache_schema):

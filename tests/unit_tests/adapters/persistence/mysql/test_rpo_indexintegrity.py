@@ -120,6 +120,8 @@ def _make_repo(tmp_path) -> tuple[MySQLIndexIntegrityRepository, FakeGraphDB]:
     # Step 2: the graph cache is missing, so the component is computed from
     # a two-node, one-edge graph.
     db.results_by_query_id['ndmap'] = [("Person|p1", 1), ("Course|c1", 2)]
+    db.results_by_query_id['lccchkpp'] = [(2,)]
+    db.results_by_query_id['lccchk'] = [(2,)]
     db.tables_by_key[("graphsearch_test", (r'^Index_D_[^_]*_L_[^_]*',))] = ["Index_D_Person_L_Course_T_ORG"]
     db.results_by_query_id['edtbl'] = [("Course|c1", "Person|p1")]
 

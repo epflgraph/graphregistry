@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+# Sequential CLI pipeline executed by test_full_pipeline.py. Any command that
+# exits nonzero must abort the sequence immediately; without this, a crashed
+# step (e.g. the prune) sails through to the export and the comparison runs
+# against garbage with a zero exit code.
+set -euo pipefail
 
 # Step 1: Initialise database tables and sample imports
 graphregistry init --import-ontology-sample --import-concepts-sample
