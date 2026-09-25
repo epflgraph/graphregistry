@@ -1,6 +1,6 @@
 
 # Step 1: Initialise database tables and sample imports
-graphregistry init --import-ontology-sample
+graphregistry init --import-ontology-sample --import-concepts-sample
 
 # Step 2: Load sample node and edge lists into registry
 graphregistry data save database/init/sample_sets/graph_registry/json/sample_epfl_node_list.json
@@ -12,10 +12,7 @@ graphregistry airflow config tests/end2end_tests/config/config_airflow.json
 graphregistry airflow plan -c -l 10000
 graphregistry airflow status
 
-# Step 4: Execute concept detection with GraphAI
-graphregistry ai detect-concepts
-
-# Step 5: Compute and generate/patch knowledge graph for GraphSearch
+# Step 4: Compute and generate/patch knowledge graph for GraphSearch
 graphregistry kgraph compute
 graphregistry kgraph patch
 
