@@ -364,11 +364,13 @@ class MySQLScoresMatrixRepository(ScoresMatrixRepository):
         # Calculation pass: the legacy command hardcoded the calculation
         # thresholds, so the default params are used here regardless of the
         # consolidation params requested by the caller.
+        sysmsg.trace("⚙️  Calculating scores matrix for object-to-object edge combinations ...")
         default_params = ScoreConsolidationParams()
         for pair in edge_pairs:
             self.calculate_matrix(EdgeTypePair(from_object_type=pair[0], to_object_type=pair[1]), default_params, actions)
 
         # Consolidation pass with the caller's thresholds and averages.
+        sysmsg.trace("⚙️  Consolidating scores matrix (normalising scores and inserting Category/Concept edges) ...")
         for pair in edge_pairs:
             self.consolidate_matrix(
                 type_pair       = EdgeTypePair(from_object_type=pair[0], to_object_type=pair[1]),

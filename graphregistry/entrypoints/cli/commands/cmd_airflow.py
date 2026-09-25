@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from typing import Annotated
 import typer
+from loguru import logger as sysmsg
 from tabulate import tabulate
 from graphregistry.common.auxfcn import print_colour
 from graphregistry.domain.models.pipeline.mdl_policies import ExpirationPolicy
@@ -196,7 +197,9 @@ def cmd_airflow_plan(
     reset_options = ("airflow",) if skip_hard_reset else ("airflow", "traversals", "cache")
 
     # Reset the airflow tracking flags and the cache projection flags through
-    # the typed repositories.
+    # the typed repositories, with the legacy reset banners.
+    sysmsg.info("🧹 📝 Reset 'to_process' flags to 0.")
+    sysmsg.trace(f"Selected option(s): {reset_options}.")
     repo = build_change_tracking_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
     if "airflow" in reset_options:
         repo.clear_all_flags(clear_has_expired=will_expire)
@@ -205,6 +208,8 @@ def cmd_airflow_plan(
         include_cache      = "cache" in reset_options,
         include_traversals = "traversals" in reset_options,
     )
+    sysmsg.success("🧹 ✅ Done resetting flags.")
+    sysmsg.success("🧹 ✅ Done resetting flags.")
 
     # Optionally recompute checksums before expiring stale objects. Checksum
     # updates are scoped to the indexable edge families.
@@ -345,8 +350,10 @@ def cmd_airflow_rollover(
     repo.update_cache_dates(scope=scope, actions=("commit",))
 
     # Reset the airflow tracking flags and the cache projection flags through
-    # the typed repositories.
+    # the typed repositories, with the legacy reset banners.
     reset_options = ("airflow",) if skip_hard_reset else ("airflow", "traversals", "cache")
+    sysmsg.info("🧹 📝 Reset 'to_process' flags to 0.")
+    sysmsg.trace(f"Selected option(s): {reset_options}.")
     if "airflow" in reset_options:
         repo.clear_all_flags()
     cache_repo = build_cacheprojection_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, index_config=cli_ctx.index_config, verbose=verbose)
@@ -354,3 +361,4 @@ def cmd_airflow_rollover(
         include_cache      = "cache" in reset_options,
         include_traversals = "traversals" in reset_options,
     )
+    sysmsg.success("🧹 ✅ Done resetting flags.")

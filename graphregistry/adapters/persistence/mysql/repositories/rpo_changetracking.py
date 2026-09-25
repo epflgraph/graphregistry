@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, Iterable
 from loguru import logger as sysmsg
+from tabulate import tabulate
 from graphdb.models.sqlquery import print_sql
 from graphregistry.application.ports.repositories.prt_changetracking import ChangeTrackingRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
+from graphregistry.common.auxfcn import print_colour
 from graphregistry.common.config import GlobalConfig
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
 from graphregistry.domain.models.pipeline.mdl_changetracking import (
@@ -27,6 +29,16 @@ if TYPE_CHECKING:
 
 # Languages of the multilingual page-profile columns, in checksum order.
 _PAGE_PROFILE_LANGUAGES = ("en", "fr", "de", "it")
+
+# Internal Function: Render one refresh evaluation table in the legacy
+# print_dataframe format, skipped when there are no rows.
+def _print_refresh_table(rows: list[list], headers: list[str], title: str) -> None:
+    if not rows:
+        return
+    print('')
+    print_colour(title, colour='white', background='black', style='bold')
+    print(tabulate(rows, headers=headers, tablefmt='fancy_grid', showindex=False))
+    print('')
 
 # Multilingual page-profile field groups whose per-language value decomposes
 # into generation flags, correction flags, translation origin, and value.
@@ -155,14 +167,20 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
 
         # Sync both tracking families per schema and collect per-target counts.
         stats = []
+        sysmsg.info("♻️  📝 Synching new objects added to the registry with 'FieldsChanged' airflow tables.")
         for data_schema in schemas_to_sync:
             stats.extend(self._sync_fields_changed(engine_name, schema_name, data_schema, actions))
+        sysmsg.success("♻️  ✅ Done synching new objects between registry and 'FieldsChanged' airflow tables.")
+        sysmsg.info("♻️  📝 Synching new objects added to the registry with 'ScoresExpired' airflow tables.")
+        for data_schema in schemas_to_sync:
             stats.extend(self._sync_scores_expired(engine_name, schema_name, data_schema, actions))
+        sysmsg.success("♻️  ✅ Done synching new objects between registry and 'ScoresExpired' airflow tables.")
         return stats
 
     # Internal Method: Sync the FieldsChanged tables for one data schema.
     def _sync_fields_changed(self, engine_name: str, airflow_schema: str, data_schema: str, actions: ActionSet) -> list[PropagationStats]:
         stats = []
+        sysmsg.trace(f"⚙️  Processing nodes on schema '{data_schema}' ...")
 
         # Count new object nodes to sync; the counts feed the returned stats.
         count_query = f"""
@@ -177,6 +195,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                 GROUP BY cp.object_type
         """
         counts = self.db.execute_query(engine_name=engine_name, query=count_query, query_id='DY3x5PC8')
+        sysmsg.trace(f"Done. New objects synched: {counts if counts else []}")
         stats.append(PropagationStats(
             target       = f"{data_schema}.Nodes_N_Object -> {self._NODE_TABLE}",
             rows_flagged = sum(row[1] for row in counts) if counts else 0,
@@ -200,6 +219,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         self._execute_write(engine_name, insert_query, '2PbejfUm', actions)
 
         # Backfill node typeflag rows so later activations can update them.
+        sysmsg.trace(f"⚙️  Updating type flags for new objects on schema '{data_schema}' ...")
         typeflags_query = f"""
                     INSERT INTO {airflow_schema}.Operations_N_Object_T_TypeFlags
                                (object_type, flag_type, to_process)
@@ -211,6 +231,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         self._execute_write(engine_name, typeflags_query, 'x5BdjGfN', actions)
 
         # Count new object-to-object edges to sync.
+        sysmsg.trace(f"⚙️  Processing edges on schema '{data_schema}' ...")
         edge_count_query = f"""
                   SELECT cp.from_object_type, cp.to_object_type, COUNT(*) AS n
                     FROM {data_schema}.Edges_N_Object_N_Object_T_ChildToParent cp
@@ -225,6 +246,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                 GROUP BY cp.from_object_type, cp.to_object_type
         """
         edge_counts = self.db.execute_query(engine_name=engine_name, query=edge_count_query, query_id='Gk7dDRC0')
+        sysmsg.trace(f"Done. New object tuples synched: {edge_counts if edge_counts else []}")
         stats.append(PropagationStats(
             target       = f"{data_schema}.Edges_N_Object_N_Object_T_ChildToParent -> {self._EDGE_TABLE}",
             rows_flagged = sum(row[2] for row in edge_counts) if edge_counts else 0,
@@ -250,6 +272,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         self._execute_write(engine_name, edge_insert_query, 's1gXyPYb', actions)
 
         # Backfill edge typeflag rows for the new edge families.
+        sysmsg.trace(f"⚙️  Updating type flags for new edges on schema '{data_schema}' ...")
         edge_typeflags_query = f"""
                     INSERT INTO {airflow_schema}.Operations_N_Object_N_Object_T_TypeFlags
                                (from_object_type, to_object_type, to_process)
@@ -263,6 +286,8 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
 
     # Internal Method: Sync the ScoresExpired table for one data schema.
     def _sync_scores_expired(self, engine_name: str, airflow_schema: str, data_schema: str, actions: ActionSet) -> list[PropagationStats]:
+        sysmsg.trace(f"⚙️  Processing nodes on schema '{data_schema}' ...")
+
         # Count new object nodes to sync for score expiry tracking.
         count_query = f"""
                   SELECT n.object_type, COUNT(*) AS n
@@ -320,6 +345,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
     def update_current_checksums(self, scope: ProcessingScope, actions: ActionSet = ('commit',)) -> None:
         engine_name, airflow_schema = self.schema_resolver.for_airflow()
         _, cache_schema = self.schema_resolver.for_graph_cache()
+        sysmsg.info("🧩 📝 Update object checksums based on typeflag activation.")
 
         # Serialize the edge families into their endpoint types for the
         # schema-skip checks, as the legacy command does.
@@ -337,6 +363,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             if len(set(obj_types) & set(self.global_config.schema_to_object_types[schema_name])) == 0:
                 sysmsg.trace(f"➡️ Skipping calculation: Object > General registry > {schema_name}")
                 continue
+            sysmsg.trace(f"⚙️ Processing checksums: Object > General registry > {schema_name} ...")
             sql_query = f"""
                           SELECT object_type, object_id,
                                  MD5(CONCAT(MD5(COALESCE(object_type, "__null__")), MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(object_title, "__null__")), MD5(COALESCE(text_source, "__null__")), MD5(COALESCE(raw_text, "__null__")))) AS checksum_val
@@ -356,6 +383,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         if len(set(obj_types) & set(self.global_config.schema_to_object_types[self.global_config.schema_ontology])) == 0:
             sysmsg.trace(f"➡️ Skipping calculation: Object > General registry > {self.global_config.schema_ontology}")
         else:
+            sysmsg.trace(f"⚙️ Processing checksums: Object > General registry > {self.global_config.schema_ontology} ...")
             concept_query = f"""
                           SELECT object_type, object_id,
                                  MD5(CONCAT(MD5(COALESCE(object_id, "__null__")), MD5(COALESCE(name, "__null__")), MD5(COALESCE(is_ontology_category, "__null__")), MD5(COALESCE(is_ontology_concept, "__null__")), MD5(COALESCE(is_ontology_neighbour, "__null__")), MD5(COALESCE(is_noise, "__null__")), MD5(COALESCE(is_unused, "__null__")))) AS checksum_val
@@ -386,6 +414,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             if len(set(obj_types) & set(self.global_config.schema_to_object_types[schema_name])) == 0:
                 sysmsg.trace(f"➡️ Skipping calculation: Object > Page profile > {schema_name}")
                 continue
+            sysmsg.trace(f"⚙️ Processing checksums: Object > Page profile > {schema_name} ...")
             sql_query = f"""
                           SELECT object_type, object_id,
                                  {self._page_profile_checksum_expression()} AS checksum_val
@@ -407,6 +436,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             if len(set(obj_types) & set(self.global_config.schema_to_object_types[schema_name])) == 0:
                 sysmsg.trace(f"➡️ Skipping calculation: Object > Custom fields > {schema_name}")
                 continue
+            sysmsg.trace(f"⚙️ Processing checksums: Object > Custom fields > {schema_name} ...")
             sql_query = f"""
                           SELECT object_type, object_id,
                                  MD5(GROUP_CONCAT(MD5(CONCAT(
@@ -425,6 +455,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                                    ['object_type', 'object_id'], ['checksum_val'], ['object_type'], actions, 'oTWu6bBL')
 
         # Final object checksums combine the three partial checksums.
+        sysmsg.trace("⚙️ Processing checksums: Object > Final checksums ...")
         final_query = f"""
                       SELECT object_type, o.object_id,
                              MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(p.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
@@ -442,6 +473,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                                ['object_type', 'object_id'], ['checksum_val'], ['object_type'], actions, 'y0yFAafh')
 
         # Apply the final checksums to the airflow table, commit mode only.
+        sysmsg.trace("⚙️ Processing checksums: Object > Applying to Airflow ...")
         if 'commit' in actions:
             apply_query = f"""
                           UPDATE {airflow_schema}.{self._NODE_TABLE} f
@@ -464,6 +496,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         #----------------#
         # Edge checksums #
         #----------------#
+        sysmsg.trace("☑️ Done processing checksums for Object.")
 
         # Loop over all data schemas for the edge families.
         for schema_name in (self.global_config.schema_registry, self.global_config.schema_lectures, self.global_config.schema_ontology):
@@ -472,6 +505,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             if len(set(obj2obj_types) & set(self.global_config.schema_to_object_types[schema_name])) == 0:
                 sysmsg.trace(f"➡️ Skipping calculation: Object-to-Object > General registry > {schema_name}")
                 continue
+            sysmsg.trace(f"⚙️ Processing checksums: Object-to-Object > General registry > {schema_name} ...")
             sql_query = f"""
                           SELECT from_object_type, from_object_id, to_object_type, to_object_id, context,
                                  MD5(CONCAT(
@@ -496,6 +530,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             if len(set(obj2obj_types) & set(self.global_config.schema_to_object_types[schema_name])) == 0:
                 sysmsg.trace(f"➡️ Skipping calculation: Object-to-Object > Custom fields > {schema_name}")
                 continue
+            sysmsg.trace(f"⚙️ Processing checksums: Object-to-Object > Custom fields > {schema_name} ...")
             sql_query = f"""
                           SELECT from_object_type, from_object_id, to_object_type, to_object_id, context,
                                  MD5(GROUP_CONCAT(MD5(CONCAT(
@@ -513,6 +548,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                                    ['checksum_val'], ['from_object_type', 'to_object_type'], actions, 'WZ4gEw01')
 
         # Final edge checksums combine the two partial checksums.
+        sysmsg.trace("⚙️ Processing checksums: Object-to-Object > Final checksums ...")
         final_edge_query = f"""
                       SELECT o.from_object_type, o.from_object_id, o.to_object_type, o.to_object_id, o.context,
                              MD5(CONCAT(COALESCE(o.checksum_val, "__null__"), COALESCE(c.checksum_val, "__null__"))) AS checksum_val
@@ -528,6 +564,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                                ['checksum_val'], ['from_object_type', 'to_object_type'], actions, 'JJQ2pj3y')
 
         # Apply the final edge checksums to the airflow table, commit mode only.
+        sysmsg.trace("⚙️ Processing checksums: Object-to-Object > Applying to Airflow ...")
         if 'commit' in actions:
             apply_edge_query = f"""
                           UPDATE {airflow_schema}.{self._EDGE_TABLE} f
@@ -545,6 +582,8 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                 verbose     = self.verbose,
                 query_id    = 'Fpas6ysH',
             )
+        sysmsg.trace("☑️ Done processing checksums for Object-to-Object.")
+        sysmsg.success("🧩 ✅ Done updating object checksums.")
 
     # Internal Method: Upsert one checksum query through the GraphDB
     # safe-insert helper, forwarding the action set for eval/print handling.
@@ -583,8 +622,11 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
     # the records that drifted, expired, or were never cached, mirroring the
     # legacy refresh command over both families.
     def refresh_flags(self, scope: ProcessingScope, limit_per_type: int | None = None, actions: ActionSet = ('commit',)) -> list[NodeRefreshStats | EdgeRefreshStats]:
+
         # The legacy refresh applies a default per-type limit of 100 rows.
         limit_per_type = limit_per_type if limit_per_type is not None else 100
+        sysmsg.info("🧩 🏁 📝 Refresh checksums and set 'to_process' flags to 1 in 'FieldsChanged' airflow tables.")
+        sysmsg.trace(f"Input parameters: limit_per_type={limit_per_type} (rows).")
         stats = []
         stats.extend(self._refresh_fields_changed(scope, limit_per_type, actions))
         stats.extend(self._refresh_scores_expired(scope, limit_per_type, actions))
@@ -596,6 +638,8 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         node_condition = self._node_fields_condition(scope)
         edge_condition = self._edge_fields_condition(scope)
         stats = []
+
+        sysmsg.trace("Set 'to_process' flags to 1.")
 
         # Derive has_changed by comparing current and previous checksums.
         # The node records join the node typeflags without a flag_type
@@ -627,6 +671,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
 
         # Reset then set the to_process flags on both tables.
         for table_name in (self._NODE_TABLE, self._EDGE_TABLE):
+            sysmsg.trace(f"⚙️  Processing table '{table_name}' ...")
             condition = node_condition if table_name == self._NODE_TABLE else edge_condition
             if condition == "FALSE":
                 sysmsg.trace(f"Nothing to do for table '{table_name}'. Check the processing scope.")
@@ -658,6 +703,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             self._execute_write(engine_name, select_query, 'ye472zFQ', actions)
 
         # Collect the per-group statistics of both tables.
+        sysmsg.trace("Fetch stats on what to process.")
         for table_name in (self._NODE_TABLE, self._EDGE_TABLE):
             is_node_table = table_name == self._NODE_TABLE
             group_key = "object_type" if is_node_table else "from_object_type, to_object_type"
@@ -673,8 +719,28 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                 HAVING new_or_never_cached + checksum_changed + cache_expired > 0
             """
             rows = self.db.execute_query(engine_name=engine_name, query=stats_query, query_id='4QF4Lh4y')
+
+            # Render the per-group evaluation table and its total in the
+            # legacy print_dataframe format.
+            key_width = 1 if is_node_table else 2
+            headers = (['object_type'] if is_node_table else ['from_object_type', 'to_object_type']) \
+                + ['new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process']
+            table_rows = [
+                [value if idx < key_width else int(value) for idx, value in enumerate(row)]
+                for row in rows
+            ]
+            _print_refresh_table(
+                rows    = table_rows,
+                headers = headers,
+                title   = f'\n🔍 Evaluation results for table: "{table_name}"',
+            )
+            total_row = [sum(row[idx] for row in table_rows) for idx in range(key_width, len(headers))]
+            _print_refresh_table(
+                rows    = [total_row],
+                headers = ['TOTAL', 'new_or_never_cached', 'checksum_changed', 'cache_expired', 'to_process'],
+                title   = f'\n🔍 Evaluation results for table: "{table_name}"',
+            )
             for row in rows:
-                sysmsg.trace(f"Refresh stats [{table_name}]: {row}")
                 if is_node_table:
                     stats.append(NodeRefreshStats(
                         object_type         = row[0],
@@ -691,11 +757,14 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                         cache_expired       = row[4],
                         to_process          = row[5],
                     ))
+        sysmsg.success("🧩 🏁 ✅ Done refreshing checksums and setting 'to_process' flags in 'FieldsChanged' airflow tables.\n")
         return stats
 
     # Internal Method: Refresh the ScoresExpired family and return its stats.
     def _refresh_scores_expired(self, scope: ProcessingScope, limit_per_type: int, actions: ActionSet) -> list[NodeRefreshStats]:
         engine_name, schema_name = self.schema_resolver.for_airflow()
+        sysmsg.info("🏁 📝 Set 'to_process' flags to 1 in 'ScoresExpired' airflow tables.")
+        sysmsg.trace("⚙️  Processing 'Operations_N_Object_T_ScoresExpired' table ...")
         condition = self._node_scores_condition(scope)
 
         # Skip the family entirely when no scores types are active.
@@ -737,6 +806,22 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
             HAVING new_or_never_cached + cache_expired > 0
         """
         rows = self.db.execute_query(engine_name=engine_name, query=stats_query, query_id='JH9iFxCF')
+
+        # Render the per-type evaluation table and its total in the legacy
+        # print_dataframe format; the scores family carries two stat columns.
+        table_rows = [[row[0], int(row[1]), int(row[2])] for row in rows]
+        _print_refresh_table(
+            rows    = table_rows,
+            headers = ['object_type', 'new_or_never_cached', 'cache_expired'],
+            title   = f'\n🔍 Evaluation results for table: "{self._SCORES_TABLE}"',
+        )
+        total_row = [sum(row[1] for row in table_rows), sum(row[2] for row in table_rows)]
+        _print_refresh_table(
+            rows    = [total_row],
+            headers = ['TOTAL', 'new_or_never_cached', 'cache_expired'],
+            title   = f'\n🔍 Evaluation results for table: "{self._SCORES_TABLE}"',
+        )
+        sysmsg.success("🏁 ✅ Done setting 'to_process' flags in 'ScoresExpired' airflow tables.\n")
         return [
             NodeRefreshStats(
                 object_type         = row[0],
@@ -915,6 +1000,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
     # as the previous ones, mirroring the legacy rollover command.
     def rollover_checksums(self, scope: ProcessingScope, actions: ActionSet = ('commit',)) -> None:
         engine_name, schema_name = self.schema_resolver.for_airflow()
+        sysmsg.info("⬅️  📝 Rollover checksums (make previous checksum equal to current) in 'FieldsChanged' airflow tables.")
         node_condition = self._node_fields_condition(scope)
         edge_condition = self._edge_fields_condition(scope)
 
@@ -949,6 +1035,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                    AND to_process = 1
             """
             self._execute_write(engine_name, commit_query, 'ht5AZcsE', actions)
+        sysmsg.success("⬅️  ✅ Done rolling over checksums.")
 
     # Public Method: Stamp the cache date of the processed records, mirroring
     # the legacy update_dates command over both families.
@@ -959,6 +1046,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
     # Internal Method: Stamp the cache dates of the FieldsChanged tables.
     def _update_dates_fields_changed(self, scope: ProcessingScope, actions: ActionSet) -> None:
         engine_name, schema_name = self.schema_resolver.for_airflow()
+        sysmsg.info("⬅️  📝 Update last_date_cached values in 'FieldsChanged' airflow tables.")
         node_condition = self._node_fields_condition(scope)
         edge_condition = self._edge_fields_condition(scope)
 
@@ -991,10 +1079,12 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                    AND to_process = 1
             """
             self._execute_write(engine_name, commit_query, 'Q2dracb0', actions)
+        sysmsg.success("⬅️  ✅ Done updating last_date_cached values in 'FieldsChanged' airflow tables.")
 
     # Internal Method: Stamp the cache dates of the ScoresExpired table.
     def _update_dates_scores_expired(self, scope: ProcessingScope, actions: ActionSet) -> None:
         engine_name, schema_name = self.schema_resolver.for_airflow()
+        sysmsg.info("⬅️  📝 Update last_date_cached values in 'ScoresExpired' airflow tables.")
         condition = self._node_scores_condition(scope)
 
         # Skip the family entirely when no scores types are active.
@@ -1031,6 +1121,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                 query       = commit_query,
                 verbose     = self.verbose or 'print' in actions,
             )
+        sysmsg.success("⬅️  ✅ Done updating last_date_cached values in 'ScoresExpired' airflow tables.")
 
     #================================================================#
     # Method Group: Resets                                           #
@@ -1076,6 +1167,17 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
     def clear_all_flags(self, clear_has_expired: bool = True, actions: ActionSet = ('commit',)) -> None:
         engine_name, schema_name = self.schema_resolver.for_airflow()
 
+        # The legacy reset banners, reflecting whether has_expired is cleared.
+        if clear_has_expired:
+            sysmsg.info("🧹 📝 Reset 'to_process', 'has_changed' and 'has_expired' flags in graph_airflow tables.")
+        else:
+            sysmsg.info("🧹 📝 Reset 'to_process' and 'has_changed' flags in graph_airflow tables.")
+        print('\nThe following tables will be affected:')
+        for table_name in (self._EDGE_TABLE, self._NODE_TABLE, self._SCORES_TABLE):
+            print(f" - {schema_name}.{table_name}")
+        print('')
+        sysmsg.trace(f"Processing '{schema_name}' fields and scores tables ...")
+
         # The legacy reset order: edge table, node table, scores table.
         for table_name in (self._EDGE_TABLE, self._NODE_TABLE, self._SCORES_TABLE):
 
@@ -1092,6 +1194,10 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
                 where_parts.append("has_expired = 1")
             reset_query = f"UPDATE {schema_name}.{table_name} SET {', '.join(set_parts)} WHERE {' OR '.join(where_parts)};"
             self._execute_write(engine_name, reset_query, '5LEjczg5', actions)
+        if clear_has_expired:
+            sysmsg.success(f"🧹 ✅ Done resetting 'to_process', 'has_changed' and 'has_expired' flags in '{schema_name}' tables.")
+        else:
+            sysmsg.success(f"🧹 ✅ Done resetting 'to_process' and 'has_changed' flags in '{schema_name}' tables.")
 
     #================================================================#
     # Method Group: Record reads                                     #

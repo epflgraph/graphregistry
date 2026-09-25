@@ -34,6 +34,13 @@ class IndexDocLinkRepository(Protocol):
     served by the separate IndexDeployRepository port.
     """
 
+    # Public Method: Ensure the graphsearch doc-link tables of the given keys
+    # exist. The legacy IndexDB constructor created every configured
+    # doc-link table eagerly, so pairs that are never patched still carry
+    # their (empty) table in the schema export.
+    def ensure_link_tables(self, keys: list[DocLinkTypeKey]) -> None:
+        ...
+
     # Public Method: Patch the denormalised link fields of one projection from
     # the linked documents' profiles, resolving content drift. The ORG
     # partition additionally refreshes the parent-child link fields.

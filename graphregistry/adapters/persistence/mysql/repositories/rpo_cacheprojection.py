@@ -501,6 +501,7 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
         # Reset the to_process flags of every flagged table of the cache schema.
         if include_cache:
             _, cache_schema = self.schema_resolver.for_graph_cache()
+            sysmsg.info("🧹 📝 Reset 'to_process' flags in graph_cache tables.")
             list_of_tables = sorted([
                 table_name for table_name in self.db.get_tables_in_schema(engine_name=engine_name, schema_name=cache_schema)
                 if not table_name.startswith('_')
@@ -517,11 +518,13 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
                         verbose     = self.verbose,
                         query_id    = 'DFEkXX4A',
                     )
+            sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{cache_schema}' tables.")
 
         # Reset the to_process flags of every flagged table of the traversals
         # schema, which feeds the traversal formulas.
         if include_traversals:
             traversals_schema = self.global_config.schema_traversals
+            sysmsg.info("🧹 📝 Reset 'to_process' flags in traversals tables.")
             list_of_tables = sorted([
                 table_name for table_name in self.db.get_tables_in_schema(engine_name=engine_name, schema_name=traversals_schema)
                 if not table_name.startswith('_')
@@ -538,6 +541,7 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
                         verbose     = self.verbose,
                         query_id    = 'X7vYqZ3A',
                     )
+            sysmsg.success(f"🧹 ✅ Done resetting 'to_process' flags in '{traversals_schema}' tables.")
 
     #================================================================#
     # Method Group: Propagation execution helpers                    #

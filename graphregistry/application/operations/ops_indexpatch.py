@@ -1,6 +1,7 @@
 # graphregistry/application/operations/ops_indexpatch.py
 from __future__ import annotations
 from loguru import logger as sysmsg
+from tqdm import tqdm
 from graphregistry.application.ports.repositories.prt_indexbuildup import IndexBuildupRepository
 from graphregistry.application.ports.repositories.prt_indexdoclink import IndexDocLinkRepository
 from graphregistry.application.ports.repositories.prt_indexdocs import IndexDocRepository
@@ -10,6 +11,9 @@ from graphregistry.domain.models.pipeline.mdl_indexdocs import DocLinkTypeKey
 from graphregistry.domain.models.pipeline.mdl_policies import LinkSelectionPolicy, OrderRule
 from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.models.pipeline.mdl_typeflags import TypeFlagConfig
+
+# Width of the progress-bar descriptions, matching the legacy PBWIDTH.
+PBWIDTH = 92
 
 #==================#
 # Class Definition #
@@ -31,13 +35,26 @@ class IndexPatchOperations:
     # repositories and the configurations driving the type derivation.
     def __init__(self, pageprofile_repo: PageProfileRepository, docs_repo: IndexDocRepository,
                  doclinks_repo: IndexDocLinkRepository, index_config: IndexConfig, scores_config: ScoresConfig,
-                 buildup_repo: IndexBuildupRepository | None = None) -> None:
+                 global_config: "GlobalConfig | None" = None, buildup_repo: IndexBuildupRepository | None = None) -> None:
         self.pageprofile_repo = pageprofile_repo
         self.docs_repo = docs_repo
         self.doclinks_repo = doclinks_repo
         self.index_config = index_config
         self.scores_config = scores_config
+        self.global_config = global_config
         self.buildup_repo = buildup_repo
+
+    # Internal Method: Resolve the graph cache schema name for the legacy
+    # build banner, defaulting to the literal name when unconfigured.
+    def _cache_schema_name(self) -> tuple[str, str]:
+        name = getattr(self.global_config, "schema_graph_cache_test", "_1_DEV_graph_cache") if self.global_config else "_1_DEV_graph_cache"
+        return ("coresrv", name)
+
+    # Internal Method: Resolve the graphsearch schema name for the legacy
+    # patch banners, defaulting to the literal name when unconfigured.
+    def _search_schema_name(self) -> tuple[str, str]:
+        name = getattr(self.global_config, "schema_graphsearch_test", "_1_DEV_graphsearch_test") if self.global_config else "_1_DEV_graphsearch_test"
+        return ("coresrv", name)
 
     #================================================================#
     # Method Group: Available type derivation                        #
@@ -174,7 +191,8 @@ class IndexPatchOperations:
         if self.buildup_repo is None:
             raise RuntimeError("The index patch operation was built without a buildup repository.")
         stats = []
-        sysmsg.info("🚜 📝 Build up and/or update index field tables [actions: {}].".format(actions))
+        _, cache_schema = self._cache_schema_name()
+        sysmsg.info("🚜 📝 Build up and/or update index field tables on '{}' [actions: {}].".format(cache_schema, actions))
 
         # The build scope: fields-active doc types and canonical edge pairs,
         # intersected with the indexable contexts as the legacy
@@ -198,11 +216,18 @@ class IndexPatchOperations:
             print(f" - IndexBuildup_Fields_Links_ParentChild_{doc_type}_{link_type}")
         print('')
 
-        # Build the doc staging tables, then the link staging tables.
-        for doc_type in doc_types_to_process:
-            stats.append(self.buildup_repo.build_docs_fields(doc_type=doc_type, actions=actions))
-        for doc_type, link_type in doclink_pairs:
-            stats.append(self.buildup_repo.build_links_parentchild(doc_type=doc_type, link_type=link_type, actions=actions))
+        # Build the doc staging tables, then the link staging tables, with
+        # the legacy progress bars per family.
+        sysmsg.trace("Build tables of type: 'IndexBuildup_Fields_Docs_*'")
+        with tqdm(doc_types_to_process, unit='doc type') as pb:
+            for doc_type in pb:
+                pb.set_description(f"⚙️ [🐬 GraphSearch DB] [B-BD] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                stats.append(self.buildup_repo.build_docs_fields(doc_type=doc_type, actions=actions))
+        sysmsg.trace("Build tables of type: 'IndexBuildup_Fields_Links_ParentChild_*_*'")
+        with tqdm(doclink_pairs, unit='doc-link type') as pb:
+            for doc_type, link_type in pb:
+                pb.set_description(f"⚙️ [🐬 GraphSearch DB] [B-BD] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                stats.append(self.buildup_repo.build_links_parentchild(doc_type=doc_type, link_type=link_type, actions=actions))
         sysmsg.success("🚜 ✅ Done building up and/or updating index field tables.")
         return stats
 
@@ -213,18 +238,40 @@ class IndexPatchOperations:
         stats = []
         sysmsg.info("🚜 📝 Patching index tables [page profile, docs, doc-links].")
 
+        # Ensure every configured doc-link table exists before patching: the
+        # legacy IndexDB constructor created them eagerly, so pairs that are
+        # never patched still carry their (empty) table in the schema export
+        # (E2E finding, 2026-09-24).
+        self.doclinks_repo.ensure_link_tables(
+            keys = [
+                DocLinkTypeKey(doc_type=doc_type, link_type=link_type, partition=partition)
+                for doc_type, link_type, partition in self._available_doclink_types()
+            ],
+        )
+
         # Page profile patch first, feeding the presentation fields.
+        _, search_schema = self._search_schema_name()
+        sysmsg.info("🚜 📝 Patch page profile table on 'graphsearch_test' [actions: {}].".format(actions))
         stats.append(self.pageprofile_repo.patch(actions=actions))
 
         # Docs patch over the fields-active doc types.
+        sysmsg.info("🚜 📝 Vertical patch of doc index tables [actions: {}].".format(actions))
+        print("Patch tables in '_1_DEV_graphsearch_test' and '_1_DEV_elasticsearch_cache' schemas.")
         stats.extend(self._patch_docs(flags, actions))
+        sysmsg.success("🚜 ✅ Done vertical patching of doc index tables.")
 
         # Doc-link patches over the derived pairs: vertical with the fields
         # edge flags, horizontal with both flag families.
         vertical_pairs = self._derive_doclink_pairs(flags, edge_flags='fields')
+        sysmsg.info("🚜 📝 Vertical patch of doc-link index tables [actions: {}].".format(actions))
+        print("Patch tables in '_1_DEV_graphsearch_test' schema.")
         stats.extend(self._patch_doclinks(vertical_pairs, actions, vertical=True))
+        sysmsg.success("🚜 ✅ Done vertical patching of doc-link index tables.")
         horizontal_pairs = self._derive_doclink_pairs(flags, edge_flags='fields+scores')
+        sysmsg.info("🚜 📝 Horizontal patch of doc-link index tables [actions: {}].".format(actions))
+        print("Patch tables in '_1_DEV_graphsearch_test' schema.")
         stats.extend(self._patch_doclinks(horizontal_pairs, actions, vertical=False))
+        sysmsg.success("🚜 ✅ Done horizontal patching of doc-link index tables.")
 
         # Report the completion of the full cycle.
         sysmsg.success("🚜 ✅ Done patching index tables.")
@@ -246,13 +293,16 @@ class IndexPatchOperations:
             print(f" - {doc_type}")
         print('')
 
-        # Patch every doc type in both projection families.
+        # Patch every doc type in both projection families, with the legacy
+        # progress bar over the doc types.
         stats = []
-        for doc_type in doc_types_to_process:
-            stats.append(self.docs_repo.patch(doc_type=doc_type, actions=actions))
-            stats.append(self.docs_repo.patch_es_cache(doc_type=doc_type, actions=actions))
-            if 'settle' in actions:
-                self.docs_repo.settle(doc_type=doc_type, actions=actions)
+        with tqdm(doc_types_to_process, unit='doc type') as pb:
+            for doc_type in pb:
+                pb.set_description(f"⚙️ [🐬 GraphSearch DB] [D-P-DB] Processing doc type: {doc_type}".ljust(PBWIDTH)[:PBWIDTH])
+                stats.append(self.docs_repo.patch(doc_type=doc_type, actions=actions))
+                stats.append(self.docs_repo.patch_es_cache(doc_type=doc_type, actions=actions))
+                if 'settle' in actions:
+                    self.docs_repo.settle(doc_type=doc_type, actions=actions)
         return stats
 
     # Internal Method: Patch the doc-link projections of the derived pairs,
@@ -269,15 +319,19 @@ class IndexPatchOperations:
             print(f" - Index_D_{doc_type}_L_{link_type}_T_{partition}")
         print('')
 
-        # Patch every derived pair in the graphsearch family.
+        # Patch every derived pair in the graphsearch family, with the
+        # legacy progress bar over the doc-link types.
+        phase = 'VP' if vertical else 'HP'
         stats = []
-        for doc_type, link_type, partition in pairs:
-            key = DocLinkTypeKey(doc_type=doc_type, link_type=link_type, partition=partition)
-            policy = self._policy_for(doc_type, link_type, partition)
-            if vertical:
-                stats.append(self.doclinks_repo.vertical_patch(key=key, actions=actions))
-            else:
-                stats.append(self.doclinks_repo.horizontal_patch(key=key, policy=policy, actions=actions))
+        with tqdm(pairs, unit='doc-link type') as pb:
+            for doc_type, link_type, partition in pb:
+                pb.set_description(f"⚙️ [🐬 GraphSearch DB] [DL-{phase}-DB] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                key = DocLinkTypeKey(doc_type=doc_type, link_type=link_type, partition=partition)
+                policy = self._policy_for(doc_type, link_type, partition)
+                if vertical:
+                    stats.append(self.doclinks_repo.vertical_patch(key=key, actions=actions))
+                else:
+                    stats.append(self.doclinks_repo.horizontal_patch(key=key, policy=policy, actions=actions))
 
         # The Elasticsearch cache patch runs per deduplicated pair, without
         # the partition distinction, using the SEM variant when available.
@@ -288,13 +342,16 @@ class IndexPatchOperations:
             print(f" - Index_D_{doc_type}_L_{link_type}")
         print('')
 
-        # The es_cache variant picks the SEM table when the pair carries one.
-        for doc_type, link_type in es_pairs:
-            partition = 'SEM' if (doc_type, link_type, 'SEM') in available else 'ORG'
-            key = DocLinkTypeKey(doc_type=doc_type, link_type=link_type, partition=partition)
-            es_policy = self._policy_for(doc_type, link_type, partition, es_cache=True)
-            if vertical:
-                stats.append(self.doclinks_repo.vertical_patch_es_cache(key=key, actions=actions))
-            else:
-                stats.append(self.doclinks_repo.horizontal_patch_es_cache(key=key, policy=es_policy, actions=actions))
+        # The es_cache variant picks the SEM table when the pair carries
+        # one, with the legacy Elasticsearch progress bar.
+        with tqdm(es_pairs, unit='doc-link type') as pb:
+            for doc_type, link_type in pb:
+                pb.set_description(f"⚙️ [⚡️ ElasticSearch] [DL-{phase}-ES] Processing doc-link type: {doc_type} --> {link_type}".ljust(PBWIDTH)[:PBWIDTH])
+                partition = 'SEM' if (doc_type, link_type, 'SEM') in available else 'ORG'
+                key = DocLinkTypeKey(doc_type=doc_type, link_type=link_type, partition=partition)
+                es_policy = self._policy_for(doc_type, link_type, partition, es_cache=True)
+                if vertical:
+                    stats.append(self.doclinks_repo.vertical_patch_es_cache(key=key, actions=actions))
+                else:
+                    stats.append(self.doclinks_repo.horizontal_patch_es_cache(key=key, policy=es_policy, actions=actions))
         return stats

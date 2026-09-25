@@ -155,10 +155,6 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
         # Resolve the canonical context of the pair; without a context there
         # is nothing to build.
         edge_context = self.index_config.settings.get("edge_selection_contexts", {}).get((doc_type, link_type))
-        sysmsg.trace(
-            "build_links_parentchild: doc_type='{}' link_type='{}' context='{}'",
-            doc_type, link_type, edge_context,
-        )
         if edge_context is None:
             sysmsg.warning(
                 f"No edge context configured for '{doc_type} <-> {link_type}' "

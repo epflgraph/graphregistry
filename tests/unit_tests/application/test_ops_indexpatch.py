@@ -60,6 +60,11 @@ class FakeDocLinksRepo:
     # Public Method: Initialize the fake with an empty call log.
     def __init__(self) -> None:
         self.calls = []
+        self.ensured_keys = []
+
+    # Public Method: Record an ensure-link-tables call.
+    def ensure_link_tables(self, keys) -> None:
+        self.ensured_keys.extend(keys)
 
     # Public Method: Record a vertical patch call.
     def vertical_patch(self, key: DocLinkTypeKey, actions: tuple = ('commit',)) -> PropagationStats:

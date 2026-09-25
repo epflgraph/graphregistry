@@ -125,6 +125,20 @@ class MySQLIndexDocLinkRepository(IndexDocLinkRepository):
     # Method Group: Vertical patch                                   #
     #================================================================#
 
+    # Public Method: Ensure the graphsearch doc-link tables of the given keys
+    # exist. The legacy IndexDB constructor created every configured
+    # doc-link table eagerly; the typed architecture creates them lazily
+    # per patched pair, so unpatched configured pairs would miss their
+    # table in the schema export (E2E finding, 2026-09-24).
+    def ensure_link_tables(self, keys: list[DocLinkTypeKey]) -> None:
+        engine_name, _airflow_schema = self.schema_resolver.for_airflow()
+        _, search_schema = self.schema_resolver.for_graphsearch_test()
+        for key in keys:
+            create_table_if_not_exists(
+                self.db, engine_name, search_schema,
+                f"Index_D_{key.doc_type}_L_{key.link_type}_T_{key.partition}",
+            )
+
     # Public Method: Patch the denormalised link fields of one projection from
     # the linked documents' profiles, resolving content drift. The SEM
     # partition refreshes the default link fields; the ORG partition

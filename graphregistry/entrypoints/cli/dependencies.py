@@ -114,6 +114,7 @@ def build_index_patch_operations(*, db: GraphDB, global_config: GlobalConfig, in
         buildup_repo     = MySQLIndexBuildupRepository(db=db, schema_resolver=schema_resolver, index_config=index_config, verbose=verbose),
         index_config     = index_config,
         scores_config    = scores_config,
+        global_config    = global_config,
     )
 
 # Public Method: Build the index integrity repository wired to the CLI
