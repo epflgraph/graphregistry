@@ -387,18 +387,20 @@ es_settings_and_mappings = {
 
 # Define degree score factors
 es_degree_score_factors = {
-    'Category'   : 512,
-    'Concept'    : 512,
-    'Course'     : 128,
-    'Exercise'   : 64,
-    'Lecture'    : 128,
-    'MOOC'       : 64,
-    'Notebook'   : 64,
-    'Person'     : 128,
-    'Publication': 1,
-    'Startup'    : 64,
-    'Unit'       : 64,
-    'Widget'     : 64
+    'Category'       : 512,
+    'Concept'        : 512,
+    'Course'         : 128,
+    'Exercise'       : 64,
+    'Lecture'        : 128,
+    'MOOC'           : 64,
+    'Notebook'       : 64,
+    'Person'         : 128,
+    'Publication'    : 1,
+    'Specialisation' : 64,
+    'Startup'        : 64,
+    'StudyPlan'      : 64,
+    'Unit'           : 64,
+    'Widget'         : 64
 }
 
 # Index doc combinations
