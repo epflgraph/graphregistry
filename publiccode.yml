@@ -1,0 +1,91 @@
+publiccodeYmlVersion: "0"
+
+name: Graph Registry
+applicationSuite: EPFL Graph Platform
+url: "https://github.com/epflgraph/graphregistry"
+softwareVersion: "0.2.0"
+releaseDate: "2026-09-10"
+logo: assets/icon-a0a7c0c9.png
+
+platforms:
+  - web
+  - linux
+
+categories:
+  - knowledge-management
+  - data-collection
+  - data-analytics
+
+usedBy:
+  - EPFL
+
+developmentStatus: stable
+
+softwareType: "standalone/backend"
+
+organisation:
+  uri: "https://www.epfl.ch"
+  name: École polytechnique fédérale de Lausanne (EPFL)
+
+intendedAudience:
+  scope:
+    - education
+    - research
+
+description:
+  en:
+    shortDescription: >-
+      Core service of the EPFL Graph Platform that ingests academic data and
+      builds the knowledge graph behind GraphSearch and GraphChat.
+    longDescription: >-
+      **Graph Registry** is the first layer of the
+      [EPFL Graph Platform](https://github.com/epflgraph/graphplatform). It
+      ingests data about academic entities (courses, lectures, exercises,
+      publications and other resources) in JSON format through an ETL
+      pipeline, and turns it into a **knowledge graph** that feeds the
+      GraphSearch and GraphChat applications.
+
+
+      Data can be added through direct JSON file imports or through a REST
+      API. The knowledge graph construction steps are run from a command
+      line interface. The Registry relies on Graph AI for semantic analysis
+      and concept detection, and can optionally use a large language model
+      to further enrich raw data.
+
+
+      It can be deployed with Docker or installed as a Python package.
+    documentation: "https://epflgraph.github.io/graphregistry/"
+    features:
+      - Import of academic data from JSON files or through a REST API
+      - ETL pipeline that cleans, links and stores entities in a relational database
+      - Knowledge graph construction linking entities to ontology concepts
+      - Indexing of the knowledge graph for search and recommendation
+      - Separate development and production data environments
+      - Optional enrichment of raw data with a large language model
+      - Command line interface for running and monitoring each step
+      - Docker image for simple deployment
+
+legal:
+  license: Apache-2.0
+  mainCopyrightOwner: EPFL
+
+maintenance:
+  type: internal
+  contacts:
+    # TODO: main maintainer (GitHub: fpereira-epfl)
+    - name: Francisco Pinto
+      email: francisco.pinto@epfl.ch
+      affiliation: EPFL Center for Digital Education (CEDE)
+
+localisation:
+  localisationReady: false
+  availableLanguages:
+    - en
+
+dependsOn:
+  open:
+    - name: MySQL or MariaDB
+    - name: Elasticsearch or OpenSearch
+    - name: Graph AI
+    - name: vLLM serving open-weight models
+      optional: true
