@@ -3,6 +3,7 @@ publiccodeYmlVersion: "0"
 name: Graph Registry
 applicationSuite: EPFL Graph Platform
 url: "https://github.com/epflgraph/graphregistry"
+landingURL: "https://epflgraph.github.io/graphregistry/"
 softwareVersion: "0.2.0"
 releaseDate: "2026-09-10"
 logo: assets/icon-a0a7c0c9.png
@@ -55,6 +56,7 @@ description:
 
       It can be deployed with Docker or installed as a Python package.
     documentation: "https://epflgraph.github.io/graphregistry/"
+    apiDocumentation: "https://epflgraph.github.io/graphregistry/api/"
     features:
       - Import of academic data from JSON files or through a REST API
       - ETL pipeline that cleans, links and stores entities in a relational database
@@ -72,7 +74,6 @@ legal:
 maintenance:
   type: internal
   contacts:
-    # TODO: main maintainer (GitHub: fpereira-epfl)
     - name: Francisco Pinto
       email: francisco.pinto@epfl.ch
       affiliation: EPFL Center for Digital Education (CEDE)
