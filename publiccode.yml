@@ -6,7 +6,7 @@ url: "https://github.com/epflgraph/graphregistry"
 landingURL: "https://epflgraph.github.io/graphregistry/"
 softwareVersion: "0.2.0"
 releaseDate: "2026-09-10"
-logo: assets/icon-a0a7c0c9.png
+logo: assets/logo_v1_vector.svg
 
 platforms:
   - web
