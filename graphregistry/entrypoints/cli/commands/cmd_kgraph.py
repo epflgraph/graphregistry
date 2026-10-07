@@ -94,6 +94,22 @@ def cmd_kgraph_prune(
         actions       = ("commit",),
     )
 
+# Public Method: Test for output data integrity based on different heuristics
+@app.command(name="integrity")
+def cmd_kgraph_integrity(
+    ctx: typer.Context,
+    env: Annotated[str, EnvOption()] = DEFAULT_ENV,
+    verbose: Annotated[bool, VerboseOption()] = False,
+) -> None:
+    """Test for output data integrity."""
+    del env  # Registry uses the configured environment internally.
+    cli_ctx: CLIContext = ctx.obj
+    # integrity_repo = build_index_integrity_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+    # integrity_repo.delete_loose_ends(
+    #     refresh_graph = True,
+    #     actions       = ("commit",),
+    # )
+
 # Public Method: Generate graph index for ElasticSearch.
 @app.command(name="index")
 def cmd_kgraph_index(

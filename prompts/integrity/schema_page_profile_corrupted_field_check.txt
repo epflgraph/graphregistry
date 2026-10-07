@@ -1,0 +1,17 @@
+For the following list of objects of type "[[object_type]]", check if their text fields have been correctly generated or corrected by AI, and the resulting text is sound and uncorrupted. If anything looks off, please flag the respective object ids for which it's the case.
+
+The list is formated as follows (header + rows):
+
+object id; comma-separated list of fields
+id value; comma-separated list of text content for each field
+id value; comma-separated list of text content for each field
+(...)
+
+The comma-separated list of fields can include any of the following:
+name/title, short/medium/long description(s), translated description(s), URL
+
+Return the following format:
+
+id value; comma-separated list of affected fields; reason for flagging
+id value; comma-separated list of affected fields; reason for flagging
+(...)
