@@ -7,7 +7,7 @@ IMAGE="epflgraph/graphregistry"
 BUILDER="multiarch"
 # 0 = fully clean build (passes --no-cache, so even the local BuildKit cache is ignored)
 # 1 = use registry-based aggressive caching (--cache-from / --cache-to)
-AGRESSIVE_CACHING=0
+AGRESSIVE_CACHING=1
 
 # Get the version from pyproject.toml
 VERSION=$(
