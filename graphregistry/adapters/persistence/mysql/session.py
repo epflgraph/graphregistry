@@ -12,9 +12,11 @@ from sqlalchemy.exc import DataError, IntegrityError, OperationalError, SQLAlche
 from graphdb.models.sqlquery import print_sql
 from graphregistry.domain.exceptions import (
     ConnectionExhaustedError,
+    DeadlockError,
     DuplicateKeyError,
     LockWaitTimeoutError,
     PersistenceError,
+    RecordChangedError,
 )
 
 # Import type-only GraphDB reference to avoid a runtime dependency.
@@ -42,6 +44,18 @@ def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
     if dbapi_code == 1205:
         return LockWaitTimeoutError(
             "Lock wait timeout exceeded.",
+            dbapi_code = dbapi_code,
+            dbapi_msg  = dbapi_msg,
+        )
+    if dbapi_code == 1213:
+        return DeadlockError(
+            "Deadlock detected; the transaction was rolled back and may be retried.",
+            dbapi_code = dbapi_code,
+            dbapi_msg  = dbapi_msg,
+        )
+    if dbapi_code == 1020:
+        return RecordChangedError(
+            "Record changed since last read; the transaction may be retried.",
             dbapi_code = dbapi_code,
             dbapi_msg  = dbapi_msg,
         )

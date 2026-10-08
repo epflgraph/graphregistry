@@ -5,9 +5,11 @@ import pytest
 from fastapi.testclient import TestClient
 from graphregistry.domain.exceptions import (
     ConnectionExhaustedError,
+    DeadlockError,
     DuplicateKeyError,
     LockWaitTimeoutError,
     PersistenceError,
+    RecordChangedError,
 )
 from graphregistry.entrypoints.api.main import create_app
 from graphregistry.entrypoints.api.router import get_node_ops
@@ -71,6 +73,23 @@ def test_connection_exhausted_returns_503(api_client) -> None:
 # Public Method: test lock wait timeout returns 503
 def test_lock_wait_timeout_returns_503(api_client) -> None:
     client = api_client(LockWaitTimeoutError("lock wait timeout"))
+    response = client.post("/api/nodes/save_many", json={"node_list": []})
+    assert response.status_code == 503
+    assert response.headers.get("retry-after") is not None
+
+# Test: Deadlock is surfaced as 503 with a Retry-After header.
+# Public Method: test deadlock returns 503
+def test_deadlock_returns_503(api_client) -> None:
+    client = api_client(DeadlockError("deadlock found"))
+    response = client.post("/api/nodes/save_many", json={"node_list": []})
+    assert response.status_code == 503
+    assert response.headers.get("retry-after") is not None
+    assert "contended" in response.json()["detail"].lower()
+
+# Test: Record-changed is surfaced as 503 with a Retry-After header.
+# Public Method: test record changed returns 503
+def test_record_changed_returns_503(api_client) -> None:
+    client = api_client(RecordChangedError("record has changed since last read"))
     response = client.post("/api/nodes/save_many", json={"node_list": []})
     assert response.status_code == 503
     assert response.headers.get("retry-after") is not None
