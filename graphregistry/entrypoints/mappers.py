@@ -97,6 +97,9 @@ class SpecMapper:
             # Input format: String
             if isinstance(node_spec.title, str):
                 node.title = node_spec.title
+                # A plain-string title is treated as the English title by default, so also
+                # populate the page profile name with it (persisted as name_en_value).
+                node.page_profile.name.set(language='en', value=node_spec.title)
 
             # Input format: List of multilingual texts
             elif isinstance(node_spec.title, list):
@@ -114,6 +117,10 @@ class SpecMapper:
             # Input format: String
             if isinstance(node_spec.description, str):
                 node.text_source, node.raw_text = "user input", node_spec.description
+                # A plain-string description is treated as the English long description by
+                # default, so also populate the page profile long description with it
+                # (persisted as description_long_en_value).
+                node.page_profile.description.long.set(language='en', value=node_spec.description)
 
             # Input format: List of multilingual texts (assumed to be long descriptions, since no length info provided)
             elif isinstance(node_spec.description, list):
