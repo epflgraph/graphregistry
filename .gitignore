@@ -295,7 +295,6 @@ resources
 resources/certificates/*.crt
 resources/credentials/*
 restart.sh
-run.sh
 sample_course_test.sh
 sample_set_graph_ontology.sql
 scripts/init/sample_sets/*.json
@@ -322,3 +321,5 @@ notes.txt
 /tests/end2end_tests/data/
 
 
+ocr_dump.txt
+out_tmp.txt

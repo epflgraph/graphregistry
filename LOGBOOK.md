@@ -66,3 +66,20 @@
 - concepts should be soft deletec when respective nodes are deleted by API call
 - what's `patch_max_rows` for?
 - modify `graphregistry airflow reset --doc_type` to `doc_types` (comma separated list)
+
+### October
+- Investigate this match (Siné), probably related to non-binary encoding of text in MySQL tables:
+    ```
+    keyframe_id='0_wgckkpnk-0001',
+    refined_concepts=LectureKeyframeConceptList(
+        ai_extracted_keywords=['Trigonometric substitution', 'Integration by substitution', 'Pythagorean trigonometric identity', 'Sine', 'Cosine', 'Derivative'],
+        ontology_strict_list=ScoredConceptList(
+            item_list=[
+                ScoredConcept(concept=Concept(id='375033', name='Trigonometric substitution'), score=1.0),
+                ScoredConcept(concept=Concept(id='193748', name='Integration by substitution'), score=1.0),
+                ScoredConcept(concept=Concept(id='1050741', name='Pythagorean trigonometric identity'), score=1.0),
+                ScoredConcept(concept=Concept(id='3550215', name='Siné'), score=1.0),
+                ScoredConcept(concept=Concept(id='7921', name='Derivative'), score=1.0)
+            ]
+        ),
+        ```

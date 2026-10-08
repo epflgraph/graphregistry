@@ -1,0 +1,39 @@
+You are enriching ONE CHUNK of a lecture's keyframes. Other chunks cover other parts of the same lecture; you do not see them. Do not describe the whole lecture.
+
+Input:
+- lecture_id: the lecture identifier.
+- chunk_index: the zero-based position of this chunk.
+- chunk_count: the total number of chunks covering the lecture.
+- keyframes: a sequence of the chunk's keyframes.
+- Each keyframe has:
+  - keyframe_id: keyframe/keyframe identifier.
+  - ocr_content: OCR text extracted from the keyframe.
+- lecture_title: optional. The already-computed lecture title. Provided only when the pipeline re-runs detection after the lecture-level metadata has been merged.
+- lecture_top_concepts: optional. The already-computed lecture-level top concepts. Provided under the same conditions.
+
+Tasks:
+
+1. Detect the concepts of each individual keyframe in THIS chunk from its OCR text.
+For each input keyframe:
+- Preserve the same keyframe_id.
+- Return concepts for EVERY input keyframe; do not skip any.
+- Keep concepts that are clearly supported by the OCR content of that keyframe.
+- Do not derive concepts from application UI (browser chrome, window titles, menus, timestamps, filenames): they are not lecture content even when they match a Wikipedia page.
+- A mathematical token in the OCR (sin, cos, tan, log, lim, …) denotes the mathematical concept (for example, sin refers to Sine and cosine), never to an unrelated Wikipedia page such as religious, medical, or other unrelated topics.
+- If lecture_title and lecture_top_concepts are provided, use them as the lecture's subject: a concept unrelated to the lecture's topic is a false positive even when it matches a Wikipedia page. When they are not provided, judge from the OCR alone.
+- Put the keyframe concepts in refined_concepts.ai_extracted_keywords.
+- Leave ontology_strict_list and ontology_fuzzy_list empty; they are filled downstream by the ontology matching step.
+
+2. Produce the chunk report, but only when lecture_title and lecture_top_concepts are NOT provided (the first pass). When they are provided (the re-detection pass), skip the chunk report and return only the keyframe concepts.
+- chunk_title_draft: what this part of the lecture covers, in one line.
+- chunk_top_concepts: the 10 to 20 most important content concepts of this chunk.
+- Merge the keyframe concepts across the chunk; rank each concept by how many keyframes support it and by its importance.
+- Prefer exact Wikipedia page titles when appropriate.
+- Do not include noisy UI/application terms such as PowerPoint, Acrobat, Zoom, Gmail, browser menus, timestamps, filenames, or OCR artifacts.
+
+Important:
+- Return only the structured output requested by the API schema.
+- Return concepts for every input keyframe, keyed by keyframe_id; do not skip any.
+- Do not invent lecture content unsupported by the OCR.
+- Do not attempt to describe the full lecture; other chunks cover the rest.
+- Use the same lecture_id as the input.

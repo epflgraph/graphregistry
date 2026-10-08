@@ -751,14 +751,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         assert node.concepts                 is not None, f"Node with key {node_key} should have concepts but it was None"
 
         # Convert concepts list into scored concepts object
-        result.top_concepts.post_validated_list
+        result.top_concepts.ontology_strict_list
 
         # Assign enhanced fields from enrichment result to the Node object
         node.page_profile.name.en               = result.title              or node.page_profile.name.en
         node.page_profile.description.long.en   = result.long_description   or node.page_profile.description.long.en
         node.page_profile.description.medium.en = result.medium_description or node.page_profile.description.medium.en
         node.page_profile.description.short.en  = result.short_description  or node.page_profile.description.short.en
-        node.concepts.ai_validated              = result.top_concepts.post_validated_list or node.concepts.ai_validated
+        node.concepts.ai_validated              = result.top_concepts.ontology_strict_list or node.concepts.ai_validated
 
         # Save enriched node object
         self.node_repo.save(node=node, actions=actions)
@@ -787,7 +787,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             assert slide_node is not None, f"Node with key {slide_node_key} should exist but was not found"
 
             # Assign enhanced concepts from enrichment result to the slide Node object
-            slide_node.concepts.ai_validated = keyframe.refined_concepts.post_validated_list or slide_node.concepts.ai_validated
+            slide_node.concepts.ai_validated = keyframe.refined_concepts.ontology_strict_list or slide_node.concepts.ai_validated
 
             # Save enriched slide node object
             self.node_repo.save(node=slide_node, actions=actions)

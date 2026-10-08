@@ -192,6 +192,7 @@ def build_lecture_operations(
     include_video_gateway     : bool = True,
     include_concept_gateway   : bool = True,
     include_enrichment_gateway: bool = True,
+    lecture_enrichment_gateway: GenAILectureEnrichmentGateway | None = None,
 ) -> LectureOperations:
 #---------------------------------------------------------------------------------------#
     """Build lecture operations wired to the MySQL repository and AI gateways."""
@@ -209,10 +210,12 @@ def build_lecture_operations(
         node_repo       = node_repo,
     )
 
-    # Instantiate the requested AI gateways, using None for disabled features.
+    # Instantiate the requested AI gateways, using None for disabled features;
+    # a pre-built enrichment gateway wins over the include flag.
     video_processing_gateway   = GraphAIVideoGateway()     if include_video_gateway     else None
     concept_detection_gateway  = GraphAIConceptDetectionGateway() if include_concept_gateway   else None
-    lecture_enrichment_gateway = GenAILectureEnrichmentGateway()  if include_enrichment_gateway else None
+    if lecture_enrichment_gateway is None:
+        lecture_enrichment_gateway = GenAILectureEnrichmentGateway()  if include_enrichment_gateway else None
 
     # Assemble the lecture operations with all selected gateways.
     return LectureOperations(
