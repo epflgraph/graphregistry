@@ -1,11 +1,13 @@
 # graphregistry/tests/integration_tests/test_changetracking_parity.py
-"""Read-only parity tests: legacy FieldsChanged/ScoresExpired vs
-MySQLChangeTrackingRepository against a live database.
+"""Read-only integration tests: MySQLChangeTrackingRepository against a live
+database.
 
-The tests pick a few tracking rows dynamically, read them through the legacy
-orchestrator and through the typed repository, and compare the mapped values.
-Skips automatically when the database is not reachable or the tables are
-empty. No writes are issued.
+The tests pick a few tracking rows dynamically, read them through the typed
+repository, and compare the mapped values. The retired legacy orchestrator
+oracles are preserved inline as direct SQL reads reproducing the legacy
+FieldsChanged.get and ScoresExpired.get selects verbatim. Skips
+automatically when the database is not reachable or the tables are empty.
+No writes are issued.
 
 Run with:  pytest tests/integration_tests/test_changetracking_parity.py -v
 """
@@ -40,16 +42,6 @@ def db():
 def repo(db) -> MySQLChangeTrackingRepository:
     resolver = DefaultSchemaResolver(engine_name=ENGINE_NAME, glbcfg=GlobalConfig())
     return MySQLChangeTrackingRepository(db=db, schema_resolver=resolver, global_config=GlobalConfig())
-
-# Public Function: Load the legacy orchestrator as the comparison oracle.
-@pytest.fixture(scope="module")
-def legacy():
-    try:
-        from graphregistry.application.core.cor_registry import GraphRegistry
-    except Exception as exc:  # pragma: no cover - depends on the environment
-        pytest.skip(f"Legacy cor_registry could not be imported: {exc}")
-        return
-    return GraphRegistry().orchestrator
 
 # Public Function: Sample a few node keys from the live FieldsChanged table.
 @pytest.fixture(scope="module")
@@ -119,7 +111,8 @@ def test_get_node_record_maps_live_rows(repo, db, node_keys) -> None:
         assert record.deleted == bool(row[8])
 
 # Public Function: Verify edge record reads match the legacy FieldsChanged get.
-def test_get_edge_record_matches_legacy(repo, legacy, edge_keys) -> None:
+def test_get_edge_record_matches_legacy(repo, db, edge_keys) -> None:
+    _, schema_name = DefaultSchemaResolver(engine_name=ENGINE_NAME, glbcfg=GlobalConfig()).for_airflow()
     for key in edge_keys:
 
         # Read the record first: the legacy get requires a has_expired or
@@ -128,11 +121,20 @@ def test_get_edge_record_matches_legacy(repo, legacy, edge_keys) -> None:
         record = repo.get_edge_record(key=key)
         has_expired_filter = bool(record.state.has_expired) if record is not None else False
 
-        # The legacy get accepts edge keys only as 4-tuples without context;
-        # the context is matched on the returned rows instead.
-        legacy_rows = legacy.fieldschanged.get(
-            (key.from_object_type, key.from_object_id, key.to_object_type, key.to_object_id),
-            has_expired=has_expired_filter,
+        # The legacy oracle reproduces the retired FieldsChanged.get verbatim:
+        # it selects the legacy column order and accepts edge keys as 4-tuples
+        # without context; the context is matched on the returned rows instead.
+        legacy_rows = db.execute_query(
+            engine_name = ENGINE_NAME,
+            query       = (
+                f"SELECT from_object_type, from_object_id, to_object_type, to_object_id, context, "
+                f"checksum_current, checksum_previous, has_changed, last_date_cached, has_expired, to_process "
+                f"FROM {schema_name}.Operations_N_Object_N_Object_T_FieldsChanged "
+                f"WHERE from_object_type = '{key.from_object_type}' AND from_object_id = '{key.from_object_id}' "
+                f"AND to_object_type = '{key.to_object_type}' AND to_object_id = '{key.to_object_id}' "
+                f"AND has_expired = {has_expired_filter}"
+            ),
+            query_id    = 'changetracking-parity-edge-legacy',
         )
         matching = [row for row in (legacy_rows or []) if row[4] == key.context]
         if record is None:
@@ -149,9 +151,22 @@ def test_get_edge_record_matches_legacy(repo, legacy, edge_keys) -> None:
         assert record.state.to_process == bool(row[10])
 
 # Public Function: Verify score-expiry reads match the legacy ScoresExpired get.
-def test_get_score_expiry_record_matches_legacy(repo, legacy, node_keys) -> None:
+def test_get_score_expiry_record_matches_legacy(repo, db, node_keys) -> None:
+    _, schema_name = DefaultSchemaResolver(engine_name=ENGINE_NAME, glbcfg=GlobalConfig()).for_airflow()
     for key in node_keys:
-        legacy_rows = legacy.scoresexpired.get((key.object_type, key.object_id), has_expired=False)
+
+        # The legacy oracle reproduces the retired ScoresExpired.get verbatim:
+        # same select order, filtered on the object key and has_expired=False.
+        legacy_rows = db.execute_query(
+            engine_name = ENGINE_NAME,
+            query       = (
+                f"SELECT object_type, object_id, last_date_cached, has_expired, to_process "
+                f"FROM {schema_name}.Operations_N_Object_T_ScoresExpired "
+                f"WHERE object_type = '{key.object_type}' AND object_id = '{key.object_id}' "
+                f"AND has_expired = False"
+            ),
+            query_id    = 'changetracking-parity-scoreexpiry-legacy',
+        )
         record = repo.get_score_expiry_record(key=key)
         if not legacy_rows:
             assert record is None

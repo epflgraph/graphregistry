@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 import typer
-from graphregistry.application.core.cor_registry import ELASTICSEARCH_DATA_EXPORT_PATH
 from graphregistry.domain.models.pipeline.mdl_scores import ScoreConsolidationParams
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
 from graphregistry.entrypoints.cli.context import CLIContext
@@ -141,7 +140,9 @@ def cmd_kgraph_index(
             replace_existing = replace_existing,
             force_replace    = force_replace,
         )
-    export_repo.generate_index_folder(
+    # The adapter returns the folder it generated, resolving the export path
+    # against the repository root the same way the retired legacy constant did.
+    input_folder = export_repo.generate_index_folder(
         index_date       = index_date,
         ignore_warnings  = ignore_warnings,
         replace_existing = replace_existing,
@@ -149,7 +150,6 @@ def cmd_kgraph_index(
     )
 
     # Import the generated index folder into ElasticSearch.
-    input_folder = f"{ELASTICSEARCH_DATA_EXPORT_PATH}/{index_date}/es_fullindex_{index_date}"
     cli_ctx.es.import_index_from_folder(
         engine_name      = env,
         input_folder     = input_folder,

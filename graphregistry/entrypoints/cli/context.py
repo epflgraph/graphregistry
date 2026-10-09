@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from graphdb.core.config import GraphDBConfig
     from graphdb.core.graphdb import GraphDB
     from graphregistry.adapters.clients.elasticsearch import GraphES
-    from graphregistry.application.core.cor_registry import GraphRegistry
 
 #==================#
 # Class Definition #
@@ -18,7 +17,7 @@ class CLIContext:
     """Shared context for CLI commands.
 
     GraphDB and Elasticsearch are initialized lazily so commands that do not
-    need them start quickly. The registry and AI client are also lazy.
+    need them start quickly. The AI client is also lazy.
     """
 
     #----------------------------------------------------------------#
@@ -49,14 +48,6 @@ class CLIContext:
 
         # Construct and cache the Elasticsearch client.
         return GraphES()
-
-    # Public Method: Build the registry application instance lazily.
-    @cached_property
-    def registry(self) -> "GraphRegistry":
-        from graphregistry.application.core.cor_registry import GraphRegistry
-
-        # Construct and cache the registry orchestrator/cache manager.
-        return GraphRegistry()
 
     # Public Method: Build the GraphAI client module lazily.
     @cached_property

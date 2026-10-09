@@ -1,11 +1,12 @@
 # graphregistry/tests/integration_tests/test_scoresmatrix_parity.py
-"""Read-only parity tests: legacy scores matrix helpers vs
-MySQLScoresMatrixRepository against a live database.
+"""Read-only integration tests: MySQLScoresMatrixRepository against a live
+database.
 
-The table naming is compared against the legacy
-get_scores_matrix_table_name function over every configured family, and the
-calculation and consolidation are exercised in eval mode only, which issues
-reads but no writes. Skips automatically when the database is not reachable.
+The table naming is compared against an inline oracle reproducing the
+retired get_scores_matrix_table_name function over every configured family,
+and the calculation and consolidation are exercised in eval mode only, which
+issues reads but no writes. Skips automatically when the database is not
+reachable.
 
 Run with:  pytest tests/integration_tests/test_scoresmatrix_parity.py -v
 """
@@ -46,15 +47,37 @@ def repo(db) -> MySQLScoresMatrixRepository:
         scores_config   = ScoresConfig(),
     )
 
-# Public Function: Import the legacy table naming function as the oracle.
+# Public Function: Reproduce the retired legacy scores-matrix table naming.
+# The legacy module-level get_scores_matrix_table_name() is preserved verbatim
+# as the naming contract the adapter must reproduce, including its implicit
+# None for ontology tuples with an invalid kind and its ValueError otherwise.
+def legacy_scores_matrix_table_name(from_object_type: str, to_object_type: str, gbc_or_as: str) -> str | None:
+    ontology_types = ('Category', 'Concept', 'Curated area')
+
+    # Ontology related tuples.
+    if from_object_type in ontology_types or to_object_type in ontology_types:
+        if gbc_or_as.upper() == 'GBC':
+            return "Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_GBC"
+        elif gbc_or_as.upper() == 'AS':
+            return "Edges_N_Object_N_Object_T_ScoresMatrix_Ontology_AS"
+
+    # Non-ontology related tuples.
+    else:
+        sorted_tuple = tuple(sorted([from_object_type, to_object_type]))
+        scored_map = ScoresConfig().settings['scored_edge_tuple_to_class_mapping']
+        if sorted_tuple in scored_map and gbc_or_as.upper() in ('GBC', 'AS'):
+            research_or_education = scored_map[sorted_tuple]
+            if research_or_education not in ['education', 'research', 'ontology']:
+                return None
+            return f"Edges_N_Object_N_Object_T_ScoresMatrix_{research_or_education.title()}_{gbc_or_as.upper()}"
+        else:
+            raise ValueError(f"Invalid input: ({from_object_type}, {to_object_type}, {gbc_or_as}). No corresponding scores matrix table found.")
+    return None
+
+# Public Function: Provide the legacy naming oracle to the tests.
 @pytest.fixture(scope="module")
 def legacy_table_name():
-    try:
-        from graphregistry.application.core.cor_registry import get_scores_matrix_table_name
-    except Exception as exc:  # pragma: no cover - depends on the environment
-        pytest.skip(f"Legacy cor_registry could not be imported: {exc}")
-        return
-    return get_scores_matrix_table_name
+    return legacy_scores_matrix_table_name
 
 #================================================================#
 # Function Group: Parity tests                                   #

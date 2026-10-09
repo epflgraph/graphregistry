@@ -323,3 +323,5 @@ notes.txt
 
 ocr_dump.txt
 out_tmp.txt
+scripts/check_ping_model.sh
+scripts/watch_inference_requests.sh

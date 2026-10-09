@@ -1,10 +1,10 @@
 # graphregistry/tests/integration_tests/test_typeflags_parity.py
-"""Read-only parity test: legacy TypeFlags vs MySQLTypeFlagsRepository.
+"""Read-only parity test: MySQLTypeFlagsRepository vs the legacy contract.
 
 Runs against the live database configured by config/environment and compares
-the legacy GraphRegistry.Orchestration.TypeFlags.get_config_json() output with
-the typed repository's load().to_json(). Skips automatically when the
-database is not reachable.
+the typed repository's load().to_json() with an inline oracle reproducing the
+retired GraphRegistry.Orchestration.TypeFlags.get_config_json() queries
+verbatim. Skips automatically when the database is not reachable.
 
 Deliberately read-only: save and reset mutate the real airflow tables, so
 write parity is verified by the unit tests and manual review instead.
@@ -42,15 +42,31 @@ def repo(db) -> MySQLTypeFlagsRepository:
     resolver = DefaultSchemaResolver(engine_name=ENGINE_NAME, glbcfg=GlobalConfig())
     return MySQLTypeFlagsRepository(db=db, schema_resolver=resolver)
 
-# Public Function: Load the legacy typeflags configuration as the oracle.
+# Public Function: Reproduce the retired legacy get_config_json oracle.
+# The legacy GraphRegistry.Orchestration.TypeFlags.get_config_json() read the
+# live typeflags tables with the two queries below; they are preserved here
+# verbatim as the contract the typed repository must reproduce.
 @pytest.fixture(scope="module")
-def legacy_json():
-    try:
-        from graphregistry.application.core.cor_registry import GraphRegistry
-    except Exception as exc:  # pragma: no cover - depends on the environment
-        pytest.skip(f"Legacy cor_registry could not be imported: {exc}")
-        return
-    return GraphRegistry().orchestrator.typeflags.get_config_json()
+def legacy_json(db) -> dict:
+    _, schema_name = DefaultSchemaResolver(engine_name=ENGINE_NAME, glbcfg=GlobalConfig()).for_airflow()
+    sql_nodes = f"""
+         SELECT t1.object_type, t1.to_process AS process_fields, t2.to_process AS process_scores
+           FROM {schema_name}.Operations_N_Object_T_TypeFlags t1
+     INNER JOIN {schema_name}.Operations_N_Object_T_TypeFlags t2
+          USING (object_type)
+          WHERE t1.flag_type = 'fields'
+            AND t2.flag_type = 'scores'
+            AND (t1.to_process = 1 OR t2.to_process = 1)
+    """
+    sql_edges = f"""
+        SELECT DISTINCT    LEAST(from_object_type, to_object_type) AS from_object_type,
+                        GREATEST(from_object_type, to_object_type) AS to_object_type
+                   FROM {schema_name}.Operations_N_Object_N_Object_T_TypeFlags
+                  WHERE to_process = 1
+    """
+    nodes = [[row[0], row[1] > 0.5, row[2] > 0.5] for row in db.execute_query(engine_name=ENGINE_NAME, query=sql_nodes, query_id='4bcoW1KT')]
+    edges = [[row[0], row[1], True] for row in db.execute_query(engine_name=ENGINE_NAME, query=sql_edges, query_id='9K34TTeQ')]
+    return {'nodes': nodes, 'edges': edges}
 
 #================================================================#
 # Function Group: Parity tests                                   #
