@@ -18,11 +18,12 @@ LEFT JOIN graph_lectures.Data_N_Object_T_PageProfile p
       AND c.to_object_id = '[[course_id]]';
 """
 
-# SQL template for inserting calculated field into cache table
+# SQL template for inserting calculated fields into cache table
+# (batch insert: [[values]] expands to one value tuple per lecture)
 sql_template_2 = """
 REPLACE INTO graph_cache.Data_N_Object_N_Object_T_CalculatedFields
              (from_object_type, from_object_id, to_object_type, to_object_id, context, field_language, field_name, field_value, to_process, deleted)
-      VALUES ('Course', [[course_id]], 'Lecture', [[lecture_id]], 'part of', 'n/a', 'sort_number_global', [[global_index]], 1, 0);
+     VALUES [[values]];
 """
 
 # Fetch list of course ids
@@ -34,13 +35,13 @@ LEFT JOIN graph_lectures.Data_N_Object_T_PageProfile p
     WHERE (c.from_object_type, c.to_object_type, c.context) = ('Lecture', 'Course', 'part of')
       AND c.field_name = 'sort_number_per_academic_year'
 """
-list_of_course_ids = [o[0] for o in db.execute_query(engine_name='coresrv', query=sql_list_of_course_ids)]
+list_of_course_ids = sorted([o[0] for o in db.execute_query(engine_name='coresrv', query=sql_list_of_course_ids)])
 
 # Loop over all course ids
-for course_id in ['PHYS-101(a)', 'CS-290']:
+for course_id in list_of_course_ids: # ['PHYS-101(a)', 'CS-290']:
 
     # Print course ID being processed
-    print(f'Processing course {course_id}')
+    print(f'\n\nProcessing course {course_id} ...\n\n')
 
     # Replace placeholder in SQL template with actual course ID
     sql_query = sql_template_1.replace('[[course_id]]', course_id)
@@ -88,9 +89,10 @@ for course_id in ['PHYS-101(a)', 'CS-290']:
         for lecture_id, sort_number_per_academic_year, lecture_name in out
     ]
 
-    # Collect all order numbers used for each academic year
+    # Initialise the dictionary to store order numbers per academic year
     orders_per_year = {}
 
+    # Go through all lectures, collect order numbers per academic year
     for lecture_id, m, lecture_name in rows:
         for year, order in m:
             orders_per_year.setdefault(year, []).append(order)
@@ -180,7 +182,17 @@ for course_id in ['PHYS-101(a)', 'CS-290']:
         )
 
     # Print final lecture_id to global_index mapping
-    rich.print(lecture_id_to_global_index)
+    # rich.print(lecture_id_to_global_index)
 
-    # Replace placeholder in SQL template with actual course id, lecture id, and global index
-    sql_query = sql_template_2.replace('[[course_id]]', course_id).replace('[[lecture_id]]', rows...).replace('[[global_index]]', course_id)
+    # Build batch of value tuples for all lectures of the course
+    # (edge direction matches the source edge: Lecture 'part of' Course)
+    values = ',\n'.join(
+        f"('Lecture', '{lecture_id}', 'Course', '{course_id}', 'part of', 'n/a', 'sort_number_global', {global_index}, 1, 0)"
+        for lecture_id, global_index in lecture_id_to_global_index.items()
+    )
+
+    # Replace placeholder in SQL template with the batch of values
+    sql_query = sql_template_2.replace('[[values]]', values)
+
+    # Insert the batch of lecture-to-global_index mapping into the cache table
+    db.execute_query_in_shell(engine_name='coresrv', query=sql_query)
