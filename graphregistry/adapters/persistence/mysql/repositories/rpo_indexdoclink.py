@@ -278,14 +278,16 @@ class MySQLIndexDocLinkRepository(IndexDocLinkRepository):
                     """
 
         # Evaluation counts the flagged rows and the drifted ones across both
-        # field sources.
+        # field sources. The legacy joined two SUM aggregates with OR — a
+        # boolean that collapses n_patch to 0/1 and severely undercounts the
+        # patch set (legacy bug, documented deviation, 2026-10-12); the
+        # corrected expression sums the per-row disjunction.
         drift_b = " OR ".join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in obj_fields])
         drift_l = " OR ".join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in obj2obj_fields])
-        joiner = " OR " if has_obj2obj_fields else ""
+        n_patch_expr = f"COALESCE(SUM(({drift_b}) OR ({drift_l})), 0)" if has_obj2obj_fields else f"COALESCE(SUM({drift_b}), 0)"
         sql_query_eval = f"""
                     SELECT COUNT(*) AS n_total,
-                           COALESCE(SUM({drift_b}), 0){joiner if has_obj2obj_fields else ''}
-                        {"COALESCE(SUM(" if has_obj2obj_fields else ""}{drift_l if has_obj2obj_fields else ""}{"), 0)" if has_obj2obj_fields else ""}
+                           {n_patch_expr}
                            AS n_patch
                       FROM {buildup_link_table_path_obj} b
                 INNER JOIN {target_table_path} i
