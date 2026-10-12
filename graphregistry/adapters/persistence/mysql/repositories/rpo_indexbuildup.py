@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
 from graphdb.models.sqlquery import print_sql
-from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists
+from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists, print_eval_table
 from graphregistry.application.ports.repositories.prt_indexbuildup import IndexBuildupRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import IndexConfig
@@ -121,6 +121,11 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
                 print_sql(sql_query_eval, title='hpFZ8RAT')
             out = self.db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='hpFZ8RAT')
             stats.rows_flagged = sum(row[1] for row in out) if out else 0
+            print_eval_table(
+                rows    = [[row[0], int(row[1])] for row in out],
+                headers = ['doc_type', 'n_to_process'],
+                title   = f'\n🔍 Evaluation results for doc type: "{doc_type}"',
+            )
 
         # Commit by replacing the staging rows; the legacy docs build does
         # not create the target table when missing.
@@ -200,6 +205,11 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
             sql_query_eval = f"SELECT doc_type, link_type, COUNT(*) AS n_to_process FROM ({sql_query}) t GROUP BY doc_type, link_type"
             out = self.db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='6D05nXQL')
             stats.rows_flagged = sum(row[2] for row in out) if out else 0
+            print_eval_table(
+                rows    = [[row[0], row[1], int(row[2])] for row in out],
+                headers = ['doc_type', 'link_type', 'n_to_process'],
+                title   = f'\n🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"',
+            )
 
         # Commit by replacing the staging rows.
         if 'commit' in actions:

@@ -3,8 +3,11 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Annotated
 import typer
+from tabulate import tabulate
+from graphregistry.common.auxfcn import print_colour
 from graphregistry.domain.models.pipeline.mdl_policies import ExpirationPolicy
 from graphregistry.domain.models.pipeline.mdl_scores import ScoreConsolidationParams
+from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.entrypoints.cli.commands.cmd_data import _load_json_input
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
 from graphregistry.entrypoints.cli.context import CLIContext
@@ -38,6 +41,29 @@ def _parse_actions(actions: str) -> tuple[str, ...]:
     if invalid:
         raise typer.BadParameter(f"Invalid actions: {sorted(invalid)}. Valid: print, eval, commit.")
     return action_set
+
+# Internal Function: Render the propagation summary in the legacy tabulate
+# format: one row per target table with its would-be-flagged total, skipped
+# entirely when nothing was evaluated.
+def _print_propagation_summary(stats: list[PropagationStats]) -> None:
+    if not stats:
+        return
+
+    # Aggregate the per-query stats by target, summing the counts of the
+    # multiple directions/batches that share one table.
+    totals: dict[str, int] = {}
+    for stat in stats:
+        totals[stat.target] = totals.get(stat.target, 0) + stat.rows_flagged
+
+    print('')
+    print_colour("📊 PROPAGATION SUMMARY", colour='white', background='black', style='bold')
+    print(tabulate(
+        [[target, total] for target, total in totals.items()],
+        headers=['target', 'rows_flagged'],
+        tablefmt='fancy_grid',
+        showindex=False,
+    ))
+    print('')
 
 #================================================================#
 # Function Group: data-* commands                                #
@@ -311,12 +337,16 @@ def cmd_devtools_airflow_propagate(
         global_config = cli_ctx.global_config,
         index_config  = cli_ctx.index_config,
     )
-    cache_repo.propagate(
+    stats = cache_repo.propagate(
         scope          = scope,
         include_fields = include_fields,
         include_scores = include_scores,
         actions        = _parse_actions(actions),
     )
+
+    # Render the propagation summary so the eval counts name the tables they
+    # belong to; the repository previously returned them unrendered.
+    _print_propagation_summary(stats)
 
 #================================================================#
 # Function Group: cache-* commands                               #

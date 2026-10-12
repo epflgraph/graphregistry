@@ -13,8 +13,11 @@ output_folder = 'data/lecture_refinement_translations'
 # List pickle files in folder
 list_of_files = glob.glob(input_folder+'/*.pkl')
 
-# Define function for translating field
+
+
+# Define function for translating fields
 def _translate_field(input_str):
+    # Return translated multilingual text
     return gw.translate_multilingual(
         text = MultilingualText(item_map={"en": input_str}),
         source_language  = "en",
@@ -32,14 +35,19 @@ for k, in_file_path in enumerate(list_of_files):
 
     # Check if output file exsits. If so, do not re-process
     if os.path.exists(out_file_path):
+        # Print status message
         print(f"Skipping {out_file_path} (already exists)")
         continue
     else:
+        # Print status message
         print(f"Processing lecture {k}/{N_lectures} ...")
 
     # Get object from pickle
     with open(in_file_path, "rb") as f:
         enrich_result = pickle.load(f)
+
+    # Print enrich result
+    rich.print(enrich_result)
 
     # Initialise output structure
     out_struct = {
@@ -53,6 +61,8 @@ for k, in_file_path in enumerate(list_of_files):
     # Get lecture id
     out_struct['id'] = enrich_result.lecture_id
 
+
+
     # Get lecture details in English
     out_struct['title']['en'] = enrich_result.title
     out_struct['short_description' ]['en'] = enrich_result.short_description
@@ -64,6 +74,13 @@ for k, in_file_path in enumerate(list_of_files):
     short_description_translations  = _translate_field(out_struct['short_description' ]['en'])
     medium_description_translations = _translate_field(out_struct['medium_description']['en'])
     long_description_translations   = _translate_field(out_struct['long_description'  ]['en'])
+
+    # Print translations
+    rich.print(title_translations)
+    rich.print(short_description_translations)
+    rich.print(medium_description_translations)
+    rich.print(long_description_translations)
+
 
     # Assign translations to FR, DE, and IT
     for lang in ['fr', 'de', 'it']:

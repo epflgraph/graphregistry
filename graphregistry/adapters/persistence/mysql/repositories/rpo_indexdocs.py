@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
 from graphdb.models.sqlquery import print_sql
-from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists
+from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists, print_eval_table
 from graphregistry.application.ports.repositories.prt_indexdocs import IndexDocRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import IndexConfig
@@ -105,6 +105,12 @@ class MySQLIndexDocRepository(IndexDocRepository):
             out_2 = out_2 if type(out_2) is list else [[0, 0]]
             rows_to_process = (out_1[0][0] if out_1 else 0) + (out_2[0][0] if out_2 else 0)
             rows_to_patch = (out_1[0][1] if out_1 else 0) + (out_2[0][1] if out_2 else 0)
+        if 'eval' in actions and rows_to_process + rows_to_patch > 0:
+            print_eval_table(
+                rows    = [[int(rows_to_process), int(rows_to_patch)]],
+                headers = ['rows to process', 'rows to patch'],
+                title   = f'\n🔍 Evaluation results for {search_schema}.{target_table_name}:',
+            )
         if 'eval' in actions and rows_to_patch == 0 and 'print' in actions:
             sysmsg.warning(f"No rows to patch in table '{search_schema}.{target_table_name}'.")
 
@@ -216,6 +222,12 @@ class MySQLIndexDocRepository(IndexDocRepository):
             out_2 = out_2 if type(out_2) is list else [[0, 0]]
             rows_to_process = (out_1[0][0] if out_1 else 0) + (out_2[0][0] if out_2 else 0)
             rows_to_patch = (out_1[0][1] if out_1 else 0) + (out_2[0][1] if out_2 else 0)
+        if 'eval' in actions and rows_to_process + rows_to_patch > 0:
+            print_eval_table(
+                rows    = [[int(rows_to_process), int(rows_to_patch)]],
+                headers = ['rows to process', 'rows to patch'],
+                title   = f'\n🔍 Evaluation results for {es_cache_schema}.{target_table_name}:',
+            )
         if 'eval' in actions and rows_to_patch == 0 and 'print' in actions:
             sysmsg.warning(f"No rows to patch in table '{es_cache_schema}.{target_table_name}'.")
 

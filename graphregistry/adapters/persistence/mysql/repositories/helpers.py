@@ -8,8 +8,26 @@ relationship.
 from __future__ import annotations
 from typing import Any
 from loguru import logger as sysmsg
+from tabulate import tabulate
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
+from graphregistry.common.auxfcn import print_colour
 from graphregistry.common.dbstruct import GraphTable
+
+#================================================================#
+# Method Group: Presentation helpers                             #
+#================================================================#
+
+# Public Method: Render one evaluation table in the legacy print_dataframe
+# format: a blank line, a bold white title, and a fancy-grid tabulate table,
+# skipped entirely when there are no rows.
+def print_eval_table(rows: list[list], headers: list[str], title: str) -> None:
+    """Render one evaluation table in the legacy print_dataframe format."""
+    if not rows:
+        return
+    print('')
+    print_colour(title, colour='white', background='black', style='bold')
+    print(tabulate(rows, headers=headers, tablefmt='fancy_grid', showindex=False))
+    print('')
 
 #================================================================#
 # Method Group: SQL identifier helpers                           #
