@@ -164,6 +164,10 @@ def test_delete_loose_ends_pipeline_order(tmp_path) -> None:
     assert 'lccinv' in ids
     assert ids[-3:] == ['s5DfH2Lk', 's5DfH2Lk', 'dicidxcommit']
 
+    # Every shell write carries the session lock-wait timeouts, so a
+    # metadata or row lock held by another session fails fast.
+    assert db.write_calls[0]["query"].startswith("SET SESSION lock_wait_timeout")
+
     # The stats aggregate the counted rows across the steps.
     assert stats.rows_flagged == 4 + 2 + 3 + 3 + 1
 
@@ -193,3 +197,41 @@ def test_delete_loose_ends_reuses_cached_graph(tmp_path) -> None:
     repo.delete_loose_ends(refresh_graph=False, actions=('commit',))
     assert 'ndmap' not in [call["query_id"] for call in db.read_calls]
     assert 'edtbl' not in [call["query_id"] for call in db.read_calls]
+
+# Public Function: Verify the profile temp table declares a primary key, so
+# the NOT EXISTS deletes run as indexed anti-joins instead of full scans.
+def test_clean_page_profile_temp_table_is_indexed(tmp_path) -> None:
+    repo, db = _make_repo(tmp_path)
+
+    # Run the pipeline in commit mode and inspect the temp table DDL.
+    repo.delete_loose_ends(refresh_graph=True, actions=('commit',))
+    vnsrctbl = next(call["query"] for call in db.write_calls if call["query_id"] == 'vnsrctbl')
+    assert "PRIMARY KEY (object_type, object_id)" in vnsrctbl
+
+# Public Function: Verify eval-only actions count flagged rows without
+# deleting anything or invalidating the graph caches, so the command can be
+# previewed safely. The --eval CLI flag maps to the ('print', 'eval') set.
+def test_delete_loose_ends_eval_does_not_delete(tmp_path) -> None:
+    for eval_actions in (('eval',), ('print', 'eval')):
+        repo, db = _make_repo(tmp_path)
+
+        # Run the pipeline in eval-only mode.
+        stats = repo.delete_loose_ends(refresh_graph=True, actions=eval_actions)
+
+        # No delete, truncate, or cache invalidation queries run, but the
+        # counts still aggregate across the steps.
+        ids = db.write_query_ids()
+        for write_id in ('rr99del', 'ppdlcommit', 'lccinv', 's5DfH2Lk', 'dicidxcommit'):
+            assert write_id not in ids
+        assert stats.rows_flagged == 4 + 2 + 3 + 3 + 1
+
+# Public Function: Verify the component SQL file is written to a
+# process-scoped path so concurrent runs never overwrite each other.
+def test_largest_component_sql_path_is_process_scoped(tmp_path) -> None:
+    repo, db = _make_repo(tmp_path)
+
+    # Run the pipeline in commit mode and inspect the written file path.
+    repo.delete_loose_ends(refresh_graph=True, actions=('commit',))
+    written_path = db.file_calls[0]["file_path"]
+    assert str(os.getpid()) in written_path
+    assert written_path != integrity_module.LARGEST_COMPONENT_SQL_PATH

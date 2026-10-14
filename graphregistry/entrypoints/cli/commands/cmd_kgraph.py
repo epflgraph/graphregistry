@@ -4,7 +4,7 @@ from datetime import date
 from typing import Annotated
 import typer
 from graphregistry.domain.models.pipeline.mdl_scores import ScoreConsolidationParams
-from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
+from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption, parse_actions
 from graphregistry.entrypoints.cli.context import CLIContext
 from graphregistry.entrypoints.cli.dependencies import (
     build_formula_repository,
@@ -83,14 +83,21 @@ def cmd_kgraph_prune(
     ctx: typer.Context,
     env: Annotated[str, EnvOption()] = DEFAULT_ENV,
     verbose: Annotated[bool, VerboseOption()] = False,
+    use_cache: Annotated[bool, typer.Option("--use-cache", help="Use the cached largest connected graph instead of recalculating.")] = False,
+    eval_mode: Annotated[bool, typer.Option("--eval", help="Preview mode: count deletions, no destructive writes. Overrides --actions.")] = False,
+    actions: Annotated[str, typer.Option("--actions", help="Comma-separated actions: print,eval,commit.")] = "commit",
 ) -> None:
     """Prune the knowledge graph."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
     integrity_repo = build_index_integrity_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+
+    # The --eval flag is a shorthand for a side-effect-free preview run; it
+    # overrides --actions so destructive modes always stay opt-in.
+    action_set = ("print", "eval") if eval_mode else parse_actions(actions)
     integrity_repo.delete_loose_ends(
-        refresh_graph = True,
-        actions       = ("commit",),
+        refresh_graph = not use_cache,
+        actions       = action_set,
     )
 
 # Public Method: Test for output data integrity based on different heuristics

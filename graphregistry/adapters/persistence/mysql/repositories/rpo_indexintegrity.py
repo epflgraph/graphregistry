@@ -22,8 +22,22 @@ if TYPE_CHECKING:
 PBWIDTH = 92
 SEM_ROW_RANK_THRESHOLD = 32
 
-# Pickle cache of the node mapping and edge list between runs, and the
-# temporary SQL file used to write the largest component in chunks.
+# Session lock-wait timeouts, in seconds, applied to every guarded write:
+# lock_wait_timeout covers metadata locks (DDL, TRUNCATE) and
+# innodb_lock_wait_timeout covers row locks, so a statement blocked by
+# another session fails fast with a timeout error instead of hanging forever.
+LOCK_WAIT_TIMEOUT = 120
+
+# The SET prefix issued with every guarded write and SQL file batch, so the
+# timeouts apply inside the same session that runs the statement.
+LOCK_GUARD_SQL = (
+    f"SET SESSION lock_wait_timeout = {LOCK_WAIT_TIMEOUT}, "
+    f"SESSION innodb_lock_wait_timeout = {LOCK_WAIT_TIMEOUT};"
+)
+
+# Pickle cache of the node mapping and edge list between runs, and the base
+# path of the temporary SQL file used to write the largest component in
+# chunks; the file itself is written to a process-scoped variant of the path.
 PICKLE_DIR = '/tmp/graphregistry_delete_loose_ends'
 LARGEST_COMPONENT_SQL_PATH = '/tmp/sql_query_upd_largest_component.sql'
 
@@ -53,6 +67,26 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
     def _sql_string(value) -> str:
         return str(value).replace("'", "''")
 
+    # Internal Method: Execute a write query with the session lock-wait
+    # timeouts applied, so a statement blocked by another session's metadata
+    # or row lock fails fast with a timeout error instead of hanging forever.
+    def _guarded_write(self, engine_name: str, query: str, query_id: str, verbose: bool = False) -> None:
+        self.db.execute_query_in_shell(
+            engine_name = engine_name,
+            query       = f"{LOCK_GUARD_SQL} {query}",
+            verbose     = verbose,
+            query_id    = query_id,
+        )
+
+    # Internal Method: Format the outcome of a counting step, distinguishing
+    # the would-be counts of a preview run from the committed deletions.
+    def _step_outcome(self, rows: int, actions: ActionSet) -> str:
+        if rows == 0:
+            return "no rows found"
+        if 'commit' not in actions:
+            return f"{rows:,} rows would be deleted (no deletions executed)"
+        return f"{rows:,} rows deleted"
+
     # Public Method: Prune the loose ends from the index tables.
     def delete_loose_ends(self, refresh_graph: bool = True, actions: ActionSet = ('commit',)) -> PropagationStats:
         engine_name, _airflow_schema = self.schema_resolver.for_airflow()
@@ -62,31 +96,50 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         cache_table_path = f"{cache_schema}.Operations_N_Object_T_LargestConnectedGraph"
         stats = PropagationStats(target="index_tables", rows_flagged=0)
 
-        # Step 0: remove the orphaned overflow rows from the semantic tables.
-        stats.rows_flagged += self._delete_overflow_sem_rows(engine_name, search_schema, actions)
+        # Announce the run configuration and the mode explicitly, so the
+        # destructive scope of the run is unambiguous from the first lines.
+        mode_line = (
+            "COMMIT — destructive writes (deletes, truncates) will be executed"
+            if 'commit' in actions
+            else "PREVIEW — no destructive writes will be executed; counts are would-be figures"
+        )
+        sysmsg.info(f"Pruning loose ends: engine={engine_name}, refresh_graph={refresh_graph}, actions={','.join(sorted(actions))}.")
+        sysmsg.info(f"Mode: {mode_line}.")
 
-        # Step 1: clean the deleted nodes from the page profile; the profile
+        # Step 1: remove the orphaned overflow rows from the semantic tables.
+        sysmsg.info("Step 1/5 (overflow ranks): scanning the semantic tables for orphaned overflow rows...")
+        overflow_rows = self._delete_overflow_sem_rows(engine_name, search_schema, actions)
+        stats.rows_flagged += overflow_rows
+        sysmsg.info(f"Step 1/5 (overflow ranks) done: {self._step_outcome(overflow_rows, actions)}.")
+
+        # Step 2: clean the deleted nodes from the page profile; the profile
         # seeds the graph analysis, so it must not contain deleted nodes.
+        sysmsg.info("Step 2/5 (page profile): checking the page profile against the valid-node source of truth...")
         page_profile_rows_deleted = self._clean_page_profile(engine_name, search_schema, actions)
         stats.rows_flagged += page_profile_rows_deleted
+        sysmsg.info(f"Step 2/5 (page profile) done: {self._step_outcome(page_profile_rows_deleted, actions)}.")
 
         # Only invalidate the graph caches when rows were actually deleted,
-        # so a no-op commit does not force a full rebuild.
-        if page_profile_rows_deleted > 0:
-            sysmsg.trace(f"Page profile modified ({page_profile_rows_deleted:,} rows); invalidating graph caches.")
+        # and only in commit mode, so a preview run stays side-effect-free.
+        if 'commit' in actions and page_profile_rows_deleted > 0:
             for pickle_path in self._pickle_paths():
                 if os.path.exists(pickle_path):
                     os.remove(pickle_path)
-            self.db.execute_query_in_shell(
+            self._guarded_write(
                 engine_name = engine_name,
                 query       = f"TRUNCATE TABLE {cache_table_path};",
-                verbose     = 'print' in actions,
                 query_id    = 'lccinv',
+                verbose     = 'print' in actions,
             )
+            sysmsg.info(f"Graph caches invalidated: pickle cache removed, {cache_table_path} truncated.")
+        elif page_profile_rows_deleted > 0:
+            sysmsg.info("Preview: the graph caches would be invalidated in a commit run (pickle cache + largest-component table).")
 
-        # Step 2: calculate the largest connected component over the index
+        # Step 3: calculate the largest connected component over the index
         # links, reusing the cached component when allowed.
+        sysmsg.info("Step 3/5 (largest component): ensuring the graph cache is up to date...")
         self._ensure_largest_component(engine_name, cache_schema, search_schema, cache_table_path, refresh_graph, actions)
+        sysmsg.info("Step 3/5 (largest component) done.")
 
         # Postcondition: the component must hold nodes whenever the graph
         # analysis had nodes to analyse. An empty component with a non-empty
@@ -115,19 +168,30 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         # Step 4: clean up the index tables of both schemas against the
         # largest component as the valid-node reference.
         for schema_name in (search_schema, es_cache_schema):
-            stats.rows_flagged += self._cleanup_schema_tables(engine_name, cache_schema, schema_name, actions)
+            sysmsg.info(f"Step 4/5 (schema cleanup): checking schema {schema_name} against the largest component...")
+            schema_rows = self._cleanup_schema_tables(engine_name, cache_schema, schema_name, actions)
+            stats.rows_flagged += schema_rows
+            sysmsg.info(f"Step 4/5 (schema cleanup) done for {schema_name}: {self._step_outcome(schema_rows, actions)}.")
 
         # Step 5: delete doc-link edges whose endpoints are missing from the
         # corresponding doc index tables.
         for schema_name in (search_schema, es_cache_schema):
-            stats.rows_flagged += self._delete_dangling_doclink_refs(engine_name, schema_name, actions)
+            sysmsg.info(f"Step 5/5 (doc links): checking doc-link references in schema {schema_name}...")
+            schema_rows = self._delete_dangling_doclink_refs(engine_name, schema_name, actions)
+            stats.rows_flagged += schema_rows
+            sysmsg.info(f"Step 5/5 (doc links) done for {schema_name}: {self._step_outcome(schema_rows, actions)}.")
 
-        # Final verification: report any remaining orphans.
+        # Final verification: report any remaining orphans, then summarize
+        # the run with the same mode-aware wording as the step outcomes.
         self._verify_integrity(engine_name, search_schema, es_cache_schema)
+        if 'commit' in actions:
+            sysmsg.info(f"Pruning complete: {stats.rows_flagged:,} rows deleted in total.")
+        else:
+            sysmsg.info(f"Pruning complete: {stats.rows_flagged:,} rows would be deleted in total (no deletions executed).")
         return stats
 
     #================================================================#
-    # Method Group: Step 0 - overflow ranks                          #
+    # Method Group: Step 1 - overflow ranks                          #
     #================================================================#
 
     # Internal Method: Remove the overflow and placeholder rank rows from
@@ -154,11 +218,11 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
                 rows_deleted += n_rows
                 if n_rows > 0 and 'commit' in actions:
                     sql_query_delete = f"DELETE FROM {search_schema}.{table_name} WHERE row_rank > {SEM_ROW_RANK_THRESHOLD} OR row_rank = 99"
-                    self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query_delete, verbose='print' in actions, query_id='rr99del')
+                    self._guarded_write(engine_name=engine_name, query=sql_query_delete, query_id='rr99del', verbose='print' in actions)
         return rows_deleted
 
     #================================================================#
-    # Method Group: Step 1 - page profile cleaning                   #
+    # Method Group: Step 2 - page profile cleaning                   #
     #================================================================#
 
     # Internal Method: Clean the deleted nodes from the page profile
@@ -166,13 +230,14 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
     def _clean_page_profile(self, engine_name: str, search_schema: str, actions: ActionSet) -> int:
         _, cache_schema = self.schema_resolver.for_graph_cache()
         valid_nodes_source_table = f"{cache_schema}._tmp_valid_nodes_source_of_truth"
-        self.db.execute_query_in_shell(
+        self._guarded_write(
             engine_name = engine_name,
             query       = f"""
                 DROP TABLE IF EXISTS {valid_nodes_source_table};
                 CREATE TABLE {valid_nodes_source_table} (
                     object_type VARCHAR(255) NOT NULL,
-                    object_id   VARCHAR(255) NOT NULL
+                    object_id   VARCHAR(255) NOT NULL,
+                    PRIMARY KEY (object_type, object_id)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 INSERT INTO {valid_nodes_source_table} (object_type, object_id)
                     SELECT object_type, object_id FROM {self.global_config.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
@@ -215,8 +280,8 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         out = self.db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='ppdleval', verbose='print' in actions)
         rows_to_delete = sum(row[1] for row in out) if out else 0
         if 'commit' in actions and rows_to_delete > 0:
-            self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='ppdlcommit', verbose='print' in actions)
-        self.db.execute_query_in_shell(
+            self._guarded_write(engine_name=engine_name, query=sql_query_commit, query_id='ppdlcommit', verbose='print' in actions)
+        self._guarded_write(
             engine_name = engine_name,
             query       = f"DROP TABLE IF EXISTS {valid_nodes_source_table};",
             verbose     = 'print' in actions,
@@ -225,7 +290,7 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         return rows_to_delete
 
     #================================================================#
-    # Method Group: Step 2 - largest connected component             #
+    # Method Group: Step 3 - largest connected component             #
     #================================================================#
 
     # Internal Method: Return the pickle cache paths of the node mapping
@@ -255,10 +320,18 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         except Exception:
             return False
 
+    # Internal Method: Return the process-scoped path of the temporary SQL
+    # file, unique to this run so concurrent executions never overwrite each
+    # other's batch.
+    @staticmethod
+    def _largest_component_sql_path() -> str:
+        root, ext = os.path.splitext(LARGEST_COMPONENT_SQL_PATH)
+        return f"{root}_{os.getpid()}{ext}"
+
     # Internal Method: Write the largest-component nodes to the cache table
     # in chunked inserts through a temporary SQL file.
     def _write_largest_component(self, engine_name: str, cache_table_path: str, nodes: list[tuple[str, str]], chunk_size: int = 10000) -> None:
-        lines = [f"TRUNCATE TABLE {cache_table_path};"]
+        lines = [LOCK_GUARD_SQL, f"TRUNCATE TABLE {cache_table_path};"]
         for i in range(0, len(nodes), chunk_size):
             chunk = nodes[i:i + chunk_size]
             values = ", ".join(
@@ -266,19 +339,23 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
                 for object_type, object_id in chunk
             )
             lines.append(f"INSERT INTO {cache_table_path} (object_type, object_id) VALUES {values};")
-        with open(LARGEST_COMPONENT_SQL_PATH, 'w') as f:
+        sql_path = self._largest_component_sql_path()
+        with open(sql_path, 'w') as f:
             f.write("\n".join(lines))
-        self.db.execute_query_from_file(engine_name=engine_name, file_path=LARGEST_COMPONENT_SQL_PATH, verbose=self.verbose)
+        self.db.execute_query_from_file(engine_name=engine_name, file_path=sql_path, verbose=self.verbose)
 
     # Internal Method: Ensure the largest connected component is available
     # in the cache table, computing it with union-find when the cache is
     # missing, empty, or invalidated.
     def _ensure_largest_component(self, engine_name: str, cache_schema: str, search_schema: str, cache_table_path: str, refresh_graph: bool, actions: ActionSet) -> None:
         if not refresh_graph and self._graph_cache_exists(engine_name, cache_schema, cache_table_path):
-            sysmsg.trace("SQL graph cache exists and is non-empty; using it.")
+            sysmsg.info(f"Using the cached largest connected component from {cache_table_path} (no writes).")
             return
-        if refresh_graph:
-            sysmsg.trace("refresh_graph is True; rebuilding SQL graph cache.")
+
+        # Announce the rebuild reason and its write scope explicitly, so the
+        # long computation is attributable and the cache-only write is clear.
+        rebuild_reason = "refresh_graph is True" if refresh_graph else "the graph cache is missing or empty"
+        sysmsg.info(f"Recomputing the largest connected component: {rebuild_reason}; this writes only the cache table, data tables are untouched.")
 
         # Load or rebuild the node mapping and edge list from the pickle
         # caches of the temporary directory.
@@ -334,7 +411,7 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
         # graph to analyse, so the component stays empty (E2E finding,
         # fresh-schema run with nothing flagged upstream).
         if not node_uid_to_row_id:
-            sysmsg.warning("Page profile is empty; skipping largest-component computation.")
+            sysmsg.warning("Page profile is empty; skipping the largest-component computation (the cache table stays empty).")
             return
 
         # Union-Find on the edge list: path halving and union by rank.
@@ -384,6 +461,7 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
             if find(node_id) == largest_root
         ]
         self._write_largest_component(engine_name, cache_table_path, largest_component_nodes)
+        sysmsg.info(f"Wrote {len(largest_component_nodes):,} largest-component nodes to {cache_table_path}.")
 
     #================================================================#
     # Method Group: Step 4 - index table cleanup                     #
@@ -516,7 +594,7 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
             table_rows_to_delete = sum(row[-1] for row in out) if out else 0
             schema_rows_to_delete += table_rows_to_delete
             if 'commit' in actions and table_rows_to_delete > 0:
-                self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
+                self._guarded_write(engine_name=engine_name, query=sql_query_commit, query_id='s5DfH2Lk', verbose='print' in actions)
         return schema_rows_to_delete
 
     #================================================================#
@@ -571,7 +649,7 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
             n_rows = out[0][0] if out else 0
             schema_rows_to_delete += n_rows
             if 'commit' in actions and n_rows > 0:
-                self.db.execute_query_in_shell(engine_name=engine_name, query=sql_query_commit, query_id='dicidxcommit', verbose='print' in actions)
+                self._guarded_write(engine_name=engine_name, query=sql_query_commit, query_id='dicidxcommit', verbose='print' in actions)
         return schema_rows_to_delete
 
     #================================================================#
