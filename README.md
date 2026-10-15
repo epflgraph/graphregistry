@@ -1,12 +1,12 @@
 <img src="assets/icon-a0a7c0c9.png" alt="Project logo" height="64">
 
-[![License](https://img.shields.io/github/license/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
-[![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver)](https://github.com/epflgraph/graphregistry/releases/latest)
-[![Docker Image](https://img.shields.io/docker/v/epflgraph/graphregistry?sort=semver)](https://hub.docker.com/r/epflgraph/graphregistry)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
-[![docs](https://github.com/epflgraph/graphregistry/actions/workflows/docs.yml/badge.svg)](https://github.com/epflgraph/graphregistry/actions/workflows/docs.yml)
+[![License](https://img.shields.io/github/license/epflgraph/graphregistry?sort=semver&logo=apache&color=00A2FF&logoColor=white&label=license)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
+[![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver&logo=git&color=00A2FF&logoColor=white&label=release)](https://github.com/epflgraph/graphregistry/releases/latest)
+[![Docker Image](https://img.shields.io/docker/v/epflgraph/graphregistry?sort=semver&logo=docker&color=00A2FF&logoColor=white&label=docker)](https://hub.docker.com/r/epflgraph/graphregistry)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&color=00A2FF&logoColor=white)](https://github.com/epflgraph/graphregistry/blob/master/pyproject.toml)
+[![docs](https://img.shields.io/github/actions/workflow/status/epflgraph/graphregistry/docs.yml?label=docs&logo=gitbook&color=00A2FF&logoColor=white)](https://github.com/epflgraph/graphregistry/actions/workflows/docs.yml)
+[![Contributors](https://img.shields.io/github/contributors/epflgraph/graphregistry?sort=semver&logo=githubsponsors&color=00A2FF&logoColor=white&label=contributors)](https://github.com/epflgraph/graphregistry/graphs/contributors)
 [![GitHub Stars](https://img.shields.io/github/stars/epflgraph/graphregistry?style=social)](https://github.com/epflgraph/graphregistry/stargazers)
-[![Contributors](https://img.shields.io/github/contributors/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/graphs/contributors)
 
 🏠 [Project Home](https://github.com/epflgraph/graphproject) > Registry
 
