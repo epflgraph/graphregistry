@@ -2,12 +2,11 @@
 
 [![License](https://img.shields.io/github/license/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
 [![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver)](https://github.com/epflgraph/graphregistry/releases/latest)
+[![Docker Image](https://img.shields.io/docker/v/epflgraph/graphregistry?sort=semver)](https://hub.docker.com/r/epflgraph/graphregistry)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
+[![docs](https://github.com/epflgraph/graphregistry/actions/workflows/docs.yml/badge.svg)](https://github.com/epflgraph/graphregistry/actions/workflows/docs.yml)
 [![GitHub Stars](https://img.shields.io/github/stars/epflgraph/graphregistry?style=social)](https://github.com/epflgraph/graphregistry/stargazers)
 [![Contributors](https://img.shields.io/github/contributors/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/graphs/contributors)
-[![Last Commit](https://img.shields.io/github/last-commit/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/commits/master)
-[![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
-[![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
-=
 
 🏠 [Project Home](https://github.com/epflgraph/graphproject) > Registry
 
@@ -171,11 +170,11 @@ curl -X GET http://127.0.0.1:9999/health 2>/dev/null | jq
 
 Configuration
 =============
-The Graph Registry application relies on seperate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
+The Graph Registry application relies on separate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
 
 The configuration files should be stored in a folder named `config`. Example templates are provided in the folder: 📂 [config_examples](config_examples)
 
-## Evironment setup
+## Environment setup
 
 ### Graph Registry
 
@@ -193,12 +192,6 @@ cli:
 
 # Registry database-related configurations
 database:
-
-    # Path to folders containing SQL files to be exported, imported, and executed
-    sql_paths:
-        formulas: "/path/to/database/formulas/"
-        exports:  "/path/to/data/exports/"
-        patches:  "/path/to/data/patches/"
 
     # Custom DB schema names on MySQL/MariaDB (for the CREATE DATABASE <schema_name>; command)
     schema_names:
@@ -222,7 +215,7 @@ database:
 
 ### MySQL/MariaDB
 
-The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_graphdb.yml](config_examples/environment/config_graphdb.example.yml). Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_graphdb.yml](config_examples/environment/config_graphdb.example.yml). You can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # MySQL client and dump binaries
@@ -269,7 +262,7 @@ default_env: coresrv_env
 
 ### ElasticSearch
 
-The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_graphes.yml](config_examples/environment/config_graphes.example.yml). Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_graphes.yml](config_examples/environment/config_graphes.example.yml). You can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # Default export path for index dumps
@@ -520,11 +513,11 @@ The Airflow mechanism allows you to:
 - (re)process only new objects, or otherwise objects for which the checksums have changed;
 - (re)process only objects that have expired (based on when they were last processed).
 
-The entire pipeline, from data ingestion to updating and patching the knowledge graph that serves Graph Search in production, is optimized such that only data points that are different (or focibly need to be re-computed) are actually affected.
+The entire pipeline, from data ingestion to updating and patching the knowledge graph that serves Graph Search in production, is optimized such that only data points that are different (or forcibly need to be re-computed) are actually affected.
 
 ## Sync new objects
 
-The first action into lauching a knowledge graph refresh cycle (other than inserting and deleting objects) is to sync the current objects in the data registry into airflow, so they start being tracked. You can do this with the command:
+The first action into launching a knowledge graph refresh cycle (other than inserting and deleting objects) is to sync the current objects in the data registry into airflow, so they start being tracked. You can do this with the command:
 
 ```shell
 graphregistry airflow sync
@@ -533,7 +526,7 @@ graphregistry airflow sync
 If you are just starting, you should also sync the ontology objects (concepts and category objects) so they are tracked like any other object:
 
 ```shell
-graphregistry airflow sync --include_ontology
+graphregistry airflow sync --include-ontology
 ```
 
 If this is not your first refresh cycle, and every time you begin a new one, it is advisable to start with a clean slate by resetting all cached states across the pipeline:
@@ -542,7 +535,7 @@ If this is not your first refresh cycle, and every time you begin a new one, it 
 graphregistry airflow reset
 ```
 
-You can later reset the cached states in a more targated manner using the following options:
+You can later reset the cached states in a more targeted manner using the following options:
 
 ```shell
 graphregistry airflow reset --options typeflags,airflow,traversals,cache
@@ -602,7 +595,7 @@ To determine if an object needs to be re-processed due to changes in its metadat
 graphregistry airflow update-checksums
 ```
 
-Note, however, that this operation, and the ones bellow, respect the active type flags. If you want to modify the affected types, be sure to set them in advace with `graphregistry airflow config`.
+Note, however, that this operation, and the ones bellow, respect the active type flags. If you want to modify the affected types, be sure to set them in advance with `graphregistry airflow config`.
 
 Another way you can decide whether or not to re-process objects is through expiration dates. If, for example, you consider that semantic connection scores between objects (semantic edges) should be re-calculated after 90 days, you can run:
 
@@ -633,7 +626,7 @@ Once the execution plan has been configured, the next stage is to calculate and 
 
 ## Formulas and scoring matrix
 
-The first functionality to master that will enable you to fully benefit from the Graph Registry capabilities is *formulas*. They are described in detail in the [documentation](https://epflgraph.github.io/graphregistry/). For now, it is enough to descriminate formulas into three types:
+The first functionality to master that will enable you to fully benefit from the Graph Registry capabilities is *formulas*. They are described in detail in the [documentation](https://epflgraph.github.io/graphregistry/). For now, it is enough to discriminate formulas into three types:
 
 - formulas related to object metadata fields;
 - formulas related to graph traversals;
@@ -648,7 +641,7 @@ Starting with the second, semantic scores are represented by weighted edges of t
 
 Once the link between objects and the concepts ontology has been calculated, the next step is calculate and update the global `Object-to-Object` scoring matrix.
 
-In can execute all these steps at once (including intermediate steps) as follows:
+You can execute all these steps at once (including intermediate steps) as follows:
 
 ```shell
 graphregistry kgraph compute
@@ -691,4 +684,4 @@ Finally, you can export the Graph Search database index for importing into Elast
 graphregistry kgraph index
 ```
 
-These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respecively.
+These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respectively.
