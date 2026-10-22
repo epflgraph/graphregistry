@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS Course__NLectures (
   n_lectures int(10) unsigned NOT NULL,
   to_process tinyint(4) DEFAULT 0,
   deleted tinyint(4) DEFAULT 0,
-  KEY course_id (course_id),
+  PRIMARY KEY (course_id),
   KEY to_process (to_process),
   KEY deleted (deleted)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
