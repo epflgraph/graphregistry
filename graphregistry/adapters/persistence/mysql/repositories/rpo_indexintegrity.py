@@ -227,6 +227,13 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
 
     # Internal Method: Clean the deleted nodes from the page profile
     # against a source-of-truth temp table of valid nodes.
+    #
+    # The union over the four node sources is a UNION (set semantics, not
+    # UNION ALL): the temp table carries a primary key on (object_type,
+    # object_id), so an id living in more than one source (e.g. a category
+    # also present as a registry node) must deduplicate rather than violate
+    # the key. The legacy implementation tolerated duplicates by carrying no
+    # key at all, which silently double-counted rows in the eval join.
     def _clean_page_profile(self, engine_name: str, search_schema: str, actions: ActionSet) -> int:
         _, cache_schema = self.schema_resolver.for_graph_cache()
         valid_nodes_source_table = f"{cache_schema}._tmp_valid_nodes_source_of_truth"
@@ -241,11 +248,11 @@ class MySQLIndexIntegrityRepository(IndexIntegrityRepository):
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
                 INSERT INTO {valid_nodes_source_table} (object_type, object_id)
                     SELECT object_type, object_id FROM {self.global_config.schema_registry}.Nodes_N_Object WHERE record_deleted = 0
-                    UNION ALL
+                    UNION
                     SELECT object_type, object_id FROM {self.global_config.schema_lectures}.Nodes_N_Object WHERE record_deleted = 0
-                    UNION ALL
+                    UNION
                     SELECT object_type, object_id FROM {self.global_config.schema_ontology}.Nodes_N_Category
-                    UNION ALL
+                    UNION
                     SELECT object_type, object_id FROM {self.global_config.schema_ontology}.Nodes_N_Concept;
             """,
             verbose     = 'print' in actions,

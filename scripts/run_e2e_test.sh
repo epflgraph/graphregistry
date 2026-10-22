@@ -14,6 +14,11 @@
 #
 # Compare-only mode (skip the pipeline and compare existing test_output/ to ground_truth/):
 #   ./scripts/run_e2e_test.sh --compare-only
+#
+# Twice mode (run the pipeline sequence twice back-to-back and compare pass 2's
+# exports to pass 1's — a re-run convergence check that does NOT compare against
+# ground truth; roughly doubles the runtime):
+#   ./scripts/run_e2e_test.sh --twice
 
 set -euo pipefail
 
@@ -35,20 +40,31 @@ export GRAPHREGISTRY_RUN_MANUAL_E2E=1
 
 cd "${REPO_ROOT}"
 
-# Parse optional --compare-only flag and forward the remaining args to pytest.
+# Parse optional --compare-only / --twice flags and forward the remaining args to pytest.
 COMPARE_ONLY=0
+TWICE=0
 PYTEST_ARGS=()
 for arg in "$@"; do
     if [[ "$arg" == "--compare-only" ]]; then
         COMPARE_ONLY=1
+    elif [[ "$arg" == "--twice" ]]; then
+        TWICE=1
     else
         PYTEST_ARGS+=("$arg")
     fi
 done
 
+if [[ "$COMPARE_ONLY" == "1" && "$TWICE" == "1" ]]; then
+    echo "❌ --compare-only and --twice are mutually exclusive." >&2
+    exit 2
+fi
+
 if [[ "$COMPARE_ONLY" == "1" ]]; then
     export GRAPHREGISTRY_E2E_COMPARE_ONLY=1
     echo "🔄 Mode: compare-only (skip pipeline, compare existing test_output/ to ground_truth/)"
+elif [[ "$TWICE" == "1" ]]; then
+    export GRAPHREGISTRY_E2E_TWICE=1
+    echo "🔁 Mode: twice (run the pipeline twice, compare pass 2 to pass 1; mutates _1_DEV_* schemas)"
 else
     echo "🚀 Mode: full pipeline (mutates _1_DEV_* schemas)"
 fi
