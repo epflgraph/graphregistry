@@ -6,12 +6,15 @@
 #      or update nginx.example.conf to use a different certificate source.
 #   3. Update the server_name in nginx.example.conf to match your domain.
 #   4. Point Promtail to your Loki endpoint in promtail.example.yaml.
+#
+# The image tag defaults to "latest". To deploy a different rolling tag
+# (e.g. "pre-release"), set GRAPHREGISTRY_TAG in your environment or an .env file.
 
 services:
 
   # Graph Registry application deployment
   graphregistry:
-    image: epflgraph/graphregistry:latest
+    image: epflgraph/graphregistry:${GRAPHREGISTRY_TAG:-latest}
     container_name: graphregistry-app
     restart: unless-stopped
     labels:

@@ -5,6 +5,8 @@ set -euo pipefail
 # Parameters
 IMAGE="epflgraph/graphregistry"
 BUILDER="multiarch"
+# Extra tag pushed alongside the version tag (defaults to "latest"; e.g. "pre-release")
+EXTRA_TAG="latest"
 # 0 = fully clean build (passes --no-cache, so even the local BuildKit cache is ignored)
 # 1 = use registry-based aggressive caching (--cache-from / --cache-to)
 AGRESSIVE_CACHING=0
@@ -43,7 +45,7 @@ fi
 echo
 echo "Building and pushing:"
 echo "  ${IMAGE}:${VERSION}"
-echo "  ${IMAGE}:latest"
+echo "  ${IMAGE}:${EXTRA_TAG}"
 echo
 
 # Define the cache image for aggressive caching
@@ -58,7 +60,7 @@ if [[ "$AGRESSIVE_CACHING" -eq 1 ]]; then
         --cache-from "type=registry,ref=${CACHE_IMAGE}" \
         --cache-to   "type=registry,ref=${CACHE_IMAGE},mode=max" \
         -t "${IMAGE}:${VERSION}" \
-        -t "${IMAGE}:latest" \
+        -t "${IMAGE}:${EXTRA_TAG}" \
         --push .
 # Else, do a clean build: ignore the local builder cache and the registry cache.
 else
@@ -68,7 +70,7 @@ else
         --platform linux/amd64,linux/arm64 \
         --no-cache \
         -t "${IMAGE}:${VERSION}" \
-        -t "${IMAGE}:latest" \
+        -t "${IMAGE}:${EXTRA_TAG}" \
         --push .
 fi
 
@@ -76,4 +78,4 @@ fi
 echo
 echo "✅ Successfully pushed:"
 echo "   ${IMAGE}:${VERSION}"
-echo "   ${IMAGE}:latest"
+echo "   ${IMAGE}:${EXTRA_TAG}"

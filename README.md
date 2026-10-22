@@ -50,7 +50,7 @@ Steps to deploy with Docker:
     ```yaml
     services:
         graphregistry:
-            image: epflgraph/graphregistry:latest
+            image: epflgraph/graphregistry:${GRAPHREGISTRY_TAG:-latest}
             container_name: graphregistry-app
             restart: unless-stopped
 
@@ -69,7 +69,7 @@ Steps to deploy with Docker:
                 - ./config:/app/config:ro
     ```
 
-    This is the minimal configuration that will deploy and launch the application. A more complete example with HTTPS termination and log shipping is available in:<br />
+    This is the minimal configuration that will deploy and launch the application. The image tag defaults to `latest`; set `GRAPHREGISTRY_TAG` (e.g. to `pre-release`) in your environment or an `.env` file to deploy a different rolling tag. A more complete example with HTTPS termination and log shipping is available in:<br />
     📂 [docker/deployment/docker-compose_https+monitor.yml](docker/deployment/docker-compose_https+monitor.yml)
 
 2. Deploy the Registry app and other optional services:
@@ -82,7 +82,7 @@ Steps to deploy with Docker:
 
     ```shell
     docker compose down graphregistry --remove-orphans
-    docker rmi epflgraph/graphregistry:latest 2>/dev/null || true
+    docker rmi "epflgraph/graphregistry:${GRAPHREGISTRY_TAG:-latest}" 2>/dev/null || true
     docker compose pull graphregistry
     docker compose up graphregistry -d --force-recreate
     ```
