@@ -29,8 +29,12 @@ ENGINE_NAME = "coresrv"
 @pytest.fixture(scope="module")
 def db():
     try:
-        from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
-        client = GraphDB()
+        from graphregistry.entrypoints.dependencies import build_db
+        client = build_db()
+
+        # Probe connectivity so an unreachable database skips the module
+        # instead of erroring inside the tests.
+        client.execute_query(engine_name=ENGINE_NAME, query="SELECT 1", query_id="integration-db-probe")
     except Exception as exc:  # pragma: no cover - depends on the environment
         pytest.skip(f"Database not reachable, skipping parity test: {exc}")
         return

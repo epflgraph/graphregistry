@@ -1,158 +1,47 @@
 {
-  "scored-edge-tuples": {
-    "education": [
-      [
-        "Course",
-        "Course"
-      ],
-      [
-        "Course",
-        "Exercise"
-      ],
-      [
-        "Course",
-        "Lecture"
-      ],
-      [
-        "Course",
-        "MOOC"
-      ],
-      [
-        "Course",
-        "Notebook"
-      ],
-      [
-        "Course",
-        "Widget"
-      ],
-      [
-        "Exercise",
-        "Exercise"
-      ],
-      [
-        "Exercise",
-        "Lecture"
-      ],
-      [
-        "Exercise",
-        "MOOC"
-      ],
-      [
-        "Exercise",
-        "Notebook"
-      ],
-      [
-        "Exercise",
-        "Widget"
-      ],
-      [
-        "Lecture",
-        "Lecture"
-      ],
-      [
-        "Lecture",
-        "MOOC"
-      ],
-      [
-        "Lecture",
-        "Widget"
-      ],
-      [
-        "MOOC",
-        "MOOC"
-      ],
-      [
-        "MOOC",
-        "Notebook"
-      ],
-      [
-        "MOOC",
-        "Widget"
-      ],
-      [
-        "Notebook",
-        "Notebook"
-      ],
-      [
-        "Notebook",
-        "Widget"
-      ],
-      [
-        "Widget",
-        "Widget"
-      ]
-    ],
-    "research": [
-      [
-        "Person",
-        "Person"
-      ],
-      [
-        "Person",
-        "Publication"
-      ],
-      [
-        "Person",
-        "Startup"
-      ],
-      [
-        "Person",
-        "Unit"
-      ],
-      [
-        "Publication",
-        "Publication"
-      ],
-      [
-        "Publication",
-        "Startup"
-      ],
-      [
-        "Publication",
-        "Unit"
-      ],
-      [
-        "Startup",
-        "Startup"
-      ],
-      [
-        "Startup",
-        "Unit"
-      ],
-      [
-        "Unit",
-        "Unit"
-      ]
+    "scored-edge-tuples" : {
+        "education" : [
+            ["Course"   , "Course"  ],
+            ["Course"   , "Exercise"],
+            ["Course"   , "Lecture" ],
+            ["Course"   , "MOOC"    ],
+            ["Course"   , "Notebook"],
+            ["Course"   , "Widget"  ],
+            ["Exercise" , "Exercise"],
+            ["Exercise" , "Lecture" ],
+            ["Exercise" , "MOOC"    ],
+            ["Exercise" , "Notebook"],
+            ["Exercise" , "Widget"  ],
+            ["Lecture"  , "Lecture" ],
+            ["Lecture"  , "MOOC"    ],
+            ["Lecture"  , "Widget"  ],
+            ["MOOC"     , "MOOC"    ],
+            ["MOOC"     , "Notebook"],
+            ["MOOC"     , "Widget"  ],
+            ["Notebook" , "Notebook"],
+            ["Notebook" , "Widget"  ],
+            ["Widget"   , "Widget"  ]
+        ],
+        "research" : [
+            ["Person"      , "Person"     ],
+            ["Person"      , "Publication"],
+            ["Person"      , "Startup"    ],
+            ["Person"      , "Unit"       ],
+            ["Publication" , "Publication"],
+            ["Publication" , "Startup"    ],
+            ["Publication" , "Unit"       ],
+            ["Startup"     , "Startup"    ],
+            ["Startup"     , "Unit"       ],
+            ["Unit"        , "Unit"       ]
+        ]
+    },
+    "mixed-scoring-tuples" : [
+        ["Category" , "Category" ],
+        ["Course"   , "Person"   ],
+        ["Exercise" , "Person"   ],
+        ["MOOC"     , "Person"   ],
+        ["Notebook" , "Person"   ],
+        ["Person"   , "Unit"     ],
+        ["Unit"     , "Unit"     ]
     ]
-  },
-  "mixed-scoring-tuples": [
-    [
-      "Category",
-      "Category"
-    ],
-    [
-      "Course",
-      "Person"
-    ],
-    [
-      "Exercise",
-      "Person"
-    ],
-    [
-      "MOOC",
-      "Person"
-    ],
-    [
-      "Notebook",
-      "Person"
-    ],
-    [
-      "Person",
-      "Unit"
-    ],
-    [
-      "Unit",
-      "Unit"
-    ]
-  ]
 }
