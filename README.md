@@ -207,6 +207,7 @@ database:
         graphsearch_prod:        graphsearch_prod
         graphsearch_prod_mirror: graphsearch_prod_mirror
         graphai_cache_api:       graphai_cache_api
+        genai:                   graph_genai
 
     # Execution mode [dev, prod]
     # In 'dev' mode, data is written to separate DB schemas with the prefix "_1_DEV_", to avoid data being written to production tables.
@@ -319,11 +320,13 @@ genai:
     llm_model: "moonshotai/Kimi-K2.7-Code"
 ```
 
+The LLM models available to the application (name, identifier and context size), as well as the default model, are catalogued in: 📂 [config_models.json](config_examples/application/config_models.example.json).
+
 ## Application setup
 
 ### Registry API
 
-The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config_examples/application/config_api.example.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config_examples/application/config_api.example.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in [Ingesting and managing data](#ingesting-and-managing-data)). The content resembles the following:
 
 ```json
 {
@@ -351,7 +354,7 @@ The configuration for the Graph Registry API is defined in: 📂 [config_api.jso
 
 ### Registry Airflow
 
-The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in [Setup the object and content types to process](#setup-the-object-and-content-types-to-process)). The content resembles the following:
 
 ```json
 {
@@ -378,7 +381,7 @@ The configuration for the Graph Registry airflow mechanism is defined in: 📂 [
 
 ### Semantic scoring
 
-The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_scores.json](config_examples/application/config_scores.example.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_scores.json](config_examples/application/config_scores.example.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in [Formulas and scoring matrix](#formulas-and-scoring-matrix)). The content resembles the following:
 
 ```json
 {
@@ -452,7 +455,11 @@ If you start from an empty environment, you can run the initialization command t
 graphregistry init
 ```
 
-This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database.
+This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database. If you are just experimenting, you can skip that requirement and bootstrap the environment with the provided sample data instead:
+
+```shell
+graphregistry init --import-ontology-sample --import-concepts-sample
+```
 
 ## Ingesting and managing data
 
@@ -676,6 +683,18 @@ Execute as follows:
 graphregistry kgraph prune
 ```
 
+You can preview what this cleanup would remove without executing any destructive write by running it in evaluation mode:
+
+```shell
+graphregistry kgraph prune --eval
+```
+
+A companion command, `graphregistry kgraph integrity`, runs read-only integrity heuristics over the index tables and reports any remaining orphans:
+
+```shell
+graphregistry kgraph integrity
+```
+
 ## Index documents on ElasticSearch
 
 Finally, you can export the Graph Search database index for importing into ElasticSearch, which serves the application's search bar as well as the chatbot functionality. This is done with the following command:
@@ -685,3 +704,31 @@ graphregistry kgraph index
 ```
 
 These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respectively.
+
+Testing
+=======
+The project ships with a unit test suite and a full end-to-end (e2e) pipeline test. Both live in the `tests/` folder and run against the project virtual environment (`.venv`).
+
+## Unit tests
+
+The unit tests do not require a database connection:
+
+```shell
+.venv/bin/python -m pytest tests/unit_tests
+```
+
+## End-to-end pipeline test
+
+The e2e test executes the full CLI pipeline against the `_1_DEV_*` database schemas (init, data ingestion, airflow, knowledge graph construction, patching, pruning and indexing), exports every resulting table and the ElasticSearch index, and compares the outputs against a ground-truth snapshot:
+
+```shell
+./scripts/run_e2e_test.sh
+```
+
+> [!CAUTION]
+> The e2e test mutates the `_1_DEV_*` schemas. Do not run it against a production-configured environment (the test guards against this, but do not rely on it).
+
+Two auxiliary modes are available:
+
+- `--compare-only`: skip the pipeline execution and re-compare the existing `tests/end2end_tests/data/test_output/` directory to `ground_truth/`. Useful when iterating on comparison tolerances or snapshots.
+- `--twice`: run the full pipeline sequence twice back-to-back and compare the second pass's outputs to the first pass's (instead of to `ground_truth/`). This verifies the pipeline's re-run convergence invariant — running again from the state a pass left behind must reproduce the same output — and roughly doubles the runtime.

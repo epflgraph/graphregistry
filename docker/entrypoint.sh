@@ -10,6 +10,7 @@ REQUIRED_FILES=(
   "/app/config/application/config_airflow.json"
   "/app/config/application/config_api.json"
   "/app/config/application/config_index.json"
+  "/app/config/application/config_models.json"
   "/app/config/application/config_scores.json"
   "/app/config/environment/config_genai.yml"
   "/app/config/environment/config_graphai.yml"

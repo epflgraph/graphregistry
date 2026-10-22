@@ -89,20 +89,22 @@
                 },
                 "Course" : {
                     "Lecture" : {
-                        "obj2obj" : ["sort_number_per_academic_year"],
-                        "order"   : [["is_restricted", "ASC"]]
+                        "obj2obj" : ["sort_number_per_academic_year", "sort_number_global"],
+                        "order"   : [["is_restricted", "ASC"], ["sort_number_global", "ASC"]]
                     },
                     "Person" : {
                         "obj2obj" : ["latest_teaching_assignment_year"],
                         "order"   : [["is_at_epfl", "DESC"], ["latest_teaching_assignment_year", "DESC"]]
-                    }
+                    },
+                    "Specialisation" : {},
+                    "StudyPlan" : {}
                 },
                 "Exercise" : {
                     "Person" : {}
                 },
                 "Lecture" : {
                     "Course" : {
-                        "obj2obj" : ["sort_number_per_academic_year"],
+                        "obj2obj" : ["sort_number_per_academic_year", "sort_number_global"],
                         "order"   : [["latest_academic_year", "DESC"]]
                     },
                     "MOOC" : {
@@ -137,6 +139,12 @@
                 },
                 "Publication" : {
                     "Person" : {}
+                },
+                "Specialisation" : {
+                    "Course" : {}
+                },
+                "StudyPlan" : {
+                    "Course" : {}
                 },
                 "Unit" : {
                     "Person" : {
@@ -211,6 +219,7 @@
         "quiz_type" : "char",
         "repository_id" : "char",
         "sequential_id" : "int",
+        "sort_number_global" : "int",
         "sort_number_per_academic_year" : "char",
         "sort_number_per_data_package_id" : "char",
         "srt_subtitles_en" : "longtext",

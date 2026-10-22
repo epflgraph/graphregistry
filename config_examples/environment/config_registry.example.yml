@@ -24,6 +24,7 @@ database:
     graphsearch_prod:        graphsearch_prod
     graphsearch_prod_mirror: graphsearch_prod_mirror
     graphai_cache_api:       graphai_cache_api
+    genai:                   graph_genai
 
   # Execution mode [dev, prod]
   # In 'dev' mode, data is written to separate tables with prefix "_1_DEV_"
