@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import TYPE_CHECKING, Any, Iterable
 from loguru import logger as sysmsg
 from tabulate import tabulate
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.application.ports.repositories.prt_changetracking import ChangeTrackingRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.auxfcn import print_colour
@@ -22,10 +22,10 @@ from graphregistry.domain.models.values.mdl_checksums import Checksum, ChecksumP
 from graphregistry.domain.models.values.mdl_typepairs import EdgeTypePair
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # Languages of the multilingual page-profile columns, in checksum order.
 _PAGE_PROFILE_LANGUAGES = ("en", "fr", "de", "it")
@@ -87,7 +87,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
 
     # Public Method: Initialize the repository with an injected database client,
     # schema resolver, and global configuration; no module-level connections.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, global_config: GlobalConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, global_config: GlobalConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.global_config = global_config
@@ -585,7 +585,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         sysmsg.trace("☑️ Done processing checksums for Object-to-Object.")
         sysmsg.success("🧩 ✅ Done updating object checksums.")
 
-    # Internal Method: Upsert one checksum query through the GraphDB
+    # Internal Method: Upsert one checksum query through the DatabaseClient
     # safe-insert helper, forwarding the action set for eval/print handling.
     def _upsert_checksums(self, engine_name: str, cache_schema: str, query: str, table_name: str,
                           key_column_names: list[str], upd_column_names: list[str], eval_column_names: list[str],
@@ -639,6 +639,7 @@ class MySQLChangeTrackingRepository(ChangeTrackingRepository):
         edge_condition = self._edge_fields_condition(scope)
         stats = []
 
+        # Reset the processing flags so the next scoring cycle recomputes them.
         sysmsg.trace("Set 'to_process' flags to 1.")
 
         # Derive has_changed by comparing current and previous checksums.

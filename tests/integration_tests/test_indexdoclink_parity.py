@@ -34,7 +34,7 @@ TABLE_PATTERN = re.compile(r'^Index_D_(\w+)_L_(\w+)_T_(SEM|ORG)$')
 @pytest.fixture(scope="module")
 def db():
     try:
-        from graphdb.core.graphdb import GraphDB
+        from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
         client = GraphDB()
     except Exception as exc:  # pragma: no cover - depends on the environment
         pytest.skip(f"Database not reachable, skipping parity test: {exc}")

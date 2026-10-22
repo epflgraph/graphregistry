@@ -6,8 +6,8 @@ from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 
 # Import heavy types only for type checking to keep runtime startup fast.
 if TYPE_CHECKING:
-    from graphdb.core.config import GraphDBConfig
-    from graphdb.core.graphdb import GraphDB
+    from graphdb.domain.models.mdl_config import GraphDBConfig
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.adapters.clients.elasticsearch import GraphES
 
 #==================#
@@ -33,12 +33,12 @@ class CLIContext:
         # GraphDB configuration used to build the database client lazily.
         self.db_config = self._load_db_config()
 
-    # Public Method: Build the GraphDB client lazily from the provided configuration.
+    # Public Method: Build the database client lazily from the provided configuration.
     @cached_property
-    def db(self) -> "GraphDB":
+    def db(self) -> "DatabaseClient":
         from graphregistry.entrypoints.dependencies import build_db
 
-        # Construct and cache the GraphDB client from the stored configuration.
+        # Construct and cache the database client from the stored configuration.
         return build_db(config=self.db_config)
 
     # Public Method: Build the Elasticsearch client lazily.
@@ -60,7 +60,7 @@ class CLIContext:
     # Internal Function: Load GraphDB configuration from the project config file.
     @staticmethod
     def _load_db_config() -> "GraphDBConfig":
-        from graphdb.core.config import GraphDBConfig
+        from graphdb.domain.models.mdl_config import GraphDBConfig
         from graphregistry.common.paths import CONFIG_DB_PATH
 
         # Load GraphDB config so the lazy DB client can be built on demand.

@@ -1,6 +1,7 @@
 # graphregistry/adapters/gateways/genai/gtw_lectureenrich.py
 """Concrete gateway that enriches lectures through chunked map/reduce LLM calls."""
 from __future__ import annotations
+import hashlib
 import json
 import math
 import re
@@ -8,8 +9,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from loguru import logger as sysmsg
 from openai import OpenAIError
+from pydantic import BaseModel, ValidationError
 from graphregistry.adapters.clients.rcp_models import send_llm_request
 from graphregistry.adapters.gateways.mappers.agm_lectureenrich import GenAILectureEnrichmentMapper
+from graphregistry.application.ports.repositories.prt_genai import GenAIRepository
+from graphregistry.common.config import GlobalConfig
+from graphregistry.domain.models.entities.mdl_genai import GenAICompletion, GenAIKeywords, GenAIRawContent
 from graphregistry.domain.models.tasks.mdl_lectureenrich import (
     LectureEnrichmentChunkResult,
     LectureEnrichmentResult,
@@ -55,6 +60,7 @@ class GenAILectureEnrichmentGateway:
         max_keyframes_per_chunk : int | None = None,
         max_concurrent_requests : int  = 4,
         llm_model               : str | None = None,
+        genai_repository        : GenAIRepository | None = None,
     ) -> None:
         self.map_prompt_path = map_prompt_path
         self.reduce_prompt_path = reduce_prompt_path
@@ -69,6 +75,14 @@ class GenAILectureEnrichmentGateway:
         )
         self.max_concurrent_requests = max_concurrent_requests
         self.llm_model = llm_model
+
+        # Optional genai repository: when wired, every LLM call is served from
+        # the completion cache when its input hash is present and stored back
+        # on a fresh call, so re-runs are cheap and fully traceable.
+        self.genai_repository = genai_repository
+
+        # Lazy-resolved serving model name for the completion cache records.
+        self._resolved_model: str | None = None
 
     # Public Method: Enrich one lecture through parallel chunk map calls and one reduce call.
     def enrich(
@@ -89,6 +103,22 @@ class GenAILectureEnrichmentGateway:
                 task.lecture_id,
             )
             return None
+
+        # Store the composed task as the raw genai input; best-effort so a
+        # failed write never blocks the enrichment itself.
+        if self.genai_repository is not None:
+            try:
+                self.genai_repository.save_raw_content(GenAIRawContent(
+                    object_type = 'Lecture',
+                    object_id   = task.lecture_id,
+                    raw_content = json.dumps(task.to_json(), ensure_ascii=False),
+                ))
+            except Exception as exc:
+                sysmsg.warning(
+                    "Failed to store the raw content for lecture_id={}: {}",
+                    task.lecture_id,
+                    exc,
+                )
 
         # Plan canonically ordered, token-budgeted chunks over the task keyframes.
         chunk_plans = self._plan_chunks(task, map_template)
@@ -171,43 +201,78 @@ class GenAILectureEnrichmentGateway:
             )
             return None
 
-        # Send the reduce request; any failure skips the lecture gracefully so
-        # batch processing stays alive.
-        try:
-            reduced = send_llm_request(
-                timeout            = self.timeout,
-                llm_model          = self.llm_model,
-                response_llm_model = LectureEnrichmentResult,
-                messages           = [
-                    {
-                        "role"    : "system",
-                        "content" : (
-                            "You produce structured lecture-enrichment metadata. "
-                            "Follow the provided response schema exactly. "
-                            "Return no prose outside the structured response."
-                        ),
-                    },
-                    {
-                        "role"    : "user",
-                        "content" : reduce_prompt,
-                    },
+        # Serve the reduce call from the completion cache when its input hash
+        # is present, so re-runs never pay the LLM cost twice.
+        cached = self._get_cached(
+            llm_prompt     = reduce_prompt,
+            response_model = LectureEnrichmentResult,
+            object_id      = task.lecture_id,
+            call_role      = 'reduce',
+            chunk_num      = None,
+        )
+        if cached is not None:
+            sysmsg.info(
+                "Reduce call for lecture_id={} served from the completion cache.",
+                task.lecture_id,
+            )
+            reduced = cached
+        else:
+            # Send the reduce request; any failure skips the lecture gracefully so
+            # batch processing stays alive.
+            try:
+                reduced = send_llm_request(
+                    timeout            = self.timeout,
+                    llm_model          = self.llm_model,
+                    response_llm_model = LectureEnrichmentResult,
+                    messages           = [
+                        {
+                            "role"    : "system",
+                            "content" : (
+                                "You produce structured lecture-enrichment metadata. "
+                                "Follow the provided response schema exactly. "
+                                "Return no prose outside the structured response."
+                            ),
+                        },
+                        {
+                            "role"    : "user",
+                            "content" : reduce_prompt,
+                        },
+                    ],
+                )
+            except ValueError as exc:
+                sysmsg.warning(
+                    "Skipping lecture enrichment for lecture_id={} due to invalid reduce response: {}",
+                    task.lecture_id,
+                    exc,
+                )
+                return None
+            except OpenAIError as exc:
+                # Keep batch processing alive when the reduce call fails.
+                sysmsg.warning(
+                    "Skipping lecture enrichment for lecture_id={} due to LLM API error: {}",
+                    task.lecture_id,
+                    exc,
+                )
+                return None
+
+            # Store the reduce completion and the lecture-level top keywords
+            # (raw LLM output); best-effort so enrichment keeps its result.
+            self._store_call(
+                llm_prompt       = reduce_prompt,
+                result           = reduced,
+                object_id        = task.lecture_id,
+                call_role        = 'reduce',
+                chunk_num        = None,
+                keywords_builder = lambda completion_hash: [
+                    GenAIKeywords(
+                        object_type     = 'Lecture',
+                        object_id       = task.lecture_id,
+                        completion_hash = completion_hash,
+                        coverage        = 'top',
+                        keywords_list   = reduced.top_concepts.ai_top_keywords,
+                    )
                 ],
             )
-        except ValueError as exc:
-            sysmsg.warning(
-                "Skipping lecture enrichment for lecture_id={} due to invalid reduce response: {}",
-                task.lecture_id,
-                exc,
-            )
-            return None
-        except OpenAIError as exc:
-            # Keep batch processing alive when the reduce call fails.
-            sysmsg.warning(
-                "Skipping lecture enrichment for lecture_id={} due to LLM API error: {}",
-                task.lecture_id,
-                exc,
-            )
-            return None
 
         # Clean the reduce response before assembling the final result.
         reduced = GenAILectureEnrichmentMapper.normalize(reduced)
@@ -234,6 +299,127 @@ class GenAILectureEnrichmentGateway:
         """
         byte_length = len(prompt.encode("utf-8"))
         return math.ceil(byte_length / max(self.token_estimate_ratio, 0.1))
+
+    # Internal Function: Resolve the serving model name recorded on completion cache rows.
+    def _model_used(self) -> str:
+        """Resolve the serving model name recorded on completion cache rows."""
+
+        # The explicit llm_model wins; otherwise fall back to the config default.
+        if self._resolved_model is None:
+            self._resolved_model = self.llm_model or GlobalConfig().llm_model
+        return self._resolved_model
+
+    # Internal Function: Compute the md5 hex digest used for input/completion hashes.
+    @staticmethod
+    def _input_hash(text: str) -> str:
+        """Compute the md5 hex digest used for input and completion hashes."""
+        return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+    # Internal Function: Look up a cached completion and parse it into the response model.
+    def _get_cached(
+        self,
+        llm_prompt    : str,
+        response_model: type[BaseModel],
+        object_id     : str,
+        call_role     : str,
+        chunk_num     : int | None,
+    ) -> BaseModel | None:
+        """Look up a cached completion and parse it into the response model.
+
+        Returns None when no repository is wired, on a lookup failure (which
+        degrades to a cache miss), or when the cached payload does not match
+        the expected response schema.
+        """
+
+        # No repository wired: the cache layer is inactive.
+        if self.genai_repository is None:
+            return None
+
+        # Look up the completion by its dedup key; a failed lookup degrades to
+        # a cache miss so enrichment never breaks on cache errors.
+        try:
+            cached = self.genai_repository.get_completion(
+                object_type = 'Lecture',
+                object_id   = object_id,
+                model_used  = self._model_used(),
+                input_hash  = self._input_hash(llm_prompt),
+            )
+        except Exception as exc:
+            sysmsg.warning(
+                "Completion cache lookup failed (call_role={}, chunk_num={}): {}",
+                call_role,
+                chunk_num,
+                exc,
+            )
+            return None
+
+        # No cached row: the call must be sent to the LLM.
+        if cached is None:
+            return None
+
+        # Parse the cached payload; a mismatching payload is ignored so the
+        # call is retried against the LLM instead of failing the lecture.
+        try:
+            return response_model.model_validate_json(cached.output_text)
+        except ValidationError as exc:
+            sysmsg.warning(
+                "Cached completion for lecture_id={} (call_role={}, chunk_num={}) did not match "
+                "{}; ignoring the cache: {}",
+                object_id,
+                call_role,
+                chunk_num,
+                response_model.__name__,
+                exc,
+            )
+            return None
+
+    # Internal Function: Store one LLM call and its derived keyword lists; best-effort.
+    def _store_call(
+        self,
+        llm_prompt      : str,
+        result          : BaseModel,
+        object_id       : str,
+        call_role       : str,
+        chunk_num       : int | None,
+        keywords_builder: Any,
+    ) -> None:
+        """Store one LLM call and its derived keyword lists in the genai repository.
+
+        keywords_builder is a callable taking the completion hash and returning
+        the keyword list records derived from this call. The store is
+        best-effort: a failed write must never invalidate an LLM result that
+        was already obtained, so failures are logged and swallowed.
+        """
+
+        # No repository wired: nothing to store.
+        if self.genai_repository is None:
+            return
+
+        # Store the completion row and the derived keyword lists.
+        try:
+            output_text = result.model_dump_json()
+            completion_hash = self._input_hash(output_text)
+            self.genai_repository.save_completion(GenAICompletion(
+                object_type = 'Lecture',
+                object_id   = object_id,
+                model_used  = self._model_used(),
+                call_role   = call_role,
+                chunk_num   = chunk_num,
+                input_hash  = self._input_hash(llm_prompt),
+                input_text  = llm_prompt,
+                output_text = output_text,
+            ))
+            keywords_rows = keywords_builder(completion_hash) if keywords_builder else []
+            if keywords_rows:
+                self.genai_repository.save_keywords(keywords_rows)
+        except Exception as exc:
+            sysmsg.warning(
+                "Failed to store the completion for lecture_id={} (call_role={}, chunk_num={}): {}",
+                object_id,
+                call_role,
+                chunk_num,
+                exc,
+            )
 
     # Internal Function: Canonical keyframe order: numeric id suffix ascending, id as tiebreaker.
     @staticmethod
@@ -329,6 +515,23 @@ class GenAILectureEnrichmentGateway:
             )
             return None
 
+        # Serve the map call from the completion cache when its input hash is
+        # present, so re-runs never pay the LLM cost twice.
+        cached = self._get_cached(
+            llm_prompt     = llm_prompt,
+            response_model = LectureEnrichmentChunkResult,
+            object_id      = task.lecture_id,
+            call_role      = 'map',
+            chunk_num      = chunk_index,
+        )
+        if cached is not None:
+            sysmsg.info(
+                "Chunk {} of lecture_id={} served from the completion cache.",
+                chunk_index,
+                task.lecture_id,
+            )
+            return cached
+
         # Send the structured map request for this chunk; a failure returns
         # None so the chunk degrades to empty refined lists during reassembly.
         try:
@@ -368,6 +571,26 @@ class GenAILectureEnrichmentGateway:
                 exc,
             )
             return None
+
+        # Store the map completion and the per-keyframe full keyword lists
+        # (raw LLM output); best-effort so enrichment keeps its result.
+        self._store_call(
+            llm_prompt       = llm_prompt,
+            result           = chunk_result,
+            object_id        = task.lecture_id,
+            call_role        = 'map',
+            chunk_num        = chunk_index,
+            keywords_builder = lambda completion_hash: [
+                GenAIKeywords(
+                    object_type     = 'Slide',
+                    object_id       = keyframe.keyframe_id,
+                    completion_hash = completion_hash,
+                    coverage        = 'full',
+                    keywords_list   = keyframe.refined_concepts.ai_extracted_keywords,
+                )
+                for keyframe in chunk_result.keyframes
+            ],
+        )
 
         # Surface what the model actually returned: a chunk result with fewer
         # keyframes than planned means the model skipped some, and reassembly

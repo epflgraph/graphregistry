@@ -6,12 +6,16 @@ by node, edge, and future repository adapters without forcing an inheritance
 relationship.
 """
 from __future__ import annotations
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from loguru import logger as sysmsg
 from tabulate import tabulate
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.common.auxfcn import print_colour
 from graphregistry.common.dbstruct import GraphTable
+
+# Import type-only DatabaseClient reference to avoid a runtime dependency.
+if TYPE_CHECKING:
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 #================================================================#
 # Method Group: Presentation helpers                             #
@@ -153,7 +157,7 @@ def soft_delete_by_key_tuples(session: MySQLSession, schema_name: str, table_nam
 # mirroring the legacy create_table_if_not_exists for the graphsearch,
 # graph_cache, and es_cache schemas. The es_cache unique-key migration of
 # the legacy helper is handled by the es_cache patch variants.
-def create_table_if_not_exists(db: Any, engine_name: str, schema_name: str, table_name: str) -> None:
+def create_table_if_not_exists(db: "DatabaseClient", engine_name: str, schema_name: str, table_name: str) -> None:
     """Check whether a table exists and create it if not."""
     if not db.database_exists(engine_name=engine_name, schema_name=schema_name):
         sysmsg.warning(f"Target database '{schema_name}' does not exist. Creating database ...")

@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists, print_eval_table
 from graphregistry.application.ports.repositories.prt_indexbuildup import IndexBuildupRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
@@ -10,10 +10,10 @@ from graphregistry.common.config import IndexConfig
 from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # Language suffixes appended to the field names of the raw field lists.
 _LANGUAGE_SUFFIXES = {'n/a': '', 'en': '_en', 'fr': '_fr'}
@@ -35,7 +35,7 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
 
     # Public Method: Initialize the repository with an injected database
     # client, schema resolver, and index configuration.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, index_config: IndexConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, index_config: IndexConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.index_config = index_config

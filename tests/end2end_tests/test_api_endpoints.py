@@ -18,8 +18,10 @@ from typing import Any
 import pytest
 import requests
 import uvicorn
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
+from graphdb.client import Environments
+from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
+from graphdb.domain.models.mdl_config import GraphDBConfig
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 from graphregistry.entrypoints.api.main import create_app
 from graphregistry.entrypoints.mappers import SpecMapper
@@ -65,7 +67,7 @@ def schema_name(test_config: tuple[Path, str]) -> str:
 @pytest.fixture(scope="module")
 def db() -> GraphDB:
     db_config = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
-    return GraphDB(config=db_config)
+    return MySQLDatabaseClient(Environments(config=db_config))
 
 
 def get_free_port() -> int:
@@ -75,7 +77,7 @@ def get_free_port() -> int:
 
 
 @contextmanager
-def api_base_url(config_path: Path, db: GraphDB) -> Iterator[str]:
+def api_base_url(config_path: Path, db: DatabaseClient) -> Iterator[str]:
     port = get_free_port()
 
     # The API app creates a fresh GlobalConfig inside create_app, so we must tell
@@ -159,7 +161,7 @@ def delete_nodes(base_url: str, node_list: list[dict[str, Any]]) -> None:
 
 
 @pytest.mark.e2e
-def test_api_data_insert_subgraph_e2e(db: GraphDB, test_config: tuple[Path, str]) -> None:
+def test_api_data_insert_subgraph_e2e(db: DatabaseClient, test_config: tuple[Path, str]) -> None:
     config_path, schema_name = test_config
     sample_subgraph = load_subgraph_fixture(SUBGRAPH_FIXTURE_PATH)
     key_subgraph = load_subgraph_fixture(SUBGRAPH_KEYS_FIXTURE_PATH)

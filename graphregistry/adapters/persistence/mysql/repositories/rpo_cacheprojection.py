@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import re
 from typing import TYPE_CHECKING, Iterable
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.application.ports.repositories.prt_cacheprojection import CacheProjectionRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import GlobalConfig, IndexConfig
@@ -13,10 +13,10 @@ from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.models.values.mdl_typepairs import EdgeTypePair
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 #==================#
 # Class Definition #
@@ -47,7 +47,7 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
 
     # Public Method: Initialize the repository with an injected database client,
     # schema resolver, and configurations; no module-level connections.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, global_config: GlobalConfig, index_config: IndexConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, global_config: GlobalConfig, index_config: IndexConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.global_config = global_config

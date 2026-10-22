@@ -17,7 +17,7 @@ from graphregistry.domain.exceptions import PersistenceError
 
 # Import type-only references to avoid runtime dependencies.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.adapters.persistence.mysql.repositories.resolvers import SchemaResolver
 
 #==================#
@@ -30,9 +30,9 @@ class MySQLUnitOfWork(UnitOfWork):
     same per-engine transaction.
     """
 
-    # Public Method: Initialize the unit of work with a GraphDB client and schema resolver.
-    def __init__(self, db: "GraphDB", schema_resolver: "SchemaResolver", verbose: bool = False) -> None:
-        # GraphDB client that owns the SQLAlchemy engine pool.
+    # Public Method: Initialize the unit of work with a database client and schema resolver.
+    def __init__(self, db: "DatabaseClient", schema_resolver: "SchemaResolver", verbose: bool = False) -> None:
+        # Database client that owns the per-environment SQLAlchemy engine pools.
         self.db = db
         # Schema resolver used to map object types to database engines and schemas.
         self.schema_resolver = schema_resolver

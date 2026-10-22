@@ -2,10 +2,14 @@
 from functools import lru_cache
 from pathlib import Path
 import json, re
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
+from graphdb.domain.models.mdl_config import GraphDBConfig
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.common.paths import DATABASE_SYSTEM_DATATYPES_PATH
+
+# Import type-only DatabaseClient reference to avoid a runtime dependency.
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # TODO: Check presence of column name "context" in all edge definitions
 # TODO: Some keys are not being created in elasticsearch cache schemas
@@ -119,12 +123,16 @@ with open(DATABASE_SYSTEM_DATATYPES_PATH, "r", encoding="utf-8") as f:
 #============================================#
 # Class definition: Graph Database Structure #
 #============================================#
+
+#==================#
+# Class Definition #
+#==================#
 class DynamicSQL:
 
-    # Method: Initialise a DynamicSQL instance bound to the given GraphDB client.
-    def __init__(self, db: "GraphDB") -> None:
+    # Method: Initialise a DynamicSQL instance bound to the given environment gateway.
+    def __init__(self, db: "DatabaseClient") -> None:
 
-        # Store the GraphDB client explicitly. Each caller owns its instance,
+        # Store the environment gateway explicitly. Each caller owns its instance,
         # which makes the class testable and avoids hidden global state.
         self.db = db
 
@@ -659,7 +667,7 @@ class DynamicSQL:
 class GraphTable():
 
     # Method: Initialise a GraphTable descriptor from doc/link metadata or an explicit table name.
-    def __init__(self, db: "GraphDB", doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
+    def __init__(self, db: "DatabaseClient", doc_type=None, link_type=None, link_subtype=None, index_group=None, schema_name=None, table_name=None):
 
         # Initialise input parameters
         self.doc_type     = doc_type
@@ -764,8 +772,9 @@ class GraphTable():
 #-------------------------------#
 if __name__ == "__main__":
 
-    # Initialise a local GraphDB client for this standalone script block.
-    db = GraphDB(config=GraphDBConfig.from_file(CONFIG_DB_PATH))
+    # Initialise the database client for this standalone script block.
+    from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
+    db = MySQLDatabaseClient(Environments(config=GraphDBConfig.from_file(CONFIG_DB_PATH)))
 
     # list_of_tables = db.get_tables_in_schema(engine_name='coresrv', schema_name='elasticsearch_cache')
     # for t in list_of_tables:

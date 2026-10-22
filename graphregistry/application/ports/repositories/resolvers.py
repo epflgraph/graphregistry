@@ -55,3 +55,7 @@ class SchemaResolver(Protocol):
     # Public Method: Resolve the engine and schema of the Elasticsearch cache.
     def for_es_cache(self) -> EngineSchema:
         ...
+
+    # Public Method: Resolve the engine and schema of the graph_genai outputs database.
+    def for_genai(self) -> EngineSchema:
+        ...

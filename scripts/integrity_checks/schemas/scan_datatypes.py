@@ -20,8 +20,8 @@ from collections import defaultdict
 from pathlib import Path
 import rich
 from rich.console import Console
-from graphdb.core.graphdb import GraphDB
-from graphdb.models.sqlquery import print_sql
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.common.dbstruct import sql_data_type_mapping
 
 # Console for colored verbose output.
@@ -306,8 +306,12 @@ def main():
         args.verbose = True
 
     # Prepare db for the following steps.
-    db = GraphDB()
-    engine_name = "coresrv"
+    from graphdb.client import Environments
+    from graphdb.domain.models.mdl_config import GraphDBConfig
+    from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
+    from graphregistry.common.paths import CONFIG_DB_PATH
+    db = MySQLDatabaseClient(Environments(GraphDBConfig.from_file(CONFIG_DB_PATH)))
+    engine_name = "coresrv_env"
 
     # Prepare control for the following steps.
     control = load_control()

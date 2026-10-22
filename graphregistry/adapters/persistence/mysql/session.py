@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 from sqlalchemy import text
 from sqlalchemy.exc import DataError, IntegrityError, OperationalError, SQLAlchemyError
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.domain.exceptions import (
     ConnectionExhaustedError,
     DeadlockError,
@@ -19,9 +19,9 @@ from graphregistry.domain.exceptions import (
     RecordChangedError,
 )
 
-# Import type-only GraphDB reference to avoid a runtime dependency.
+# Import type-only DatabaseClient reference to avoid a runtime dependency.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # Internal Function: Translate a SQLAlchemy error into a typed domain persistence error.
 def _map_sqlalchemy_error(exc: SQLAlchemyError) -> PersistenceError:
@@ -89,9 +89,9 @@ class MySQLSession:
     tuples. Higher-level mapping happens in repositories.
     """
 
-    # Public Method: Initialize the session with a GraphDB engine and verbosity flag.
-    def __init__(self, db: "GraphDB", engine_name: str, verbose: bool = False) -> None:
-        # GraphDB client that owns the SQLAlchemy engine pool.
+    # Public Method: Initialize the session with a database client and verbosity flag.
+    def __init__(self, db: "DatabaseClient", engine_name: str, verbose: bool = False) -> None:
+        # Database client that owns the per-environment SQLAlchemy engine pools.
         self.db = db
         # Name of the engine to use within the GraphDB client.
         self.engine_name = engine_name
@@ -105,7 +105,7 @@ class MySQLSession:
     # Public Method: Open a connection and start a transaction.
     def begin(self) -> MySQLSession:
         """Open a connection and start a transaction."""
-        engine = self.db.engine[self.engine_name]
+        engine = self.db.get_engine(self.engine_name)
         self._connection = engine.connect()
         self._transaction = self._connection.begin()
         return self

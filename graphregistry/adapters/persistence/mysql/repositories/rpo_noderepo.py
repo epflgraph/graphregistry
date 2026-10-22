@@ -16,9 +16,9 @@ from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeLis
 from graphregistry.domain.models.entities.types import ConceptMapType
 from graphregistry.domain.types import ActionSet
 
-# If TYPE_CHECKING is True, import GraphDB and MySQLUnitOfWork for type hints only.
+# If TYPE_CHECKING is True, import DatabaseClient and MySQLUnitOfWork for type hints only.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 
 #==================#
@@ -31,7 +31,7 @@ class MySQLNodeRepository(NodeRepository):
     services so that all writes for a business operation share one transaction.
 
     For backward compatibility it can also be constructed directly with a
-    GraphDB client and schema resolver; in that case each public method
+    DatabaseClient client and schema resolver; in that case each public method
     manages its own short-lived session.
     """
 
@@ -42,10 +42,10 @@ class MySQLNodeRepository(NodeRepository):
         "manually_mapped" : "Edges_N_Object_N_Concept_T_ManualMapping",
     }
 
-    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
+    # Public Method: Initialize the repository with a UnitOfWork or DatabaseClient client pair.
+    def __init__(self, db: "DatabaseClient | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
-        # Validate that either a UnitOfWork is provided, or both a GraphDB and
+        # Validate that either a UnitOfWork is provided, or both a DatabaseClient and
         # SchemaResolver are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=), not both.")

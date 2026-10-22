@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import pickle
-from graphdb.core.config import GraphDBConfig
+from graphdb.domain.models.mdl_config import GraphDBConfig
 from rich import print as rich_print
 from rich.table import Table
 from rich.tree import Tree
@@ -19,7 +19,7 @@ from graphregistry.common.config import GlobalConfig
 from graphregistry.common.paths import CONFIG_DB_PATH, CONFIG_MODELS_PATH, REPO_ROOT
 from graphregistry.domain.models.entities.mdl_node import NodeKey
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult
-from graphregistry.entrypoints.cli.dependencies import build_lecture_operations, build_schema_resolver
+from graphregistry.entrypoints.cli.dependencies import build_lecture_operations, build_schema_resolver, build_genai_repository
 from graphregistry.entrypoints.dependencies import build_db
 
 # Output folder for the pickled results, one file per lecture id.
@@ -139,8 +139,12 @@ def main() -> None:
     # Wire the lecture operations through the dependency builders; the
     # concept-detection gateway is required by the post-validation step, and
     # the enrichment gateway is pre-built from the selected model's config.
+    # The genai repository records every LLM call, its keyword lists and the
+    # composed raw input in the graph_genai database, and serves cached
+    # completions on re-runs.
+    db_client = build_db(config=db_config)
     ops = build_lecture_operations(
-        db                         = build_db(config=db_config),
+        db                         = db_client,
         engine_name                = env,
         global_config              = GlobalConfig(),
         include_video_gateway      = False,
@@ -149,6 +153,11 @@ def main() -> None:
             llm_model               = model_entry["model-name"],
             max_context_length      = model_entry["max-tokens"],
             max_keyframes_per_chunk = args.max_keyframes_per_chunk,
+            genai_repository        = build_genai_repository(
+                db            = db_client,
+                global_config = GlobalConfig(),
+                engine_name   = env,
+            ),
         ),
     )
 

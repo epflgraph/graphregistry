@@ -68,7 +68,8 @@ class GlobalConfig:
                 'es_cache'    : self.schema_names['elasticsearch_cache'],
                 'graph_cache' : self.schema_names['graph_cache_test'],
                 'graphsearch' : self.schema_names['graphsearch_test'],
-                'prod_mirror' : self.schema_names['graphsearch_prod_mirror']
+                'prod_mirror' : self.schema_names['graphsearch_prod_mirror'],
+                'genai'       : self.schema_names['genai']
             },
             'prod' : {
                 'graph_cache' : self.schema_names['graph_cache_prod'],
@@ -96,6 +97,7 @@ class GlobalConfig:
         self.schema_graphsearch_test = self.mysql_schema_names['test']['graphsearch']
         self.schema_graphsearch_prod = self.mysql_schema_names['prod']['graphsearch']
         self.schema_graphsearch_prod_mirror = self.mysql_schema_names['test']['prod_mirror']
+        self.schema_genai = self.mysql_schema_names['test']['genai']
 
         # Path where index patch/rollback SQL files are generated.
         # Default location is database/patches/ under the repository root.

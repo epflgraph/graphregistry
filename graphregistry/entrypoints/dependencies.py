@@ -10,10 +10,12 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 from typing import Callable
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
+from graphdb.client import Environments
+from graphdb.domain.models.mdl_config import GraphDBConfig
+from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
 from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
 from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import GlobalConfig
 
@@ -21,14 +23,20 @@ from graphregistry.common.config import GlobalConfig
 # Function Group: Database client builders                       #
 #================================================================#
 
-# Public Method: Create the single GraphDB client for this process.
-def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | None" = None) -> GraphDB:
-    """Create the single GraphDB client for this process.
+# Internal Function: Cache the Environments composition point process-wide.
+_ENVIRONMENTS: Environments | None = None
 
-    Because GraphDB is a singleton class, repeated calls return the same
-    underlying instance, but this function ensures it is initialized exactly
-    once with the right configuration.
+# Public Method: Create the single database client for this process.
+def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | None" = None) -> DatabaseClient:
+    """Create the single database client for this process.
+
+    The client wraps the graphdb-client Environments composition point, whose
+    per-environment gateways are built lazily on first access and cached, so
+    repeated calls reuse the same engine pools instead of duplicating them.
     """
+    global _ENVIRONMENTS
+
+    # Reject ambiguous configuration sources.
     if config is not None and config_path is not None:
         raise ValueError("Provide either config_path= or config=, not both.")
 
@@ -41,8 +49,12 @@ def build_db(config_path: Path | str | None = None, *, config: "GraphDBConfig | 
             config_path = CONFIG_DB_PATH
         config = GraphDBConfig.from_file(str(config_path))
 
-    # Build or reuse the singleton GraphDB client with the resolved config.
-    return GraphDB(config=config)
+    # Build the Environments composition point once per process.
+    if _ENVIRONMENTS is None:
+        _ENVIRONMENTS = Environments(config)
+
+    # Return the client adapter over the shared composition point.
+    return MySQLDatabaseClient(_ENVIRONMENTS)
 
 #================================================================#
 # Function Group: Unit of Work factory builders                  #

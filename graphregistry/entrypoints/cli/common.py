@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Annotated
 import typer
-from graphdb.core.config import GraphDBConfig
+from graphdb.domain.models.mdl_config import GraphDBConfig
 from graphregistry.common.paths import CONFIG_DB_PATH
 
 #================================================================#
