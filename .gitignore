@@ -319,9 +319,8 @@ notes_new_agent.txt
 notes.txt
 /graphregistry/entrypoints/cli/_legacy/
 /tests/end2end_tests/data/
-
-
 ocr_dump.txt
 out_tmp.txt
 scripts/check_ping_model.sh
 scripts/watch_inference_requests.sh
+FAKE-CREDENTIALS-hook-test.txt

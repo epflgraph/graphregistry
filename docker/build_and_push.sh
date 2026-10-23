@@ -6,7 +6,7 @@ set -euo pipefail
 IMAGE="epflgraph/graphregistry"
 BUILDER="multiarch"
 # Extra tag pushed alongside the version tag (defaults to "latest"; e.g. "pre-release")
-EXTRA_TAG="latest"
+EXTRA_TAG="pre-release"
 # 0 = fully clean build (passes --no-cache, so even the local BuildKit cache is ignored)
 # 1 = use registry-based aggressive caching (--cache-from / --cache-to)
 AGRESSIVE_CACHING=0
