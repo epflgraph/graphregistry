@@ -16,9 +16,9 @@ from graphregistry.domain.models.entities.mdl_node import Node, NodeKey, NodeLis
 from graphregistry.domain.models.entities.types import ConceptMapType
 from graphregistry.domain.types import ActionSet
 
-# If TYPE_CHECKING is True, import GraphDB and MySQLUnitOfWork for type hints only.
+# If TYPE_CHECKING is True, import DatabaseClient and MySQLUnitOfWork for type hints only.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 
 #==================#
@@ -31,7 +31,7 @@ class MySQLNodeRepository(NodeRepository):
     services so that all writes for a business operation share one transaction.
 
     For backward compatibility it can also be constructed directly with a
-    GraphDB client and schema resolver; in that case each public method
+    DatabaseClient client and schema resolver; in that case each public method
     manages its own short-lived session.
     """
 
@@ -42,10 +42,10 @@ class MySQLNodeRepository(NodeRepository):
         "manually_mapped" : "Edges_N_Object_N_Concept_T_ManualMapping",
     }
 
-    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
+    # Public Method: Initialize the repository with a UnitOfWork or DatabaseClient client pair.
+    def __init__(self, db: "DatabaseClient | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
-        # Validate that either a UnitOfWork is provided, or both a GraphDB and
+        # Validate that either a UnitOfWork is provided, or both a DatabaseClient and
         # SchemaResolver are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=), not both.")
@@ -640,14 +640,15 @@ class MySQLNodeRepository(NodeRepository):
         # Track which input keys were actually deleted.
         results: dict[NodeKey, bool] = {}
         for (engine_name, schema_name), group_keys in groups.items():
-            # Determine which keys actually exist before deleting, so we can
-            # preserve the per-key boolean/None semantics of the port.
-            existing_keys = self._filter_existing_keys(engine_name, schema_name, group_keys)
+            session = self._session(engine_name)
+            try:
+                # Determine which keys actually exist inside the same transaction
+                # as the deletes, so the per-key results reflect one consistent
+                # snapshot and rows cannot change between the check and the delete.
+                existing_keys = self._filter_existing_keys(session, schema_name, group_keys)
 
-            # Only touch the database for keys that still exist.
-            if existing_keys:
-                session = self._session(engine_name)
-                try:
+                # Soft-delete across every node-related table for keys that exist.
+                if existing_keys:
                     for table_name in [
                         "Nodes_N_Object",
                         "Data_N_Object_T_PageProfile",
@@ -655,31 +656,35 @@ class MySQLNodeRepository(NodeRepository):
                         "Edges_N_Object_N_Concept_T_ConceptDetection",
                     ]:
                         self._soft_delete_by_keys(session, schema_name, table_name, existing_keys)
-                    if self._uow is None:
-                        session.commit()
-                except Exception:
-                    if self._uow is None:
-                        session.rollback()
-                    raise
-                finally:
-                    self._close_standalone_session(session)
+                if self._uow is None:
+                    session.commit()
+            except Exception:
+                if self._uow is None:
+                    session.rollback()
+                raise
+            finally:
+                self._close_standalone_session(session)
 
-                # Record each successful deletion and emit a log entry.
-                for key in existing_keys:
-                    results[key] = True
-                    self.msg.deleted(key)
+            # Record each successful deletion and emit a log entry.
+            for key in existing_keys:
+                results[key] = True
+                self.msg.deleted(key)
 
         # Return per-key deletion results aligned with the original order.
         return [results.get(key) for key in keys]
 
-    # Internal Function: Filter existing keys
+    # Internal Function: Filter keys that exist and are not soft-deleted
     def _filter_existing_keys(
         self,
-        engine_name: str,
+        session: MySQLSession,
         schema_name: str,
         keys: list[NodeKey],
     ) -> list[NodeKey]:
-        """Return the subset of keys that currently exist and are not soft-deleted."""
+        """Return the subset of keys that currently exist and are not soft-deleted.
+
+        The check runs on the caller's session so that existence is verified
+        against the same transaction snapshot the deletes will use.
+        """
         if not keys:
             return []
 
@@ -691,11 +696,7 @@ class MySQLNodeRepository(NodeRepository):
              WHERE (object_type, object_id) IN ({placeholders})
                AND record_deleted = 0
         """
-        session = self._session(engine_name)
-        try:
-            rows = session.execute(sql, params)
-        finally:
-            self._close_standalone_session(session)
+        rows = session.execute(sql, params)
 
         # Collect the (object_type, object_id) pairs returned by the database.
         existing = {(row[0], row[1]) for row in rows}

@@ -13,10 +13,10 @@ from graphregistry.application.ports.repositories.resolvers import SchemaResolve
 from graphregistry.common.config import IndexConfig
 from graphregistry.common.paths import REPO_ROOT
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # Width of the progress bar.
 PBWIDTH = 92
@@ -49,7 +49,7 @@ class MySQLSearchIndexExportRepository(SearchIndexExportRepository):
 
     # Public Method: Initialize the repository with an injected database
     # client, schema resolver, index configuration, and export path.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, index_config: IndexConfig, export_path: str, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, index_config: IndexConfig, export_path: str, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.index_config = index_config

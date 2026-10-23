@@ -265,6 +265,29 @@ def test_propagate_fallback_batches_without_row_id() -> None:
     type_batch = next(c for c in db.write_calls if c["query_id"] == "RjDjz3fW-Person")
     assert "WHERE p.doc_type = 'Person' AND" in type_batch["query"]
 
+# Public Function: Verify the doc-link propagation matches both endpoint
+# orientations of the changed-edge rows (deviation from the legacy
+# single-orientation SQL).
+def test_propagate_doclink_links_match_both_orientations() -> None:
+    repo, db = _make_repo()
+    repo.propagate(scope=_make_scope(), include_fields=True, include_scores=False, actions=('eval',))
+
+    # Nothing is written in eval mode.
+    assert db.write_calls == [] and db.chunked_calls == []
+
+    # The doc-link eval query ORs the two endpoint orientations of the
+    # changed rows: (doc=fc.from, link=fc.to) and (doc=fc.to, link=fc.from).
+    # The buildup rows are canonical (sorted endpoints) while the changed
+    # rows may be stored in either direction.
+    link_evals = [call["query"] for call in db.read_calls if "IndexBuildup_Fields_Links_ParentChild" in call["query"]]
+    assert len(link_evals) == 1
+    assert link_evals[0].count(
+        "SELECT fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id"
+    ) == 1
+    assert link_evals[0].count(
+        "SELECT fc.to_object_type, fc.to_object_id, fc.from_object_type, fc.from_object_id"
+    ) == 1
+
 # Public Function: Verify that empty scopes skip their sections entirely.
 def test_propagate_empty_scope_skips_everything() -> None:
     repo, db = _make_repo()

@@ -56,6 +56,12 @@ class IndexPatchOperations:
         name = getattr(self.global_config, "schema_graphsearch_test", "_1_DEV_graphsearch_test") if self.global_config else "_1_DEV_graphsearch_test"
         return ("coresrv", name)
 
+    # Internal Method: Resolve the elasticsearch cache schema name for the
+    # patch banners, defaulting to the literal name when unconfigured.
+    def _es_cache_schema_name(self) -> tuple[str, str]:
+        name = getattr(self.global_config, "schema_es_cache", "_1_DEV_elasticsearch_cache") if self.global_config else "_1_DEV_elasticsearch_cache"
+        return ("coresrv", name)
+
     #================================================================#
     # Method Group: Available type derivation                        #
     #================================================================#
@@ -249,27 +255,30 @@ class IndexPatchOperations:
             ],
         )
 
-        # Page profile patch first, feeding the presentation fields.
+        # Page profile patch first, feeding the presentation fields. The
+        # banners name the resolved schemas — the legacy banners hardcoded
+        # the dev-prefixed literal names regardless of the configured mode.
         _, search_schema = self._search_schema_name()
-        sysmsg.info("🚜 📝 Patch page profile table on 'graphsearch_test' [actions: {}].".format(actions))
+        _, es_cache_schema = self._es_cache_schema_name()
+        sysmsg.info(f"🚜 📝 Patch page profile table on '{search_schema}' [actions: {actions}].")
         stats.append(self.pageprofile_repo.patch(actions=actions))
 
         # Docs patch over the fields-active doc types.
-        sysmsg.info("🚜 📝 Vertical patch of doc index tables [actions: {}].".format(actions))
-        print("Patch tables in '_1_DEV_graphsearch_test' and '_1_DEV_elasticsearch_cache' schemas.")
+        sysmsg.info(f"🚜 📝 Vertical patch of doc index tables [actions: {actions}].")
+        print(f"Patch tables in '{search_schema}' and '{es_cache_schema}' schemas.")
         stats.extend(self._patch_docs(flags, actions))
         sysmsg.success("🚜 ✅ Done vertical patching of doc index tables.")
 
         # Doc-link patches over the derived pairs: vertical with the fields
         # edge flags, horizontal with both flag families.
         vertical_pairs = self._derive_doclink_pairs(flags, edge_flags='fields')
-        sysmsg.info("🚜 📝 Vertical patch of doc-link index tables [actions: {}].".format(actions))
-        print("Patch tables in '_1_DEV_graphsearch_test' schema.")
+        sysmsg.info(f"🚜 📝 Vertical patch of doc-link index tables [actions: {actions}].")
+        print(f"Patch tables in '{search_schema}' schema.")
         stats.extend(self._patch_doclinks(vertical_pairs, actions, vertical=True))
         sysmsg.success("🚜 ✅ Done vertical patching of doc-link index tables.")
         horizontal_pairs = self._derive_doclink_pairs(flags, edge_flags='fields+scores')
-        sysmsg.info("🚜 📝 Horizontal patch of doc-link index tables [actions: {}].".format(actions))
-        print("Patch tables in '_1_DEV_graphsearch_test' schema.")
+        sysmsg.info(f"🚜 📝 Horizontal patch of doc-link index tables [actions: {actions}].")
+        print(f"Patch tables in '{search_schema}' schema.")
         stats.extend(self._patch_doclinks(horizontal_pairs, actions, vertical=False))
         sysmsg.success("🚜 ✅ Done horizontal patching of doc-link index tables.")
 

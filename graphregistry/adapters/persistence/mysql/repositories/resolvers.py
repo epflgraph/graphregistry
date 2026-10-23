@@ -66,6 +66,11 @@ class DefaultSchemaResolver(SchemaResolver):
         schema = self.glbcfg.schema_es_cache
         return (self.engine_name, schema)
 
+    # Public Method: Get engine identifier and schema name for the graph_genai outputs database
+    def for_genai(self) -> EngineSchema:
+        schema = self.glbcfg.schema_genai
+        return (self.engine_name, schema)
+
 #==================#
 # Class Definition #
 #==================#

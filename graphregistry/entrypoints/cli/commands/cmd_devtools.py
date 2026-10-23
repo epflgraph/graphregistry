@@ -3,10 +3,13 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Annotated
 import typer
+from tabulate import tabulate
+from graphregistry.common.auxfcn import print_colour
 from graphregistry.domain.models.pipeline.mdl_policies import ExpirationPolicy
 from graphregistry.domain.models.pipeline.mdl_scores import ScoreConsolidationParams
+from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.entrypoints.cli.commands.cmd_data import _load_json_input
-from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
+from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption, parse_actions
 from graphregistry.entrypoints.cli.context import CLIContext
 from graphregistry.entrypoints.cli.dependencies import (
     build_cacheprojection_repository,
@@ -26,18 +29,33 @@ from graphregistry.entrypoints.mappers import SpecMapper
 app = typer.Typer(help="Low-level building blocks for advanced users.")
 
 #================================================================#
-# Function Group: Actions parsing helper                         #
+# Function Group: Rendering helper                               #
 #================================================================#
 
-# Internal Function: Parse and validate the --actions option.
-def _parse_actions(actions: str) -> tuple[str, ...]:
-    """Parse and validate the --actions option into a tuple of action names."""
-    action_set = tuple(a.strip() for a in actions.split(",") if a.strip())
-    valid = {"print", "eval", "commit"}
-    invalid = set(action_set) - valid
-    if invalid:
-        raise typer.BadParameter(f"Invalid actions: {sorted(invalid)}. Valid: print, eval, commit.")
-    return action_set
+# Internal Function: Render the propagation summary in the legacy tabulate
+# format: one row per target table with its would-be-flagged total, skipped
+# entirely when nothing was evaluated.
+def _print_propagation_summary(stats: list[PropagationStats]) -> None:
+    if not stats:
+        return
+
+    # Aggregate the per-query stats by target, summing the counts of the
+    # multiple directions/batches that share one table.
+    totals: dict[str, int] = {}
+    for stat in stats:
+        totals[stat.target] = totals.get(stat.target, 0) + stat.rows_flagged
+
+    # Frame the summary with blank lines and a banner so it stands out from
+    # the per-command output above it.
+    print('')
+    print_colour("📊 PROPAGATION SUMMARY", colour='white', background='black', style='bold')
+    print(tabulate(
+        [[target, total] for target, total in totals.items()],
+        headers   = ['target', 'rows_flagged'],
+        tablefmt  = 'fancy_grid',
+        showindex = False,
+    ))
+    print('')
 
 #================================================================#
 # Function Group: data-* commands                                #
@@ -68,7 +86,7 @@ def cmd_devtools_data_save(
     cli_ctx: CLIContext = ctx.obj
     payload = _load_json_input(json_file)
     node_ops, edge_ops = build_registry_operations_from_cli(ctx=cli_ctx, env=env, verbose=verbose)
-    action_set = _parse_actions(actions)
+    action_set = parse_actions(actions)
 
     # Handle the conditional case.
     if _is_node(payload):
@@ -109,7 +127,7 @@ def cmd_devtools_data_delete(
     cli_ctx: CLIContext = ctx.obj
     payload = _load_json_input(json_file)
     node_ops, edge_ops = build_registry_operations_from_cli(ctx=cli_ctx, env=env, verbose=verbose)
-    action_set = _parse_actions(actions)
+    action_set = parse_actions(actions)
 
     # Handle the conditional case.
     if _is_node_key(payload):
@@ -226,7 +244,7 @@ def cmd_devtools_airflow_update_checksums(
         index_config          = cli_ctx.index_config,
         restrict_to_indexable = True,
     )
-    change_repo.update_current_checksums(scope=scope, actions=_parse_actions(actions))
+    change_repo.update_current_checksums(scope=scope, actions=parse_actions(actions))
 
 # Public Method: Mark objects as expired based on last cached date.
 @app.command(name="airflow-expire")
@@ -265,7 +283,7 @@ def cmd_devtools_airflow_expire(
         include_edges  = False,
         object_types   = object_types,
     )
-    change_repo.apply_expiration(policy=policy, scope=scope, count_only=False, actions=_parse_actions(actions))
+    change_repo.apply_expiration(policy=policy, scope=scope, count_only=False, actions=parse_actions(actions))
 
 # Public Method: Refresh 'to_process' flags.
 @app.command(name="airflow-refresh")
@@ -311,12 +329,16 @@ def cmd_devtools_airflow_propagate(
         global_config = cli_ctx.global_config,
         index_config  = cli_ctx.index_config,
     )
-    cache_repo.propagate(
+    stats = cache_repo.propagate(
         scope          = scope,
         include_fields = include_fields,
         include_scores = include_scores,
-        actions        = _parse_actions(actions),
+        actions        = parse_actions(actions),
     )
+
+    # Render the propagation summary so the eval counts name the tables they
+    # belong to; the repository previously returned them unrendered.
+    _print_propagation_summary(stats)
 
 #================================================================#
 # Function Group: cache-* commands                               #
@@ -337,7 +359,7 @@ def cmd_devtools_cache_formulas_update(
 
     # Apply the selected formula families through the typed repository.
     formula_repo = build_formula_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
-    action_set = _parse_actions(actions)
+    action_set = parse_actions(actions)
     formula_set = tuple(f.strip() for f in formulas.split(",") if f.strip())
 
     # Handle the conditional case.
@@ -372,7 +394,7 @@ def cmd_devtools_cache_scores_matrix(
     scores_repo.update_matrix(
         scope   = scope,
         params  = ScoreConsolidationParams(),
-        actions = _parse_actions(actions),
+        actions = parse_actions(actions),
     )
 
 #================================================================#
@@ -400,7 +422,7 @@ def cmd_devtools_index_build(
         verbose       = verbose,
     )
     typeflags_repo = build_typeflags_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
-    patch_ops.build(flags=typeflags_repo.load(), actions=_parse_actions(actions))
+    patch_ops.build(flags=typeflags_repo.load(), actions=parse_actions(actions))
 
 # Public Method: Apply vertical and horizontal patching to index tables.
 @app.command(name="index-patch")
@@ -423,7 +445,7 @@ def cmd_devtools_index_patch(
         verbose       = verbose,
     )
     typeflags_repo = build_typeflags_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
-    patch_ops.patch(flags=typeflags_repo.load(), actions=_parse_actions(actions))
+    patch_ops.patch(flags=typeflags_repo.load(), actions=parse_actions(actions))
 
 # Public Method: Delete loose ends from cache/graphsearch tables.
 @app.command(name="index-delete-loose-ends")
@@ -432,15 +454,20 @@ def cmd_devtools_index_delete_loose_ends(
     env: Annotated[str, EnvOption()] = DEFAULT_ENV,
     verbose: Annotated[bool, VerboseOption()] = False,
     use_cache: Annotated[bool, typer.Option("--use-cache", help="Use the cached largest connected graph instead of recalculating.")] = False,
+    eval_mode: Annotated[bool, typer.Option("--eval", help="Preview mode: count deletions, no destructive writes. Overrides --actions.")] = False,
     actions: Annotated[str, typer.Option("--actions", help="Comma-separated actions: print,eval,commit.")] = "print,eval,commit",
 ) -> None:
     """Delete loose ends from cache and graphsearch index tables."""
     del env  # Registry uses the configured environment internally.
     cli_ctx: CLIContext = ctx.obj
     integrity_repo = build_index_integrity_repository(db=cli_ctx.db, global_config=cli_ctx.global_config, verbose=verbose)
+
+    # The --eval flag is a shorthand for a side-effect-free preview run; it
+    # overrides --actions so destructive modes always stay opt-in.
+    action_set = ("print", "eval") if eval_mode else parse_actions(actions)
     integrity_repo.delete_loose_ends(
         refresh_graph = not use_cache,
-        actions       = _parse_actions(actions),
+        actions       = action_set,
     )
 
 # Public Method: Generate ElasticSearch index files from MySQL.

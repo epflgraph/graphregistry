@@ -2,14 +2,24 @@
     "scored-edge-tuples" : {
         "education" : [
             ["Course"   , "Course"  ],
+            ["Course"   , "Exercise"],
             ["Course"   , "Lecture" ],
             ["Course"   , "MOOC"    ],
+            ["Course"   , "Notebook"],
+            ["Course"   , "Widget"  ],
             ["Exercise" , "Exercise"],
+            ["Exercise" , "Lecture" ],
+            ["Exercise" , "MOOC"    ],
+            ["Exercise" , "Notebook"],
+            ["Exercise" , "Widget"  ],
             ["Lecture"  , "Lecture" ],
             ["Lecture"  , "MOOC"    ],
             ["Lecture"  , "Widget"  ],
             ["MOOC"     , "MOOC"    ],
+            ["MOOC"     , "Notebook"],
+            ["MOOC"     , "Widget"  ],
             ["Notebook" , "Notebook"],
+            ["Notebook" , "Widget"  ],
             ["Widget"   , "Widget"  ]
         ],
         "research" : [

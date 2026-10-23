@@ -42,3 +42,15 @@ FormulaType: TypeAlias = Literal['calculated_fields', 'graph_traversals', 'calcu
 LanguageCode: TypeAlias = str
 LanguageCodeList: TypeAlias = tuple[LanguageCode, ...]
 DEFAULT_LANGUAGE_CODES: LanguageCodeList = ('en', 'fr', 'de', 'it')
+
+# Define a type for the role of one cached LLM call: map calls process one
+# chunk of the input, the reduce call merges chunk reports, and single calls
+# are standalone (non-chunked) requests. The values match the call_role column
+# of the graph_genai CachedCompletions table.
+CallRole: TypeAlias = Literal['map', 'reduce', 'single']
+
+# Define a type for the coverage of one stored keyword list: top lists are the
+# ranked bounded set of most important keywords (as requested in the prompt),
+# full lists are exhaustive, with no keyword left behind. The values match the
+# coverage column of the graph_genai Keywords table.
+KeywordCoverage: TypeAlias = Literal['top', 'full']

@@ -14,10 +14,10 @@ from graphregistry.domain.models.entities.mdl_base import NodeKey, NodeKeyList
 from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentResult, LectureEnrichmentTask
 from graphregistry.domain.types import ActionSet
 
-# If TYPE_CHECKING is True, import GraphDB, MySQLUnitOfWork and SchemaResolver for type
+# If TYPE_CHECKING is True, import DatabaseClient, MySQLUnitOfWork and SchemaResolver for type
 # hints only.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
     from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 
@@ -33,13 +33,13 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
     underlying node updates.
 
     For backward compatibility it can also be constructed directly with a
-    GraphDB client, schema resolver, and node repository.
+    DatabaseClient client, schema resolver, and node repository.
     """
 
-    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client group.
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, node_repo: NodeRepository | None = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
+    # Public Method: Initialize the repository with a UnitOfWork or DatabaseClient client group.
+    def __init__(self, db: "DatabaseClient | None" = None, schema_resolver: "SchemaResolver | None" = None, node_repo: NodeRepository | None = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
-        # Validate that either a UnitOfWork is provided, or a GraphDB,
+        # Validate that either a UnitOfWork is provided, or a DatabaseClient,
         # SchemaResolver and NodeRepository are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None or node_repo is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=, node_repo=), not both.")
@@ -751,14 +751,14 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
         assert node.concepts                 is not None, f"Node with key {node_key} should have concepts but it was None"
 
         # Convert concepts list into scored concepts object
-        result.top_concepts.post_validated_list
+        result.top_concepts.ontology_strict_list
 
         # Assign enhanced fields from enrichment result to the Node object
         node.page_profile.name.en               = result.title              or node.page_profile.name.en
         node.page_profile.description.long.en   = result.long_description   or node.page_profile.description.long.en
         node.page_profile.description.medium.en = result.medium_description or node.page_profile.description.medium.en
         node.page_profile.description.short.en  = result.short_description  or node.page_profile.description.short.en
-        node.concepts.ai_validated              = result.top_concepts.post_validated_list or node.concepts.ai_validated
+        node.concepts.ai_validated              = result.top_concepts.ontology_strict_list or node.concepts.ai_validated
 
         # Save enriched node object
         self.node_repo.save(node=node, actions=actions)
@@ -787,7 +787,7 @@ class MySQLLectureRepository(LectureRepository, LectureProcessingStatePort):
             assert slide_node is not None, f"Node with key {slide_node_key} should exist but was not found"
 
             # Assign enhanced concepts from enrichment result to the slide Node object
-            slide_node.concepts.ai_validated = keyframe.refined_concepts.post_validated_list or slide_node.concepts.ai_validated
+            slide_node.concepts.ai_validated = keyframe.refined_concepts.ontology_strict_list or slide_node.concepts.ai_validated
 
             # Save enriched slide node object
             self.node_repo.save(node=slide_node, actions=actions)

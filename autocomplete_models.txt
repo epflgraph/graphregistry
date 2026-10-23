@@ -1,0 +1,2 @@
+Qwen/Qwen3-Coder-Next-fp8
+deepseek-ai/DeepSeek-V4.1-Flash

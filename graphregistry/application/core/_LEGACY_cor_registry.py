@@ -1,21 +1,22 @@
-# graphregistry/application/core/cor_registry.py
+# graphregistry/application/core/_LEGACY_cor_registry.py
+import os, re, sys, json, datetime, itertools, gzip, glob, rich, pickle
+from array import array
+from copy import deepcopy
+from decimal import Decimal
+from itertools import combinations_with_replacement
+from pathlib import Path
+import numpy as np
+import pandas as pd
+from loguru import logger as sysmsg
+from tqdm import tqdm
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
+from graphdb.domain.models.mdl_config import GraphDBConfig
+from graphdb.domain.models.mdl_sqlquery import SQLQuery
+from graphregistry.adapters.clients.elasticsearch import GraphES, es_degree_score_factors
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from graphregistry.common.auxfcn import print_dataframe, print_colour
 from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
 from graphregistry.common.dbstruct import DynamicSQL, GraphTable
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
-from graphdb.models.sqlquery import SQLQuery, print_sql
-from graphregistry.adapters.clients.elasticsearch import GraphES, es_degree_score_factors
-from tqdm import tqdm
-from loguru import logger as sysmsg
-from copy import deepcopy
-from itertools import combinations_with_replacement
-from pathlib import Path
-from decimal import Decimal
-import numpy as np
-import pandas as pd
-import os, re, sys, json, datetime, itertools, gzip, os, glob, rich, pickle
-from array import array
 
 #------------------------------#
 # Class objects initialisation #
@@ -32,8 +33,10 @@ from graphregistry.common.paths import (
     CONFIG_DB_PATH,
     REPO_ROOT as PROJECT_ROOT,
 )
+from graphdb.client import Environments
+from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
 db_cfg = GraphDBConfig.from_file(CONFIG_DB_PATH)
-db = GraphDB(config=db_cfg)
+db = MySQLDatabaseClient(Environments(config=db_cfg))
 
 # Initialise dynamic sql object
 dynsql = DynamicSQL(db=db)
@@ -85,7 +88,6 @@ SQL_FORMULAS_FOLDER_ALIASES = {
 
 # Resolve Elasticsearch export path
 ELASTICSEARCH_DATA_EXPORT_PATH = resolve_repo_path(glbcfg.settings["elasticsearch"]["data_export_path"])
-
 
 # SQL data type mapping dictionary
 sql_data_type_mapping = {
@@ -320,7 +322,7 @@ class GraphRegistry():
             # print(f"GraphRegistry initialized with name: {self.name}")
 
         # Initialize all children objects
-        # db = GraphDB()
+        # db = DatabaseClient()
         # self.idx = GraphIndex()
         self.orchestrator = self.Orchestration()
         self.cachemanager = self.CacheManagement()
@@ -376,7 +378,7 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self):
-            # db = GraphDB()
+            # db = DatabaseClient()
             self.typeflags = self.TypeFlags()
             self.fieldschanged = self.FieldsChanged()
             self.scoresexpired = self.ScoresExpired()
@@ -1688,7 +1690,7 @@ class GraphRegistry():
             # Class constructor
             def __init__(self):
                 pass
-                # db = GraphDB()
+                # db = DatabaseClient()
 
             # Print type flags
             def status(self):
@@ -1936,7 +1938,7 @@ class GraphRegistry():
             # Class constructor
             def __init__(self):
                 pass
-                # db = GraphDB()
+                # db = DatabaseClient()
 
             # Print current settings
             def status(self, object_key=None):
@@ -2825,7 +2827,7 @@ class GraphRegistry():
             # Class constructor
             def __init__(self):
                 pass
-                # db = GraphDB()
+                # db = DatabaseClient()
 
             # Print current settings
             def status(self, object_key=None):
@@ -3462,7 +3464,7 @@ class GraphRegistry():
         # Class constructor
         def __init__(self):
             pass
-            # db = GraphDB()
+            # db = DatabaseClient()
 
         # Helper: determine the soft-delete column for a schema/table.
         # Registry/lectures tables use 'record_deleted'; cache tables use 'deleted'.
@@ -4682,14 +4684,13 @@ class GraphRegistry():
 
         # Class constructor
         def __init__(self, engine_name='coresrv'):
-            # db = GraphDB()
+            # db = DatabaseClient()
             self.engine_name = engine_name
             self.cachebuilder = self.CacheBuildup()
             self.pageprofile = self.PageProfile()
             self.idocs = {}
             self.idoclinks = {}
             self.list_of_index_tables = db.get_tables_in_schema(engine_name=self.engine_name, schema_name=glbcfg.mysql_schema_names[self.engine_name]['graphsearch'])
-
 
             # Get all doc types available
             doc_types_available = dynsql.doc_types
@@ -5215,7 +5216,6 @@ class GraphRegistry():
 
                     # Create a DataFrame to display the results
                     df = pd.DataFrame(out, columns=['doc_type', 'link_type', 'n_to_delete'])
-
 
                     # Print the DataFrame if it contains any rows and delete loose ends from the current table if 'commit' action is specified
                     if len(df) > 0:
@@ -5968,7 +5968,7 @@ class GraphRegistry():
             # Class constructor
             def __init__(self):
                 pass
-                # db = GraphDB()
+                # db = DatabaseClient()
 
             # info
             def info(self):
@@ -6269,7 +6269,7 @@ class GraphRegistry():
             def __init__(self, engine_name='coresrv'):
 
                 # Assign DB pointer
-                # db = GraphDB()
+                # db = DatabaseClient()
 
                 # Define internal variables
                 self.engine_name      = engine_name
@@ -6460,7 +6460,7 @@ class GraphRegistry():
             def __init__(self, doc_type, engine_name='coresrv'):
 
                 # Assign DB pointer
-                # db = GraphDB()
+                # db = DatabaseClient()
 
                 # Define internal variables
                 self.engine_name        = engine_name
@@ -6961,7 +6961,7 @@ class GraphRegistry():
             def __init__(self, doc_type, link_type, link_subtype, engine_name='coresrv'):
 
                 # Assign DB pointer
-                # db = GraphDB()
+                # db = DatabaseClient()
 
                 # Define internal variables
                 self.doc_type     = doc_type
@@ -8370,7 +8370,6 @@ class GraphRegistry():
         def __init__(self):
             pass
 
-
         def generate_local_cache_streaming(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):
             """
             Drop-in replacement.
@@ -8455,7 +8454,6 @@ class GraphRegistry():
                     column_names_doc = default_column_names_doc + custom_doc_cols
 
                     docs_jsonl = f"{target_folder}/.tmp_docs_{index_date}_{doc_type}.jsonl"
-
 
                     # Check first if {glbcfg.schema_es_cache}.Index_D_{doc_type} table exists, ignore if it doesn't
                     if not db.table_exists(
@@ -8601,8 +8599,6 @@ class GraphRegistry():
                             pass
 
             sysmsg.success("🐙 ✅ Done generating local JSON cache.\n")
-
-
 
         # Generate local JSON cache for ElasticSearch index creation
         def generate_local_cache(self, index_date=None, ignore_warnings=True, replace_existing=False, force_replace=False):

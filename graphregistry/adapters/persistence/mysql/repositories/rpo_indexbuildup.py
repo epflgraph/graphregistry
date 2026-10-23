@@ -2,18 +2,18 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
-from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
+from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists, print_eval_table
 from graphregistry.application.ports.repositories.prt_indexbuildup import IndexBuildupRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import IndexConfig
 from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # Language suffixes appended to the field names of the raw field lists.
 _LANGUAGE_SUFFIXES = {'n/a': '', 'en': '_en', 'fr': '_fr'}
@@ -35,7 +35,7 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
 
     # Public Method: Initialize the repository with an injected database
     # client, schema resolver, and index configuration.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, index_config: IndexConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, index_config: IndexConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.index_config = index_config
@@ -121,6 +121,11 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
                 print_sql(sql_query_eval, title='hpFZ8RAT')
             out = self.db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='hpFZ8RAT')
             stats.rows_flagged = sum(row[1] for row in out) if out else 0
+            print_eval_table(
+                rows    = [[row[0], int(row[1])] for row in out],
+                headers = ['doc_type', 'n_to_process'],
+                title   = f'\n🔍 Evaluation results for doc type: "{doc_type}"',
+            )
 
         # Commit by replacing the staging rows; the legacy docs build does
         # not create the target table when missing.
@@ -200,6 +205,11 @@ class MySQLIndexBuildupRepository(IndexBuildupRepository):
             sql_query_eval = f"SELECT doc_type, link_type, COUNT(*) AS n_to_process FROM ({sql_query}) t GROUP BY doc_type, link_type"
             out = self.db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='6D05nXQL')
             stats.rows_flagged = sum(row[2] for row in out) if out else 0
+            print_eval_table(
+                rows    = [[row[0], row[1], int(row[2])] for row in out],
+                headers = ['doc_type', 'link_type', 'n_to_process'],
+                title   = f'\n🔍 Evaluation results for doc-link type: "{doc_type}-{link_type}"',
+            )
 
         # Commit by replacing the staging rows.
         if 'commit' in actions:

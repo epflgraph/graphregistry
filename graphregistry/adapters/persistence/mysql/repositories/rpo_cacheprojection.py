@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import re
 from typing import TYPE_CHECKING, Iterable
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.application.ports.repositories.prt_cacheprojection import CacheProjectionRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import GlobalConfig, IndexConfig
@@ -13,10 +13,10 @@ from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.models.values.mdl_typepairs import EdgeTypePair
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 #==================#
 # Class Definition #
@@ -35,11 +35,19 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
     been replaced by the IN-list, so every batch ran the identical IN-list
     update. The intended per-type batching (documented in the legacy trace
     messages) is implemented here; the resulting row state is identical.
+
+    A second deliberate deviation: the legacy FieldsChanged propagation to
+    the doc-link buildup tables matched the changed rows in their stored
+    endpoint direction only, while the buildup rows are canonical (sorted
+    endpoints) — so families written child-to-parent (e.g. Lecture -> Course)
+    never matched and their buildup rows were never refreshed from the
+    tracking tables. The adapter matches both endpoint orientations,
+    mirroring the two-direction batches of the parent-child section.
     """
 
     # Public Method: Initialize the repository with an injected database client,
     # schema resolver, and configurations; no module-level connections.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, global_config: GlobalConfig, index_config: IndexConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, global_config: GlobalConfig, index_config: IndexConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.global_config = global_config
@@ -252,22 +260,38 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
                             UPDATE {cache_schema}.{table_name} p
                                SET p.to_process = 1
                              WHERE (p.doc_type, p.link_type) IN ({active_doclink_types})
-                               AND (p.doc_type, p.doc_id, p.link_type, p.link_id) IN (
-                                   SELECT fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id
-                                     FROM {airflow_schema}.Operations_N_Object_N_Object_T_FieldsChanged fc
-                                    WHERE fc.to_process = 1
-                                      AND fc.deleted = 0
+                               AND (
+                                    (p.doc_type, p.doc_id, p.link_type, p.link_id) IN (
+                                        SELECT fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id
+                                          FROM {airflow_schema}.Operations_N_Object_N_Object_T_FieldsChanged fc
+                                         WHERE fc.to_process = 1
+                                           AND fc.deleted = 0
+                                    )
+                                 OR (p.doc_type, p.doc_id, p.link_type, p.link_id) IN (
+                                        SELECT fc.to_object_type, fc.to_object_id, fc.from_object_type, fc.from_object_id
+                                          FROM {airflow_schema}.Operations_N_Object_N_Object_T_FieldsChanged fc
+                                         WHERE fc.to_process = 1
+                                           AND fc.deleted = 0
+                                    )
                                )
                                AND  p.to_process = 0;
                             """
             query_eval = f"""SELECT COUNT(*)
                            FROM {cache_schema}.{table_name} p
                           WHERE (p.doc_type, p.link_type) IN ({active_doclink_types})
-                            AND (p.doc_type, p.doc_id, p.link_type, p.link_id) IN (
-                                SELECT fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id
-                                  FROM {airflow_schema}.Operations_N_Object_N_Object_T_FieldsChanged fc
-                                 WHERE fc.to_process = 1
-                                   AND fc.deleted = 0
+                            AND (
+                                 (p.doc_type, p.doc_id, p.link_type, p.link_id) IN (
+                                     SELECT fc.from_object_type, fc.from_object_id, fc.to_object_type, fc.to_object_id
+                                       FROM {airflow_schema}.Operations_N_Object_N_Object_T_FieldsChanged fc
+                                      WHERE fc.to_process = 1
+                                        AND fc.deleted = 0
+                                 )
+                              OR (p.doc_type, p.doc_id, p.link_type, p.link_id) IN (
+                                     SELECT fc.to_object_type, fc.to_object_id, fc.from_object_type, fc.from_object_id
+                                       FROM {airflow_schema}.Operations_N_Object_N_Object_T_FieldsChanged fc
+                                      WHERE fc.to_process = 1
+                                        AND fc.deleted = 0
+                                 )
                             )
                             AND  p.to_process = 0;
                             """
@@ -370,8 +394,10 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
                   {where_to}"""
 
             # Eval: union both directions to avoid double-counting edges whose
-            # from- and to- endpoints are both expired.
-            if 'eval' in actions:
+            # from- and to- endpoints are both expired. The same count runs
+            # pre-commit when committing, so commit-only runs report real
+            # numbers instead of placeholder zeros.
+            if 'eval' in actions or 'commit' in actions:
                 query_eval = f"""SELECT COUNT(*)
                            FROM (
                                 {query_eval_from}
@@ -416,7 +442,6 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
                         verbose     = self.verbose,
                         query_id    = f'yzm93BqQ-to-{object_type}',
                     )
-                stats.append(PropagationStats(target=f"{cache_schema}.{table_name}", rows_flagged=0))
 
         # Drop the scratch table of expired score nodes.
         if 'eval' in actions or 'commit' in actions:
@@ -567,12 +592,35 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
         stats = []
         engine_name = self.schema_resolver.for_airflow()[0]
 
-        # Eval: run the count query once and report the would-be flaggings.
-        if 'eval' in actions:
+        # Count the would-be flaggings: through the eval action, or as the
+        # pre-commit count when committing — the update statements themselves
+        # do not report affected rows, so this count is the only real
+        # statistic a commit-only run can report. The target is named so
+        # runs are self-explanatory.
+        if 'eval' in actions or 'commit' in actions:
             rows = self.db.execute_query(engine_name=engine_name, query=query_eval, query_id=query_id)
             count = rows[0][0] if rows and len(rows) > 0 and rows[0] else 0
-            sysmsg.trace(f"  ~ {count} rows would be flagged")
+            sysmsg.trace(f"  ~ {schema_name}.{table_name}: {count} rows would be flagged")
             stats.append(PropagationStats(target=f"{schema_name}.{table_name}", rows_flagged=count))
+
+        # Print-only: emit exactly the SQL that commit would run, without
+        # executing. The print checks previously lived inside the commit
+        # branch, so a print-only dry run printed nothing at all.
+        if 'print' in actions and 'commit' not in actions:
+            if self._table_has_row_id(engine_name, schema_name, table_name):
+                print_sql(query_update, title=f'{query_id}[print]')
+            else:
+                for q, batch_id in self._batched_update_queries(
+                    query_update      = query_update,
+                    query_id          = query_id,
+                    batch_types       = batch_types,
+                    batch_type_column = batch_type_column,
+                    batch_pairs       = batch_pairs,
+                    batch_from_column = batch_from_column,
+                    batch_to_column   = batch_to_column,
+                ):
+                    print_sql(q, title=f'{batch_id}[print]')
+            return stats
 
         # Commit: chunked updates when row_id exists, per-type batches otherwise.
         if 'commit' not in actions:
@@ -626,46 +674,71 @@ class MySQLCacheProjectionRepository(CacheProjectionRepository):
                     query_id       = query_id,
                     desc           = f"{schema_name}.{table_name}",
                 )
-            stats.append(PropagationStats(target=f"{schema_name}.{table_name}", rows_flagged=0))
         else:
 
             # No row_id column: batch by the active object types or edge pairs.
-            if batch_pairs:
-                for from_type, to_type in batch_pairs:
-                    q = re.sub(
+            for q, batch_id in self._batched_update_queries(
+                query_update      = query_update,
+                query_id          = query_id,
+                batch_types       = batch_types,
+                batch_type_column = batch_type_column,
+                batch_pairs       = batch_pairs,
+                batch_from_column = batch_from_column,
+                batch_to_column   = batch_to_column,
+            ):
+                if 'print' in actions:
+                    print_sql(q, title=f'{batch_id}[commit]')
+                self.db.execute_query_in_shell(
+                    engine_name = engine_name,
+                    query       = q,
+                    verbose     = self.verbose,
+                    query_id    = batch_id,
+                )
+        return stats
+
+    # Internal Method: Build the batched update queries that commit issues for
+    # tables without a row_id column: one query per active object type or edge
+    # pair, substituted before the original conditions; empty when no batching
+    # is declared, so nothing is issued.
+    def _batched_update_queries(
+        self,
+        query_update: str,
+        query_id: str,
+        batch_types: list[str] | None,
+        batch_type_column: str,
+        batch_pairs: list[tuple[str, str]] | None,
+        batch_from_column: str,
+        batch_to_column: str,
+    ) -> list[tuple[str, str]]:
+        if batch_pairs:
+            return [
+                (
+                    re.sub(
                         r'\bWHERE\b',
                         f"WHERE {batch_from_column} = '{self._sql_escape(from_type)}' AND {batch_to_column} = '{self._sql_escape(to_type)}' AND ",
                         query_update,
                         count=1,
                         flags=re.IGNORECASE,
-                    )
-                    if 'print' in actions:
-                        print_sql(q, title=f'{query_id}-{from_type}-{to_type}[commit]')
-                    self.db.execute_query_in_shell(
-                        engine_name = engine_name,
-                        query       = q,
-                        verbose     = self.verbose,
-                        query_id    = f'{query_id}-{from_type}-{to_type}',
-                    )
-            elif batch_types:
-                for object_type in batch_types:
-                    q = re.sub(
+                    ),
+                    f'{query_id}-{from_type}-{to_type}',
+                )
+                for from_type, to_type in batch_pairs
+            ]
+        if batch_types:
+            return [
+                (
+                    re.sub(
                         r'\bWHERE\b',
                         f"WHERE {batch_type_column} = '{self._sql_escape(object_type)}' AND ",
                         query_update,
                         count=1,
                         flags=re.IGNORECASE,
-                    )
-                    if 'print' in actions:
-                        print_sql(q, title=f'{query_id}-{object_type}[commit]')
-                    self.db.execute_query_in_shell(
-                        engine_name = engine_name,
-                        query       = q,
-                        verbose     = self.verbose,
-                        query_id    = f'{query_id}-{object_type}',
-                    )
-            stats.append(PropagationStats(target=f"{schema_name}.{table_name}", rows_flagged=0))
-        return stats
+                    ),
+                    f'{query_id}-{object_type}',
+                )
+                for object_type in batch_types
+            ]
+        return []
 
     # Internal Method: Check whether a table carries a row_id column through
     # the information schema.

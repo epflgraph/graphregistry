@@ -14,8 +14,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
+from graphdb.client import Environments
+from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
+from graphdb.domain.models.mdl_config import GraphDBConfig
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 from graphregistry.entrypoints.mappers import SpecMapper
 from tests.helpers.db_checks import (
@@ -60,7 +62,7 @@ def schema_name(test_config: tuple[Path, str]) -> str:
 @pytest.fixture(scope="module")
 def db() -> GraphDB:
     db_config = GraphDBConfig.from_file("config/environment/config_graphdb.yml")
-    return GraphDB(config=db_config)
+    return MySQLDatabaseClient(Environments(config=db_config))
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -110,7 +112,7 @@ def delete_many(node_keys_path: Path, edge_keys_path: Path, env: dict[str, str])
 
 @pytest.mark.e2e
 def test_cli_data_commands_subgraph_e2e(
-    tmp_path: Path, db: GraphDB, test_config: tuple[Path, str]
+    tmp_path: Path, db: DatabaseClient, test_config: tuple[Path, str]
 ) -> None:
     config_path, schema_name = test_config
     sample_subgraph = load_subgraph_fixture(SUBGRAPH_FIXTURE_PATH)

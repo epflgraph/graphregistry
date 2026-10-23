@@ -14,13 +14,15 @@ from loguru import logger as sysmsg
 # Silence the graphdb TRACE spam so only the diagnostic output shows.
 sysmsg.remove()
 
-from graphdb.core.config import GraphDBConfig
-from graphdb.core.graphdb import GraphDB
+from graphdb.client import Environments
+from graphregistry.adapters.persistence.mysql.databaseclient import MySQLDatabaseClient
+from graphdb.domain.models.mdl_config import GraphDBConfig
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.paths import CONFIG_DB_PATH
 
 glbcfg = GlobalConfig()
-db = GraphDB(config=GraphDBConfig.from_file(CONFIG_DB_PATH))
+db = MySQLDatabaseClient(Environments(config=GraphDBConfig.from_file(CONFIG_DB_PATH)))
 schema = glbcfg.schema_airflow
 
 

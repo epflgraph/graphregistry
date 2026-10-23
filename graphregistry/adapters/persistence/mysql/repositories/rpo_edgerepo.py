@@ -12,9 +12,9 @@ from graphregistry.domain.models.entities.mdl_base import EdgeKeyList
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeKey, EdgeList
 from graphregistry.domain.types import ActionSet
 
-# If TYPE_CHECKING is True, import GraphDB and MySQLUnitOfWork for type hints only.
+# If TYPE_CHECKING is True, import DatabaseClient and MySQLUnitOfWork for type hints only.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.adapters.persistence.mysql.unit_of_work import MySQLUnitOfWork
 
 #==================#
@@ -27,7 +27,7 @@ class MySQLEdgeRepository(EdgeRepository):
     services so that all writes for a business operation share one transaction.
 
     For backward compatibility it can also be constructed directly with a
-    GraphDB client and schema resolver; in that case each public method
+    DatabaseClient client and schema resolver; in that case each public method
     manages its own short-lived session.
     """
 
@@ -40,10 +40,10 @@ class MySQLEdgeRepository(EdgeRepository):
         "context",
     ]
 
-    # Public Method: Initialize the repository with a UnitOfWork or GraphDB client pair.
-    def __init__(self, db: "GraphDB | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
+    # Public Method: Initialize the repository with a UnitOfWork or DatabaseClient client pair.
+    def __init__(self, db: "DatabaseClient | None" = None, schema_resolver: "SchemaResolver | None" = None, *, uow: "MySQLUnitOfWork | None" = None, verbose: bool = False) -> None:
 
-        # Validate that either a UnitOfWork is provided, or both a GraphDB and
+        # Validate that either a UnitOfWork is provided, or both a DatabaseClient and
         # SchemaResolver are provided, but not both.
         if uow is not None and (db is not None or schema_resolver is not None):
             raise ValueError("Provide either uow= or (db=, schema_resolver=), not both.")
@@ -484,39 +484,49 @@ class MySQLEdgeRepository(EdgeRepository):
         # Track deletion results for each input key.
         results: dict[EdgeKey, bool] = {}
         for (engine_name, schema_name), group_keys in groups.items():
+            session = self._session(engine_name)
+            try:
+                # Determine which keys in this group still exist inside the same
+                # transaction as the deletes, so results reflect one consistent
+                # snapshot and rows cannot change between the check and the delete.
+                existing_keys = self._filter_existing_keys(session, schema_name, group_keys)
 
-            # Determine which keys in this group still exist in the database.
-            existing_keys = self._filter_existing_keys(engine_name, schema_name, group_keys)
-
-            # Delete only the keys that still exist in the database.
-            if existing_keys:
-                session = self._session(engine_name)
-                try:
+                # Delete only the keys that still exist in the database.
+                if existing_keys:
                     for table_name in [
                         "Edges_N_Object_N_Object_T_ChildToParent",
                         "Data_N_Object_N_Object_T_CustomFields",
                     ]:
                         self._soft_delete_by_keys(session, schema_name, table_name, existing_keys)
-                    if self._uow is None:
-                        session.commit()
-                except Exception:
-                    if self._uow is None:
-                        session.rollback()
-                    raise
-                finally:
-                    self._close_standalone_session(session)
+                if self._uow is None:
+                    session.commit()
+            except Exception:
+                if self._uow is None:
+                    session.rollback()
+                raise
+            finally:
+                self._close_standalone_session(session)
 
-                # Record successful deletions and emit log messages.
-                for key in existing_keys:
-                    results[key] = True
-                    self.msg.deleted(key)
+            # Record successful deletions and emit log messages.
+            for key in existing_keys:
+                results[key] = True
+                self.msg.deleted(key)
 
         # Return deletion results aligned with the original key order.
         return [results.get(key) for key in keys]
 
     # Internal Function: Filter keys that exist and are not soft-deleted.
-    def _filter_existing_keys(self, engine_name: str, schema_name: str, keys: list[EdgeKey]) -> list[EdgeKey]:
-        """Return the subset of keys that currently exist and are not soft-deleted."""
+    def _filter_existing_keys(
+        self,
+        session: MySQLSession,
+        schema_name: str,
+        keys: list[EdgeKey],
+    ) -> list[EdgeKey]:
+        """Return the subset of keys that currently exist and are not soft-deleted.
+
+        The check runs on the caller's session so that existence is verified
+        against the same transaction snapshot the deletes will use.
+        """
 
         # If the list of keys is empty, return an empty list immediately.
         if not keys:
@@ -532,11 +542,7 @@ class MySQLEdgeRepository(EdgeRepository):
              WHERE (from_object_type, from_object_id, to_object_type, to_object_id, context) IN ({placeholders})
                AND record_deleted = 0
         """
-        session = self._session(engine_name)
-        try:
-            rows = session.execute(sql, params)
-        finally:
-            self._close_standalone_session(session)
+        rows = session.execute(sql, params)
 
         # Determine which input keys match existing rows.
         existing = {tuple(row) for row in rows}

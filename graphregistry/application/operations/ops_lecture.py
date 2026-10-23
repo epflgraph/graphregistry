@@ -223,7 +223,7 @@ class LectureOperations:
     #=====================================#
 
     # Method: Enrich one lecture by lecture_id
-    def enrich(self, lecture_id: str) -> LectureEnrichmentResult | None:
+    def enrich(self, lecture_id: str, verbose: bool = False) -> LectureEnrichmentResult | None:
 
         # Get the lecture enrichment gateway
         gtw = self.lecture_enrichment_gateway
@@ -240,8 +240,9 @@ class LectureOperations:
         if task is None:
             return None
 
-        # Run the enrichment task through the gateway to get the enrichment result
-        result = gtw.enrich(task, verbose=False)
+        # Run the enrichment task through the gateway to get the enrichment result,
+        # passing verbose through so debugging can print the full LLM prompts.
+        result = gtw.enrich(task, verbose=verbose)
 
         # # Load enrichment result from pickle for testing
         # with open(f"enrichment_result_{lecture_id}.pkl", "rb") as f:
@@ -261,53 +262,55 @@ class LectureOperations:
         # with open(f"enrichment_result_{lecture_id}.pkl", "wb") as f:
         #     pickle.dump(result, f)
 
-        #------------------------------#
-        # Concept list post-validation #
-        #------------------------------#
+        #---------------------------------------#
+        # Ontology strict and fuzzy sub-algorithms #
+        #---------------------------------------#
 
-        # Loop over keyframes and remove those that do not have any AI-refined concepts
+        # Loop over the concept lists: the lecture-level top concepts (k=-1)
+        # and the extracted concepts of every keyframe (k>=0).
         for k in [-1] + list(range(len(result.keyframes))):
 
-            # Loop over concepts and remove those that are not Wikipedia pages
-            # For the keyframe-level concepts (k=-1), we check the top concepts,
-            # while for the keyframe-specific concepts (k>=0) we check the refined concepts for each keyframe
+            # Select the concept list to fill: the lecture-level top concepts
+            # for k=-1, the keyframe-specific extracted concepts for k>=0.
             if k == -1:
-                ai_refined_list = result.top_concepts.ai_refined_list
+                concept_list = result.top_concepts
             else:
-                ai_refined_list = result.keyframes[k].refined_concepts.ai_refined_list
+                concept_list = result.keyframes[k].refined_concepts
+            ai_keywords = concept_list.ai_top_keywords if k == -1 else concept_list.ai_extracted_keywords
 
             # Get concept detection gateway
             gtw_conceptdet = self.concept_detection_gateway
             if gtw_conceptdet is None:
                 raise ValueError("Missing gateway: concept_detection")
 
-            # Initialise post-validation list
-            post_validated_list = ScoredConceptList()
+            # Ontology STRICT matching: wiki search per keyword, keeping only
+            # unambiguous semantic matches (similarity >= 0.75), all scored 1.
+            ontology_strict_list = ScoredConceptList()
 
             # Initialise cache for wiki search results to avoid redundant calls for the same concept
             # (this shortens the processing time by half)
             wiki_search_cache: dict[str, list[dict[str, Any]]] = {}
 
-            # Loop over AI-refined concepts and check if they are valid Wikipedia concepts using the concept detection gateway
-            for ai_refined_concept in ai_refined_list:
+            # Loop over the AI keywords and check if they are valid Wikipedia concepts using the concept detection gateway
+            for keyword in ai_keywords:
 
-                # Execute wiki search for the AI-refined concept
-                if ai_refined_concept in wiki_search_cache:
-                    wiki_suggestions = wiki_search_cache[ai_refined_concept]
+                # Execute wiki search for the keyword
+                if keyword in wiki_search_cache:
+                    wiki_suggestions = wiki_search_cache[keyword]
                 else:
-                    wiki_suggestions = gtw_conceptdet.wiki_search(search_term=ai_refined_concept or "")
-                    wiki_search_cache[ai_refined_concept] = wiki_suggestions
+                    wiki_suggestions = gtw_conceptdet.wiki_search(search_term=keyword or "")
+                    wiki_search_cache[keyword] = wiki_suggestions
 
-                # Loop over wiki search suggestions and calculate similarity with the AI-refined concept,
+                # Loop over wiki search suggestions and calculate similarity with the keyword,
                 # keeping those above a certain similarity threshold (e.g., 0.75)
                 for suggestion in wiki_suggestions:
 
-                    # Calculate similarity between the AI-refined concept and the wiki search suggestions
-                    similarity = normalized_levenshtein(ai_refined_concept or "", suggestion['concept_name'])
+                    # Calculate similarity between the keyword and the wiki search suggestions
+                    similarity = normalized_levenshtein(keyword or "", suggestion['concept_name'])
 
-                    # If the similarity is above the threshold, add the suggestion to the post-validation list
+                    # If the similarity is above the threshold, add the suggestion to the strict list
                     if similarity >= 0.75:
-                        post_validated_list.item_list.append(
+                        ontology_strict_list.item_list.append(
                             ScoredConcept(
                                 concept = Concept(
                                     id   = str(suggestion['concept_id']),
@@ -317,11 +320,23 @@ class LectureOperations:
                             )
                         )
 
-            # Assign the post-validated list to the result (for now, we overwrite the AI-refined list, but in the future we could keep both)
-            if k == -1:
-                result.top_concepts.post_validated_list = post_validated_list
-            else:
-                result.keyframes[k].refined_concepts.post_validated_list = post_validated_list
+            # Assign the strict list to the result
+            concept_list.ontology_strict_list = ontology_strict_list
+
+            # Ontology FUZZY matching: run the keywords through concept detection
+            # (wikify) and keep the suggested scores, minus the strict set.
+            ontology_fuzzy_list = ScoredConceptList()
+            if ai_keywords:
+                fuzzy_suggestions = gtw_conceptdet.detect_concepts(text=ai_keywords)
+                strict_ids = {scored.concept.id for scored in ontology_strict_list.item_list}
+                ontology_fuzzy_list.item_list = [
+                    scored
+                    for scored in fuzzy_suggestions.item_list
+                    if scored.concept.id not in strict_ids
+                ]
+
+            # Assign the fuzzy list to the result
+            concept_list.ontology_fuzzy_list = ontology_fuzzy_list
 
         # Print status
         self.msg.concepts_validated(NodeKey(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from graphregistry.adapters.gateways.graphai.gtw_translation import GraphAITextTranslationGateway
 from graphregistry.domain.models.entities.mdl_text import MultilingualText
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 import pickle, glob, rich, json, os
 
 # Initialise translation gateway

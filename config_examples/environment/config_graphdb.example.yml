@@ -29,6 +29,13 @@ environments:
       ca: /path/to/ssl/ca-certificates.crt
       verify_server_cert: true
 
+  # Environment: Analytics
+  analyticsdb_env:
+    host_address: HOST_ADDRESS
+    port: PORT
+    username: USERNAME
+    password: PASSWORD
+
   # Other environments
   something_else_env:
     host_address: HOST_ADDRESS

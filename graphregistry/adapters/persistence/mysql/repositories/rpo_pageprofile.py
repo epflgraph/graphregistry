@@ -2,16 +2,16 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.application.ports.repositories.prt_pageprofile import PageProfileRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 #==================#
 # Class Definition #
@@ -34,7 +34,7 @@ class MySQLPageProfileRepository(PageProfileRepository):
     # Public Method: Initialize the repository with an injected database
     # client and schema resolver; no constructor-time schema introspection
     # or DDL, unlike the legacy PageProfile class.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.verbose = verbose

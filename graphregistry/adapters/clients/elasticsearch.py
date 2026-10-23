@@ -476,17 +476,21 @@ class GraphES:
         # Load parameters
         params = self._config.settings['elasticsearch'][f'{engine_name}_env']
 
-        # Build connection URL (HTTP only, no SSL)
+        # Build the host URL. Credentials are NOT embedded in the URL: they are
+        # passed separately via basic_auth, so they never appear in connection
+        # strings, logs, or exception messages.
+        es_hosts = f"https://{params['hostname']}:{params['port']}"
         if "password" in params and params["password"]:
-            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['hostname']}:{params['port']}"
+            basic_auth = (params['username'], params['password'])
         elif "username" in params and params["username"]:
-            es_hosts = f"https://{params['username']}@{params['hostname']}:{params['port']}"
+            basic_auth = (params['username'], '')
         else:
-            es_hosts = f"https://{params['hostname']}:{params['port']}"
+            basic_auth = None
 
         # Initialize Elasticsearch engine
         engine = ElasticSearchEngine(
             hosts           = [es_hosts],
+            basic_auth      = basic_auth,
             http_compress   = True,
             verify_certs    = False, # use_ssl,
             ca_certs        = '', # self._config.settings['elasticsearch']['graph_engine_test']['cert_file'] if use_ssl else '',

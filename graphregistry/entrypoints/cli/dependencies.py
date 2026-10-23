@@ -8,8 +8,9 @@ have to repeat that knowledge.
 """
 from __future__ import annotations
 from typing import Callable
-from graphdb.core.graphdb import GraphDB
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from graphregistry.adapters.gateways.genai.gtw_lectureenrich import GenAILectureEnrichmentGateway
+from graphregistry.adapters.gateways.genai.gtw_conceptdet_cache import CachedConceptDetectionGateway
 from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
 from graphregistry.adapters.gateways.graphai.gtw_video import GraphAIVideoGateway
 from graphregistry.adapters.persistence.mysql.repositories.resolvers import DefaultSchemaResolver
@@ -17,6 +18,7 @@ from graphregistry.adapters.persistence.mysql.repositories.rpo_cacheprojection i
 from graphregistry.adapters.persistence.mysql.repositories.rpo_changetracking import MySQLChangeTrackingRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_indexbuildup import MySQLIndexBuildupRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_formula import MySQLFormulaRepository
+from graphregistry.adapters.persistence.mysql.repositories.rpo_genai import MySQLGenAIRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_indexdoclink import MySQLIndexDocLinkRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_indexintegrity import MySQLIndexIntegrityRepository
 from graphregistry.adapters.persistence.mysql.repositories.rpo_indexdocs import MySQLIndexDocRepository
@@ -35,6 +37,7 @@ from graphregistry.application.ports.repositories.prt_cacheprojection import Cac
 from graphregistry.application.ports.repositories.prt_changetracking import ChangeTrackingRepository
 from graphregistry.application.ports.repositories.prt_indexbuildup import IndexBuildupRepository
 from graphregistry.application.ports.repositories.prt_formula import FormulaRepository
+from graphregistry.application.ports.repositories.prt_genai import GenAIRepository
 from graphregistry.application.ports.repositories.prt_indexdoclink import IndexDocLinkRepository
 from graphregistry.application.ports.repositories.prt_indexintegrity import IndexIntegrityRepository
 from graphregistry.application.ports.repositories.prt_indexdocs import IndexDocRepository
@@ -63,7 +66,7 @@ def build_schema_resolver(*, engine_name: str, global_config: GlobalConfig) -> D
 #================================================================#
 
 # Public Method: Build the typeflags repository wired to the CLI database client.
-def build_typeflags_repository(*, db: GraphDB, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> TypeFlagsRepository:
+def build_typeflags_repository(*, db: DatabaseClient, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> TypeFlagsRepository:
     """Build the typeflags repository wired to the CLI database client.
 
     The engine defaults to 'coresrv', the engine the legacy airflow pipeline
@@ -73,7 +76,7 @@ def build_typeflags_repository(*, db: GraphDB, global_config: GlobalConfig, engi
     return MySQLTypeFlagsRepository(db=db, schema_resolver=schema_resolver, verbose=verbose)
 
 # Public Method: Build the change-tracking repository wired to the CLI database client.
-def build_change_tracking_repository(*, db: GraphDB, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> ChangeTrackingRepository:
+def build_change_tracking_repository(*, db: DatabaseClient, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> ChangeTrackingRepository:
     """Build the change-tracking repository wired to the CLI database client.
 
     The engine defaults to 'coresrv', the engine the legacy airflow pipeline
@@ -83,7 +86,7 @@ def build_change_tracking_repository(*, db: GraphDB, global_config: GlobalConfig
     return MySQLChangeTrackingRepository(db=db, schema_resolver=schema_resolver, global_config=global_config, verbose=verbose)
 
 # Public Method: Build the cache projection repository wired to the CLI database client.
-def build_cacheprojection_repository(*, db: GraphDB, global_config: GlobalConfig, index_config: IndexConfig, engine_name: str = "coresrv", verbose: bool = False) -> CacheProjectionRepository:
+def build_cacheprojection_repository(*, db: DatabaseClient, global_config: GlobalConfig, index_config: IndexConfig, engine_name: str = "coresrv", verbose: bool = False) -> CacheProjectionRepository:
     """Build the cache projection repository wired to the CLI database client.
 
     The engine defaults to 'coresrv', the engine the legacy pipeline uses for
@@ -93,7 +96,7 @@ def build_cacheprojection_repository(*, db: GraphDB, global_config: GlobalConfig
     return MySQLCacheProjectionRepository(db=db, schema_resolver=schema_resolver, global_config=global_config, index_config=index_config, verbose=verbose)
 
 # Public Method: Build the scores matrix repository wired to the CLI database client.
-def build_scoresmatrix_repository(*, db: GraphDB, global_config: GlobalConfig, scores_config: ScoresConfig, engine_name: str = "coresrv", verbose: bool = False) -> ScoresMatrixRepository:
+def build_scoresmatrix_repository(*, db: DatabaseClient, global_config: GlobalConfig, scores_config: ScoresConfig, engine_name: str = "coresrv", verbose: bool = False) -> ScoresMatrixRepository:
     """Build the scores matrix repository wired to the CLI database client.
 
     The engine defaults to 'coresrv', the engine the legacy cache management
@@ -104,7 +107,7 @@ def build_scoresmatrix_repository(*, db: GraphDB, global_config: GlobalConfig, s
 
 # Public Method: Build the index patch operation wired to the CLI database
 # client, composing the page-profile, docs, and doc-link repositories.
-def build_index_patch_operations(*, db: GraphDB, global_config: GlobalConfig, index_config: IndexConfig, scores_config: ScoresConfig, engine_name: str = "coresrv", verbose: bool = False) -> IndexPatchOperations:
+def build_index_patch_operations(*, db: DatabaseClient, global_config: GlobalConfig, index_config: IndexConfig, scores_config: ScoresConfig, engine_name: str = "coresrv", verbose: bool = False) -> IndexPatchOperations:
     """Build the index patch operation wired to the CLI database client."""
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
     return IndexPatchOperations(
@@ -119,14 +122,14 @@ def build_index_patch_operations(*, db: GraphDB, global_config: GlobalConfig, in
 
 # Public Method: Build the index integrity repository wired to the CLI
 # database client.
-def build_index_integrity_repository(*, db: GraphDB, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> IndexIntegrityRepository:
+def build_index_integrity_repository(*, db: DatabaseClient, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> IndexIntegrityRepository:
     """Build the index integrity repository wired to the CLI database client."""
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
     return MySQLIndexIntegrityRepository(db=db, schema_resolver=schema_resolver, global_config=global_config, verbose=verbose)
 
 # Public Method: Build the search index export repository wired to the CLI
 # database client and the configured export path.
-def build_searchindex_export_repository(*, db: GraphDB, global_config: GlobalConfig, index_config: IndexConfig, engine_name: str = "coresrv", verbose: bool = False) -> SearchIndexExportRepository:
+def build_searchindex_export_repository(*, db: DatabaseClient, global_config: GlobalConfig, index_config: IndexConfig, engine_name: str = "coresrv", verbose: bool = False) -> SearchIndexExportRepository:
     """Build the search index export repository wired to the CLI database
     client and the configured export path."""
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
@@ -135,10 +138,22 @@ def build_searchindex_export_repository(*, db: GraphDB, global_config: GlobalCon
 
 # Public Method: Build the formula repository wired to the CLI database
 # client.
-def build_formula_repository(*, db: GraphDB, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> FormulaRepository:
+def build_formula_repository(*, db: DatabaseClient, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> FormulaRepository:
     """Build the formula repository wired to the CLI database client."""
     schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
     return MySQLFormulaRepository(db=db, schema_resolver=schema_resolver, global_config=global_config, verbose=verbose)
+
+# Public Method: Build the graph_genai outputs repository wired to the CLI
+# database client.
+def build_genai_repository(*, db: DatabaseClient, global_config: GlobalConfig, engine_name: str = "coresrv", verbose: bool = False) -> GenAIRepository:
+    """Build the graph_genai outputs repository wired to the CLI database client.
+
+    The engine defaults to 'coresrv'; the genai schema is resolved through the
+    schema resolver, so the repository targets the graph_genai database on the
+    same engine as the registry schemas.
+    """
+    schema_resolver = build_schema_resolver(engine_name=engine_name, global_config=global_config)
+    return MySQLGenAIRepository(db=db, schema_resolver=schema_resolver, verbose=verbose)
 
 #================================================================#
 # Function Group: Processing scope builders                      #
@@ -146,7 +161,7 @@ def build_formula_repository(*, db: GraphDB, global_config: GlobalConfig, engine
 
 # Public Method: Build the processing scope from the active typeflags, optionally
 # restricted to the indexable edge families of the index configuration.
-def build_processing_scope(*, db: GraphDB, global_config: GlobalConfig, index_config: IndexConfig, restrict_to_indexable: bool = False) -> ProcessingScope:
+def build_processing_scope(*, db: DatabaseClient, global_config: GlobalConfig, index_config: IndexConfig, restrict_to_indexable: bool = False) -> ProcessingScope:
     """Build the processing scope from the active typeflags.
 
     The restriction mirrors the legacy get_types_to_process intersection and
@@ -186,12 +201,14 @@ def build_edge_operations(*, uow_factory: Callable[[], UnitOfWork]) -> EdgeOpera
 # Public Method: Build lecture operations wired to MySQL repository and AI gateways #
 def build_lecture_operations(
     *,
-    db                        : GraphDB,
+    db                        : DatabaseClient,
     engine_name               : str,
     global_config             : GlobalConfig,
     include_video_gateway     : bool = True,
     include_concept_gateway   : bool = True,
     include_enrichment_gateway: bool = True,
+    include_genai_persistence : bool = True,
+    lecture_enrichment_gateway: GenAILectureEnrichmentGateway | None = None,
 ) -> LectureOperations:
 #---------------------------------------------------------------------------------------#
     """Build lecture operations wired to the MySQL repository and AI gateways."""
@@ -209,10 +226,29 @@ def build_lecture_operations(
         node_repo       = node_repo,
     )
 
-    # Instantiate the requested AI gateways, using None for disabled features.
+    # The genai outputs repository records every LLM call, its keyword lists
+    # and the composed raw input in the graph_genai database.
+    genai_repo = build_genai_repository(db=db, global_config=global_config, engine_name=engine_name) if include_genai_persistence else None
+
+    # Instantiate the requested AI gateways, using None for disabled features;
+    # a pre-built enrichment gateway wins over the include flag.
     video_processing_gateway   = GraphAIVideoGateway()     if include_video_gateway     else None
     concept_detection_gateway  = GraphAIConceptDetectionGateway() if include_concept_gateway   else None
-    lecture_enrichment_gateway = GenAILectureEnrichmentGateway()  if include_enrichment_gateway else None
+
+    # Wrap the concept-detection gateway with the graph_genai lookup caches so
+    # ontology re-validation (wiki_search + wikify) costs no network on re-runs.
+    if concept_detection_gateway is not None and genai_repo is not None:
+        concept_detection_gateway = CachedConceptDetectionGateway(
+            gateway          = concept_detection_gateway,
+            genai_repository = genai_repo,
+        )
+
+    # Build the enrichment gateway last so it can receive the same genai
+    # repository; a pre-built gateway wins over the include flag.
+    if lecture_enrichment_gateway is None:
+        lecture_enrichment_gateway = (
+            GenAILectureEnrichmentGateway(genai_repository=genai_repo) if include_enrichment_gateway else None
+        )
 
     # Assemble the lecture operations with all selected gateways.
     return LectureOperations(

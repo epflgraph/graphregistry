@@ -1,0 +1,185 @@
+{
+    "llm-models": {
+        "GPT OSS 120b": {
+            "model-name": "openai/gpt-oss-120b",
+            "max-tokens": 131072
+        },
+        "Kimi K2.7 Code": {
+            "model-name": "moonshotai/Kimi-K2.7-Code",
+            "max-tokens": 262144
+        },
+        "Zai GLM 5.3": {
+            "model-name": "zai-org/GLM-5.3",
+            "max-tokens": 1048576
+        },
+        "Zai GLM 5.3 Flash": {
+            "model-name": "zai-org/GLM-5.3-Flash",
+            "max-tokens": 1048576
+        },
+        "Zai GLM 5.3 FP8": {
+            "model-name": "zai-org/GLM-5.3-fp8",
+            "max-tokens": 1048576
+        },
+        "Zai GLM 5.3 Flash FP8": {
+            "model-name": "zai-org/GLM-5.3-Flash-fp8",
+            "max-tokens": 1048576
+        },
+        "Apertus 1.5 8B BF16": {
+            "model-name": "swiss-ai/Apertus-v1.5-8B-bfloat16",
+            "max-tokens": 262144
+        },
+        "Apertus 1.5 8B": {
+            "model-name": "swiss-ai/Apertus-v1.5-8B",
+            "max-tokens": 262144
+        },
+        "Apertus 1.5 70B BF16": {
+            "model-name": "swiss-ai/Apertus-v1.5-70B-bfloat16",
+            "max-tokens": 262144
+        },
+        "Apertus 1.5 70B": {
+            "model-name": "swiss-ai/Apertus-v1.5-70B",
+            "max-tokens": 262144
+        },
+        "Apertus Small": {
+            "model-name": "swiss-ai/Apertus-small",
+            "max-tokens": 262144
+        },
+        "Apertus Large": {
+            "model-name": "swiss-ai/Apertus-large",
+            "max-tokens": 262144
+        },
+        "Qwen 3.8 27B FP8": {
+            "model-name": "Qwen/Qwen3.8-27B-fp8",
+            "max-tokens": 1000000
+        },
+        "Qwen 3.8 27B": {
+            "model-name": "Qwen/Qwen3.8-27B",
+            "max-tokens": 1000000
+        },
+        "Qwen 3.6 35B A3B FP8": {
+            "model-name": "Qwen/Qwen3.6-35B-A3B-fp8",
+            "max-tokens": 1010000
+        },
+        "Qwen 3.6 35B A3B": {
+            "model-name": "Qwen/Qwen3.6-35B-A3B",
+            "max-tokens": 1010000
+        },
+        "Qwen 3.5 397B A17B INT4": {
+            "model-name": "Qwen/Qwen3.5-397B-A17B-int4",
+            "max-tokens": 1010000
+        },
+        "Qwen 3.5 397B A17B": {
+            "model-name": "Qwen/Qwen3.5-397B-A17B",
+            "max-tokens": 1010000
+        },
+        "PaddleOCR VL BF16": {
+            "model-name": "PaddlePaddle/PaddleOCR-VL-bfloat16",
+            "max-tokens": 131072
+        },
+        "PaddleOCR VL": {
+            "model-name": "PaddlePaddle/PaddleOCR-VL",
+            "max-tokens": 131072
+        },
+        "Meditron 3 70B BF16": {
+            "model-name": "OpenMeditron/Meditron3-70B-bfloat16",
+            "max-tokens": 131072
+        },
+        "Meditron 3 70B": {
+            "model-name": "OpenMeditron/Meditron3-70B",
+            "max-tokens": 131072
+        },
+        "Meditron CHUV DPO BF16": {
+            "model-name": "OpenMeditron/meditron-CHUV-dpo-bfloat16",
+            "max-tokens": 131072
+        },
+        "Meditron CHUV DPO": {
+            "model-name": "OpenMeditron/meditron-CHUV-dpo",
+            "max-tokens": 131072
+        },
+        "GPT OSS 120b BF16": {
+            "model-name": "openai/gpt-oss-120b-bfloat16",
+            "max-tokens": 131072
+        },
+        "Mistral Small 3.2 24B BF16": {
+            "model-name": "mistralai/Mistral-Small-3.2-24B-Instruct-2506-bfloat16",
+            "max-tokens": 131072
+        },
+        "Mistral Small 3.2 24B": {
+            "model-name": "mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+            "max-tokens": 131072
+        },
+        "MedGemma 27B BF16": {
+            "model-name": "google/medgemma-27b-text-it-bfloat16",
+            "max-tokens": 131072
+        },
+        "MedGemma 27B": {
+            "model-name": "google/medgemma-27b-text-it",
+            "max-tokens": 131072
+        },
+        "Qwen 2.5 72B Legitron BF16": {
+            "model-name": "EPFLiGHT/Qwen-25-72b-Legitron-bfloat16",
+            "max-tokens": 131072
+        },
+        "Qwen 2.5 72B Legitron": {
+            "model-name": "EPFLiGHT/Qwen-25-72b-Legitron",
+            "max-tokens": 131072
+        },
+        "Llama 3.3 70B Legitron BF16": {
+            "model-name": "EPFLiGHT/Llama-33-70b-Legitron-bfloat16",
+            "max-tokens": 131072
+        },
+        "Llama 3.3 70B Legitron": {
+            "model-name": "EPFLiGHT/Llama-33-70b-Legitron",
+            "max-tokens": 131072
+        },
+        "Gemma 3 27B MeditronFO BF16": {
+            "model-name": "EPFLiGHT/Gemma-3-27B-MeditronFO-bfloat16",
+            "max-tokens": 131072
+        },
+        "Gemma 3 27B MeditronFO": {
+            "model-name": "EPFLiGHT/Gemma-3-27B-MeditronFO",
+            "max-tokens": 131072
+        },
+        "Apertus 70B MeditronFO BF16": {
+            "model-name": "EPFLiGHT/Apertus-70B-MeditronFO-bfloat16",
+            "max-tokens": 65536
+        },
+        "Apertus 70B MeditronFO": {
+            "model-name": "EPFLiGHT/Apertus-70B-MeditronFO",
+            "max-tokens": 65536
+        },
+        "Apertus 70B Legitron BF16": {
+            "model-name": "EPFLiGHT/Apertus-70b-Legitron-bfloat16",
+            "max-tokens": 65536
+        },
+        "Apertus 70B Legitron": {
+            "model-name": "EPFLiGHT/Apertus-70b-Legitron",
+            "max-tokens": 65536
+        },
+        "EPFL AIaaS Small": {
+            "model-name": "epfl-aiaas/small",
+            "max-tokens": 1048576
+        },
+        "EPFL AIaaS Large": {
+            "model-name": "epfl-aiaas/large",
+            "max-tokens": 1048576
+        },
+        "DeepSeek V4.1 Flash FP8": {
+            "model-name": "deepseek-ai/DeepSeek-V4.1-Flash-fp8",
+            "max-tokens": 1048576
+        },
+        "DeepSeek V4.1 Flash": {
+            "model-name": "deepseek-ai/DeepSeek-V4.1-Flash",
+            "max-tokens": 1048576
+        },
+        "DeepSeek V4 Flash 0731 FP8": {
+            "model-name": "deepseek-ai/DeepSeek-V4-Flash-0731-fp8",
+            "max-tokens": 1048576
+        },
+        "DeepSeek V4 Flash 0731": {
+            "model-name": "deepseek-ai/DeepSeek-V4-Flash-0731",
+            "max-tokens": 1048576
+        }
+    },
+    "default-model": "Zai GLM 5.3 Flash"
+}

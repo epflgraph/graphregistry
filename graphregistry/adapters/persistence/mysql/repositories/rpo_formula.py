@@ -5,17 +5,17 @@ import glob
 import re
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from graphregistry.application.ports.repositories.prt_formula import FormulaRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import GlobalConfig
 from graphregistry.common.paths import REPO_ROOT
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # Root folder of the SQL formula templates and the short folder aliases.
 SQL_FORMULAS_PATH = REPO_ROOT / 'database' / 'formulas'
@@ -59,7 +59,7 @@ class MySQLFormulaRepository(FormulaRepository):
 
     # Public Method: Initialize the repository with an injected database
     # client, schema resolver, and global configuration.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, global_config: GlobalConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, global_config: GlobalConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.global_config = global_config

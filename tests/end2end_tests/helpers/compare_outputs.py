@@ -68,11 +68,15 @@ def compare_output_directories(
     atol: float = 1e-8,
     ignore_json_keys: list[str] | None = None,
     verbose: bool = True,
+    success_message: str = "✅ All outputs match ground truth.",
 ) -> list[str]:
     """Compare a ground-truth output tree with a fresh test output tree.
 
     Returns a list of human-readable mismatch messages.  An empty list means
-    the outputs are equivalent within the configured tolerance.
+    the outputs are equivalent within the configured tolerance.  The
+    ``success_message`` parameter lets callers that compare something other
+    than the ground truth (e.g. the twice-mode convergence check) keep the
+    success line truthful.
     """
     mismatches: list[str] = []
 
@@ -177,7 +181,7 @@ def compare_output_directories(
         if mismatches:
             print(f"❌ Found {len(mismatches)} mismatch(es).")
         else:
-            print("✅ All outputs match ground truth.")
+            print(success_message)
 
     return mismatches
 

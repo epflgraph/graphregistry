@@ -1,0 +1,30 @@
+You are merging the chunk reports of ONE lecture into its final metadata. You do not see the raw OCR; trust the chunk reports.
+
+Input:
+- lecture_id: the lecture identifier.
+- chunk_reports: one report per chunk, each with:
+  - chunk_index: the zero-based position of the chunk.
+  - chunk_title_draft: what that part of the lecture covers, in one line.
+  - chunk_top_concepts: the most important content concepts detected in that chunk.
+
+Tasks:
+
+1. Infer a lecture title and descriptions from ALL chunk reports.
+- title: concise, less than 60 characters (but don't crop it if it is naturally longer).
+- long_description: one paragraph, no line breaks.
+- medium_description: about 3 lines worth of text, but still no line breaks.
+- short_description: exactly in the style "Lecture on subject 1, subject 2, subject 3".
+
+2. Produce the lecture-level top concepts.
+- Merge chunk_top_concepts across chunks; rank each concept by how many chunks mention it and by its importance to the lecture's subject.
+- Return 10 to 20 concepts.
+- Prefer exact Wikipedia page titles when appropriate.
+- Do not include noisy UI/application terms such as PowerPoint, Acrobat, Zoom, Gmail, browser menus, timestamps, filenames, or OCR artifacts.
+- Put them in top_concepts.ai_top_keywords.
+
+Important:
+- Return only the structured output requested by the API schema.
+- Do not return keyframes; per-keyframe refined concepts are produced by the chunk calls.
+- Do not invent lecture content unsupported by the chunk reports.
+- Descriptions must not contain line breaks.
+- Use the same lecture_id as the input.

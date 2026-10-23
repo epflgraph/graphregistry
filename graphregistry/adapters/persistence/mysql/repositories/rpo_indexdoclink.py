@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 from loguru import logger as sysmsg
-from graphdb.models.sqlquery import print_sql
-from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
+from graphregistry.adapters.persistence.mysql.repositories.helpers import create_table_if_not_exists, print_eval_table
 from graphregistry.application.ports.repositories.prt_indexdoclink import IndexDocLinkRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.common.config import IndexConfig, ScoresConfig
@@ -13,10 +13,10 @@ from graphregistry.domain.models.pipeline.mdl_policies import LinkSelectionPolic
 from graphregistry.domain.models.pipeline.mdl_stats import PropagationStats
 from graphregistry.domain.types import ActionSet
 
-# Import GraphDB only for type checking so importing this module never opens a
+# Import DatabaseClient only for type checking so importing this module never opens a
 # database connection; the client is injected by the entrypoint wiring.
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 # SQL data type mapping of the index configuration field types, copied verbatim
 # from the legacy module constants the ordering rules rely on.
@@ -69,7 +69,7 @@ class MySQLIndexDocLinkRepository(IndexDocLinkRepository):
     # Public Method: Initialize the repository with an injected database client,
     # schema resolver, and configurations; no module-level connections and no
     # constructor-time DDL, unlike the legacy IndexDocLinks class.
-    def __init__(self, db: "GraphDB", schema_resolver: SchemaResolver, index_config: IndexConfig, scores_config: ScoresConfig, verbose: bool = False) -> None:
+    def __init__(self, db: "DatabaseClient", schema_resolver: SchemaResolver, index_config: IndexConfig, scores_config: ScoresConfig, verbose: bool = False) -> None:
         self.db = db
         self.schema_resolver = schema_resolver
         self.index_config = index_config
@@ -278,20 +278,22 @@ class MySQLIndexDocLinkRepository(IndexDocLinkRepository):
                     """
 
         # Evaluation counts the flagged rows and the drifted ones across both
-        # field sources.
+        # field sources. The legacy joined two SUM aggregates with OR — a
+        # boolean that collapses n_patch to 0/1 and severely undercounts the
+        # patch set (legacy bug, documented deviation, 2026-10-12); the
+        # corrected expression sums the per-row disjunction.
         drift_b = " OR ".join([f'COALESCE(i.{c}, "__null__") != COALESCE(b.{c}, "__null__")' for c in obj_fields])
         drift_l = " OR ".join([f'COALESCE(i.{c}, "__null__") != COALESCE(l.{c}, "__null__")' for c in obj2obj_fields])
-        joiner = " OR " if has_obj2obj_fields else ""
+        n_patch_expr = f"COALESCE(SUM(({drift_b}) OR ({drift_l})), 0)" if has_obj2obj_fields else f"COALESCE(SUM({drift_b}), 0)"
         sql_query_eval = f"""
                     SELECT COUNT(*) AS n_total,
-                           COALESCE(SUM({drift_b}), 0){joiner if has_obj2obj_fields else ''}
-                        {"COALESCE(SUM(" if has_obj2obj_fields else ""}{drift_l if has_obj2obj_fields else ""}{"), 0)" if has_obj2obj_fields else ""}
+                           {n_patch_expr}
                            AS n_patch
                       FROM {buildup_link_table_path_obj} b
                 INNER JOIN {target_table_path} i
                         ON (i.link_type, i.link_id) = (b.doc_type, b.doc_id)
                            {obj2obj_placeholder}
-                     WHERE b.to_process = 1;
+                     WHERE (b.to_process = 1 OR l.to_process = 1);
                 """
 
         # The evaluation query runs for eval and commit alike.
@@ -810,6 +812,11 @@ class MySQLIndexDocLinkRepository(IndexDocLinkRepository):
             out_2 = self.db.execute_query(engine_name=engine_name, query=sql_query_eval_2, query_id='oxyoF81R')
             rows_to_insert = (out_1[0][0] if out_1 else 0) + (out_2[0][0] if out_2 else 0)
             rows_to_re_score = (out_1[0][1] if out_1 else 0) + (out_2[0][1] if out_2 else 0)
+            print_eval_table(
+                rows    = [[int(rows_to_insert), int(rows_to_re_score)]],
+                headers = ['rows to insert/replace', 'rows to re-score'],
+                title   = f'\n🔍 Evaluation results for {target_table_path}:',
+            )
 
         # Print the commit queries.
         if 'print' in actions:
@@ -1252,7 +1259,11 @@ class MySQLIndexDocLinkRepository(IndexDocLinkRepository):
                 print_sql(sql_query_eval, title='LLzeD3NV')
             out = self.db.execute_query(engine_name=engine_name, query=sql_query_eval, query_id='LLzeD3NV')
             if out and sum(int(v) for v in out[0] if v is not None) > 0:
-                sysmsg.trace(f"🔍 Evaluation results for {target_table_path}: {out[0]}")
+                print_eval_table(
+                    rows    = [[out[0][0], out[0][1]]],
+                    headers = ['rows to insert', 'rows to replace'],
+                    title   = f'\n🔍 Evaluation results for {target_table_path}:',
+                )
 
         # Execute the commit query; nothing runs when the evaluation found
         # no work.
