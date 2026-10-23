@@ -324,3 +324,5 @@ out_tmp.txt
 scripts/check_ping_model.sh
 scripts/watch_inference_requests.sh
 FAKE-CREDENTIALS-hook-test.txt
+ocr_dump.txt
+out_tmp.txt
