@@ -17,9 +17,11 @@ graphregistry kgraph patch
 
 graphregistry airflow rollover
 
+
+
 # ------------------------------------------
 
 graphregistry kgraph prune
 scripts/out_tables_stats_prod.sh
 
-graphregistry kgraph index -n graphsearch_e2e_test -r -f
+graphregistry kgraph index -n graphsearch_test_2026_10_14 -r -f

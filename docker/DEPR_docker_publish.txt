@@ -1,2 +1,0 @@
-docker buildx build --progress=plain --load -t epflgraph/graphregistry:latest .
-docker push epflgraph/graphregistry:latest

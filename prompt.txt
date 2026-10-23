@@ -1,0 +1,5 @@
+<|fim_prefix|>// Calculate the area of a circle
+function area(radius) {
+    <|fim_suffix|>
+}
+<|fim_middle|>

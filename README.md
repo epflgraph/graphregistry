@@ -1,13 +1,12 @@
 <img src="assets/icon-a0a7c0c9.png" alt="Project logo" height="64">
 
-[![License](https://img.shields.io/github/license/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
-[![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver)](https://github.com/epflgraph/graphregistry/releases/latest)
+[![License](https://img.shields.io/github/license/epflgraph/graphregistry?sort=semver&logo=apache&color=00A2FF&logoColor=white&label=License)](https://github.com/epflgraph/graphregistry/blob/master/LICENSE)
+[![Latest Release on Github](https://img.shields.io/github/v/release/epflgraph/graphregistry?sort=semver&logo=git&color=00A2FF&logoColor=white&label=Release)](https://github.com/epflgraph/graphregistry/releases/latest)
+[![Docker Image](https://img.shields.io/docker/v/epflgraph/graphregistry?sort=semver&logo=docker&color=00A2FF&logoColor=white&label=Docker)](https://hub.docker.com/r/epflgraph/graphregistry)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue?logo=python&color=00A2FF&logoColor=white&label=Python)](https://github.com/epflgraph/graphregistry/blob/master/pyproject.toml)
+[![docs](https://img.shields.io/github/actions/workflow/status/epflgraph/graphregistry/docs.yml?logo=gitbook&color=00A2FF&logoColor=white&label=Docs)](https://github.com/epflgraph/graphregistry/actions/workflows/docs.yml)
+[![Contributors](https://img.shields.io/github/contributors/epflgraph/graphregistry?sort=semver&logo=githubsponsors&color=00A2FF&logoColor=white&label=Contributors)](https://github.com/epflgraph/graphregistry/graphs/contributors)
 [![GitHub Stars](https://img.shields.io/github/stars/epflgraph/graphregistry?style=social)](https://github.com/epflgraph/graphregistry/stargazers)
-[![Contributors](https://img.shields.io/github/contributors/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/graphs/contributors)
-[![Last Commit](https://img.shields.io/github/last-commit/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/commits/master)
-[![Open Issues](https://img.shields.io/github/issues/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/issues)
-[![Open PRs](https://img.shields.io/github/issues-pr/epflgraph/graphregistry)](https://github.com/epflgraph/graphregistry/pulls)
-=
 
 🏠 [Project Home](https://github.com/epflgraph/graphproject) > Registry
 
@@ -51,7 +50,7 @@ Steps to deploy with Docker:
     ```yaml
     services:
         graphregistry:
-            image: epflgraph/graphregistry:latest
+            image: epflgraph/graphregistry:${GRAPHREGISTRY_TAG:-latest}
             container_name: graphregistry-app
             restart: unless-stopped
 
@@ -70,7 +69,7 @@ Steps to deploy with Docker:
                 - ./config:/app/config:ro
     ```
 
-    This is the minimal configuration that will deploy and launch the application. A more complete example with HTTPS termination and log shipping is available in:<br />
+    This is the minimal configuration that will deploy and launch the application. The image tag defaults to `latest`; set `GRAPHREGISTRY_TAG` (e.g. to `pre-release`) in your environment or an `.env` file to deploy a different rolling tag. A more complete example with HTTPS termination and log shipping is available in:<br />
     📂 [docker/deployment/docker-compose_https+monitor.yml](docker/deployment/docker-compose_https+monitor.yml)
 
 2. Deploy the Registry app and other optional services:
@@ -83,7 +82,7 @@ Steps to deploy with Docker:
 
     ```shell
     docker compose down graphregistry --remove-orphans
-    docker rmi epflgraph/graphregistry:latest 2>/dev/null || true
+    docker rmi "epflgraph/graphregistry:${GRAPHREGISTRY_TAG:-latest}" 2>/dev/null || true
     docker compose pull graphregistry
     docker compose up graphregistry -d --force-recreate
     ```
@@ -171,11 +170,11 @@ curl -X GET http://127.0.0.1:9999/health 2>/dev/null | jq
 
 Configuration
 =============
-The Graph Registry application relies on seperate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
+The Graph Registry application relies on separate configuration files for each service it leverages or depends on. In addition, there is a number of configuration files governing different parts of the Registry workflow and the knowledge graph construction.
 
 The configuration files should be stored in a folder named `config`. Example templates are provided in the folder: 📂 [config_examples](config_examples)
 
-## Evironment setup
+## Environment setup
 
 ### Graph Registry
 
@@ -194,12 +193,6 @@ cli:
 # Registry database-related configurations
 database:
 
-    # Path to folders containing SQL files to be exported, imported, and executed
-    sql_paths:
-        formulas: "/path/to/database/formulas/"
-        exports:  "/path/to/data/exports/"
-        patches:  "/path/to/data/patches/"
-
     # Custom DB schema names on MySQL/MariaDB (for the CREATE DATABASE <schema_name>; command)
     schema_names:
         ontology:                graph_ontology
@@ -214,6 +207,7 @@ database:
         graphsearch_prod:        graphsearch_prod
         graphsearch_prod_mirror: graphsearch_prod_mirror
         graphai_cache_api:       graphai_cache_api
+        genai:                   graph_genai
 
     # Execution mode [dev, prod]
     # In 'dev' mode, data is written to separate DB schemas with the prefix "_1_DEV_", to avoid data being written to production tables.
@@ -222,7 +216,7 @@ database:
 
 ### MySQL/MariaDB
 
-The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_graphdb.yml](config_examples/environment/config_graphdb.example.yml). Your can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the database connection and GraphDB CLI is defined in: 📂 [config_graphdb.yml](config_examples/environment/config_graphdb.example.yml). You can define your multiple environments, which you then select with `graphdb --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # MySQL client and dump binaries
@@ -269,7 +263,7 @@ default_env: coresrv_env
 
 ### ElasticSearch
 
-The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_graphes.yml](config_examples/environment/config_graphes.example.yml). Your can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
+The configuration for the ElasticSearch connection and GraphES CLI is defined in: 📂 [config_graphes.yml](config_examples/environment/config_graphes.example.yml). You can define your multiple environments, which you then select with `graphes --env <env_name>` in the CLI. The content resembles the following:
 
 ```yaml
 # Default export path for index dumps
@@ -326,11 +320,13 @@ genai:
     llm_model: "moonshotai/Kimi-K2.7-Code"
 ```
 
+The LLM models available to the application (name, identifier and context size), as well as the default model, are catalogued in: 📂 [config_models.json](config_examples/application/config_models.example.json).
+
 ## Application setup
 
 ### Registry API
 
-The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config_examples/application/config_api.example.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry API is defined in: 📂 [config_api.json](config_examples/application/config_api.example.json). It contains the allowed object types for graph nodes and edges that an API user can insert (more on this in [Ingesting and managing data](#ingesting-and-managing-data)). The content resembles the following:
 
 ```json
 {
@@ -358,7 +354,7 @@ The configuration for the Graph Registry API is defined in: 📂 [config_api.jso
 
 ### Registry Airflow
 
-The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry airflow mechanism is defined in: 📂 [config_airflow.json](config_examples/application/config_airflow.example.json). It allows you to setup which node and edge object types you want to process on each data refresh cycle (more on this in [Setup the object and content types to process](#setup-the-object-and-content-types-to-process)). The content resembles the following:
 
 ```json
 {
@@ -385,7 +381,7 @@ The configuration for the Graph Registry airflow mechanism is defined in: 📂 [
 
 ### Semantic scoring
 
-The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_scores.json](config_examples/application/config_scores.example.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in Section #). The content resembles the following:
+The configuration for the Graph Registry semantic scoring is defined in: 📂 [config_scores.json](config_examples/application/config_scores.example.json). It allows you to setup which node-to-node tuples you wish to be semantically connected and scored (more on this in [Formulas and scoring matrix](#formulas-and-scoring-matrix)). The content resembles the following:
 
 ```json
 {
@@ -459,7 +455,11 @@ If you start from an empty environment, you can run the initialization command t
 graphregistry init
 ```
 
-This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database.
+This command assumes the [Graph Ontology](https://github.com/epflgraph/graphontology) has already been imported into your database. If you are just experimenting, you can skip that requirement and bootstrap the environment with the provided sample data instead:
+
+```shell
+graphregistry init --import-ontology-sample --import-concepts-sample
+```
 
 ## Ingesting and managing data
 
@@ -520,11 +520,11 @@ The Airflow mechanism allows you to:
 - (re)process only new objects, or otherwise objects for which the checksums have changed;
 - (re)process only objects that have expired (based on when they were last processed).
 
-The entire pipeline, from data ingestion to updating and patching the knowledge graph that serves Graph Search in production, is optimized such that only data points that are different (or focibly need to be re-computed) are actually affected.
+The entire pipeline, from data ingestion to updating and patching the knowledge graph that serves Graph Search in production, is optimized such that only data points that are different (or forcibly need to be re-computed) are actually affected.
 
 ## Sync new objects
 
-The first action into lauching a knowledge graph refresh cycle (other than inserting and deleting objects) is to sync the current objects in the data registry into airflow, so they start being tracked. You can do this with the command:
+The first action into launching a knowledge graph refresh cycle (other than inserting and deleting objects) is to sync the current objects in the data registry into airflow, so they start being tracked. You can do this with the command:
 
 ```shell
 graphregistry airflow sync
@@ -533,7 +533,7 @@ graphregistry airflow sync
 If you are just starting, you should also sync the ontology objects (concepts and category objects) so they are tracked like any other object:
 
 ```shell
-graphregistry airflow sync --include_ontology
+graphregistry airflow sync --include-ontology
 ```
 
 If this is not your first refresh cycle, and every time you begin a new one, it is advisable to start with a clean slate by resetting all cached states across the pipeline:
@@ -542,7 +542,7 @@ If this is not your first refresh cycle, and every time you begin a new one, it 
 graphregistry airflow reset
 ```
 
-You can later reset the cached states in a more targated manner using the following options:
+You can later reset the cached states in a more targeted manner using the following options:
 
 ```shell
 graphregistry airflow reset --options typeflags,airflow,traversals,cache
@@ -602,7 +602,7 @@ To determine if an object needs to be re-processed due to changes in its metadat
 graphregistry airflow update-checksums
 ```
 
-Note, however, that this operation, and the ones bellow, respect the active type flags. If you want to modify the affected types, be sure to set them in advace with `graphregistry airflow config`.
+Note, however, that this operation, and the ones bellow, respect the active type flags. If you want to modify the affected types, be sure to set them in advance with `graphregistry airflow config`.
 
 Another way you can decide whether or not to re-process objects is through expiration dates. If, for example, you consider that semantic connection scores between objects (semantic edges) should be re-calculated after 90 days, you can run:
 
@@ -633,7 +633,7 @@ Once the execution plan has been configured, the next stage is to calculate and 
 
 ## Formulas and scoring matrix
 
-The first functionality to master that will enable you to fully benefit from the Graph Registry capabilities is *formulas*. They are described in detail in the [documentation](https://epflgraph.github.io/graphregistry/). For now, it is enough to descriminate formulas into three types:
+The first functionality to master that will enable you to fully benefit from the Graph Registry capabilities is *formulas*. They are described in detail in the [documentation](https://epflgraph.github.io/graphregistry/). For now, it is enough to discriminate formulas into three types:
 
 - formulas related to object metadata fields;
 - formulas related to graph traversals;
@@ -648,7 +648,7 @@ Starting with the second, semantic scores are represented by weighted edges of t
 
 Once the link between objects and the concepts ontology has been calculated, the next step is calculate and update the global `Object-to-Object` scoring matrix.
 
-In can execute all these steps at once (including intermediate steps) as follows:
+You can execute all these steps at once (including intermediate steps) as follows:
 
 ```shell
 graphregistry kgraph compute
@@ -683,6 +683,18 @@ Execute as follows:
 graphregistry kgraph prune
 ```
 
+You can preview what this cleanup would remove without executing any destructive write by running it in evaluation mode:
+
+```shell
+graphregistry kgraph prune --eval
+```
+
+A companion command, `graphregistry kgraph integrity`, runs read-only integrity heuristics over the index tables and reports any remaining orphans:
+
+```shell
+graphregistry kgraph integrity
+```
+
 ## Index documents on ElasticSearch
 
 Finally, you can export the Graph Search database index for importing into ElasticSearch, which serves the application's search bar as well as the chatbot functionality. This is done with the following command:
@@ -691,4 +703,32 @@ Finally, you can export the Graph Search database index for importing into Elast
 graphregistry kgraph index
 ```
 
-These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respecively.
+These commands assume you are deploying into a "core services" or "test" environment, since direct patching of data in production is not supported at the moment. In order to deploy your updated database and index into production, you can make direct data copies using the [GraphDB](https://github.com/epflgraph/graphdb-client) and [GraphES](https://github.com/epflgraph/graphes-client) clients respectively.
+
+Testing
+=======
+The project ships with a unit test suite and a full end-to-end (e2e) pipeline test. Both live in the `tests/` folder and run against the project virtual environment (`.venv`).
+
+## Unit tests
+
+The unit tests do not require a database connection:
+
+```shell
+.venv/bin/python -m pytest tests/unit_tests
+```
+
+## End-to-end pipeline test
+
+The e2e test executes the full CLI pipeline against the `_1_DEV_*` database schemas (init, data ingestion, airflow, knowledge graph construction, patching, pruning and indexing), exports every resulting table and the ElasticSearch index, and compares the outputs against a ground-truth snapshot:
+
+```shell
+./scripts/run_e2e_test.sh
+```
+
+> [!CAUTION]
+> The e2e test mutates the `_1_DEV_*` schemas. Do not run it against a production-configured environment (the test guards against this, but do not rely on it).
+
+Two auxiliary modes are available:
+
+- `--compare-only`: skip the pipeline execution and re-compare the existing `tests/end2end_tests/data/test_output/` directory to `ground_truth/`. Useful when iterating on comparison tolerances or snapshots.
+- `--twice`: run the full pipeline sequence twice back-to-back and compare the second pass's outputs to the first pass's (instead of to `ground_truth/`). This verifies the pipeline's re-run convergence invariant — running again from the state a pass left behind must reproduce the same output — and roughly doubles the runtime.

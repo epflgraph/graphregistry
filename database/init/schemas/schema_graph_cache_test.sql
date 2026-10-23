@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_N_Object_T_CalculatedFields (
   deleted tinyint(1) NOT NULL DEFAULT 0,
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  UNIQUE KEY row_id (row_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type,to_object_id,context,field_language,field_name),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS Data_N_Object_T_CalculatedFields (
   deleted tinyint(1) NOT NULL DEFAULT 0,
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  UNIQUE KEY row_id (row_id),
+  UNIQUE KEY unique_key (object_type,object_id,field_language,field_name),
   KEY object_type (object_type),
   KEY object_id (object_id),
   KEY field_language (field_language),
@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_DegreeCombinations (
   deleted tinyint(1) NOT NULL DEFAULT 0,
   row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   PRIMARY KEY (row_id),
-  UNIQUE KEY row_id (row_id),
+  UNIQUE KEY unique_key (from_object_type,from_object_id,to_object_type),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
@@ -410,6 +410,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_NormLogDegrees (
   log_degree float DEFAULT NULL,
   norm_log_degree float DEFAULT NULL,
   deleted tinyint(1) NOT NULL DEFAULT 0,
+  PRIMARY KEY (from_object_type,from_object_id,to_object_type),
   KEY from_object_type (from_object_type),
   KEY from_object_id (from_object_id),
   KEY to_object_type (to_object_type),
@@ -444,6 +445,7 @@ CREATE TABLE IF NOT EXISTS Edges_N_Object_N_Object_T_ScoresMatrix_AVG (
   to_object_type varchar(32) NOT NULL,
   avg_score float NOT NULL,
   n_rows int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (from_object_type, to_object_type),
   KEY from_object_type (from_object_type),
   KEY to_object_type (to_object_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
@@ -939,16 +941,6 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_N_Object_T_ChecksumsObject (
   KEY object_id (from_object_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS Operations_N_Object_T_AllEdgesInKG (
-  from_type varchar(32) NOT NULL,
-  from_id varchar(255) NOT NULL,
-  to_type varchar(32) NOT NULL,
-  to_id varchar(255) NOT NULL,
-  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  PRIMARY KEY (row_id),
-  UNIQUE KEY unique_key (from_type,from_id,to_type,to_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
 CREATE TABLE IF NOT EXISTS Operations_N_Object_T_Checksums (
   object_type varchar(32) NOT NULL,
   object_id varchar(255) NOT NULL,
@@ -999,12 +991,3 @@ CREATE TABLE IF NOT EXISTS Operations_N_Object_T_LargestConnectedGraph (
   KEY object_id (object_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-CREATE TABLE IF NOT EXISTS Operations_N_Object_T_NoLooseEnds (
-  object_type varchar(32) NOT NULL,
-  object_id varchar(255) NOT NULL,
-  row_id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  PRIMARY KEY (row_id),
-  UNIQUE KEY uid (object_type,object_id),
-  KEY object_type (object_type),
-  KEY object_id (object_id)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

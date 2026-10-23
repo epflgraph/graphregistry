@@ -26,6 +26,7 @@ def cmd_init(
     dry_run: Annotated[bool, typer.Option("--dry-run", "-d", help="Execute in dry run mode (do not modify any data).")] = False,
     index_tables: Annotated[bool, typer.Option("--index-tables", "-i", help="Ensure index buildup tables from config/application/config_index.json exist.")] = False,
     import_ontology_sample: Annotated[bool, typer.Option("--import-ontology-sample", help="Import the graph ontology sample set before initializing Registry tables.")] = False,
+    import_concepts_sample: Annotated[bool, typer.Option("--import-concepts-sample", help="Import the fixed concept-detection sample set into Registry tables.")] = False,
     force: Annotated[bool, typer.Option("--force", help="Allow execution in prod execution mode.")] = False,
 ) -> None:
     """Initialize the Registry instance with required databases, tables, and default data."""
@@ -239,6 +240,44 @@ def cmd_init(
 
     # Continue with the next step.
     sysmsg.success("🗂️ ✅ All required MySQL tables were created (or would be created).\n")
+
+    #------------------------------------------------------------#
+    # Step 2b: Import fixed concept-detection sample data          #
+    #------------------------------------------------------------#
+    if import_concepts_sample:
+        # Locate the bundled sample SQL folder and the target Registry schema/table.
+        concepts_input_folder = "database/init/sample_sets/graph_registry/sql"
+        concepts_schema_name = glbcfg.schema_registry
+        target_table = "Edges_N_Object_N_Concept_T_ConceptDetection"
+
+        # Announce the import so the operator can follow the init progress.
+        sysmsg.info("🗃️ 📝 Importing fixed concept-detection sample set.")
+        sysmsg.trace(f"Importing into schema '{concepts_schema_name}' from '{concepts_input_folder}' ...")
+
+        # Import the sample data unless we are only simulating the run.
+        if commit:
+            # Skip re-importing when the table already has rows to avoid duplicates.
+            if (
+                db.table_exists(engine_name=env, schema_name=concepts_schema_name, table_name=target_table)
+                and db.count_rows_in_table(engine_name=env, schema_name=concepts_schema_name, table_name=target_table) > 0
+            ):
+                sysmsg.warning(
+                    f"🗃️ Table '{concepts_schema_name}.{target_table}' already contains data; "
+                    "skipping fixed sample import."
+                )
+            else:
+                db.import_database(
+                    engine_name              = env,
+                    schema_name              = concepts_schema_name,
+                    input_folder             = concepts_input_folder,
+                    create_keys_after_import = False,
+                    ignore_existing          = False,
+                    verbose                  = verbose,
+                    compress                 = True,
+                )
+                sysmsg.success("🗃️ ✅ Fixed concept-detection sample set imported.")
+        else:
+            sysmsg.success("🗃️ 💡 Dry run: would import fixed concept-detection sample set.")
 
     #------------------------------------------------------------#
     # Step 3: Ensure dynamic index buildup tables exist            #

@@ -8,7 +8,7 @@ from graphregistry.domain.models.entities.mdl_base import NodeKeyList
 from graphregistry.domain.models.entities.mdl_node import Node, NodeKey
 from graphregistry.entrypoints.cli.common import DEFAULT_ENV, EnvOption, VerboseOption
 from graphregistry.entrypoints.cli.context import CLIContext
-from graphregistry.entrypoints.cli.dependencies import build_node_operations_with_concept_detection_from_cli
+from graphregistry.entrypoints.cli.dependencies import build_node_operations_with_concept_detection_from_cli, build_processing_scope
 
 # Create the Typer sub-app for GraphAI commands.
 app = typer.Typer(help="Execute GraphAI operations.")
@@ -52,7 +52,12 @@ def cmd_ai_detect_concepts(
     if object_types:
         resolved_types = [t.strip() for t in object_types.split(",") if t.strip()]
     else:
-        resolved_types = cli_ctx.registry.orchestrator.typeflags.get_types_to_process(fields_or_scores="fields")[0]
+        scope = build_processing_scope(
+            db            = cli_ctx.db,
+            global_config = cli_ctx.global_config,
+            index_config  = cli_ctx.index_config,
+        )
+        resolved_types = scope.node_fields_types
 
     # Concept detection attaches concepts to content nodes; ontology nodes such as
     # Category and Concept are the targets of those edges, not the sources.

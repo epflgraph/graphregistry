@@ -10,7 +10,7 @@ Output is normalised: backticks are removed and AUTO_INCREMENT is reset to 1.
 import argparse
 import re
 from pathlib import Path
-from graphdb.core.graphdb import GraphDB
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from graphregistry.common.config import GlobalConfig
 
 # Public Method: Normalise a raw SHOW CREATE TABLE statement for export.
@@ -39,7 +39,7 @@ def repo_root() -> Path:
     return Path(__file__).resolve().parents[3]
 
 # Public Method: Export a single schema to an SQL file.
-def export_schema(db: GraphDB, engine_name: str, schema_name: str, output_path: Path) -> int:
+def export_schema(db: DatabaseClient, engine_name: str, schema_name: str, output_path: Path) -> int:
     """Write the CREATE TABLE statements for one schema to output_path."""
     tables = [
         t

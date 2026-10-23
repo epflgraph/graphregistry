@@ -7,12 +7,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 import pytest
-from graphdb.core.graphdb import GraphDB
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from tests.helpers.db_checks import db_field_map, field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture
 from graphregistry.adapters.persistence.mysql.repositories.rpo_edgerepo import MySQLEdgeRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import EdgeKey
+from graphregistry.entrypoints.dependencies import build_db
 from graphregistry.domain.models.entities.mdl_edge import Edge, EdgeField, EdgeFieldKey, EdgeFieldList, EdgeList
 
 # Engine name used for all integration tests in this module.
@@ -37,7 +38,7 @@ def schema_resolver(schema_name: str) -> FixedTestSchemaResolver:
 # Public Method: Build a real MySQL edge repository for the test schema.
 @pytest.fixture
 def real_repo(schema_resolver: FixedTestSchemaResolver) -> MySQLEdgeRepository:
-    db = GraphDB()
+    db = build_db()
     return MySQLEdgeRepository(
         db              = db,
         schema_resolver = cast(SchemaResolver, schema_resolver),

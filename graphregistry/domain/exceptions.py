@@ -14,7 +14,7 @@ class DisallowedTypeError(ValueError):
 class PersistenceError(RuntimeError):
     """Base class for failures originating from persistence adapters."""
 
-    # Class initialization and dependency injection
+    # Internal Method: Initialize the error with an optional MySQL error code and message.
     def __init__(self, message: str, *, dbapi_code: int | None = None, dbapi_msg: str | None = None) -> None:
         super().__init__(message)
         self.dbapi_code = dbapi_code
@@ -23,14 +23,36 @@ class PersistenceError(RuntimeError):
 #==================#
 # Class Definition #
 #==================#
-class ConnectionExhaustedError(PersistenceError):
+class TransientPersistenceError(PersistenceError):
+    """Base class for transient persistence failures that may succeed on retry.
+
+    The application-layer retry policy keys off this marker, so every transient
+    condition classified by a persistence adapter is retried automatically.
+    """
+
+#==================#
+# Class Definition #
+#==================#
+class ConnectionExhaustedError(TransientPersistenceError):
     """Raised when the database rejects a new connection (e.g. MySQL 1040)."""
 
 #==================#
 # Class Definition #
 #==================#
-class LockWaitTimeoutError(PersistenceError):
+class LockWaitTimeoutError(TransientPersistenceError):
     """Raised when a lock wait timeout occurs (e.g. MySQL 1205)."""
+
+#==================#
+# Class Definition #
+#==================#
+class DeadlockError(TransientPersistenceError):
+    """Raised when a transaction deadlocks and is rolled back as victim (e.g. MySQL 1213)."""
+
+#==================#
+# Class Definition #
+#==================#
+class RecordChangedError(TransientPersistenceError):
+    """Raised when a record changed since it was last read in the transaction (e.g. MySQL 1020)."""
 
 #==================#
 # Class Definition #

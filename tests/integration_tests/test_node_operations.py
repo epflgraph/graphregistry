@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, cast
 import pytest
-from graphdb.core.graphdb import GraphDB
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 from tests.helpers.db_checks import field_map
 from tests.helpers.fixtures import FixedTestSchemaResolver, get_test_schema_name, load_json_fixture
 from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeMapper
@@ -15,6 +15,7 @@ from graphregistry.adapters.persistence.mysql.repositories.rpo_noderepo import M
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
 from graphregistry.domain.models.entities.mdl_base import NodeKey
 from graphregistry.domain.models.entities.mdl_node import NodeList
+from graphregistry.entrypoints.dependencies import build_db
 
 # Engine name used for all integration tests in this module.
 ENGINE_NAME = "coresrv"
@@ -38,7 +39,7 @@ def schema_resolver(schema_name: str) -> FixedTestSchemaResolver:
 # Public Method: Build a real MySQL node repository for the test schema.
 @pytest.fixture
 def real_repo(schema_resolver: FixedTestSchemaResolver) -> MySQLNodeRepository:
-    db = GraphDB()
+    db = build_db()
     return MySQLNodeRepository(
         db              = db,
         schema_resolver = cast(SchemaResolver, schema_resolver),

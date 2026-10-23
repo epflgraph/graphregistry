@@ -387,18 +387,20 @@ es_settings_and_mappings = {
 
 # Define degree score factors
 es_degree_score_factors = {
-    'Category'   : 512,
-    'Concept'    : 512,
-    'Course'     : 128,
-    'Exercise'   : 64,
-    'Lecture'    : 128,
-    'MOOC'       : 64,
-    'Notebook'   : 64,
-    'Person'     : 128,
-    'Publication': 1,
-    'Startup'    : 64,
-    'Unit'       : 64,
-    'Widget'     : 64
+    'Category'       : 512,
+    'Concept'        : 512,
+    'Course'         : 128,
+    'Exercise'       : 64,
+    'Lecture'        : 128,
+    'MOOC'           : 64,
+    'Notebook'       : 64,
+    'Person'         : 128,
+    'Publication'    : 1,
+    'Specialisation' : 64,
+    'Startup'        : 64,
+    'StudyPlan'      : 64,
+    'Unit'           : 64,
+    'Widget'         : 64
 }
 
 # Index doc combinations
@@ -474,17 +476,21 @@ class GraphES:
         # Load parameters
         params = self._config.settings['elasticsearch'][f'{engine_name}_env']
 
-        # Build connection URL (HTTP only, no SSL)
+        # Build the host URL. Credentials are NOT embedded in the URL: they are
+        # passed separately via basic_auth, so they never appear in connection
+        # strings, logs, or exception messages.
+        es_hosts = f"https://{params['hostname']}:{params['port']}"
         if "password" in params and params["password"]:
-            es_hosts = f"https://{params['username']}:{quote(params['password'])}@{params['hostname']}:{params['port']}"
+            basic_auth = (params['username'], params['password'])
         elif "username" in params and params["username"]:
-            es_hosts = f"https://{params['username']}@{params['hostname']}:{params['port']}"
+            basic_auth = (params['username'], '')
         else:
-            es_hosts = f"https://{params['hostname']}:{params['port']}"
+            basic_auth = None
 
         # Initialize Elasticsearch engine
         engine = ElasticSearchEngine(
             hosts           = [es_hosts],
+            basic_auth      = basic_auth,
             http_compress   = True,
             verify_certs    = False, # use_ssl,
             ca_certs        = '', # self._config.settings['elasticsearch']['graph_engine_test']['cert_file'] if use_ssl else '',

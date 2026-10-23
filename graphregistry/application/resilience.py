@@ -6,20 +6,20 @@ policies around business operations, independent of any specific adapter.
 """
 from __future__ import annotations
 import functools
+import random
 import time
 from collections.abc import Callable
 from typing import ParamSpec, TypeVar
-from graphregistry.domain.exceptions import ConnectionExhaustedError, LockWaitTimeoutError
+from graphregistry.domain.exceptions import TransientPersistenceError
 
 # Define generic type variables used by the retry decorator signature.
 P = ParamSpec("P")
 T = TypeVar("T")
 
-# Domain errors that are considered transient and may succeed on retry.
-_TRANSIENT_DB_ERRORS: tuple[type[Exception], ...] = (
-    ConnectionExhaustedError,
-    LockWaitTimeoutError,
-)
+# Domain errors that are considered transient and may succeed on retry. Every
+# transient condition subclasses TransientPersistenceError, so classifications
+# added in persistence adapters are picked up automatically.
+_TRANSIENT_DB_ERRORS: tuple[type[Exception], ...] = (TransientPersistenceError,)
 
 #-----------------------------------------------------------------------#
 # Public Method: Build a decorator that retries a function on transient #
@@ -35,8 +35,11 @@ def retry_on_transient_db_error(
     """Retry a function when a transient database error occurs.
 
     The retry boundary is the decorated function call. Because a MySQL lock
-    wait timeout rolls back the current transaction, the function must own its
-    own UnitOfWork so the entire business operation can be replayed.
+    wait timeout or deadlock rolls back the current transaction, the function
+    must own its own UnitOfWork so the entire business operation can be replayed.
+
+    Retries wait with a full-jitter exponential backoff so that concurrent
+    callers do not retry in lockstep and re-collide on the same locks.
 
     Args:
         max_retries: Maximum number of retry attempts after the initial failure.
@@ -46,10 +49,10 @@ def retry_on_transient_db_error(
             before each retry.
     """
 
-    # Validate configuration early to fail fast on bad inputs.
+    # Internal Function: Build the retry-aware decorator around the wrapped function.
     def decorator(fn: Callable[P, T]) -> Callable[P, T]:
 
-        # Preserve the original function's metadata on the wrapper.
+        # Internal Function: Retry the wrapped function on transient errors with jittered backoff.
         @functools.wraps(fn)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
 
@@ -64,7 +67,10 @@ def retry_on_transient_db_error(
                 except _TRANSIENT_DB_ERRORS as exc:
                     last_exception = exc
                     if attempt < max_retries:
-                        wait = retry_delay * (backoff_factor ** attempt)
+                        # Draw the wait from a full-jitter range capped by the
+                        # exponential base delay, so parallel callers spread
+                        # their retries instead of retrying in lockstep.
+                        wait = random.uniform(0.0, retry_delay * (backoff_factor ** attempt))
                         if on_retry is not None:
                             on_retry(exc, attempt + 1)
                         time.sleep(wait)

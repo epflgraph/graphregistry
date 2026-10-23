@@ -17,6 +17,7 @@ from graphregistry.domain.exceptions import (
     DuplicateKeyError,
     LockWaitTimeoutError,
     PersistenceError,
+    TransientPersistenceError,
 )
 from graphregistry.entrypoints.api.router import router
 from graphregistry.entrypoints.dependencies import build_db
@@ -293,6 +294,29 @@ def create_app() -> FastAPI:
             headers     = {"Retry-After": "5"},
             content     = {
                 "detail": "Database lock wait timeout. Please retry after a short delay.",
+            },
+        )
+
+    # Internal Function: Handle remaining transient persistence errors (e.g. MySQL 1213 and 1020).
+    @app.exception_handler(TransientPersistenceError)
+    async def transient_persistence_error_exception_handler(request: Request, exc: TransientPersistenceError) -> JSONResponse:
+        """Handle transient persistence errors that were not matched above.
+
+        The application layer already retried the operation internally; when the
+        error reaches this handler those retries are exhausted, so the caller
+        should back off and try again rather than treating it as a server bug.
+        """
+        logger.warning(
+            "Transient persistence error in API request: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code = 503,
+            headers     = {"Retry-After": "5"},
+            content     = {
+                "detail": "Database is temporarily contended. Please retry after a short delay.",
             },
         )
 

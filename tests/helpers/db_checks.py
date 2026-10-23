@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from graphdb.core.graphdb import GraphDB
+from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
 
 from graphregistry.entrypoints.mappers import SpecMapper
 
@@ -63,7 +63,7 @@ def _edge_where_clause(edge_json: dict[str, Any]) -> tuple[str, ...]:
     )
 
 
-def count_node_rows(db: GraphDB, schema_name: str, engine_name: str, node_json: dict[str, Any]) -> int:
+def count_node_rows(db: DatabaseClient, schema_name: str, engine_name: str, node_json: dict[str, Any]) -> int:
     wheres = _node_where_clause(node_json)
     query = f"""
     SELECT COUNT(*)
@@ -76,7 +76,7 @@ def count_node_rows(db: GraphDB, schema_name: str, engine_name: str, node_json: 
 
 
 def fetch_node_basic_row(
-    db: GraphDB, schema_name: str, engine_name: str, node_json: dict[str, Any]
+    db: DatabaseClient, schema_name: str, engine_name: str, node_json: dict[str, Any]
 ) -> tuple | None:
     wheres = _node_where_clause(node_json)
     query = f"""
@@ -90,7 +90,7 @@ def fetch_node_basic_row(
 
 
 def fetch_node_custom_fields(
-    db: GraphDB, schema_name: str, engine_name: str, node_json: dict[str, Any]
+    db: DatabaseClient, schema_name: str, engine_name: str, node_json: dict[str, Any]
 ) -> list[tuple[str, str, str]]:
     wheres = _node_where_clause(node_json)
     query = f"""
@@ -102,7 +102,7 @@ def fetch_node_custom_fields(
     return cast(list[tuple[str, str, str]], db.execute_query(engine_name=engine_name, query=query))
 
 
-def count_edge_rows(db: GraphDB, schema_name: str, engine_name: str, edge_json: dict[str, Any]) -> int:
+def count_edge_rows(db: DatabaseClient, schema_name: str, engine_name: str, edge_json: dict[str, Any]) -> int:
     wheres = _edge_where_clause(edge_json)
     query = f"""
     SELECT COUNT(*)
@@ -115,7 +115,7 @@ def count_edge_rows(db: GraphDB, schema_name: str, engine_name: str, edge_json: 
 
 
 def fetch_edge_custom_fields(
-    db: GraphDB, schema_name: str, engine_name: str, edge_json: dict[str, Any]
+    db: DatabaseClient, schema_name: str, engine_name: str, edge_json: dict[str, Any]
 ) -> list[tuple[str, str, str]]:
     wheres = _edge_where_clause(edge_json)
     query = f"""

@@ -6,7 +6,7 @@ from graphregistry.adapters.persistence.mysql.mappers.map_pageprofile import MyS
 from graphregistry.domain.models.entities.mdl_base import NodeFieldKey, NodeKey
 from graphregistry.domain.models.entities.mdl_node import NodeField, NodeFieldList, Node
 from graphregistry.domain.models.entities.mdl_lecture import Lecture, LectureList
-from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureKeyframeOCTandConcepts, LectureConceptTitleList
+from graphregistry.domain.models.tasks.mdl_lectureenrich import LectureEnrichmentTask, LectureKeyframe
 from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeFieldMapper, MySQLNodeMapper
 
 # Class definition
@@ -25,18 +25,16 @@ class MySQLLectureEnrichmentTaskMapper:
     def from_rows(rows: list[tuple[Any, ...]], lecture_id: str) -> LectureEnrichmentTask:
 
         # Initialize the keyframes list
-        keyframes: list[LectureKeyframeOCTandConcepts] = []
+        keyframes: list[LectureKeyframe] = []
 
-        # Build keyframes list from row data (if any)
+        # Build keyframes list from row data (if any); keyframes carry only
+        # their id and OCR text - concepts are detected by the LLM, not sent.
         for row in (rows or []):
 
             # Build the keyframe object for this row
-            keyframe = LectureKeyframeOCTandConcepts(
+            keyframe = LectureKeyframe(
                 keyframe_id = row[0],
                 ocr_content = row[1],
-                concepts    = LectureConceptTitleList(
-                    raw_unrefined_list = row[2].split('|') if row[2] else []
-                )
             )
             # Append the keyframe to the list
             keyframes.append(keyframe)

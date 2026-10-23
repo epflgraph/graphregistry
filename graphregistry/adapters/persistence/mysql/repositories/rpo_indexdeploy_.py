@@ -7,23 +7,23 @@ import shutil
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-from graphdb.models.sqlquery import print_sql
+import rich
+from graphdb.adapters.rendering.rdr_sqlquery import print_sql
 from pymysql.converters import escape_string
-
 from graphregistry.application.ports.repositories.prt_indexdeploy import (
     IndexDeployRepository,
     IndexTableSpec,
 )
 from graphregistry.common.dbstruct import resolve_sql_query, sql_queries_paths
 from graphregistry.common.logger import GraphLogger
-import rich
 
 if TYPE_CHECKING:
-    from graphdb.core.graphdb import GraphDB
+    from graphregistry.application.ports.repositories.prt_databaseclient import DatabaseClient
     from graphregistry.common.config import GlobalConfig
 
-
+#==================#
+# Class Definition #
+#==================#
 class MySQLIndexDeploy(IndexDeployRepository):
     """
     MySQL adapter for deploying GraphSearch index tables from a source
@@ -45,9 +45,10 @@ class MySQLIndexDeploy(IndexDeployRepository):
         }
     )
 
+    # Public Method: Initialize the repository with a database client, schema resolver and debug flag.
     def __init__(
         self,
-        db: GraphDB,
+        db: DatabaseClient,
         glbcfg: GlobalConfig,
         debug: bool = False,
         use_unhex: bool = False,

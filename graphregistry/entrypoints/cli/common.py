@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Annotated
 import typer
-from graphdb.core.config import GraphDBConfig
+from graphdb.domain.models.mdl_config import GraphDBConfig
 from graphregistry.common.paths import CONFIG_DB_PATH
 
 #================================================================#
@@ -47,3 +47,19 @@ def VerboseOption() -> typer.Option:
 
 # Convenience type alias for the common environment annotation.
 EnvArg = Annotated[str, EnvOption()]
+
+#================================================================#
+# Function Group: Actions option helper                          #
+#================================================================#
+
+# Public Function: Parse and validate a comma-separated --actions value into
+# an action tuple, rejecting anything outside print/eval/commit so invalid
+# write modes fail at option parsing instead of mid-pipeline.
+def parse_actions(actions: str) -> tuple[str, ...]:
+    """Parse and validate the --actions option into a tuple of action names."""
+    action_set = tuple(a.strip() for a in actions.split(",") if a.strip())
+    valid = {"print", "eval", "commit"}
+    invalid = set(action_set) - valid
+    if invalid:
+        raise typer.BadParameter(f"Invalid actions: {sorted(invalid)}. Valid: print, eval, commit.")
+    return action_set
