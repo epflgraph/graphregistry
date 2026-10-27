@@ -345,3 +345,15 @@ scripts/security/gittools/scan-staged.sh
 
 # Security hook test fixture — deliberate FAKE credentials, never commit.
 FAKE-CREDENTIALS-hook-test.txt
+create-symlinks.sh
+.githooks/pre-commit
+scan.sh
+scripts/security/scan-leaks.sh
+scripts/security/scan-staged.sh
+scripts/security/gittools/scan-leaks.sh
+scripts/security/gittools/scan-staged.sh
+.githooks
+.githooks/pre-commit
+
+# Security hook test fixture — deliberate FAKE credentials, never commit.
+FAKE-CREDENTIALS-hook-test.txt
