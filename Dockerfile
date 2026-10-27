@@ -9,7 +9,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
     GRAPHREGISTRY_ROOT=/app \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    MALLOC_ARENA_MAX=2 \
+    MALLOC_MMAP_THRESHOLD_=131072
+
+# The two MALLOC_* settings pin glibc's allocator: MALLOC_ARENA_MAX=2 stops
+# per-thread 64MB arenas from accumulating under the uvicorn threadpool, and
+# MALLOC_MMAP_THRESHOLD_=131072 disables the dynamic mmap-threshold ratchet so
+# multi-MB buffers (bulk-upsert SQL packets) keep using mmap and are returned
+# to the OS on free instead of being trapped in grow-only heaps.
 
 # Install git for potential use in the application and clean up apt cache to reduce image size
 WORKDIR /app

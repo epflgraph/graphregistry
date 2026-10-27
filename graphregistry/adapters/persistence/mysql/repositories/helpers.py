@@ -80,9 +80,18 @@ def key_tuple_in_list_predicate(key_tuples: list[tuple[Any, ...]], key_column_na
 # Method Group: Batch write helpers                              #
 #================================================================#
 
-# Public Method: Insert or update a batch of rows in a single statement.
+# Cap on the number of data rows embedded in one SQL statement. Fixed-size
+# statements keep per-statement bind-parameter count, SQL text and driver
+# packet size bounded regardless of the caller's batch size, stay well under
+# the MySQL max_allowed_packet limit, and — because every chunk for a given
+# column set renders byte-identical SQL — let SQLAlchemy's compiled-statement
+# cache serve every chunk from a handful of cached shapes instead of compiling
+# a new statement per batch size.
+MAX_ROWS_PER_STATEMENT = 500
+
+# Public Method: Insert or update a batch of rows using fixed-size statements.
 def upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[str], upd_column_names: list[str], rows: list[dict[str, Any]]) -> None:
-    """Insert or update a batch of rows in a single statement.
+    """Insert or update a batch of rows, chunked to ``MAX_ROWS_PER_STATEMENT`` rows per statement.
 
     Mirrors the safe-upsert semantics used by the legacy graphdb client:
     unchanged columns keep their value and ``record_updated_date`` is only
@@ -95,17 +104,10 @@ def upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[s
 
     # Combine key and update columns so every value has a named slot.
     all_column_names = key_column_names + upd_column_names
-    value_placeholders: list[str] = []
-    params: dict[str, Any] = {}
 
-    # Build per-row value placeholders and bind every column value.
-    for i, row in enumerate(rows):
-        row_placeholders = [f":{col}_{i}" for col in all_column_names]
-        value_placeholders.append(f"({', '.join(row_placeholders)})")
-        for col in all_column_names:
-            params[f"{col}_{i}"] = row.get(col)
-
-    # Only emit an UPDATE clause when columns may change on conflict.
+    # Render the UPDATE clause once: it depends only on the column names, so
+    # every chunk reuses it and all chunks of a batch produce statements with
+    # the same shape.
     if upd_column_names:
         changed_expr = " OR ".join(
             f"COALESCE({table_path}.{col}, '__null__') != COALESCE(VALUES({col}), '__null__')"
@@ -123,31 +125,52 @@ def upsert_rows(session: MySQLSession, table_path: str, key_column_names: list[s
         # Insert-ignore semantics when there are no update columns.
         update_sql = "record_updated_date = record_updated_date"
 
-    sql = f"""
-        INSERT INTO {table_path} ({', '.join(all_column_names)})
-        VALUES {', '.join(value_placeholders)}
-        ON DUPLICATE KEY UPDATE
-            {update_sql}
-    """
-    # Run the batch upsert against the database.
-    session.execute(sql, params)
+    # Write the rows in fixed-size chunks so statement size and peak memory
+    # stay constant no matter how many rows the caller passes in.
+    for start in range(0, len(rows), MAX_ROWS_PER_STATEMENT):
+        chunk = rows[start:start + MAX_ROWS_PER_STATEMENT]
+        value_placeholders: list[str] = []
+        params: dict[str, Any] = {}
+
+        # Build per-row value placeholders and bind every column value for
+        # this chunk; bind indices restart at zero because each chunk is an
+        # independent statement.
+        for i, row in enumerate(chunk):
+            row_placeholders = [f":{col}_{i}" for col in all_column_names]
+            value_placeholders.append(f"({', '.join(row_placeholders)})")
+            for col in all_column_names:
+                params[f"{col}_{i}"] = row.get(col)
+
+        sql = f"""
+            INSERT INTO {table_path} ({', '.join(all_column_names)})
+            VALUES {', '.join(value_placeholders)}
+            ON DUPLICATE KEY UPDATE
+                {update_sql}
+        """
+        # Run one chunked upsert statement against the database.
+        session.execute(sql, params)
 
 # Public Method: Soft-delete rows whose key columns match the given tuples.
 def soft_delete_by_key_tuples(session: MySQLSession, schema_name: str, table_name: str, key_column_names: list[str], key_tuples: list[tuple[Any, ...]]) -> None:
-    """Soft-delete rows whose key columns match the given tuples."""
+    """Soft-delete rows whose key columns match the given tuples, chunked to ``MAX_ROWS_PER_STATEMENT`` keys per statement."""
 
     # Validate that key columns are provided.
     if not key_tuples:
         return
 
-    # Build the IN-list predicate for the keys being soft-deleted.
-    placeholders, params = key_tuple_in_list_predicate(key_tuples, key_column_names, prefix="sd")
-    sql = f"""
-        UPDATE {qualified_table(schema_name, table_name)}
-           SET record_deleted = 1
-         WHERE ({', '.join(key_column_names)}) IN ({placeholders})
-    """
-    session.execute(sql, params)
+    # Soft-delete in fixed-size chunks so the IN-list predicate and its
+    # bind-parameter count stay bounded for large key batches.
+    for start in range(0, len(key_tuples), MAX_ROWS_PER_STATEMENT):
+        chunk = key_tuples[start:start + MAX_ROWS_PER_STATEMENT]
+
+        # Build the IN-list predicate for this chunk of keys.
+        placeholders, params = key_tuple_in_list_predicate(chunk, key_column_names, prefix="sd")
+        sql = f"""
+            UPDATE {qualified_table(schema_name, table_name)}
+               SET record_deleted = 1
+             WHERE ({', '.join(key_column_names)}) IN ({placeholders})
+        """
+        session.execute(sql, params)
 
 #================================================================#
 # Method Group: Table management helpers                         #
