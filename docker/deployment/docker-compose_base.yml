@@ -16,6 +16,12 @@ services:
     image: epflgraph/graphregistry:${GRAPHREGISTRY_TAG:-latest}
     container_name: graphregistry-app
     restart: unless-stopped
+    # Contain the API's memory so a bulk-ingestion spike cannot starve the
+    # host: 1g is ~3x the post-fix working set (baseline ~150 MB, peak a few
+    # hundred MB), and pinning memswap to the same value keeps the container
+    # out of host swap.
+    mem_limit: 1g
+    memswap_limit: 1g
     ports:
       - "0493:0493"
     environment:

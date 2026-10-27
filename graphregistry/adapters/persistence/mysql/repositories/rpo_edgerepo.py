@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast
 from graphregistry.adapters.persistence.mysql.mappers.map_edge import MySQLEdgeMapper
-from graphregistry.adapters.persistence.mysql.repositories.helpers import key_tuple_in_list_predicate, qualified_table, soft_delete_by_key_tuples, upsert_rows
+from graphregistry.adapters.persistence.mysql.repositories.helpers import MAX_ROWS_PER_STATEMENT, key_tuple_in_list_predicate, qualified_table, soft_delete_by_key_tuples, upsert_rows
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.application.ports.repositories.prt_edge import EdgeRepository
 from graphregistry.application.ports.repositories.resolvers import SchemaResolver
@@ -535,18 +535,26 @@ class MySQLEdgeRepository(EdgeRepository):
         if not keys:
             return []
 
-        # Build an IN-list predicate and query the database for the given keys.
-        placeholders, params = self._key_in_list_predicate(keys, prefix="ex")
+        # Query the keys in fixed-size chunks so the IN-list predicate and its
+        # bind-parameter count stay bounded for large key batches.
+        existing: set[tuple] = set()
+        for start in range(0, len(keys), MAX_ROWS_PER_STATEMENT):
+            chunk = keys[start:start + MAX_ROWS_PER_STATEMENT]
 
-        # Query the database for the given keys, filtering out soft-deleted records.
-        sql = f"""
-            SELECT from_object_type, from_object_id, to_object_type, to_object_id, context
-              FROM {self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent")}
-             WHERE (from_object_type, from_object_id, to_object_type, to_object_id, context) IN ({placeholders})
-               AND record_deleted = 0
-        """
-        rows = session.execute(sql, params)
+            # Build an IN-list predicate and query the database for this chunk.
+            placeholders, params = self._key_in_list_predicate(chunk, prefix="ex")
+
+            # Query the database for the given keys, filtering out soft-deleted records.
+            sql = f"""
+                SELECT from_object_type, from_object_id, to_object_type, to_object_id, context
+                  FROM {self._qt(schema_name, "Edges_N_Object_N_Object_T_ChildToParent")}
+                 WHERE (from_object_type, from_object_id, to_object_type, to_object_id, context) IN ({placeholders})
+                   AND record_deleted = 0
+            """
+            rows = session.execute(sql, params)
+
+            # Collect the existing edge-key tuples returned by the database.
+            existing.update(tuple(row) for row in rows)
 
         # Determine which input keys match existing rows.
-        existing = {tuple(row) for row in rows}
         return [key for key in keys if self._edge_key_tuple(key) in existing]
