@@ -326,3 +326,9 @@ scripts/watch_inference_requests.sh
 FAKE-CREDENTIALS-hook-test.txt
 ocr_dump.txt
 out_tmp.txt
+create-symlinks.sh
+scripts/security/scan-leaks.sh
+scripts/security/scan-staged.sh
+scripts/security/gittools/scan-leaks.sh
+scripts/security/gittools/scan-staged.sh
+.githooks
