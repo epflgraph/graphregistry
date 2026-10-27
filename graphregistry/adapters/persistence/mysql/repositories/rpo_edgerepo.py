@@ -417,9 +417,9 @@ class MySQLEdgeRepository(EdgeRepository):
             finally:
                 self._close_standalone_session(session)
 
-        # Log every saved edge.
-        for edge in edges:
-            self.msg.saved(edge.key)
+        # Emit one aggregated save log for the whole batch instead of one line
+        # per edge, which flooded the logs during bulk ingestion.
+        self.msg.saved_many([edge.key for edge in edges])
 
         # Return the saved edge list.
         return EdgeList(item_list=edges)
@@ -507,10 +507,13 @@ class MySQLEdgeRepository(EdgeRepository):
             finally:
                 self._close_standalone_session(session)
 
-            # Record successful deletions and emit log messages.
+            # Record successful deletions for the per-key results.
             for key in existing_keys:
                 results[key] = True
-                self.msg.deleted(key)
+
+        # Emit one aggregated deletion log for the whole batch instead of one
+        # line per key, which flooded the logs during bulk deletion.
+        self.msg.deleted_many([key for key, deleted in results.items() if deleted])
 
         # Return deletion results aligned with the original key order.
         return [results.get(key) for key in keys]

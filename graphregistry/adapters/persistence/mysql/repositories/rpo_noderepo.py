@@ -577,9 +577,9 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
-        # Emit save logs for every node in the input list.
-        for node in nodes:
-            self.msg.saved(node.key)
+        # Emit one aggregated save log for the whole batch instead of one line
+        # per node, which flooded the logs during bulk ingestion.
+        self.msg.saved_many([node.key for node in nodes])
 
         # Return the saved nodes as a NodeList.
         return NodeList(item_list=nodes)
@@ -665,10 +665,13 @@ class MySQLNodeRepository(NodeRepository):
             finally:
                 self._close_standalone_session(session)
 
-            # Record each successful deletion and emit a log entry.
+            # Record each successful deletion for the per-key results.
             for key in existing_keys:
                 results[key] = True
-                self.msg.deleted(key)
+
+        # Emit one aggregated deletion log for the whole batch instead of one
+        # line per key, which flooded the logs during bulk deletion.
+        self.msg.deleted_many([key for key, deleted in results.items() if deleted])
 
         # Return per-key deletion results aligned with the original order.
         return [results.get(key) for key in keys]
