@@ -2,7 +2,9 @@
 from __future__ import annotations
 from functools import cached_property
 from typing import TYPE_CHECKING, Any
-from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig
+import rich
+from rich.panel import Panel
+from graphregistry.common.config import GlobalConfig, IndexConfig, ScoresConfig, mode_border_style
 
 # Import heavy types only for type checking to keep runtime startup fast.
 if TYPE_CHECKING:
@@ -32,6 +34,14 @@ class CLIContext:
         self.scores_config = ScoresConfig()
         # GraphDB configuration used to build the database client lazily.
         self.db_config = self._load_db_config()
+
+        # Announce the execution mode in the terminal so a dev-mode CLI can
+        # never be mistaken for a production one.
+        rich.print(Panel(
+            f"[bold]{self.global_config.mode_label}[/bold]",
+            title        = "GraphRegistry CLI",
+            border_style = mode_border_style(self.global_config.mysql_execution_mode),
+        ))
 
     # Public Method: Build the database client lazily from the provided configuration.
     @cached_property

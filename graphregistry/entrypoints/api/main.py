@@ -4,12 +4,14 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from typing import Any
+import rich
+from rich.panel import Panel
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import ValidationError
-from graphregistry.common.config import APIConfig, GlobalConfig
+from graphregistry.common.config import APIConfig, GlobalConfig, mode_border_style
 from graphregistry.common.version import REGISTRY_API_VERSION
 from graphregistry.domain.exceptions import (
     ConnectionExhaustedError,
@@ -113,10 +115,21 @@ def create_app() -> FastAPI:
     glbcfg = GlobalConfig()
     api_cfg = APIConfig()
 
-    # Initialize the FastAPI app with metadata and documentation settings
+    # Announce the execution mode in the terminal so a dev-mode instance can
+    # never be mistaken for a production one in docker logs or consoles.
+    rich.print(Panel(
+        f"[bold]{glbcfg.mode_label}[/bold]",
+        title        = "GraphRegistry",
+        border_style = mode_border_style(glbcfg.mysql_execution_mode),
+    ))
+
+    # Carry the execution mode into the Swagger/Redoc header as a single
+    # prominent line: the title and summary stay clean, so the mode line is
+    # the only additional element and the summary is not duplicated.
     app = FastAPI(
         title       = glbcfg.api_title,
         summary     = glbcfg.api_summary,
+        description = f"**{glbcfg.mode_label}**",
         version     = REGISTRY_API_VERSION,
         docs_url    = "/docs",
         redoc_url   = "/redoc",
