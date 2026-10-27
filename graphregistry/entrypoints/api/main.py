@@ -19,6 +19,7 @@ from graphregistry.domain.exceptions import (
     PersistenceError,
     TransientPersistenceError,
 )
+from graphregistry.application.policies.pol_access import AccessDeniedError
 from graphregistry.entrypoints.api.router import router
 from graphregistry.entrypoints.dependencies import build_db
 
@@ -231,6 +232,31 @@ def create_app() -> FastAPI:
             status_code = 400,
             content     = {
                 "detail": f"Invalid request: {type(exc).__name__}: {exc}",
+            },
+        )
+
+    # Internal Function: Handle authorization denials from GraphAuth enforcement.
+    @app.exception_handler(AccessDeniedError)
+    async def access_denied_exception_handler(request: Request, exc: AccessDeniedError) -> JSONResponse:
+        """
+        Handle denied authorization decisions as 403 responses.
+
+        Authenticated but forbidden: the caller presented a valid token (a 401
+        would have been raised earlier for missing/invalid credentials), but
+        its GraphAuth grants do not cover the requested keys.
+        """
+        logger.warning(
+            "Access denied: method=%s path=%s action=%s denied_keys=%s",
+            request.method,
+            request.url.path,
+            exc.action,
+            exc.denied_keys,
+        )
+        return JSONResponse(
+            status_code = 403,
+            content     = {
+                "detail"     : str(exc),
+                "denied_keys": [list(key) for key in exc.denied_keys],
             },
         )
 

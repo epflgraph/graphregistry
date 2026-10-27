@@ -9,6 +9,8 @@ from typing import Any, ClassVar
 import rich
 from yaml import safe_load
 
+from graphregistry.domain.models.values.mdl_access import EnforcementMode
+
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -256,6 +258,29 @@ class APIConfig:
         ]
         self.allowed_node_types = set(self.allowed_node_types_list)
         self.allowed_edge_tuples = set(self.allowed_edge_tuples_list)
+
+        # GraphAuth access-control settings (see policies/pol_access.py).
+        # Optional "auth" section in config_api.json, overridable by env vars;
+        # defaults keep the pre-integration behaviour (enforcement off).
+        auth = api_config.get("auth") or {}
+        self.graphauth_url = os.getenv(
+            "GRAPHREGISTRY_GRAPHAUTH_URL",
+            str(auth.get("graphauth_url", "http://localhost:3011")),
+        )
+        mode_raw = os.getenv(
+            "GRAPHREGISTRY_GRAPHAUTH_ENFORCEMENT",
+            str(auth.get("enforcement", "off")),
+        ).strip().lower()
+        if mode_raw not in tuple(mode.value for mode in EnforcementMode):
+            raise ValueError(
+                f"Invalid graphauth enforcement mode '{mode_raw}'. "
+                "Expected one of: off, log, enforce."
+            )
+        self.graphauth_enforcement = EnforcementMode(mode_raw)
+        self.graphauth_timeout_s = float(os.getenv(
+            "GRAPHREGISTRY_GRAPHAUTH_TIMEOUT_S",
+            str(auth.get("timeout_s", 3.0)),
+        ))
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "APIConfig":

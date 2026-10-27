@@ -25,5 +25,12 @@ services:
       API_WORKERS: 1
       API_PROXY_HEADERS: 1
       API_FORWARDED_ALLOW_IPS: "*"
+      # GraphAuth access control (see application/policies/pol_access.py).
+      # Enforcement modes: off (no calls) | log (dry-run) | enforce (403).
+      GRAPHREGISTRY_GRAPHAUTH_URL: ${GRAPHREGISTRY_GRAPHAUTH_URL:-http://host.docker.internal:3011}
+      GRAPHREGISTRY_GRAPHAUTH_ENFORCEMENT: ${GRAPHREGISTRY_GRAPHAUTH_ENFORCEMENT:-log}
+    extra_hosts:
+      # Lets the container reach host-published ports (GraphAuth :3011).
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./config:/app/config:ro
