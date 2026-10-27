@@ -314,6 +314,10 @@ def test_cli_bulk_save_many_chunked_stress_e2e(test_config: tuple, db: Any, tmp_
             completed = _run_cli(config_path, "data", "save", str(wave_file))
             durations.append(time.perf_counter() - started)
             assert completed.returncode == 0, completed.stderr[-2000:]
+            # The batch save must log exactly ONE aggregated line instead of
+            # one line per node.
+            assert completed.stdout.count("Saved:") == 1, f"Expected one aggregated save line, got: {completed.stdout[-500:]}"
+            assert f"{NODES_PER_WAVE} Nodes" in completed.stdout
 
         # Re-save wave 1: exercises the UPDATE path of the chunked upsert
         # (every row hits ON DUPLICATE KEY UPDATE) and must stay idempotent.
@@ -344,6 +348,11 @@ def test_cli_bulk_save_many_chunked_stress_e2e(test_config: tuple, db: Any, tmp_
         # Chunked soft-delete of every stress key through the CLI.
         cleanup = _run_cli(config_path, "data", "delete", str(keys_file))
         assert cleanup.returncode == 0, cleanup.stderr[-2000:]
+
+    # The batch deletion must also log exactly ONE aggregated line for the
+    # full key set, visible in the captured CLI output.
+    assert cleanup.stdout.count("Deleted:") == 1, f"Expected one aggregated delete line, got: {cleanup.stdout[-500:]}"
+    assert f"{WAVES * NODES_PER_WAVE} Nodes" in cleanup.stdout
 
     # Nothing may survive the cleanup.
     assert _count_stress_nodes(db, schema_name) == 0
