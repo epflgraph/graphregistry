@@ -9,7 +9,7 @@ BUILDER="multiarch"
 EXTRA_TAG="latest"
 # 0 = fully clean build (passes --no-cache, so even the local BuildKit cache is ignored)
 # 1 = use registry-based aggressive caching (--cache-from / --cache-to)
-AGRESSIVE_CACHING=1
+AGRESSIVE_CACHING=0
 
 # Get the version from pyproject.toml
 VERSION=$(

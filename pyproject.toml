@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "graphregistry"
-version = "0.2.2"
+version = "0.2.3"
 description = "EPFL Graph Registry"
 requires-python = ">=3.10"
 dependencies = [
@@ -31,7 +31,7 @@ dependencies = [
     "openai",
     "typer",
     # Git dependency (PEP 508 syntax)
-    "graphdb-client @ git+https://github.com/epflgraph/graphdb-client.git",
+    "graphdb-client @ git+https://github.com/epflgraph/graphdb-client.git@fa1a2be8ea95ef60d97c8439bc70a78dedb82afb",
     "graphes-client @ git+https://github.com/epflgraph/graphes-client.git",
     "graphai-client @ git+https://github.com/epflgraph/graphai-client.git",
 ]

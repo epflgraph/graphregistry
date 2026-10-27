@@ -19,6 +19,9 @@ pytest
 pytest-cov
 pytest-xdist
 openai
-graphdb-client@git+https://github.com/epflgraph/graphdb-client.git
+# Pinned to the hexa_refactor revision that provides the graphdb.client API
+# (Environments / MySQLDatabaseClient). Do not float this ref: the default
+# branch predates the client module and breaks the API at startup.
+graphdb-client@git+https://github.com/epflgraph/graphdb-client.git@fa1a2be8ea95ef60d97c8439bc70a78dedb82afb
 graphes-client@git+https://github.com/epflgraph/graphes-client.git
 graphai-client@git+https://github.com/epflgraph/graphai-client.git
