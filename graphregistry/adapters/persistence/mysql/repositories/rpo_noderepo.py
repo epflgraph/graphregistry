@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, cast, get_args
 from loguru import logger as sysmsg
 from graphregistry.adapters.persistence.mysql.mappers.map_node import MySQLNodeMapper
-from graphregistry.adapters.persistence.mysql.repositories.helpers import qualified_table, soft_delete_by_key_tuples, upsert_rows
+from graphregistry.adapters.persistence.mysql.repositories.helpers import MAX_ROWS_PER_STATEMENT, qualified_table, soft_delete_by_key_tuples, upsert_rows
 from graphregistry.adapters.persistence.mysql.repositories.schemas import PAGE_PROFILE_COLUMNS
 from graphregistry.adapters.persistence.mysql.session import MySQLSession
 from graphregistry.application.ports.repositories.prt_node import NodeRepository
@@ -691,18 +691,26 @@ class MySQLNodeRepository(NodeRepository):
         if not keys:
             return []
 
-        # Build the IN-list predicate for the existence check.
-        placeholders, params = self._key_in_list_predicate(keys, prefix="ex")
-        sql = f"""
-            SELECT object_type, object_id
-              FROM {self._qt(schema_name, "Nodes_N_Object")}
-             WHERE (object_type, object_id) IN ({placeholders})
-               AND record_deleted = 0
-        """
-        rows = session.execute(sql, params)
+        # Query the keys in fixed-size chunks so the IN-list predicate and its
+        # bind-parameter count stay bounded for large key batches.
+        existing: set[tuple[str, str]] = set()
+        for start in range(0, len(keys), MAX_ROWS_PER_STATEMENT):
+            chunk = keys[start:start + MAX_ROWS_PER_STATEMENT]
 
-        # Collect the (object_type, object_id) pairs returned by the database.
-        existing = {(row[0], row[1]) for row in rows}
+            # Build the IN-list predicate for this chunk of keys.
+            placeholders, params = self._key_in_list_predicate(chunk, prefix="ex")
+            sql = f"""
+                SELECT object_type, object_id
+                  FROM {self._qt(schema_name, "Nodes_N_Object")}
+                 WHERE (object_type, object_id) IN ({placeholders})
+                   AND record_deleted = 0
+            """
+            rows = session.execute(sql, params)
+
+            # Collect the (object_type, object_id) pairs returned by the database.
+            existing.update((row[0], row[1]) for row in rows)
+
+        # Preserve the original input order in the filtered result.
         return [key for key in keys if (key.object_type, key.object_id) in existing]
 
     #================================================================#
