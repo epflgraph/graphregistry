@@ -12,6 +12,41 @@ from yaml import safe_load
 # Find the repository root directory
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+# Execution-mode badges shown in terminals and on the API docs page. The mode
+# comes from config/environment/config_registry.yml (database.mode) and decides
+# which schema family the registry reads from and writes to.
+_MODE_BADGES: dict[str, str] = {
+    'dev' : '🚧 dev',
+    'test': '🧪 test',
+    'prod': '🚀 prod',
+}
+
+# Panel border styles matching the badges, so terminals color-code the mode.
+_MODE_BORDER_STYLES: dict[str, str] = {
+    'dev' : 'yellow',
+    'test': 'green',
+    'prod': 'red',
+}
+
+# Public Function: Return the display badge for an execution mode, falling back
+# to a question-mark badge for unknown values.
+def mode_badge(mode: str) -> str:
+    return _MODE_BADGES.get(mode, f"❓ {mode.upper()}")
+
+# Public Function: Return the human explanation for an execution mode, naming
+# the schema family the mode operates on.
+def mode_note(mode: str) -> str:
+    notes = {
+        'dev' : "data is written to `_1_DEV_*` development schemas — NOT production data",
+        'test': "data is written to test schemas — never production data",
+        'prod': "operating on production schemas",
+    }
+    return notes.get(mode, f"unrecognized execution mode '{mode}' — verify config/environment/config_registry.yml")
+
+# Public Function: Return the rich border style matching an execution mode.
+def mode_border_style(mode: str) -> str:
+    return _MODE_BORDER_STYLES.get(mode, 'white')
+
 #================================#
 # Class definition: GlobalConfig #
 #================================#
@@ -161,6 +196,12 @@ class GlobalConfig:
         # API title and summary
         self.api_title = self.settings['api']['title']
         self.api_summary = self.settings['api']['summary']
+
+    # Public Method: Return the display label for the configured execution mode,
+    # combining the badge and the schema-family explanation.
+    @property
+    def mode_label(self) -> str:
+        return f"{mode_badge(self.mysql_execution_mode)} mode — {mode_note(self.mysql_execution_mode)}"
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "GlobalConfig":
