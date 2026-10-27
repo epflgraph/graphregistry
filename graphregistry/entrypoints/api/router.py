@@ -3,15 +3,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from typing import Callable
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from graphregistry.adapters.gateways.graphai.gtw_conceptdet import GraphAIConceptDetectionGateway
+from graphregistry.adapters.gateways.graphauth.agt_auth import GraphAuthAccessGateway
 from graphregistry.application.factories.fct_node import NodeFactory
+from graphregistry.application.operations.ops_access import AuthorizedEdgeOperations, AuthorizedNodeOperations
 from graphregistry.application.operations.ops_edge import EdgeOperations
 from graphregistry.application.operations.ops_node import NodeOperations
+from graphregistry.application.policies.pol_access import AccessControl
 from graphregistry.application.policies.pol_graphunits import GraphUnitsValidator
 from graphregistry.application.ports.unit_of_work import UnitOfWork
 from graphregistry.common.config import APIConfig, GlobalConfig
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, EdgeKeyList, NodeKey, NodeKeyList
+from graphregistry.domain.models.values.mdl_access import EnforcementMode
 from graphregistry.entrypoints.dependencies import build_uow_factory
 from graphregistry.entrypoints.mappers import SpecMapper
 import graphregistry.entrypoints.api.schemas as apispecs
@@ -83,25 +87,65 @@ def get_graph_units_validator() -> GraphUnitsValidator:
 # Function Group: FastAPI dependencies                           #
 #================================================================#
 
+# Internal Function: Build the access-control policy from API configuration.
+def _get_access_control() -> AccessControl:
+    """Build the AccessControl policy (gateway only needed when enabled)."""
+    cfg = _get_api_config()
+    if cfg.graphauth_enforcement is EnforcementMode.OFF:
+        return AccessControl(gateway=None, mode=cfg.graphauth_enforcement)
+    gateway = GraphAuthAccessGateway(url=cfg.graphauth_url, timeout=cfg.graphauth_timeout_s)
+    return AccessControl(gateway=gateway, mode=cfg.graphauth_enforcement)
+
+# Internal Function: Extract the bearer token from the Authorization header.
+def _get_bearer_token(request: Request) -> str | None:
+    """Return the raw bearer token, or None when absent."""
+    header = request.headers.get("authorization", "")
+    if header.lower().startswith("bearer "):
+        token = header[7:].strip()
+        return token or None
+    return None
+
+# Internal Function: In enforce mode, reject requests without a token (401).
+def _require_token_when_enforcing(access: AccessControl, token: str | None) -> None:
+    """Missing credentials are an authentication failure, not a denial."""
+    if access.mode is EnforcementMode.ENFORCE and not token:
+        raise HTTPException(
+            status_code = 401,
+            detail      = "Missing bearer token",
+            headers     = {"WWW-Authenticate": "Bearer"},
+        )
+
 # Public Method: Build NodeOperations for one request.
-def get_node_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> NodeOperations:
+def get_node_ops(request: Request, uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory), access: AccessControl = Depends(_get_access_control)) -> NodeOperations:
     """
     Build NodeOperations for one request.
 
     Tests can override `_get_uow_factory` via `app.dependency_overrides` to
-    inject a fake UnitOfWork.
+    inject a fake UnitOfWork. When GraphAuth enforcement is enabled, the
+    operations are wrapped with access-control checks for the caller's token.
     """
-    return _make_node_ops(uow_factory)
+    token = _get_bearer_token(request)
+    _require_token_when_enforcing(access, token)
+    ops = _make_node_ops(uow_factory)
+    if access.mode is EnforcementMode.OFF:
+        return ops
+    return AuthorizedNodeOperations(ops, access, token)
 
 # Public Method: Build EdgeOperations for one request.
-def get_edge_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> EdgeOperations:
+def get_edge_ops(request: Request, uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory), access: AccessControl = Depends(_get_access_control)) -> EdgeOperations:
     """
     Build EdgeOperations for one request.
 
     Tests can override `_get_uow_factory` via `app.dependency_overrides` to
-    inject a fake UnitOfWork.
+    inject a fake UnitOfWork. When GraphAuth enforcement is enabled, the
+    operations are wrapped with access-control checks for the caller's token.
     """
-    return _make_edge_ops(uow_factory)
+    token = _get_bearer_token(request)
+    _require_token_when_enforcing(access, token)
+    ops = _make_edge_ops(uow_factory)
+    if access.mode is EnforcementMode.OFF:
+        return ops
+    return AuthorizedEdgeOperations(ops, access, token)
 
 # Public Method: Build NodeFactory for one request.
 def get_node_factory() -> NodeFactory:
@@ -128,13 +172,19 @@ class RegistryOps:
     edge_ops: EdgeOperations
 
 # Public Method: Build node and edge operations sharing the same UnitOfWork factory.
-def get_registry_ops(uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory)) -> RegistryOps:
+def get_registry_ops(request: Request, uow_factory: Callable[[], UnitOfWork] = Depends(_get_uow_factory), access: AccessControl = Depends(_get_access_control)) -> RegistryOps:
     """
     Build node and edge operations sharing the same UnitOfWork factory.
     """
+    token = _get_bearer_token(request)
+    _require_token_when_enforcing(access, token)
+    node_ops = _make_node_ops(uow_factory)
+    edge_ops = _make_edge_ops(uow_factory)
+    if access.mode is EnforcementMode.OFF:
+        return RegistryOps(node_ops=node_ops, edge_ops=edge_ops)
     return RegistryOps(
-        node_ops=_make_node_ops(uow_factory),
-        edge_ops=_make_edge_ops(uow_factory),
+        node_ops=AuthorizedNodeOperations(node_ops, access, token),
+        edge_ops=AuthorizedEdgeOperations(edge_ops, access, token),
     )
 
 #================================================================#
