@@ -48,5 +48,11 @@ CREATE TABLE IF NOT EXISTS [[traversals]].Unit_Publication_Concept__ConceptDetec
               ON u2p.person_id = p2c.person_id
              AND p2c.deleted = 0
 
+              -- Link to: Unit type flags
+      INNER JOIN [[airflow]].Operations_N_Object_T_TypeFlags tf
+              ON tf.object_type = 'Unit'
+             AND tf.flag_type = 'scores'
+
            WHERE u2p.to_process = 1
-             AND u2p.deleted = 0;
+             AND u2p.deleted = 0
+             AND tf.to_process = 1;
