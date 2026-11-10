@@ -21,7 +21,7 @@ from graphregistry.domain.exceptions import (
     PersistenceError,
     TransientPersistenceError,
 )
-from graphregistry.application.policies.pol_access import AccessDeniedError
+from graphregistry.application.policies.pol_access import AccessDeniedError, NotAuthenticatedError
 from graphregistry.entrypoints.api.router import router
 from graphregistry.entrypoints.dependencies import build_db
 
@@ -271,6 +271,28 @@ def create_app() -> FastAPI:
                 "detail"     : str(exc),
                 "denied_keys": [list(key) for key in exc.denied_keys],
             },
+        )
+
+    # Internal Function: Handle invalid credentials as 401 (not 403).
+    @app.exception_handler(NotAuthenticatedError)
+    async def not_authenticated_exception_handler(request: Request, exc: NotAuthenticatedError) -> JSONResponse:
+        """
+        Handle authentication failures (invalid/inactive credential).
+
+        Hubert's rule: 401 = bad or missing credential; 403 = known
+        principal whose grants don't cover the action. Kindness to clients:
+        the two must never be conflated.
+        """
+        logger.warning(
+            "Not authenticated: method=%s path=%s error=%s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        return JSONResponse(
+            status_code = 401,
+            headers     = {"WWW-Authenticate": "Bearer"},
+            content     = {"detail": str(exc)},
         )
 
     # Internal Function: Handle attempts to save disallowed node or edge types.

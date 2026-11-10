@@ -5,6 +5,21 @@ Calls POST {url}/v1/verify with the caller's presented bearer token and maps
 the response to an AccessDecision. Never raises for denied authorization:
 fail-closed denials (including GraphAuth being unreachable) are returned as
 allowed=False with a reason, so the application policy stays in charge.
+
+FROZEN CONTRACT (Guy's integration brief 2026-11-09; KB authentication
+collection: 'Human access: IdP tokens on /v1/verify'):
+- The caller's bearer credential (gk- key or IdP access token) is forwarded
+  VERBATIM — no parsing, no prefix filtering, no logging of token material
+  on this side. Token validation is GraphAuth's job (RS256 via JWKS,
+  iss/aud/exp, sub ⟷ principals.idp_sub, fail-closed).
+- If token validation ever moves into THIS service (it currently must not):
+  the issuer and audience come from GraphAuth's live configuration
+  (GRAPHAUTH_VERIFY_TOKEN_ISSUER / _AUDIENCES in the GraphAuth stack).
+  Two invariant gotchas: the issuer must be compared BYTE-EXACT as
+  published by the IdP's discovery document (it carries a trailing slash —
+  never normalize), and Authentik API tokens are NOT valid credentials —
+  reject them fail-closed. Endpoint coordinates live in deployment
+  configuration, never in source.
 """
 from __future__ import annotations
 
@@ -60,9 +75,11 @@ class GraphAuthAccessGateway:
             # Fail closed: an unreachable authorization service denies access.
             return AccessDecision(allowed=False, reason=f"graphauth unreachable: {exc}")
 
-        # Invalid or inactive key: explicit denial with a stable reason.
+        # Invalid or inactive key: AUTHENTICATION failure (not a denial).
+        # Carried as auth_failed so enforce mode surfaces it as 401.
         if response.status_code == 401:
-            return AccessDecision(allowed=False, reason="invalid or inactive key")
+            return AccessDecision(allowed=False, auth_failed=True,
+                                  reason="invalid or inactive key")
 
         # Any other non-200 is an unexpected GraphAuth answer: fail closed.
         if response.status_code != 200:

@@ -38,5 +38,15 @@ services:
     extra_hosts:
       # Lets the container reach host-published ports (GraphAuth :3011).
       - "host.docker.internal:host-gateway"
+    # TARGET STATE (edge plan): once the shared 'graph-internal' network exists
+    # (GraphAuth side) and the GraphAuth container uses its service name,
+    # switch the URL above to the GraphAuth service-name URL, uncomment the two
+    # network blocks below, and drop the extra_hosts route.
+    #    networks:
+    #      - default
+    #      - graph-internal
+    # networks:
+    #   graph-internal:
+    #     external: true
     volumes:
       - ./config:/app/config:ro
