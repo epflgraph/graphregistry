@@ -35,7 +35,13 @@ class EnforcementMode(str, Enum):
 #==================#
 @dataclass(frozen=True)
 class AccessDecision:
-    """Outcome of a GraphAuth verify call for one key."""
-    allowed  : bool
-    principal: str | None = None
-    reason   : str | None = None
+    """Outcome of a GraphAuth verify call for one key.
+
+    auth_failed marks credential problems (GraphAuth answered 401): in
+    enforce mode these must surface as 401 (bad credential), not 403
+    (known principal, forbidden action).
+    """
+    allowed     : bool
+    principal   : str | None = None
+    reason      : str | None = None
+    auth_failed : bool = False

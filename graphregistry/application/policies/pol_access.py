@@ -21,8 +21,22 @@ from graphregistry.application.ports.gateways.prt_access import AccessGateway
 from graphregistry.domain.models.entities.mdl_base import EdgeKey, NodeKey
 from graphregistry.domain.models.values.mdl_access import AccessAction, AccessDecision, EnforcementMode
 
-# Dedicated logger so rollout dry-run lines are easy to grep.
-logger = logging.getLogger("graphregistry.access")
+# Dedicated logger so rollout dry-run lines are easy to grep. Uses
+# uvicorn.error (configured by the server) so lines surface both locally and
+# in container logs: `docker logs graphregistry-app | grep "access:dry-run"`.
+logger = logging.getLogger("uvicorn.error").getChild("access")
+
+
+#==================#
+# Class Definition #
+#==================#
+class NotAuthenticatedError(Exception):
+    """Raised in enforce mode when the presented credential is invalid.
+
+    Distinct from AccessDeniedError: 401 (bad/missing credential) vs 403
+    (known principal, forbidden action). The entrypoint maps this to 401.
+    """
+    pass
 
 
 #==================#
@@ -105,8 +119,16 @@ class AccessControl:
 
     # Node: read filtering for enumeration endpoints.
     def filter_node_keys(self, token: str | None, keys: Iterable[NodeKey]) -> list[NodeKey]:
-        """Return only the node keys readable by the token's principal."""
+        """Return the node keys readable by the token's principal.
+
+        LOG mode logs every decision but never drops keys (dry-run must not
+        block); only ENFORCE filters.
+        """
         if self.mode is EnforcementMode.OFF:
+            return list(keys)
+        if self.mode is EnforcementMode.LOG:
+            for key in keys:
+                self._decide_node(token, AccessAction.READ, key)      # logging only
             return list(keys)
         return [key for key in keys if self._decide_node(token, AccessAction.READ, key).allowed]
 
@@ -148,8 +170,16 @@ class AccessControl:
 
     # Edge: read filtering for enumeration endpoints.
     def filter_edge_keys(self, token: str | None, keys: Iterable[EdgeKey]) -> list[EdgeKey]:
-        """Return only the edge keys readable by the token's principal."""
+        """Return the edge keys readable by the token's principal.
+
+        LOG mode logs every decision but never drops keys (dry-run must not
+        block); only ENFORCE filters.
+        """
         if self.mode is EnforcementMode.OFF:
+            return list(keys)
+        if self.mode is EnforcementMode.LOG:
+            for key in keys:
+                self._decide_edge(token, AccessAction.READ, key)      # logging only
             return list(keys)
         return [key for key in keys if self._decide_edge(token, AccessAction.READ, key).allowed]
 
@@ -175,15 +205,22 @@ class AccessControl:
         if self.mode is EnforcementMode.OFF:
             return AccessDecision(allowed=True)
 
-        # Enforce mode with no token: hard 401-equivalent handled by the
-        # entrypoint; here treat as a deny decision for completeness.
+        # Enforce mode without a presented credential: that is an
+        # authentication failure, not a denial of a known principal.
         if not token:
+            if self.mode is EnforcementMode.ENFORCE:
+                raise NotAuthenticatedError("No bearer token presented")
             decision = AccessDecision(allowed=False, reason="no bearer token")
         else:
             decision = self._gateway.verify(access_token=token, action=action,
                                             node_key=node_key, edge_key=edge_key) \
                 if self._gateway is not None else \
                 AccessDecision(allowed=False, reason="no gateway configured")
+
+        # Enforce mode + bad credential -> 401 semantics (Hubert's rule:
+        # 401 = bad credential, 403 = known principal, forbidden action).
+        if self.mode is EnforcementMode.ENFORCE and decision.auth_failed:
+            raise NotAuthenticatedError(decision.reason or "Invalid credential")
 
         if self.mode is EnforcementMode.LOG:
             logger.info(

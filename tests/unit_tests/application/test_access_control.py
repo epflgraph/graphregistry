@@ -1,5 +1,6 @@
 # tests/unit_tests/application/test_access_control.py
 """Unit tests for AccessControl modes and the authorized operations wrappers."""
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -146,6 +147,34 @@ def test_off_mode_filter_returns_everything():
     assert access.filter_node_keys(TOKEN, keys) == keys
 
 
+def test_log_mode_filter_logs_but_returns_everything():
+    """Dry-run must never block: denying gateway, yet all keys survive."""
+    access = AccessControl(gateway=FakeGateway(allowed_types={"Course"}), mode=EnforcementMode.LOG)
+    keys = [NODE_A, NODE_C]
+    visible = access.filter_node_keys(TOKEN, keys)
+    assert [k.to_tuple() for k in visible] == [("Course", "A"), ("Person", "C")]
+
+
+def test_log_mode_wrapper_list_returns_all_despite_denials():
+    inner = StubNodeOps()
+    access = AccessControl(gateway=FakeGateway(allowed_types={"Course"}), mode=EnforcementMode.LOG)
+    wrapper = AuthorizedNodeOperations(inner, access, TOKEN)
+
+    assert wrapper.list("Course") == [("Course", "A"), ("Course", "B"), ("Person", "C")]
+
+
+def test_decision_logs_never_contain_the_token(caplog):
+    """Guy's gotcha list: forwarded credentials must never hit the logs."""
+    access = AccessControl(gateway=FakeGateway(), mode=EnforcementMode.LOG)
+    with caplog.at_level(logging.INFO):     # records propagate: uvicorn.error.access → root
+        access.require_node("gk-super-secret-token-value", AccessAction.WRITE, NODE_A)
+        access.require_edge("gk-super-secret-token-value", AccessAction.READ, EDGE_1)
+    assert all("gk-super-secret-token-value" not in rec.getMessage()
+               for rec in caplog.records)
+    # Decisions themselves ARE logged (dry-run visibility).
+    assert any("dry-run" in rec.getMessage() for rec in caplog.records)
+
+
 def test_edge_grants_independent_of_node_grants():
     """An edge-allowing gateway must not be affected by node-type checks."""
     access = AccessControl(gateway=FakeGateway(allowed_types={"Course"}), mode=EnforcementMode.ENFORCE)
@@ -232,3 +261,35 @@ def test_edge_wrapper_enforce_requires_edge_grant_only():
     with pytest.raises(AccessDeniedError):
         wrapper.save(edge)
     assert inner.saved == []
+
+
+#----------------------------------------------------------#
+# 401 vs 403 semantics (Hubert's rule)                     #
+#----------------------------------------------------------#
+def test_enforce_invalid_credential_raises_not_authenticated():
+    """GraphAuth answered 401 -> enforce mode raises 401-semantics, not 403."""
+    from graphregistry.application.policies.pol_access import NotAuthenticatedError
+
+    class InvalidCredGateway(FakeGateway):
+        def verify(self, access_token, action, node_key=None, edge_key=None):
+            self.calls.append({})
+            return AccessDecision(allowed=False, auth_failed=True,
+                                  reason="invalid or inactive key")
+
+    access = AccessControl(gateway=InvalidCredGateway(), mode=EnforcementMode.ENFORCE)
+    with pytest.raises(NotAuthenticatedError):
+        access.require_node(TOKEN, AccessAction.READ, NODE_A)
+
+
+def test_log_mode_invalid_credential_never_raises():
+    """Dry-run logs the authentication failure but never blocks."""
+    from graphregistry.application.policies.pol_access import NotAuthenticatedError
+
+    class InvalidCredGateway(FakeGateway):
+        def verify(self, access_token, action, node_key=None, edge_key=None):
+            self.calls.append({})
+            return AccessDecision(allowed=False, auth_failed=True,
+                                  reason="invalid or inactive key")
+
+    access = AccessControl(gateway=InvalidCredGateway(), mode=EnforcementMode.LOG)
+    access.require_node(TOKEN, AccessAction.READ, NODE_A)     # must not raise

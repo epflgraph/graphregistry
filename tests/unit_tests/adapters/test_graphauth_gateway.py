@@ -115,3 +115,37 @@ def test_timeout_is_bounded(monkeypatch):
     gateway.verify("gk-tok", AccessAction.READ, node_key=("Course", "CS-1"))
 
     assert recorder.calls[0]["timeout"] == 1.5
+
+
+def test_bearer_credential_forwarded_verbatim(monkeypatch):
+    """Frozen contract: credentials pass through byte-for-byte.
+
+    A JWT-shaped token must reach GraphAuth exactly as presented — no
+    parsing, no normalization, no prefix handling on our side. Token-type
+    handling (gk- key vs Authentik OIDC token) is GraphAuth's job.
+    """
+    jwt_token = (
+        "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9."
+        "eyJzdWIiOiJhYmNfMTIzIiwiaXNzIjoiaHR0cHM6Ly9hY2NvdW50LmdyYXBoY2VydC5jZWRlLWFwcHMuY2gvYXBwbGljYXRpb24vby9ncmFwaC1yZWdpc3RyeS8ifQ"
+        ".SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJVadQssw5c"
+    )
+    recorder = _Recorder(_FakeResponse(200, {"decision": "allow", "principal": "fpereira"}))
+    _patch_post(monkeypatch, recorder)
+    gateway = GraphAuthAccessGateway(url="http://graphauth.test:28801")
+
+    decision = gateway.verify(jwt_token, AccessAction.READ, node_key=("Course", "CS-1"))
+
+    assert decision.allowed is True
+    assert recorder.calls[0]["headers"]["Authorization"] == f"Bearer {jwt_token}"
+
+
+def test_deny_payload_with_reason(monkeypatch):
+    """Denies carry a reason for the audit/application log (never the token)."""
+    recorder = _Recorder(_FakeResponse(200, {"decision": "deny", "principal": "svc-x"}))
+    _patch_post(monkeypatch, recorder)
+    gateway = GraphAuthAccessGateway(url="http://graphauth.test:28801")
+
+    decision = gateway.verify("gk-tok", AccessAction.WRITE, node_key=("Person", "1"))
+
+    assert decision.allowed is False
+    assert decision.principal == "svc-x"

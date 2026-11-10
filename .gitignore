@@ -334,3 +334,10 @@ scripts/security/gittools/scan-staged.sh
 
 # Security hook test fixture — deliberate FAKE credentials, never commit.
 FAKE-CREDENTIALS-hook-test.txt
+run.sh
+api.sh
+get_token.sh
+run.sh
+test_auth.sh
+api2.sh
+run2.sh
