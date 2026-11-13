@@ -1,3 +1,19 @@
+-- =================== Cleanup: find objects to be deleted
+  DROP TABLE IF EXISTS [[graph_cache]]._TEMP_Concept_FinalScores_objs_to_delete;
+CREATE TEMPORARY TABLE [[graph_cache]]._TEMP_Concept_FinalScores_objs_to_delete
+                       (PRIMARY KEY (object_type, object_id), KEY object_type (object_type), KEY object_id (object_id)) AS
+       SELECT DISTINCT object_type, object_id
+                  FROM [[graph_cache]].Edges_N_Object_N_Concept_T_FinalScores
+                 WHERE to_process = 1
+                   AND deleted = 0;
+
+-- ========= Cleanup: Soft-delete objects marked for delete
+      UPDATE [[graph_cache]].Edges_N_Object_N_Category_T_FinalScores
+         SET deleted = 1
+       WHERE deleted = 0
+         AND (object_type, object_id)
+          IN (SELECT object_type, object_id FROM [[graph_cache]]._TEMP_Concept_FinalScores_objs_to_delete);
+
 -- ========= Formula: 'concept sum-scores aggregation (bounded)'
 REPLACE INTO [[graph_cache]].Edges_N_Object_N_Category_T_FinalScores
              (object_type, object_id, category_id, score, to_process, deleted)

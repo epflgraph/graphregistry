@@ -326,3 +326,14 @@ scripts/watch_inference_requests.sh
 FAKE-CREDENTIALS-hook-test.txt
 ocr_dump.txt
 out_tmp.txt
+api2.sh
+create-symlinks.sh
+get_token.sh
+run2.sh
+test_auth.sh
+scripts/security/scan-leaks.sh
+scripts/security/scan-staged.sh
+scripts/security/gittools/scan-leaks.sh
+scripts/security/gittools/scan-staged.sh
+scripts/loop/loop.pid
+integrity_check_queries.txt
