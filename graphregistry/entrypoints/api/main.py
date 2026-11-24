@@ -8,9 +8,11 @@ import rich
 from rich.panel import Panel
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
 from fastapi.openapi.utils import get_openapi
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import ValidationError
+import requests
 from graphregistry.common.config import APIConfig, GlobalConfig, mode_border_style
 from graphregistry.common.version import REGISTRY_API_VERSION
 from graphregistry.domain.exceptions import (
@@ -132,11 +134,38 @@ def create_app() -> FastAPI:
         summary     = glbcfg.api_summary,
         description = f"**{glbcfg.mode_label}**",
         version     = REGISTRY_API_VERSION,
-        docs_url    = "/docs",
+        docs_url    = None,      # served by the custom /docs route below
         redoc_url   = "/redoc",
         openapi_url = "/openapi.json",
         lifespan    = lifespan,
     )
+
+    #================================================================#
+    # Function Group: Swagger UI (custom: PKCE + client id preset)   #
+    #================================================================#
+
+    # Public Method: Serve Swagger UI with the OAuth2 init configuration.
+    @app.get("/docs", include_in_schema=False)
+    def swagger_docs() -> Response:
+        """Swagger UI with PKCE enabled and the public client id pre-filled."""
+        init_oauth: dict[str, Any] = {
+            "appName": "Graph Registry",
+            "usePkceWithAuthorizationCodeGrant": True,
+        }
+        if api_cfg.oidc_client_id:
+            init_oauth["clientId"] = api_cfg.oidc_client_id
+        return get_swagger_ui_html(
+            openapi_url            = "/openapi.json",
+            title                  = f"{app.title} — Swagger",
+            oauth2_redirect_url    = "/docs/oauth2-redirect",
+            init_oauth             = init_oauth,
+        )
+
+    # Public Method: OAuth2 redirect back-channel for the Authorize flow.
+    @app.get("/docs/oauth2-redirect", include_in_schema=False)
+    def swagger_oauth2_redirect() -> Response:
+        """OAuth2 redirect back-channel used by the Swagger Authorize flow."""
+        return get_swagger_ui_oauth2_redirect_html()
 
     # Include the API router which contains all the endpoint definitions
     app.include_router(router)
@@ -467,6 +496,79 @@ def create_app() -> FastAPI:
 
         # Drill into the reusable schema definitions to override their examples.
         schemas = openapi_schema.setdefault("components", {}).setdefault("schemas", {})
+
+        # Security schemes for the Authorize dialog — two options, ordered
+        # and worded so the dialog reads as a recipe:
+        #   1. sso_login   — browser SSO (authorizationCode + PKCE). Present
+        #      only when an OIDC issuer + public client are configured;
+        #      endpoints resolved from the issuer's discovery document at
+        #      build time — IdP URLs are never hardcoded in source.
+        #   2. paste_token — advanced fallback: paste an existing credential.
+        security_schemes: dict[str, Any] = {}
+        security_requirements: list[dict[str, list[str]]] = []
+
+        if api_cfg.oidc_issuer and api_cfg.oidc_client_id:
+            try:
+                discovery = requests.get(
+                    f"{api_cfg.oidc_issuer.rstrip('/')}/.well-known/openid-configuration",
+                    timeout=5,
+                ).json()
+                security_schemes["1. SSO login (recommended)"] = {
+                    "type": "oauth2",
+                    "description": (
+                        "**Log in with your Graph platform account — no "
+                        "tokens to copy.**\n\n"
+                        "1. Tick **both** scopes below (`openid`, `profile`).\n"
+                        "2. Leave **client_secret** empty (this client uses "
+                        "PKCE — no secret).\n"
+                        "3. `client_id` is already filled in.\n"
+                        "4. Click **Authorize** — you are redirected to the "
+                        "login page and back. If you logged in recently, it "
+                        "is silent.\n"
+                        "5. Click **Close** — every *Try it out* call is now "
+                        "authenticated."
+                    ),
+                    "flows": {
+                        "authorizationCode": {
+                            "authorizationUrl": discovery["authorization_endpoint"],
+                            "tokenUrl"        : discovery["token_endpoint"],
+                            "scopes"          : {"openid": "identifies you",
+                                                 "profile": "your name and groups"},
+                            "x-usePkce"       : "SHA-256",   # public client, no secret
+                        }
+                    },
+                }
+                security_requirements.append(
+                    {"1. SSO login (recommended)": ["openid", "profile"]})
+            except Exception as exc:      # discovery unreachable/misconfigured
+                logger.warning(
+                    "OIDC discovery failed for Swagger SSO (%s); "
+                    "falling back to paste-token auth only.", exc,
+                )
+
+        security_schemes["2. Paste a token (advanced)"] = {
+            "type": "http",
+            "scheme": "bearer",
+            "description": (
+                "**Only if SSO does not work for you.**\n\n"
+                "Paste a credential you already hold into the **Value** "
+                "field, then click **Authorize**:\n"
+                "- an Authentik access token (from `./get_token.sh` — lives "
+                "minutes), or\n"
+                "- a break-glass `gk-` key (console login only).\n\n"
+                "Prefer *SSO login* above."
+            ),
+        }
+        security_requirements.append({"2. Paste a token (advanced)": []})
+
+        openapi_schema["components"]["securitySchemes"] = security_schemes
+        for path, operations in openapi_schema.get("paths", {}).items():
+            if path.startswith("/api"):        # data endpoints require a credential
+                for operation in operations.values():
+                    if isinstance(operation, dict):
+                        operation["security"] = security_requirements
+
+
 
         # Node examples: first allowed node type.
         if api_cfg.allowed_node_types_list:

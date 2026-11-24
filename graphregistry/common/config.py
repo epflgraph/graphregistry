@@ -323,6 +323,21 @@ class APIConfig:
             str(auth.get("timeout_s", 3.0)),
         ))
 
+        # OIDC browser flow for /docs (optional). When set, Swagger offers
+        # SSO authentication (authorizationCode + PKCE) against the IdP,
+        # with endpoints resolved from the issuer's discovery document at
+        # runtime — no IdP URLs are ever hardcoded in source. The OIDC
+        # client must be a PUBLIC client (PKCE, no secret) registered for
+        # this service's docs redirect URI.
+        self.oidc_issuer     = os.getenv(
+            "GRAPHREGISTRY_OIDC_ISSUER",
+            str(auth.get("oidc_issuer", "")),
+        ).strip()
+        self.oidc_client_id  = os.getenv(
+            "GRAPHREGISTRY_OIDC_CLIENT_ID",
+            str(auth.get("oidc_client_id", "")),
+        ).strip()
+
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> "APIConfig":
         """Create an API configuration instance from a JSON file."""

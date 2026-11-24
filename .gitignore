@@ -364,3 +364,4 @@ run.sh
 test_auth.sh
 api2.sh
 run2.sh
+scripts/course_details
