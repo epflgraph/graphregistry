@@ -82,6 +82,7 @@ def test_docs_page_preconfigures_pkce_and_client_id(monkeypatch):
     assert "test-public-client" in r.text                      # client id pre-filled
     assert "usePkceWithAuthorizationCodeGrant" in r.text       # PKCE automatic
     assert "/docs/oauth2-redirect" in r.text                   # back-channel wired
+    assert "persistAuthorization" in r.text                    # survives page reloads
 
 
 def test_oauth2_redirect_backchannel_served():

@@ -144,21 +144,28 @@ def create_app() -> FastAPI:
     # Function Group: Swagger UI (custom: PKCE + client id preset)   #
     #================================================================#
 
-    # Public Method: Serve Swagger UI with the OAuth2 init configuration.
+    # Public Method: Serve Swagger UI with OAuth2 init configuration and
+    # authorization persisted across page reloads.
     @app.get("/docs", include_in_schema=False)
     def swagger_docs() -> Response:
-        """Swagger UI with PKCE enabled and the public client id pre-filled."""
+        """Swagger UI with PKCE enabled, the public client id pre-filled, and the
+        authorization kept alive across page reloads within the same browser."""
         init_oauth: dict[str, Any] = {
-            "appName": "Graph Registry",
-            "usePkceWithAuthorizationCodeGrant": True,
+            "appName"                           : "Graph Registry",
+            "usePkceWithAuthorizationCodeGrant" : True,
         }
         if api_cfg.oidc_client_id:
             init_oauth["clientId"] = api_cfg.oidc_client_id
+
+        # persistAuthorization is a top-level Swagger UI option, not part of the
+        # oauth2Config object, so it must ride on swagger_ui_parameters; storing
+        # the token in browser storage spares the user re-authorizing per reload.
         return get_swagger_ui_html(
-            openapi_url            = "/openapi.json",
-            title                  = f"{app.title} — Swagger",
-            oauth2_redirect_url    = "/docs/oauth2-redirect",
-            init_oauth             = init_oauth,
+            openapi_url           = "/openapi.json",
+            title                 = f"{app.title} — Swagger",
+            oauth2_redirect_url   = "/docs/oauth2-redirect",
+            init_oauth            = init_oauth,
+            swagger_ui_parameters = {"persistAuthorization": True},
         )
 
     # Public Method: OAuth2 redirect back-channel for the Authorize flow.
@@ -507,6 +514,8 @@ def create_app() -> FastAPI:
         security_schemes: dict[str, Any] = {}
         security_requirements: list[dict[str, list[str]]] = []
 
+        # Build the SSO scheme only when the issuer and the public client are both
+        # configured; its endpoints come from live IdP discovery, never from source.
         if api_cfg.oidc_issuer and api_cfg.oidc_client_id:
             try:
                 discovery = requests.get(
@@ -514,8 +523,8 @@ def create_app() -> FastAPI:
                     timeout=5,
                 ).json()
                 security_schemes["1. SSO login (recommended)"] = {
-                    "type": "oauth2",
-                    "description": (
+                    "type"        : "oauth2",
+                    "description" : (
                         "**Log in with your Graph platform account — no "
                         "tokens to copy.**\n\n"
                         "1. Tick **both** scopes below (`openid`, `profile`).\n"
@@ -528,12 +537,12 @@ def create_app() -> FastAPI:
                         "5. Click **Close** — every *Try it out* call is now "
                         "authenticated."
                     ),
-                    "flows": {
+                    "flows"       : {
                         "authorizationCode": {
                             "authorizationUrl": discovery["authorization_endpoint"],
                             "tokenUrl"        : discovery["token_endpoint"],
-                            "scopes"          : {"openid": "identifies you",
-                                                 "profile": "your name and groups"},
+                            "scopes"          : {"openid"  : "identifies you",
+                                                 "profile" : "your name and groups"},
                             "x-usePkce"       : "SHA-256",   # public client, no secret
                         }
                     },
@@ -546,10 +555,12 @@ def create_app() -> FastAPI:
                     "falling back to paste-token auth only.", exc,
                 )
 
+        # Always register the paste-token fallback so Swagger stays usable when
+        # the SSO scheme is absent or its discovery lookup failed.
         security_schemes["2. Paste a token (advanced)"] = {
-            "type": "http",
-            "scheme": "bearer",
-            "description": (
+            "type"        : "http",
+            "scheme"      : "bearer",
+            "description" : (
                 "**Only if SSO does not work for you.**\n\n"
                 "Paste a credential you already hold into the **Value** "
                 "field, then click **Authorize**:\n"
@@ -561,14 +572,14 @@ def create_app() -> FastAPI:
         }
         security_requirements.append({"2. Paste a token (advanced)": []})
 
+        # Publish the schemes and require one of them on every /api operation;
+        # system endpoints (health, docs, schema) stay unauthenticated.
         openapi_schema["components"]["securitySchemes"] = security_schemes
         for path, operations in openapi_schema.get("paths", {}).items():
             if path.startswith("/api"):        # data endpoints require a credential
                 for operation in operations.values():
                     if isinstance(operation, dict):
                         operation["security"] = security_requirements
-
-
 
         # Node examples: first allowed node type.
         if api_cfg.allowed_node_types_list:
